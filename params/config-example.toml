@@ -1,0 +1,76 @@
+# router swap identifier, must have prefix 'routerswap'
+Identifier = "routerswap#20210326"
+
+
+# router sever config (server only)
+[Server]
+# administrators who can do admin work
+Admins = [
+	"0x3dfaef310a1044fd7d96750b42b44cf3775c00bf",
+	"0x46cbe22b687d4b72c8913e4784dfe5b20fdc2b0e"
+]
+
+# chain id black list of string array
+ChainIDBlackList = []
+
+# token id black list of string array
+TokenIDBlackList = []
+
+# modgodb database connection config
+[Server.MongoDB]
+DBURL = "localhost:27017"
+DBName = "databasename"
+UserName = "username"
+Password = "password"
+
+# bridge API service
+[Server.APIServer]
+# listen port
+Port = 11556
+# CORS config
+AllowedOrigins = []
+
+
+# OnChain config
+[OnChain]
+Contract = "0x77bc292e465cfff6dda1fd5ca67a2a1320d2657e"
+APIAddress = ["http://127.0.0.1:8711", "http://127.0.0.1:8722"]
+
+
+# Gateways config. key is chainID
+[Gateways]
+4     = ["http://127.0.0.1:6711", "http://127.0.0.1:6722"]
+256   = ["http://127.0.0.1:7711", "http://127.0.0.1:7722"]
+46688 = ["http://127.0.0.1:8711", "http://127.0.0.1:8722"]
+
+# DCRM config
+[MPC]
+# mpc group ID
+GroupID = "74245ef03937fa75b979bdaa6a5952a93f53e021e0832fca4c2ad8952572c9b70f49e291de7e024b0f7fc54ec5875210db2ac775dba44448b3972b75af074d17"
+
+# mpc threshold (NeededOracles=2,TotalOracles=3 represent '2/3' threshold)
+NeededOracles = 2
+TotalOracles = 3
+
+# mpc mode (0:managed 1:private)
+Mode = 0
+
+# initiators of mpc sign
+Initiators = [
+	"0x897a9980808a2cae0d09ff693f02a4f80abb2233"
+]
+
+# DCRM default node config
+[MPC.DefaultNode]
+# mpc sub groups for signing (server only)
+SignGroups = [
+	"38a93f457c793ac3ee242b2c050a403774738e6558cfaa620fe5577bb15a28f63c39adcc0778497e5009a9ee776a0778ffcad4e95827e69efa21b893b8a78793",
+	"bb1dfe1ec046cc3a3b88408ae03976aabffe459b40e5def09e76f5d4c7a917133241da9da7fc05e3e172fab54ce3129a9a492d52a5a09494d0b9c1e608f661bf"
+]
+
+# mpc user keystore and password file (suggest using absolute path)
+KeystoreFile = "/home/xxx/accounts/keystore1"
+PasswordFile = "/home/xxx/accounts/password1"
+
+# mpc backend node (gmpc node RPC address)
+RPCAddress = "http://127.0.0.1:2921"
