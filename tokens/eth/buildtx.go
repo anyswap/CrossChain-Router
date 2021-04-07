@@ -29,11 +29,16 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	if args.From == "" {
 		return nil, fmt.Errorf("forbid empty sender")
 	}
-	if args.SwapType != tokens.RouterSwapType {
+
+	switch args.SwapType {
+	case tokens.RouterSwapType:
+		err = b.buildRouterSwapTxInput(args)
+	case tokens.AnyCallSwapType:
+		err = b.buildAnyCallSwapTxInput(args)
+	default:
 		return nil, tokens.ErrSwapTypeNotSupported
 	}
 
-	err = b.buildRouterSwapTxInput(args)
 	if err != nil {
 		return nil, err
 	}

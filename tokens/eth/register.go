@@ -3,7 +3,6 @@ package eth
 import (
 	"github.com/anyswap/CrossChain-Router/log"
 	"github.com/anyswap/CrossChain-Router/tokens"
-	"github.com/anyswap/CrossChain-Router/types"
 )
 
 // RegisterSwap api
@@ -13,29 +12,22 @@ func (b *Bridge) RegisterSwap(txHash string, args *tokens.RegisterArgs) ([]*toke
 
 	switch swapType {
 	case tokens.RouterSwapType:
-		return b.RegisterRouterSwapTx(txHash, logIndex)
+		return b.registerRouterSwapTx(txHash, logIndex)
+	case tokens.AnyCallSwapType:
+		return b.registerAnyCallSwapTx(txHash, logIndex)
 	default:
 		return nil, []error{tokens.ErrSwapTypeNotSupported}
 	}
 }
 
-// RegisterRouterSwapTx impl
-func (b *Bridge) RegisterRouterSwapTx(txHash string, logIndex int) ([]*tokens.SwapTxInfo, []error) {
-	commonInfo := &tokens.SwapTxInfo{RouterSwapInfo: &tokens.RouterSwapInfo{}}
+// nolint:dupl // ok
+func (b *Bridge) registerRouterSwapTx(txHash string, logIndex int) ([]*tokens.SwapTxInfo, []error) {
+	commonInfo := &tokens.SwapTxInfo{SwapInfo: tokens.SwapInfo{RouterSwapInfo: &tokens.RouterSwapInfo{}}}
 	commonInfo.SwapType = tokens.RouterSwapType // SwapType
 	commonInfo.Hash = txHash                    // Hash
 	commonInfo.LogIndex = logIndex              // LogIndex
 
-	txStatus := b.GetTransactionStatus(txHash)
-	if txStatus.BlockHeight == 0 {
-		return []*tokens.SwapTxInfo{commonInfo}, []error{tokens.ErrTxNotFound}
-	}
-
-	commonInfo.Height = txStatus.BlockHeight  // Height
-	commonInfo.Timestamp = txStatus.BlockTime // Timestamp
-
-	receipt, _ := txStatus.Receipt.(*types.RPCTxReceipt)
-	err := b.verifyRouterSwapTxReceipt(commonInfo, receipt)
+	receipt, err := b.verifySwapTxReceipt(commonInfo, b.ChainConfig.RouterContract, true)
 	if err != nil {
 		return []*tokens.SwapTxInfo{commonInfo}, []error{err}
 	}
@@ -64,7 +56,7 @@ func (b *Bridge) RegisterRouterSwapTx(txHash string, logIndex int) ([]*tokens.Sw
 		case nil:
 			err = b.checkRouterSwapInfo(swapInfo)
 		default:
-			log.Debug(b.ChainConfig.BlockChain+" register swap error", "txHash", txHash, "logIndex", swapInfo.LogIndex, "err", err)
+			log.Debug(b.ChainConfig.BlockChain+" register router swap error", "txHash", txHash, "logIndex", swapInfo.LogIndex, "err", err)
 		}
 		swapInfos = append(swapInfos, swapInfo)
 		errs = append(errs, err)

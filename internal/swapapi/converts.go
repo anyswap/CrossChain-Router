@@ -8,22 +8,16 @@ import (
 // ConvertMgoSwapToSwapInfo convert
 func ConvertMgoSwapToSwapInfo(ms *mongodb.MgoSwap) *SwapInfo {
 	return &SwapInfo{
-		TxID:          ms.TxID,
-		TxTo:          ms.TxTo,
-		Bind:          ms.Bind,
-		ForNative:     ms.ForNative,
-		ForUnderlying: ms.ForUnderlying,
-		Token:         ms.Token,
-		TokenID:       ms.TokenID,
-		Path:          ms.Path,
-		AmountOutMin:  ms.AmountOutMin,
-		FromChainID:   ms.FromChainID,
-		ToChainID:     ms.ToChainID,
-		LogIndex:      ms.LogIndex,
-		Status:        ms.Status,
-		StatusMsg:     ms.Status.String(),
-		Timestamp:     ms.Timestamp,
-		Memo:          ms.Memo,
+		SwapType:  ms.SwapType,
+		TxID:      ms.TxID,
+		TxTo:      ms.TxTo,
+		Bind:      ms.Bind,
+		LogIndex:  ms.LogIndex,
+		SwapInfo:  ms.SwapInfo,
+		Status:    ms.Status,
+		StatusMsg: ms.Status.String(),
+		Timestamp: ms.Timestamp,
+		Memo:      ms.Memo,
 	}
 }
 
@@ -40,12 +34,16 @@ func ConvertMgoSwapsToSwapInfos(msSlice []*mongodb.MgoSwap) []*SwapInfo {
 func ConvertMgoSwapResultToSwapInfo(mr *mongodb.MgoSwapResult) *SwapInfo {
 	var confirmations uint64
 	if mr.SwapHeight != 0 {
-		latest, _ := router.GetBridgeByChainID(mr.ToChainID).GetLatestBlockNumber()
-		if latest > mr.SwapHeight {
-			confirmations = latest - mr.SwapHeight
+		resBridge := router.GetBridgeByChainID(mr.ToChainID)
+		if resBridge != nil {
+			latest, _ := resBridge.GetLatestBlockNumber()
+			if latest > mr.SwapHeight {
+				confirmations = latest - mr.SwapHeight
+			}
 		}
 	}
 	return &SwapInfo{
+		SwapType:      mr.SwapType,
 		TxID:          mr.TxID,
 		TxTo:          mr.TxTo,
 		TxHeight:      mr.TxHeight,
@@ -54,20 +52,13 @@ func ConvertMgoSwapResultToSwapInfo(mr *mongodb.MgoSwapResult) *SwapInfo {
 		To:            mr.To,
 		Bind:          mr.Bind,
 		Value:         mr.Value,
-		ForNative:     mr.ForNative,
-		ForUnderlying: mr.ForUnderlying,
-		Token:         mr.Token,
-		TokenID:       mr.TokenID,
-		Path:          mr.Path,
-		AmountOutMin:  mr.AmountOutMin,
-		FromChainID:   mr.FromChainID,
-		ToChainID:     mr.ToChainID,
 		LogIndex:      mr.LogIndex,
+		SwapInfo:      mr.SwapInfo,
 		SwapTx:        mr.SwapTx,
+		OldSwapTxs:    mr.OldSwapTxs,
 		SwapHeight:    mr.SwapHeight,
 		SwapTime:      mr.SwapTime,
 		SwapValue:     mr.SwapValue,
-		SwapType:      mr.SwapType,
 		SwapNonce:     mr.SwapNonce,
 		Status:        mr.Status,
 		StatusMsg:     mr.Status.String(),

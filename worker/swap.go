@@ -109,46 +109,17 @@ func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
 			SwapID:     txid,
 			SwapType:   tokens.SwapType(swap.SwapType),
 			Bind:       bind,
+			LogIndex:   swap.LogIndex,
 		},
 		From:        dstBridge.GetChainConfig().GetRouterMPC(),
 		OriginValue: value,
 	}
-	args.RouterSwapInfo, err = getRouterSwapInfoFromSwap(swap)
+	args.SwapInfo, err = mongodb.ConvertFromSwapInfo(&swap.SwapInfo)
 	if err != nil {
 		return err
 	}
 
 	return dispatchSwapTask(args)
-}
-
-func getRouterSwapInfoFromSwap(swap *mongodb.MgoSwap) (*tokens.RouterSwapInfo, error) {
-	var amountOutMin *big.Int
-	var err error
-	if len(swap.Path) > 0 {
-		amountOutMin, err = common.GetBigIntFromStr(swap.AmountOutMin)
-		if err != nil {
-			return nil, fmt.Errorf("wrong amountOutMin %v", swap.AmountOutMin)
-		}
-	}
-	fromChainID, err := common.GetBigIntFromStr(swap.FromChainID)
-	if err != nil {
-		return nil, fmt.Errorf("wrong fromChainID %v", swap.FromChainID)
-	}
-	toChainID, err := common.GetBigIntFromStr(swap.ToChainID)
-	if err != nil {
-		return nil, fmt.Errorf("wrong toChainID %v", swap.ToChainID)
-	}
-	return &tokens.RouterSwapInfo{
-		ForNative:     swap.ForNative,
-		ForUnderlying: swap.ForUnderlying,
-		Token:         swap.Token,
-		TokenID:       swap.TokenID,
-		Path:          swap.Path,
-		AmountOutMin:  amountOutMin,
-		FromChainID:   fromChainID,
-		ToChainID:     toChainID,
-		LogIndex:      swap.LogIndex,
-	}, nil
 }
 
 func preventReswap(res *mongodb.MgoSwapResult) (err error) {
@@ -205,7 +176,7 @@ func processHistory(res *mongodb.MgoSwapResult) error {
 
 func dispatchSwapTask(args *tokens.BuildTxArgs) error {
 	switch args.SwapType {
-	case tokens.RouterSwapType:
+	case tokens.RouterSwapType, tokens.AnyCallSwapType:
 		swapChan, exist := routerSwapTaskChanMap[args.FromChainID.String()]
 		if !exist {
 			return fmt.Errorf("no swapout task channel for chainID '%v'", args.FromChainID)

@@ -68,7 +68,9 @@ func (b *Bridge) VerifyTransaction(txHash string, args *tokens.VerifyArgs) (*tok
 
 	switch swapType {
 	case tokens.RouterSwapType:
-		return b.VerifyRouterSwapTx(txHash, logIndex, allowUnstable)
+		return b.verifyRouterSwapTx(txHash, logIndex, allowUnstable)
+	case tokens.AnyCallSwapType:
+		return b.verifyAnyCallSwapTx(txHash, logIndex, allowUnstable)
 	default:
 		return nil, tokens.ErrSwapTypeNotSupported
 	}

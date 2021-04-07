@@ -118,7 +118,7 @@ func getBridges(fromChainID, toChainID string) (srcBridge, dstBridge tokens.IBri
 func rebuildAndVerifyMsgHash(msgHash []string, args *tokens.BuildTxArgs) (err error) {
 	var srcBridge, dstBridge tokens.IBridge
 	switch args.SwapType {
-	case tokens.RouterSwapType:
+	case tokens.RouterSwapType, tokens.AnyCallSwapType:
 		srcBridge, dstBridge, err = getBridges(args.FromChainID.String(), args.ToChainID.String())
 		if err != nil {
 			return err

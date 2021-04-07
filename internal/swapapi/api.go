@@ -26,7 +26,17 @@ func newRPCInternalError(err error) error {
 // RegisterRouterSwap register router swap
 // if logIndex is 0 then check all logs, otherwise only check the specified log
 func RegisterRouterSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, error) {
-	log.Info("[api] register router swap", "chainid", fromChainID, "txid", txid, "logIndex", logIndexStr)
+	return registerSwap(fromChainID, txid, logIndexStr, tokens.RouterSwapType)
+}
+
+// RegisterAnyCallSwap register anycall swap
+// if logIndex is 0 then check all logs, otherwise only check the specified log
+func RegisterAnyCallSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, error) {
+	return registerSwap(fromChainID, txid, logIndexStr, tokens.AnyCallSwapType)
+}
+
+func registerSwap(fromChainID, txid, logIndexStr string, swapType tokens.SwapType) (*MapIntResult, error) {
+	log.Info("[api] register swap", "chainid", fromChainID, "txid", txid, "logIndex", logIndexStr, "swapType", swapType.String())
 	if !params.IsRouterSwap() {
 		return nil, tokens.ErrRouterSwapNotSupport
 	}
@@ -44,7 +54,7 @@ func RegisterRouterSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, e
 	}
 	result := MapIntResult(make(map[int]string))
 	registerArgs := &tokens.RegisterArgs{
-		SwapType: tokens.RouterSwapType,
+		SwapType: swapType,
 		LogIndex: logIndex,
 	}
 	swapInfos, errs := bridge.RegisterSwap(txid, registerArgs)
@@ -96,23 +106,16 @@ func getRegisteredRouterSwap(fromChainID, txid string, logIndex int) (oldSwap *m
 
 func addMgoSwap(swapInfo *tokens.SwapTxInfo, status mongodb.SwapStatus, memo string) (err error) {
 	swap := &mongodb.MgoSwap{
-		SwapType:      uint32(swapInfo.SwapType),
-		TxID:          swapInfo.Hash,
-		TxTo:          swapInfo.TxTo,
-		Bind:          swapInfo.Bind,
-		ForNative:     swapInfo.ForNative,
-		ForUnderlying: swapInfo.ForUnderlying,
-		Token:         swapInfo.Token,
-		TokenID:       swapInfo.TokenID,
-		Path:          swapInfo.Path,
-		AmountOutMin:  swapInfo.AmountOutMin.String(),
-		FromChainID:   swapInfo.FromChainID.String(),
-		ToChainID:     swapInfo.ToChainID.String(),
-		LogIndex:      swapInfo.LogIndex,
-		Status:        status,
-		Timestamp:     time.Now().Unix(),
-		Memo:          memo,
+		SwapType:  uint32(swapInfo.SwapType),
+		TxID:      swapInfo.Hash,
+		TxTo:      swapInfo.TxTo,
+		Bind:      swapInfo.Bind,
+		LogIndex:  swapInfo.LogIndex,
+		Status:    status,
+		Timestamp: time.Now().Unix(),
+		Memo:      memo,
 	}
+	swap.SwapInfo = mongodb.ConvertToSwapInfo(&swapInfo.SwapInfo)
 	err = mongodb.AddRouterSwap(swap)
 	if err != nil {
 		log.Warn("[api] add router swap", "swap", swap, "err", err)

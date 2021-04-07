@@ -85,6 +85,7 @@ func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int) error {
 			SwapID:     txid,
 			SwapType:   tokens.SwapType(res.SwapType),
 			Bind:       res.Bind,
+			LogIndex:   res.LogIndex,
 		},
 		From:        resBridge.GetChainConfig().GetRouterMPC(),
 		OriginValue: value,
@@ -95,7 +96,7 @@ func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int) error {
 			},
 		},
 	}
-	args.RouterSwapInfo, err = getRouterSwapInfoFromSwap(swap)
+	args.SwapInfo, err = mongodb.ConvertFromSwapInfo(&swap.SwapInfo)
 	if err != nil {
 		return err
 	}

@@ -19,6 +19,7 @@ type SwapType uint32
 const (
 	NonSwapType SwapType = iota
 	RouterSwapType
+	AnyCallSwapType
 )
 
 func (s SwapType) String() string {
@@ -27,6 +28,8 @@ func (s SwapType) String() string {
 		return "nonswap"
 	case RouterSwapType:
 		return "routerswap"
+	case AnyCallSwapType:
+		return "anycallswap"
 	default:
 		return fmt.Sprintf("unknown swap type %d", s)
 	}
@@ -42,13 +45,28 @@ type RouterSwapInfo struct {
 	AmountOutMin  *big.Int `json:"amountOutMin,omitempty"`
 	FromChainID   *big.Int `json:"fromChainID"`
 	ToChainID     *big.Int `json:"toChainID"`
-	LogIndex      int      `json:"logIndex"`
+}
+
+// AnyCallSwapInfo struct
+type AnyCallSwapInfo struct {
+	CallFrom        string          `json:"callFrom"`
+	CallTo          []string        `json:"callTo"`
+	CallData        []hexutil.Bytes `json:"callData"`
+	Callbacks       []string        `json:"callbacks"`
+	CallNonces      []*big.Int      `json:"callNonces"`
+	CallFromChainID *big.Int        `json:"callFromChainID"`
+	CallToChainID   *big.Int        `json:"callToChainID"`
+}
+
+// SwapInfo struct
+type SwapInfo struct {
+	*RouterSwapInfo  `json:"routerSwapInfo,omitempty"`
+	*AnyCallSwapInfo `json:"anycallSwapInfo,omitempty"`
 }
 
 // SwapTxInfo struct
 type SwapTxInfo struct {
-	*RouterSwapInfo `json:"routerSwapInfo,omitempty"`
-
+	SwapInfo  `json:"swapinfo"`
 	SwapType  SwapType `json:"swaptype"`
 	Hash      string   `json:"hash"`
 	Height    uint64   `json:"height"`
@@ -58,6 +76,7 @@ type SwapTxInfo struct {
 	To        string   `json:"to"`
 	Bind      string   `json:"bind"`
 	Value     *big.Int `json:"value"`
+	LogIndex  int      `json:"logIndex"`
 }
 
 // TxStatus struct
@@ -84,12 +103,12 @@ type RegisterArgs struct {
 
 // SwapArgs struct
 type SwapArgs struct {
-	*RouterSwapInfo `json:"routerSwapInfo,omitempty"`
-
+	SwapInfo   `json:"swapinfo"`
 	Identifier string   `json:"identifier,omitempty"`
 	SwapID     string   `json:"swapid,omitempty"`
 	SwapType   SwapType `json:"swaptype,omitempty"`
 	Bind       string   `json:"bind,omitempty"`
+	LogIndex   int      `json:"logIndex"`
 }
 
 // BuildTxArgs struct

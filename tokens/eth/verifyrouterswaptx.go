@@ -22,27 +22,13 @@ var (
 	LogAnySwapTradeTokensForNativeTopic = common.FromHex("0x278277e0209c347189add7bd92411973b5f6b8644f7ac62ea1be984ce993f8f4")
 )
 
-// VerifyRouterSwapTx impl
-func (b *Bridge) VerifyRouterSwapTx(txHash string, logIndex int, allowUnstable bool) (*tokens.SwapTxInfo, error) {
-	swapInfo := &tokens.SwapTxInfo{RouterSwapInfo: &tokens.RouterSwapInfo{}}
+func (b *Bridge) verifyRouterSwapTx(txHash string, logIndex int, allowUnstable bool) (*tokens.SwapTxInfo, error) {
+	swapInfo := &tokens.SwapTxInfo{SwapInfo: tokens.SwapInfo{RouterSwapInfo: &tokens.RouterSwapInfo{}}}
 	swapInfo.SwapType = tokens.RouterSwapType // SwapType
 	swapInfo.Hash = txHash                    // Hash
 	swapInfo.LogIndex = logIndex              // LogIndex
 
-	txStatus := b.GetTransactionStatus(txHash)
-	if txStatus.BlockHeight == 0 {
-		return swapInfo, tokens.ErrTxNotFound
-	}
-
-	swapInfo.Height = txStatus.BlockHeight  // Height
-	swapInfo.Timestamp = txStatus.BlockTime // Timestamp
-
-	if !allowUnstable && txStatus.Confirmations < b.ChainConfig.Confirmations {
-		return swapInfo, tokens.ErrTxNotStable
-	}
-
-	receipt, _ := txStatus.Receipt.(*types.RPCTxReceipt)
-	err := b.verifyRouterSwapTxReceipt(swapInfo, receipt)
+	receipt, err := b.verifySwapTxReceipt(swapInfo, b.ChainConfig.RouterContract, allowUnstable)
 	if err != nil {
 		return swapInfo, err
 	}
@@ -92,25 +78,37 @@ func (b *Bridge) checkRouterSwapInfo(swapInfo *tokens.SwapTxInfo) error {
 	return nil
 }
 
-func (b *Bridge) verifyRouterSwapTxReceipt(swapInfo *tokens.SwapTxInfo, receipt *types.RPCTxReceipt) (err error) {
+func (b *Bridge) verifySwapTxReceipt(swapInfo *tokens.SwapTxInfo, contractAddr string, allowUnstable bool) (receipt *types.RPCTxReceipt, err error) {
+	txStatus := b.GetTransactionStatus(swapInfo.Hash)
+	if txStatus.BlockHeight == 0 {
+		return nil, tokens.ErrTxNotFound
+	}
+
+	swapInfo.Height = txStatus.BlockHeight  // Height
+	swapInfo.Timestamp = txStatus.BlockTime // Timestamp
+
+	if !allowUnstable && txStatus.Confirmations < b.ChainConfig.Confirmations {
+		return nil, tokens.ErrTxNotStable
+	}
+
+	receipt, _ = txStatus.Receipt.(*types.RPCTxReceipt)
 	if receipt == nil || *receipt.Status != 1 {
-		return tokens.ErrTxWithWrongReceipt
+		return receipt, tokens.ErrTxWithWrongReceipt
 	}
 
 	if receipt.Recipient == nil {
-		return tokens.ErrTxWithWrongContract
+		return receipt, tokens.ErrTxWithWrongContract
 	}
 
-	routerContract := b.ChainConfig.RouterContract
 	txRecipient := strings.ToLower(receipt.Recipient.String())
-	if !common.IsEqualIgnoreCase(txRecipient, routerContract) {
-		return tokens.ErrTxWithWrongContract
+	if !common.IsEqualIgnoreCase(txRecipient, contractAddr) {
+		return receipt, tokens.ErrTxWithWrongContract
 	}
 
 	swapInfo.TxTo = txRecipient                            // TxTo
 	swapInfo.To = txRecipient                              // To
 	swapInfo.From = strings.ToLower(receipt.From.String()) // From
-	return nil
+	return receipt, nil
 }
 
 func (b *Bridge) verifyRouterSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
