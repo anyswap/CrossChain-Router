@@ -7,7 +7,6 @@ import (
 // common errors
 var (
 	ErrSwapTypeNotSupported  = errors.New("swap type not supported")
-	ErrRouterSwapNotSupport  = errors.New("bridge does not support router swap")
 	ErrNoBridgeForChainID    = errors.New("no bridge for chain id")
 	ErrWrongRegisterArgs     = errors.New("wrong register arguments")
 	ErrWrongVerifyArgs       = errors.New("wrong verify arguments")

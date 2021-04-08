@@ -8,7 +8,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/common"
 	"github.com/anyswap/CrossChain-Router/common/hexutil"
 	"github.com/anyswap/CrossChain-Router/log"
-	"github.com/anyswap/CrossChain-Router/params"
 	"github.com/anyswap/CrossChain-Router/router"
 	"github.com/anyswap/CrossChain-Router/tokens"
 	"github.com/anyswap/CrossChain-Router/tokens/eth/abicoder"
@@ -31,9 +30,6 @@ var (
 )
 
 func (b *Bridge) buildRouterSwapTxInput(args *tokens.BuildTxArgs) (err error) {
-	if !params.IsRouterSwap() || b.ChainConfig.RouterContract == "" {
-		return tokens.ErrRouterSwapNotSupport
-	}
 	if len(args.Path) > 0 && args.AmountOutMin != nil {
 		return b.buildRouterSwapTradeTxInput(args)
 	}

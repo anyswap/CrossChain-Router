@@ -30,10 +30,6 @@ var (
 
 // StartAcceptSignJob accept job
 func StartAcceptSignJob() {
-	if !params.IsMPCEnabled() {
-		logWorker("accept", "no need to start accept sign job as mpc is disabled")
-		return
-	}
 	logWorker("accept", "start accept sign job")
 	for {
 		signInfo, err := mpc.GetCurNodeSignInfo()

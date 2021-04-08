@@ -9,7 +9,6 @@ import (
 
 	"github.com/anyswap/CrossChain-Router/common"
 	"github.com/anyswap/CrossChain-Router/log"
-	"github.com/anyswap/CrossChain-Router/params"
 	"github.com/anyswap/CrossChain-Router/tools/crypto"
 	"github.com/anyswap/CrossChain-Router/tools/keystore"
 	"github.com/anyswap/CrossChain-Router/tools/rlp"
@@ -48,9 +47,6 @@ func DoSignOne(signPubkey, msgHash, msgContext string) (rpcAddr, result string, 
 
 // DoSign mpc sign msgHash with context msgContext
 func DoSign(signPubkey string, msgHash, msgContext []string) (rpcAddr, result string, err error) {
-	if !params.IsMPCEnabled() {
-		return "", "", fmt.Errorf("mpc sign is disabled")
-	}
 	log.Debug("mpc DoSign", "msgHash", msgHash, "msgContext", msgContext)
 	if signPubkey == "" {
 		return "", "", fmt.Errorf("mpc sign with empty public key")

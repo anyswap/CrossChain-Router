@@ -115,12 +115,6 @@ func (c *OnchainConfig) CheckConfig() error {
 
 // CheckConfig check mpc config
 func (c *MPCConfig) CheckConfig(isServer bool) (err error) {
-	if c.Disable {
-		if IsRouterSwap() {
-			return errors.New("forbid disable mpc in router swap")
-		}
-		return nil
-	}
 	if c.GroupID == nil {
 		return errors.New("mpc must config 'GroupID'")
 	}

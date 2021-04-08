@@ -6,7 +6,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/common"
 	"github.com/anyswap/CrossChain-Router/log"
 	"github.com/anyswap/CrossChain-Router/mongodb"
-	"github.com/anyswap/CrossChain-Router/params"
 	"github.com/anyswap/CrossChain-Router/router"
 	"github.com/anyswap/CrossChain-Router/tokens"
 	rpcjson "github.com/gorilla/rpc/v2/json2"
@@ -37,9 +36,6 @@ func RegisterAnyCallSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, 
 
 func registerSwap(fromChainID, txid, logIndexStr string, swapType tokens.SwapType) (*MapIntResult, error) {
 	log.Info("[api] register swap", "chainid", fromChainID, "txid", txid, "logIndex", logIndexStr, "swapType", swapType.String())
-	if !params.IsRouterSwap() {
-		return nil, tokens.ErrRouterSwapNotSupport
-	}
 	chainID, err := common.GetBigIntFromStr(fromChainID)
 	if err != nil {
 		return nil, newRPCInternalError(err)

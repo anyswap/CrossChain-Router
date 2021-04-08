@@ -49,7 +49,6 @@ type OnchainConfig struct {
 
 // MPCConfig mpc related config
 type MPCConfig struct {
-	Disable       bool `toml:",omitempty" json:",omitempty"`
 	GroupID       *string
 	NeededOracles *uint32
 	TotalOracles  *uint32
@@ -86,11 +85,6 @@ func GetIdentifier() string {
 	return GetRouterConfig().Identifier
 }
 
-// IsMPCEnabled is mpc enabled (for mpc sign)
-func IsMPCEnabled() bool {
-	return !GetRouterConfig().MPC.Disable
-}
-
 // IsMPCInitiator is initiator of mpc sign
 func IsMPCInitiator(account string) bool {
 	initiators := GetRouterConfig().MPC.Initiators
@@ -120,11 +114,6 @@ func IsRouterAdmin(account string) bool {
 		}
 	}
 	return false
-}
-
-// IsRouterSwap is router swap
-func IsRouterSwap() bool {
-	return strings.HasPrefix(routerConfig.Identifier, RouterSwapPrefixID)
 }
 
 // IsChainIDInBlackList is chain id in black list
