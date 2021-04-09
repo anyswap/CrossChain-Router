@@ -99,6 +99,9 @@ func (c *OnchainConfig) CheckConfig() error {
 	if len(c.APIAddress) == 0 {
 		return errors.New("onchain must config 'APIAddress'")
 	}
+	if len(c.WSServers) == 0 {
+		log.Warn("onchain does not config web socket server, so do not support reload config.")
+	}
 	callGetAllChainIDs := common.FromHex("0xe27112d5")
 	for _, apiAddress := range c.APIAddress {
 		_, err := CallContractWithGateway(apiAddress, c.Contract, callGetAllChainIDs, "latest")

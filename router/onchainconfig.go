@@ -21,9 +21,10 @@ import (
 )
 
 var (
-	routerConfigContract ethcommon.Address
-	routerConfigClients  []*ethclient.Client
-	routerConfigCtx      = context.Background()
+	routerConfigContract   ethcommon.Address
+	routerConfigClients    []*ethclient.Client
+	routerWebSocketClients []*ethclient.Client
+	routerConfigCtx        = context.Background()
 
 	channels   = make([]chan ethtypes.Log, 0, 3)
 	subscribes = make([]ethereum.Subscription, 0, 3)
@@ -38,6 +39,20 @@ var (
 func InitRouterConfigClients() {
 	onchainCfg := params.GetRouterConfig().Onchain
 	InitRouterConfigClientsWithArgs(onchainCfg.Contract, onchainCfg.APIAddress)
+	routerWebSocketClients = InitWebSocketClients(onchainCfg.WSServers)
+}
+
+// InitWebSocketClients init
+func InitWebSocketClients(wsServers []string) []*ethclient.Client {
+	var err error
+	wsClients := make([]*ethclient.Client, len(wsServers))
+	for i, wsServer := range wsServers {
+		wsClients[i], err = ethclient.Dial(wsServer)
+		if err != nil {
+			log.Fatal("init router config web socket clients failed", "wsServer", wsServer, "err", err)
+		}
+	}
+	return wsClients
 }
 
 // InitRouterConfigClientsWithArgs init standalone
@@ -101,7 +116,7 @@ func SubscribeRouterConfig(topics []ethcommon.Hash) {
 		Addresses: []ethcommon.Address{routerConfigContract},
 		Topics:    [][]ethcommon.Hash{topics},
 	}
-	for i, cli := range routerConfigClients {
+	for i, cli := range routerWebSocketClients {
 		ch := make(chan ethtypes.Log)
 		sub, err := cli.SubscribeFilterLogs(routerConfigCtx, fq, ch)
 		if err != nil {

@@ -35,6 +35,7 @@ AllowedOrigins = []
 [OnChain]
 Contract = "0x77bc292e465cfff6dda1fd5ca67a2a1320d2657e"
 APIAddress = ["http://127.0.0.1:8711", "http://127.0.0.1:8722"]
+WSServers = ["ws://127.0.0.1:7711"]
 
 
 # Gateways config. key is chainID
