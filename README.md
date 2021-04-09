@@ -96,7 +96,7 @@ setMPCPubkey(address addr, string pubkey)
 
 ## 5. add local config file
 
-please ref. [config-routerswap-example.toml](https://github.com/anyswap/CrossChain-Router/blob/router/params/config-routerswap-example.toml)
+please ref. [config-example.toml](https://github.com/anyswap/CrossChain-Router/blob/main/params/config-example.toml)
 
 ## 6. run swaprouter
 
@@ -123,3 +123,7 @@ sub commands:
 `config` is tool to process and query config data
 
 `scanswap` is tool to scan and post swap register
+
+## 8. RPC api
+
+please ref. [server rpc api](https://github.com/anyswap/CrossChain-Router/blob/main/rpc/README.md)
