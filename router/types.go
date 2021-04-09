@@ -21,6 +21,12 @@ func GetBridgeByChainID(chainID string) tokens.IBridge {
 	return RouterBridges[chainID]
 }
 
+// GetCachedMultichainTokens get multichain tokens of `tokenid`
+func GetCachedMultichainTokens(tokenID string) map[string]string {
+	tokenIDKey := strings.ToLower(tokenID)
+	return MultichainTokens[tokenIDKey]
+}
+
 // GetCachedMultichainToken get multichain token address by tokenid and chainid
 func GetCachedMultichainToken(tokenID, chainID string) (tokenAddr string) {
 	tokenIDKey := strings.ToLower(tokenID)

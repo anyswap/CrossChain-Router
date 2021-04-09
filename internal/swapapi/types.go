@@ -7,6 +7,13 @@ import (
 // MapIntResult type
 type MapIntResult map[int]string
 
+// ServerInfo serverinfo
+type ServerInfo struct {
+	Identifier     string
+	Version        string
+	ConfigContract string
+}
+
 // SwapInfo swap info
 type SwapInfo struct {
 	SwapType      uint32             `json:"swaptype"`

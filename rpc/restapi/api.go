@@ -8,6 +8,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/common"
 	"github.com/anyswap/CrossChain-Router/internal/swapapi"
 	"github.com/anyswap/CrossChain-Router/params"
+	"github.com/anyswap/CrossChain-Router/router"
 	"github.com/gorilla/mux"
 )
 
@@ -31,10 +32,10 @@ func VersionInfoHandler(w http.ResponseWriter, r *http.Request) {
 	writeResponse(w, version, nil)
 }
 
-// IdentifierHandler handler
-func IdentifierHandler(w http.ResponseWriter, r *http.Request) {
-	identifier := params.GetIdentifier()
-	writeResponse(w, identifier, nil)
+// ServerInfoHandler handler
+func ServerInfoHandler(w http.ResponseWriter, r *http.Request) {
+	serverInfo := swapapi.GetServerInfo()
+	writeResponse(w, serverInfo, nil)
 }
 
 func getRouterSwapKeys(r *http.Request) (chainID, txid, logIndex string) {
@@ -98,5 +99,52 @@ func GetRouterSwapHistoryHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		res, err := swapapi.GetRouterSwapHistory(chainID, address, offset, limit)
 		writeResponse(w, res, err)
+	}
+}
+
+// GetAllChainIDsHandler handler
+func GetAllChainIDsHandler(w http.ResponseWriter, r *http.Request) {
+	allChainIDs := router.AllChainIDs
+	writeResponse(w, allChainIDs, nil)
+}
+
+// GetAllTokenIDsHandler handler
+func GetAllTokenIDsHandler(w http.ResponseWriter, r *http.Request) {
+	allTokenIDs := router.AllTokenIDs
+	writeResponse(w, allTokenIDs, nil)
+}
+
+// GetAllMultichainTokensHandler handler
+func GetAllMultichainTokensHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	tokenID := vars["tokenid"]
+	allMultichainTokens := router.GetCachedMultichainTokens(tokenID)
+	writeResponse(w, allMultichainTokens, nil)
+}
+
+// GetChainConfigHandler handler
+func GetChainConfigHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	chainID := vars["chainid"]
+	bridge := router.GetBridgeByChainID(chainID)
+	if bridge == nil {
+		writeResponse(w, nil, fmt.Errorf("chainID %v not exist", chainID))
+	} else {
+		chainConfig := bridge.GetChainConfig()
+		writeResponse(w, chainConfig, nil)
+	}
+}
+
+// GetTokenConfigHandler handler
+func GetTokenConfigHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	chainID := vars["chainid"]
+	address := vars["address"]
+	bridge := router.GetBridgeByChainID(chainID)
+	if bridge == nil {
+		writeResponse(w, nil, fmt.Errorf("chainID %v not exist", chainID))
+	} else {
+		tokenConfig := bridge.GetTokenConfig(address)
+		writeResponse(w, tokenConfig, nil)
 	}
 }

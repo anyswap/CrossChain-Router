@@ -58,10 +58,16 @@ func initRouterSwapRouter(r *mux.Router) {
 	r.Handle("/rpc", rpcserver)
 
 	registerHandleFunc(r, "/versioninfo", restapi.VersionInfoHandler, "GET")
-	registerHandleFunc(r, "/identifier", restapi.IdentifierHandler, "GET")
+	registerHandleFunc(r, "/serverinfo", restapi.ServerInfoHandler, "GET")
 	registerHandleFunc(r, "/swap/register/{chainid}/{txid}", restapi.RegisterRouterSwapHandler, "POST")
 	registerHandleFunc(r, "/swap/status/{chainid}/{txid}/", restapi.GetRouterSwapHandler, "GET")
 	registerHandleFunc(r, "/swap/history/{chainid}/{address}", restapi.GetRouterSwapHistoryHandler, "GET")
+
+	registerHandleFunc(r, "/allchainids", restapi.GetAllChainIDsHandler, "GET")
+	registerHandleFunc(r, "/alltokenids", restapi.GetAllTokenIDsHandler, "GET")
+	registerHandleFunc(r, "/allmultichaintokens/{tokenid}", restapi.GetAllMultichainTokensHandler, "GET")
+	registerHandleFunc(r, "/chainconfig/{chainid}", restapi.GetChainConfigHandler, "GET")
+	registerHandleFunc(r, "/tokenconfig/{chainid}/{address}", restapi.GetTokenConfigHandler, "GET")
 }
 
 type handleFuncType = func(w http.ResponseWriter, r *http.Request)

@@ -101,6 +101,11 @@ func GetRouterConfig() *RouterConfig {
 	return routerConfig
 }
 
+// GetOnchainContract get onchain config contract address
+func GetOnchainContract() string {
+	return routerConfig.Onchain.Contract
+}
+
 // HasRouterAdmin has admin
 func HasRouterAdmin() bool {
 	return len(routerConfig.Server.Admins) != 0

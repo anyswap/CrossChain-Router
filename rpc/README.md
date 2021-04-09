@@ -10,7 +10,12 @@
 [swap.GetRouterSwap](#swapgetrouterswap)  
 [swap.GetRouterSwapHistory](#swapgetrouterswaphistory)  
 [swap.GetVersionInfo](#swapgetversioninfo)  
-[swap.GetIdentifier](#swapgetidentifier)  
+[swap.GetSeverInfo](#swapgetseverinfo)  
+[swap.GetAllChainIDs](#swapgetallchainids)  
+[swap.GetAllTokenIDs](#swapgetalltokenids)  
+[swap.GetAllMultichainTokens](#swapgetallmultichaintokens)  
+[swap.GetChainConfig](#swapgetchainconfig)  
+[swap.GetTokenConfig](#swapgettokenconfig)  
 
 ### swap.RegisterRouterSwap
 
@@ -62,17 +67,88 @@
 
 ### swap.GetVersionInfo
 
+##### 参数：
+```text
+无
+```
+
 ##### 返回值：
 ```text
 返回版本号信息
 ```
 
-### swap.GetIdentifier
+### swap.GetSeverInfo
+
+##### 参数：
+```text
+无
+```
 
 ##### 返回值：
 ```text
-返回惟一标识
+获取服务信息
 ```
+
+### swap.GetAllChainIDs
+
+##### 参数：
+```text
+无
+```
+
+##### 返回值：
+```text
+获取所有 chainID
+```
+
+### swap.GetAllTokenIDs
+
+##### 参数：
+```text
+无
+```
+
+##### 返回值：
+```text
+获取所有 tokenID
+```
+
+### swap.GetAllMultichainTokens
+
+##### 参数：
+```json
+["tokenID"]
+```
+
+##### 返回值：
+```text
+获取指定 tokenID 的所有 multichain token
+```
+
+### swap.GetChainConfig
+
+##### 参数：
+```json
+["链ChainID"]
+```
+
+##### 返回值：
+```text
+获取指定 chainID 的 chain 配置
+```
+
+### swap.GetTokenConfig
+
+##### 参数：
+```json
+[{"chainid":"链ChainID", "address":"账户地址"}]
+```
+
+##### 返回值：
+```text
+获取指定 chainID 和 token 地址的 token 配置
+```
+
 
 ## RESTful API Reference
 
@@ -100,5 +176,20 @@
 ### GET /versioninfo
 获取版本号信息
 
-### GET /identifier
-获取惟一标识
+### GET /serverinfo
+获取服务信息
+
+### GET /allchainids
+获取所有 chainID
+
+### GET /alltokenids
+获取所有 tokenID
+
+### GET /allmultichaintokens/{tokenid}
+获取指定 tokenID 的所有 multichain token
+
+### GET /chainconfig/{chainid}
+获取指定 chainID 的 chain 配置
+
+### GET /tokenconfig/{chainid}/{address}
+获取指定 chainID 和 token 地址的 token 配置

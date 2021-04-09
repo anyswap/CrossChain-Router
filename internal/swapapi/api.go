@@ -6,6 +6,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/common"
 	"github.com/anyswap/CrossChain-Router/log"
 	"github.com/anyswap/CrossChain-Router/mongodb"
+	"github.com/anyswap/CrossChain-Router/params"
 	"github.com/anyswap/CrossChain-Router/router"
 	"github.com/anyswap/CrossChain-Router/tokens"
 	rpcjson "github.com/gorilla/rpc/v2/json2"
@@ -20,6 +21,15 @@ func newRPCError(ec rpcjson.ErrorCode, message string) error {
 
 func newRPCInternalError(err error) error {
 	return newRPCError(-32000, "rpcError: "+err.Error())
+}
+
+// GetServerInfo get server info
+func GetServerInfo() *ServerInfo {
+	return &ServerInfo{
+		Identifier:     params.GetIdentifier(),
+		Version:        params.VersionWithMeta,
+		ConfigContract: params.GetOnchainContract(),
+	}
 }
 
 // RegisterRouterSwap register router swap

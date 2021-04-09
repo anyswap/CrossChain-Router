@@ -11,7 +11,7 @@ import (
 type CrossChainBridgeBase struct {
 	ChainConfig    *ChainConfig
 	GatewayConfig  *GatewayConfig
-	TokenConfigMap map[string]*TokenConfig
+	TokenConfigMap map[string]*TokenConfig // key is token address
 }
 
 // NewCrossChainBridgeBase new base bridge
