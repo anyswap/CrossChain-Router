@@ -36,6 +36,11 @@ func (b *CrossChainBridgeBase) SetTokenConfig(token string, tokenCfg *TokenConfi
 	b.TokenConfigMap[strings.ToLower(token)] = tokenCfg
 }
 
+// RemoveTokenConfig remove token config
+func (b *CrossChainBridgeBase) RemoveTokenConfig(token string) {
+	b.TokenConfigMap[strings.ToLower(token)] = nil
+}
+
 // GetChainConfig get chain config
 func (b *CrossChainBridgeBase) GetChainConfig() *ChainConfig {
 	return b.ChainConfig

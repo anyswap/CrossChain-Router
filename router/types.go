@@ -1,6 +1,7 @@
 package router
 
 import (
+	"math/big"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/log"
@@ -11,6 +12,8 @@ import (
 var (
 	RouterBridges    = make(map[string]tokens.IBridge)    // key is chainID
 	MultichainTokens = make(map[string]map[string]string) // key is tokenID,chainID
+	AllChainIDs      []*big.Int                           // all chainIDs is retrieved only once
+	AllTokenIDs      []string                             // all tokenIDs can be reload
 )
 
 // GetBridgeByChainID get bridge by chain id

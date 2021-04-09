@@ -26,12 +26,14 @@ func InitRouterBridges(isServer bool) {
 	if err != nil {
 		log.Fatal("call GetAllChainIDs failed", "err", err)
 	}
+	router.AllChainIDs = chainIDs
 	log.Info("get all chain ids success", "chainIDs", chainIDs)
 
 	tokenIDs, err := router.GetAllTokenIDs()
 	if err != nil {
 		log.Fatal("call GetAllTokenIDs failed", "err", err)
 	}
+	router.AllTokenIDs = tokenIDs
 	log.Info("get all token ids success", "tokenIDs", tokenIDs)
 
 	for _, chainID := range chainIDs {
@@ -51,7 +53,7 @@ func InitRouterBridges(isServer bool) {
 	cfg := params.GetRouterConfig()
 	mpc.Init(cfg.MPC, isServer)
 
-	router.SubscribeUpdateConfig()
+	router.SubscribeUpdateConfig(ReloadRouterConfig)
 
 	log.Info(">>> init router bridges success", "isServer", isServer)
 }

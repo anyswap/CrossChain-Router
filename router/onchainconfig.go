@@ -70,14 +70,14 @@ func CallOnchainContract(data hexutil.Bytes, blockNumber string) (result []byte,
 }
 
 // SubscribeUpdateConfig subscribe update ID and reload configs
-func SubscribeUpdateConfig() {
+func SubscribeUpdateConfig(callback func()) {
 	SubscribeRouterConfig([]ethcommon.Hash{updateConfigTopic})
 	for _, ch := range channels {
-		go processUpdateConfig(ch)
+		go processUpdateConfig(ch, callback)
 	}
 }
 
-func processUpdateConfig(ch <-chan ethtypes.Log) {
+func processUpdateConfig(ch <-chan ethtypes.Log, callback func()) {
 	for {
 		rlog := <-ch
 
@@ -89,7 +89,8 @@ func processUpdateConfig(ch <-chan ethtypes.Log) {
 		oldBlock := atomic.LoadUint64(&latestUpdateConfigBlock)
 		if blockNumber > oldBlock {
 			atomic.StoreUint64(&latestUpdateConfigBlock, blockNumber)
-			ReloadRouterConfig()
+			log.Info("start reload router config", "oldBlock", oldBlock, "blockNumber", blockNumber, "timestamp", time.Now().Unix())
+			callback()
 		}
 	}
 }

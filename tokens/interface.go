@@ -14,11 +14,15 @@ type IMPCSign interface {
 type IBridgeConfg interface {
 	GetGatewayConfig() *GatewayConfig
 	GetChainConfig() *ChainConfig
-	GetTokenConfig(token string) *TokenConfig
+	GetTokenConfig(tokenAddr string) *TokenConfig
 
 	InitGatewayConfig(chainID *big.Int)
 	InitChainConfig(chainID *big.Int)
 	InitTokenConfig(tokenID string, chainID *big.Int)
+
+	ReloadChainConfig(chainID *big.Int)
+	ReloadTokenConfig(tokenID string, chainID *big.Int)
+	RemoveTokenConfig(tokenAddr string)
 }
 
 // IBridge interface

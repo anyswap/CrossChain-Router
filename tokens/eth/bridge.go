@@ -68,7 +68,7 @@ func (b *Bridge) InitChainConfig(chainID *big.Int) {
 	}
 	routerFactory, err := b.GetFactoryAddress(chainCfg.RouterContract)
 	if err != nil {
-		log.Fatal("get router factory address failed", "routerContract", chainCfg.RouterContract, "err", err)
+		log.Warn("get router factory address failed", "routerContract", chainCfg.RouterContract, "err", err)
 	}
 	routerMPC, err := b.GetMPCAddress(chainCfg.RouterContract)
 	if err != nil {
@@ -145,6 +145,113 @@ func (b *Bridge) InitTokenConfig(tokenID string, chainID *big.Int) {
 	tokenCfg.SetUnderlying(common.HexToAddress(underlying)) // init underlying address
 	b.SetTokenConfig(tokenAddr, tokenCfg)
 	log.Info(fmt.Sprintf(">>> [%5v] init '%v' token config success", chainID, tokenID), "tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "underlying", underlying)
+
+	tokenIDKey := strings.ToLower(tokenID)
+	tokensMap := router.MultichainTokens[tokenIDKey]
+	if tokensMap == nil {
+		tokensMap = make(map[string]string)
+		router.MultichainTokens[tokenIDKey] = tokensMap
+	}
+	tokensMap[chainID.String()] = tokenAddr
+}
+
+// ReloadChainConfig reload chain config
+func (b *Bridge) ReloadChainConfig(chainID *big.Int) {
+	chainCfg, err := router.GetChainConfig(chainID)
+	if err != nil {
+		log.Error("[reload] get chain config failed", "chainID", chainID, "err", err)
+		return
+	}
+	if chainCfg == nil {
+		log.Error("[reload] chain config not found", "chainID", chainID)
+		return
+	}
+	if chainID.String() != chainCfg.ChainID {
+		log.Error("[reload] verify chain ID mismatch", "inconfig", chainCfg.ChainID, "inchainids", chainID)
+		return
+	}
+	if err = chainCfg.CheckConfig(); err != nil {
+		log.Error("[reload] check chain config failed", "chainID", chainID, "err", err)
+		return
+	}
+	routerFactory, err := b.GetFactoryAddress(chainCfg.RouterContract)
+	if err != nil {
+		log.Warn("[reload] get router factory address failed", "routerContract", chainCfg.RouterContract, "err", err)
+	}
+	routerMPC, err := b.GetMPCAddress(chainCfg.RouterContract)
+	if err != nil {
+		log.Error("[reload] get router mpc address failed", "routerContract", chainCfg.RouterContract, "err", err)
+		return
+	}
+	routerMPCPubkey, err := router.GetMPCPubkey(routerMPC)
+	if err != nil {
+		log.Error("[reload] get mpc public key failed", "mpc", routerMPC, "err", err)
+		return
+	}
+	if err = tokens.VerifyMPCPubKey(routerMPC, routerMPCPubkey); err != nil {
+		log.Error("[reload] verify mpc public key failed", "mpc", routerMPC, "mpcPubkey", routerMPCPubkey, "err", err)
+		return
+	}
+	chainCfg.SetRouterFactory(routerFactory)
+	chainCfg.SetRouterMPC(routerMPC)
+	chainCfg.SetRouterMPCPubkey(routerMPCPubkey)
+	b.SetChainConfig(chainCfg)
+	log.Info("reload chain config success", "chainID", chainID, "routerContract", chainCfg.RouterContract, "routerMPC", routerMPC)
+}
+
+// ReloadTokenConfig reload token config
+func (b *Bridge) ReloadTokenConfig(tokenID string, chainID *big.Int) {
+	if tokenID == "" {
+		log.Warn("[reload] empty token ID")
+		return
+	}
+	tokenAddr, err := router.GetMultichainToken(tokenID, chainID)
+	if err != nil {
+		log.Error("[reload] get token address failed", "tokenID", tokenID, "chainID", chainID, "err", err)
+		return
+	}
+	if common.HexToAddress(tokenAddr) == (common.Address{}) {
+		log.Warn("[reload] multichain token address is empty", "tokenID", tokenID, "chainID", chainID)
+		return
+	}
+	tokenCfg, err := router.GetTokenConfig(chainID, tokenID)
+	if err != nil {
+		log.Error("[reload] get token config failed", "chainID", chainID, "tokenID", tokenID, "err", err)
+		return
+	}
+	if tokenCfg == nil {
+		log.Warn("[reload] token config not found", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr)
+		return
+	}
+	if common.HexToAddress(tokenAddr) != common.HexToAddress(tokenCfg.ContractAddress) {
+		log.Error("[reload] verify token address mismach", "tokenID", tokenID, "chainID", chainID, "inconfig", tokenCfg.ContractAddress, "inmultichain", tokenAddr)
+		return
+	}
+	decimals, err := b.GetErc20Decimals(tokenAddr)
+	if err != nil {
+		log.Error("[reload] get token decimals failed", "tokenAddr", tokenAddr, "err", err)
+		return
+	}
+	if decimals != tokenCfg.Decimals {
+		log.Error("[reload] token decimals mismatch", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract", decimals)
+		return
+	}
+	if tokenID != tokenCfg.TokenID {
+		log.Error("[reload] verify token ID mismatch", "chainID", chainID, "inconfig", tokenCfg.TokenID, "intokenids", tokenID)
+		return
+	}
+	if err = tokenCfg.CheckConfig(); err != nil {
+		log.Error("[reload] check token config failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
+		return
+	}
+	if err = b.checkTokenMinter(tokenAddr, tokenCfg.ContractVersion); err != nil {
+		log.Error("[reload] check token minter failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
+		return
+	}
+	underlying, _ := b.GetUnderlyingAddress(tokenAddr)
+	tokenCfg.SetUnderlying(common.HexToAddress(underlying)) // init underlying address
+	b.SetTokenConfig(tokenAddr, tokenCfg)
+	log.Info("reload token config success", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "underlying", underlying)
 
 	tokenIDKey := strings.ToLower(tokenID)
 	tokensMap := router.MultichainTokens[tokenIDKey]
