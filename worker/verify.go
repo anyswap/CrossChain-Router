@@ -36,7 +36,7 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 	txid := swap.TxID
 	logIndex := swap.LogIndex
 
-	if params.IsSwapInBlacklist(fromChainID, swap.ToChainID, swap.TokenID) {
+	if params.IsSwapInBlacklist(fromChainID, swap.ToChainID, swap.GetTokenID()) {
 		err = tokens.ErrSwapInBlacklist
 		_ = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.SwapInBlacklist, now(), err.Error())
 		return err

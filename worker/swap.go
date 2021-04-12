@@ -73,9 +73,9 @@ func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
 	logIndex := swap.LogIndex
 	bind := swap.Bind
 
-	if params.IsSwapInBlacklist(fromChainID, toChainID, swap.TokenID) {
+	if params.IsSwapInBlacklist(fromChainID, toChainID, swap.GetTokenID()) {
 		logWorkerTrace("swap", "swap is in black list", "txid", txid, "logIndex", logIndex,
-			"fromChainID", fromChainID, "toChainID", toChainID, "token", swap.Token, "tokenID", swap.TokenID)
+			"fromChainID", fromChainID, "toChainID", toChainID, "token", swap.Token, "tokenID", swap.GetTokenID())
 		err = tokens.ErrSwapInBlacklist
 		_ = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.SwapInBlacklist, now(), err.Error())
 		return nil
@@ -98,21 +98,23 @@ func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
 		return err
 	}
 
-	value, err := common.GetBigIntFromStr(res.Value)
+	biFromChainID, biToChainID, biValue, err := getFromToChainIDAndValue(fromChainID, toChainID, res.Value)
 	if err != nil {
-		return fmt.Errorf("wrong value %v", res.Value)
+		return err
 	}
 
 	args := &tokens.BuildTxArgs{
 		SwapArgs: tokens.SwapArgs{
-			Identifier: params.GetIdentifier(),
-			SwapID:     txid,
-			SwapType:   tokens.SwapType(swap.SwapType),
-			Bind:       bind,
-			LogIndex:   swap.LogIndex,
+			Identifier:  params.GetIdentifier(),
+			SwapID:      txid,
+			SwapType:    tokens.SwapType(swap.SwapType),
+			Bind:        bind,
+			LogIndex:    swap.LogIndex,
+			FromChainID: biFromChainID,
+			ToChainID:   biToChainID,
 		},
 		From:        dstBridge.GetChainConfig().GetRouterMPC(),
-		OriginValue: value,
+		OriginValue: biValue,
 	}
 	args.SwapInfo, err = mongodb.ConvertFromSwapInfo(&swap.SwapInfo)
 	if err != nil {
@@ -120,6 +122,25 @@ func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
 	}
 
 	return dispatchSwapTask(args)
+}
+
+func getFromToChainIDAndValue(fromChainIDStr, toChainIDStr, valueStr string) (fromChainID, toChainID, value *big.Int, err error) {
+	fromChainID, err = common.GetBigIntFromStr(fromChainIDStr)
+	if err != nil {
+		err = fmt.Errorf("wrong fromChainID %v", fromChainIDStr)
+		return
+	}
+	toChainID, err = common.GetBigIntFromStr(toChainIDStr)
+	if err != nil {
+		err = fmt.Errorf("wrong toChainID %v", toChainIDStr)
+		return
+	}
+	value, err = common.GetBigIntFromStr(valueStr)
+	if err != nil {
+		err = fmt.Errorf("wrong value %v", valueStr)
+		return
+	}
+	return
 }
 
 func preventReswap(res *mongodb.MgoSwapResult) (err error) {

@@ -43,19 +43,15 @@ type RouterSwapInfo struct {
 	TokenID       string   `json:"tokenID"`
 	Path          []string `json:"path,omitempty"`
 	AmountOutMin  *big.Int `json:"amountOutMin,omitempty"`
-	FromChainID   *big.Int `json:"fromChainID"`
-	ToChainID     *big.Int `json:"toChainID"`
 }
 
 // AnyCallSwapInfo struct
 type AnyCallSwapInfo struct {
-	CallFrom        string          `json:"callFrom"`
-	CallTo          []string        `json:"callTo"`
-	CallData        []hexutil.Bytes `json:"callData"`
-	Callbacks       []string        `json:"callbacks"`
-	CallNonces      []*big.Int      `json:"callNonces"`
-	CallFromChainID *big.Int        `json:"callFromChainID"`
-	CallToChainID   *big.Int        `json:"callToChainID"`
+	CallFrom   string          `json:"callFrom"`
+	CallTo     []string        `json:"callTo"`
+	CallData   []hexutil.Bytes `json:"callData"`
+	Callbacks  []string        `json:"callbacks"`
+	CallNonces []*big.Int      `json:"callNonces"`
 }
 
 // SwapInfo struct
@@ -66,17 +62,19 @@ type SwapInfo struct {
 
 // SwapTxInfo struct
 type SwapTxInfo struct {
-	SwapInfo  `json:"swapinfo"`
-	SwapType  SwapType `json:"swaptype"`
-	Hash      string   `json:"hash"`
-	Height    uint64   `json:"height"`
-	Timestamp uint64   `json:"timestamp"`
-	From      string   `json:"from"`
-	TxTo      string   `json:"txto"`
-	To        string   `json:"to"`
-	Bind      string   `json:"bind"`
-	Value     *big.Int `json:"value"`
-	LogIndex  int      `json:"logIndex"`
+	SwapInfo    `json:"swapinfo"`
+	SwapType    SwapType `json:"swaptype"`
+	Hash        string   `json:"hash"`
+	Height      uint64   `json:"height"`
+	Timestamp   uint64   `json:"timestamp"`
+	From        string   `json:"from"`
+	TxTo        string   `json:"txto"`
+	To          string   `json:"to"`
+	Bind        string   `json:"bind"`
+	Value       *big.Int `json:"value"`
+	LogIndex    int      `json:"logIndex"`
+	FromChainID *big.Int `json:"fromChainID"`
+	ToChainID   *big.Int `json:"toChainID"`
 }
 
 // TxStatus struct
@@ -103,12 +101,14 @@ type RegisterArgs struct {
 
 // SwapArgs struct
 type SwapArgs struct {
-	SwapInfo   `json:"swapinfo"`
-	Identifier string   `json:"identifier,omitempty"`
-	SwapID     string   `json:"swapid,omitempty"`
-	SwapType   SwapType `json:"swaptype,omitempty"`
-	Bind       string   `json:"bind,omitempty"`
-	LogIndex   int      `json:"logIndex"`
+	SwapInfo    `json:"swapinfo"`
+	Identifier  string   `json:"identifier,omitempty"`
+	SwapID      string   `json:"swapid,omitempty"`
+	SwapType    SwapType `json:"swaptype,omitempty"`
+	Bind        string   `json:"bind,omitempty"`
+	LogIndex    int      `json:"logIndex"`
+	FromChainID *big.Int `json:"fromChainID"`
+	ToChainID   *big.Int `json:"toChainID"`
 }
 
 // BuildTxArgs struct

@@ -19,8 +19,6 @@ func ConvertToSwapInfo(info *tokens.SwapInfo) SwapInfo {
 		swapinfo.TokenID = info.TokenID
 		swapinfo.Path = info.Path
 		swapinfo.AmountOutMin = info.AmountOutMin.String()
-		swapinfo.FromChainID = info.FromChainID.String()
-		swapinfo.ToChainID = info.ToChainID.String()
 	}
 	if info.AnyCallSwapInfo != nil {
 		swapinfo.CallFrom = info.CallFrom
@@ -28,8 +26,6 @@ func ConvertToSwapInfo(info *tokens.SwapInfo) SwapInfo {
 		swapinfo.CallData = fromHexBytesSlice(info.CallData)
 		swapinfo.Callbacks = info.Callbacks
 		swapinfo.CallNonces = fromBigIntSlice(info.CallNonces)
-		swapinfo.CallFromChainID = info.CallFromChainID.String()
-		swapinfo.CallToChainID = info.CallToChainID.String()
 	}
 	return swapinfo
 }
@@ -46,14 +42,6 @@ func ConvertFromSwapInfo(swapinfo *SwapInfo) (tokens.SwapInfo, error) {
 				return info, fmt.Errorf("wrong amountOutMin %v", swapinfo.AmountOutMin)
 			}
 		}
-		fromChainID, err := common.GetBigIntFromStr(swapinfo.FromChainID)
-		if err != nil {
-			return info, fmt.Errorf("wrong fromChainID %v", swapinfo.FromChainID)
-		}
-		toChainID, err := common.GetBigIntFromStr(swapinfo.ToChainID)
-		if err != nil {
-			return info, fmt.Errorf("wrong toChainID %v", swapinfo.ToChainID)
-		}
 		info.RouterSwapInfo = &tokens.RouterSwapInfo{
 			ForNative:     swapinfo.ForNative,
 			ForUnderlying: swapinfo.ForUnderlying,
@@ -61,31 +49,19 @@ func ConvertFromSwapInfo(swapinfo *SwapInfo) (tokens.SwapInfo, error) {
 			TokenID:       swapinfo.TokenID,
 			Path:          swapinfo.Path,
 			AmountOutMin:  amountOutMin,
-			FromChainID:   fromChainID,
-			ToChainID:     toChainID,
 		}
 	}
 	if swapinfo.AnyCallSwapInfo != nil {
-		fromChainID, err := common.GetBigIntFromStr(swapinfo.CallFromChainID)
-		if err != nil {
-			return info, fmt.Errorf("wrong fromChainID %v", swapinfo.CallFromChainID)
-		}
-		toChainID, err := common.GetBigIntFromStr(swapinfo.CallToChainID)
-		if err != nil {
-			return info, fmt.Errorf("wrong toChainID %v", swapinfo.CallToChainID)
-		}
 		nonces, err := toBigIntSlice(swapinfo.CallNonces)
 		if err != nil {
 			return info, fmt.Errorf("wrong nonces %v", swapinfo.CallNonces)
 		}
 		info.AnyCallSwapInfo = &tokens.AnyCallSwapInfo{
-			CallFrom:        swapinfo.CallFrom,
-			CallTo:          swapinfo.CallTo,
-			CallData:        toHexBytesSlice(swapinfo.CallData),
-			Callbacks:       swapinfo.Callbacks,
-			CallNonces:      nonces,
-			CallFromChainID: fromChainID,
-			CallToChainID:   toChainID,
+			CallFrom:   swapinfo.CallFrom,
+			CallTo:     swapinfo.CallTo,
+			CallData:   toHexBytesSlice(swapinfo.CallData),
+			Callbacks:  swapinfo.Callbacks,
+			CallNonces: nonces,
 		}
 	}
 	return info, nil

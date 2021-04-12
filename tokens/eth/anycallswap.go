@@ -148,8 +148,8 @@ func (b *Bridge) parseAnyCallSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.
 	if err != nil {
 		return nil
 	}
-	swapInfo.CallFromChainID = common.GetBigInt(logData, 128, 32)
-	swapInfo.CallToChainID = common.GetBigInt(logData, 160, 32)
+	swapInfo.FromChainID = common.GetBigInt(logData, 128, 32)
+	swapInfo.ToChainID = common.GetBigInt(logData, 160, 32)
 	return nil
 }
 
@@ -163,7 +163,7 @@ func (b *Bridge) buildAnyCallSwapTxInput(args *tokens.BuildTxArgs) (err error) {
 	}
 	funcHash := AnyCallFuncHash
 
-	if b.ChainConfig.ChainID != args.CallToChainID.String() {
+	if b.ChainConfig.ChainID != args.ToChainID.String() {
 		return errors.New("anycall to chainId mismatch")
 	}
 
@@ -173,7 +173,7 @@ func (b *Bridge) buildAnyCallSwapTxInput(args *tokens.BuildTxArgs) (err error) {
 		args.CallData,
 		toAddresses(args.Callbacks),
 		args.CallNonces,
-		args.CallFromChainID,
+		args.FromChainID,
 	)
 	args.Input = (*hexutil.Bytes)(&input)  // input
 	args.To = b.ChainConfig.RouterContract // to

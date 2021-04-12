@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/anyswap/CrossChain-Router/common"
 	"github.com/anyswap/CrossChain-Router/mongodb"
 	"github.com/anyswap/CrossChain-Router/router"
 	"github.com/anyswap/CrossChain-Router/tokens"
@@ -72,23 +71,25 @@ func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int) error {
 		return tokens.ErrNoBridgeForChainID
 	}
 
-	value, err := common.GetBigIntFromStr(res.Value)
+	biFromChainID, biToChainID, biValue, err := getFromToChainIDAndValue(res.FromChainID, res.ToChainID, res.Value)
 	if err != nil {
-		return fmt.Errorf("wrong value %v", res.Value)
+		return err
 	}
 
 	txid := res.TxID
 	nonce := res.SwapNonce
 	args := &tokens.BuildTxArgs{
 		SwapArgs: tokens.SwapArgs{
-			Identifier: tokens.ReplaceSwapIdentifier,
-			SwapID:     txid,
-			SwapType:   tokens.SwapType(res.SwapType),
-			Bind:       res.Bind,
-			LogIndex:   res.LogIndex,
+			Identifier:  tokens.ReplaceSwapIdentifier,
+			SwapID:      txid,
+			SwapType:    tokens.SwapType(res.SwapType),
+			Bind:        res.Bind,
+			LogIndex:    res.LogIndex,
+			FromChainID: biFromChainID,
+			ToChainID:   biToChainID,
 		},
 		From:        resBridge.GetChainConfig().GetRouterMPC(),
-		OriginValue: value,
+		OriginValue: biValue,
 		Extra: &tokens.AllExtras{
 			EthExtra: &tokens.EthExtraArgs{
 				GasPrice: gasPrice,
