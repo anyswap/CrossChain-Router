@@ -20,9 +20,6 @@ var (
 
 // BuildRawTransaction build raw tx
 func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{}, err error) {
-	if args.TokenID == "" {
-		return nil, fmt.Errorf("build router swaptx without tokenID")
-	}
 	if args.Input != nil {
 		return nil, fmt.Errorf("forbid build raw swap tx with input data")
 	}

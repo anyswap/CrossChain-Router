@@ -30,6 +30,9 @@ var (
 )
 
 func (b *Bridge) buildRouterSwapTxInput(args *tokens.BuildTxArgs) (err error) {
+	if args.RouterSwapInfo == nil || args.TokenID == "" {
+		return errors.New("build router swaptx without tokenID")
+	}
 	if len(args.Path) > 0 && args.AmountOutMin != nil {
 		return b.buildRouterSwapTradeTxInput(args)
 	}

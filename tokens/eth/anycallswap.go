@@ -158,6 +158,9 @@ func (b *Bridge) checkAnyCallSwapInfo(swapInfo *tokens.SwapTxInfo) error {
 }
 
 func (b *Bridge) buildAnyCallSwapTxInput(args *tokens.BuildTxArgs) (err error) {
+	if args.AnyCallSwapInfo == nil {
+		return errors.New("build anycall swaptx without swapinfo")
+	}
 	funcHash := AnyCallFuncHash
 
 	if b.ChainConfig.ChainID != args.CallToChainID.String() {
