@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/mongodb"
+	"github.com/anyswap/CrossChain-Router/params"
 	"github.com/anyswap/CrossChain-Router/router"
 	"github.com/anyswap/CrossChain-Router/tokens"
 )
@@ -80,7 +81,7 @@ func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int) error {
 	nonce := res.SwapNonce
 	args := &tokens.BuildTxArgs{
 		SwapArgs: tokens.SwapArgs{
-			Identifier:  tokens.ReplaceSwapIdentifier,
+			Identifier:  params.GetIdentifier(),
 			SwapID:      txid,
 			SwapType:    tokens.SwapType(res.SwapType),
 			Bind:        res.Bind,

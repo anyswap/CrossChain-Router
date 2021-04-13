@@ -7,11 +7,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/common/hexutil"
 )
 
-// constants
-const (
-	ReplaceSwapIdentifier = "replaceswap"
-)
-
 // SwapType type
 type SwapType uint32
 

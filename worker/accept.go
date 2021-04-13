@@ -94,7 +94,6 @@ func verifySignInfo(signInfo *mpc.SignInfoData) error {
 	}
 	switch args.Identifier {
 	case params.GetIdentifier():
-	case tokens.ReplaceSwapIdentifier:
 	default:
 		return errIdentifierMismatch
 	}
