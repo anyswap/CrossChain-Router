@@ -45,6 +45,14 @@ WSServers = ["ws://127.0.0.1:7711"]
 256   = ["http://127.0.0.1:7711", "http://127.0.0.1:7722"]
 46688 = ["http://127.0.0.1:8711", "http://127.0.0.1:8722"]
 
+
+# GatewaysExt config. key is chainID. used for broadcasting tx
+[GatewaysExt]
+4     = ["http://127.0.0.1:6000"]
+256   = ["http://127.0.0.1:7000"]
+46688 = ["http://127.0.0.1:8000"]
+
+
 # DCRM config
 [MPC]
 # mpc group ID

@@ -50,7 +50,8 @@ type TokenConfig struct {
 
 // GatewayConfig struct
 type GatewayConfig struct {
-	APIAddress []string
+	APIAddress    []string
+	APIAddressExt []string
 }
 
 // CheckConfig check chain config

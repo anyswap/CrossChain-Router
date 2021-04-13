@@ -37,10 +37,11 @@ type RouterServerConfig struct {
 type RouterConfig struct {
 	Server *RouterServerConfig `toml:",omitempty" json:",omitempty"`
 
-	Identifier string
-	Onchain    *OnchainConfig
-	Gateways   map[string][]string // key is chain ID
-	MPC        *MPCConfig
+	Identifier  string
+	Onchain     *OnchainConfig
+	Gateways    map[string][]string // key is chain ID
+	GatewaysExt map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+	MPC         *MPCConfig
 }
 
 // OnchainConfig struct

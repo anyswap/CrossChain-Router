@@ -40,8 +40,10 @@ func (b *Bridge) InitGatewayConfig(chainID *big.Int) {
 	if len(apiAddrs) == 0 {
 		log.Fatal("gateway not found for chain ID", "chainID", chainID)
 	}
+	apiAddrsExt := cfg.GatewaysExt[chainID.String()]
 	b.SetGatewayConfig(&tokens.GatewayConfig{
-		APIAddress: apiAddrs,
+		APIAddress:    apiAddrs,
+		APIAddressExt: apiAddrsExt,
 	})
 	latestBlock, err := b.GetLatestBlockNumber()
 	if err != nil {
