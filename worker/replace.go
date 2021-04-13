@@ -19,6 +19,10 @@ var (
 // StartReplaceJob replace job
 func StartReplaceJob() {
 	logWorker("replace", "start router swap replace job")
+	if !params.GetRouterConfig().Server.EnableReplaceSwap {
+		logWorker("replace", "stop replace swap job as disabled")
+		return
+	}
 	for {
 		res, err := findRouterSwapResultToReplace()
 		if err != nil {

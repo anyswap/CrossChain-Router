@@ -29,6 +29,8 @@ type RouterServerConfig struct {
 
 	ChainIDBlackList []string
 	TokenIDBlackList []string
+
+	EnableReplaceSwap bool
 }
 
 // RouterConfig config

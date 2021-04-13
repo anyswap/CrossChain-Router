@@ -12,9 +12,10 @@ Admins = [
 
 # chain id black list of string array
 ChainIDBlackList = []
-
 # token id black list of string array
 TokenIDBlackList = []
+# enable replace swap job
+EnableReplaceSwap = true
 
 # modgodb database connection config
 [Server.MongoDB]
