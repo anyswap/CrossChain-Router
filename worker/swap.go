@@ -255,7 +255,7 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 		return err
 	}
 
-	signedTx, txHash, err := mpcSignTransaction(resBridge, rawTx, args.GetExtraArgs())
+	signedTx, txHash, err := resBridge.MPCSignTransaction(rawTx, args.GetExtraArgs())
 	if err != nil {
 		logWorkerError("doSwap", "sign tx failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex)
 		return err

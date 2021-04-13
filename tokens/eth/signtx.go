@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/anyswap/CrossChain-Router/common"
 	"github.com/anyswap/CrossChain-Router/log"
@@ -13,11 +12,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/tokens"
 	"github.com/anyswap/CrossChain-Router/tools/crypto"
 	"github.com/anyswap/CrossChain-Router/types"
-)
-
-const (
-	retryGetSignStatusCount    = 70
-	retryGetSignStatusInterval = 10 * time.Second
 )
 
 func (b *Bridge) verifyTransactionReceiver(rawTx interface{}) (*types.Transaction, error) {
@@ -54,18 +48,28 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 	msgHash := signer.Hash(tx)
 	jsondata, _ := json.Marshal(args)
 	msgContext := string(jsondata)
-	rpcAddr, keyID, err := mpc.DoSignOne(mpcPubkey, msgHash.String(), msgContext)
-	if err != nil {
-		return nil, "", err
-	}
 
 	txid := args.SwapID
 	logPrefix := b.ChainConfig.BlockChain + " MPCSignTransaction "
-	log.Info(logPrefix+"start", "keyID", keyID, "txid", txid, "msghash", msgHash.String())
-
-	signature, err := getSignature(keyID, rpcAddr, txid)
+	log.Info(logPrefix+"start", "txid", txid, "msghash", msgHash.String())
+	keyID, rsvs, err := mpc.DoSignOne(mpcPubkey, msgHash.String(), msgContext)
 	if err != nil {
 		return nil, "", err
+	}
+	log.Info(logPrefix+"finished", "keyID", keyID, "txid", txid, "msghash", msgHash.String())
+
+	if len(rsvs) != 1 {
+		log.Warn("get sign status require one rsv but return many",
+			"rsvs", len(rsvs), "keyID", keyID, "txid", txid)
+		return nil, "", errors.New("get sign status require one rsv but return many")
+	}
+
+	rsv := rsvs[0]
+	log.Trace(logPrefix+"get rsv signature success", "keyID", keyID, "txid", txid, "rsv", rsv)
+	signature := common.FromHex(rsv)
+	if len(signature) != crypto.SignatureLength {
+		log.Error("wrong signature length", "keyID", keyID, "txid", txid, "have", len(signature), "want", crypto.SignatureLength)
+		return nil, "", errors.New("wrong signature length")
 	}
 
 	signedTx, err := tx.WithSignature(signer, signature)
@@ -85,43 +89,4 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 	txHash = signedTx.Hash().String()
 	log.Info(logPrefix+"success", "keyID", keyID, "txid", txid, "txhash", txHash, "nonce", signedTx.Nonce())
 	return signedTx, txHash, err
-}
-
-func getSignature(keyID, rpcAddr, txid string) ([]byte, error) {
-	time.Sleep(5 * time.Second)
-
-	rsv := ""
-	i := 0
-	for ; i < retryGetSignStatusCount; i++ {
-		signStatus, err := mpc.GetSignStatus(keyID, rpcAddr)
-		if err == nil {
-			if len(signStatus.Rsv) != 1 {
-				log.Warn("get sign status require one rsv but return many",
-					"rsvs", len(signStatus.Rsv), "keyID", keyID, "txid", txid, "rpcAddr", rpcAddr)
-				return nil, errors.New("get sign status require one rsv but return many")
-			}
-
-			rsv = signStatus.Rsv[0]
-			break
-		}
-		switch err {
-		case mpc.ErrGetSignStatusFailed, mpc.ErrGetSignStatusTimeout:
-			return nil, err
-		}
-		log.Warn("retry get sign status as error", "err", err, "keyID", keyID, "txid", txid, "rpcAddr", rpcAddr)
-		time.Sleep(retryGetSignStatusInterval)
-	}
-	if i == retryGetSignStatusCount || rsv == "" {
-		return nil, errors.New("get sign status failed")
-	}
-	log.Trace("get rsv signature success", "keyID", keyID, "txid", txid, "rsv", rsv, "rpcAddr", rpcAddr)
-
-	signature := common.FromHex(rsv)
-
-	if len(signature) != crypto.SignatureLength {
-		log.Error("wrong signature length", "keyID", keyID, "txid", txid, "have", len(signature), "want", crypto.SignatureLength)
-		return nil, errors.New("wrong signature length")
-	}
-
-	return signature, nil
 }

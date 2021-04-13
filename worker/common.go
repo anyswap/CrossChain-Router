@@ -86,6 +86,7 @@ func updateRouterSwapResult(fromChainID, txid string, logIndex int, mtx *MatchTx
 
 func updateSwapTx(fromChainID, txid string, logIndex int, swapTx string) (err error) {
 	updates := &mongodb.SwapResultUpdateItems{
+		Status:    mongodb.KeepStatus,
 		SwapTx:    swapTx,
 		Timestamp: now(),
 	}
@@ -137,20 +138,6 @@ func markSwapResultFailed(fromChainID, txid string, logIndex int) (err error) {
 		logWorker("stable", "markSwapResultFailed success", "chainid", fromChainID, "txid", txid, "logIndex", logIndex)
 	}
 	return err
-}
-
-func mpcSignTransaction(bridge tokens.IBridge, rawTx interface{}, args *tokens.BuildTxArgs) (signedTx interface{}, txHash string, err error) {
-	maxRetryMPCSignCount := 5
-	for i := 0; i < maxRetryMPCSignCount; i++ {
-		signedTx, txHash, err = bridge.MPCSignTransaction(rawTx, args.GetExtraArgs())
-		if err == nil {
-			break
-		}
-	}
-	if err != nil {
-		return nil, "", err
-	}
-	return signedTx, txHash, nil
 }
 
 func sendSignedTransaction(bridge tokens.IBridge, signedTx interface{}, args *tokens.BuildTxArgs, isReplace bool) (err error) {

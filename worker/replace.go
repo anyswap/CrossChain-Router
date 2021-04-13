@@ -111,7 +111,7 @@ func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int) error {
 		logWorkerError("replaceSwap", "build tx failed", err, "chainID", res.ToChainID, "txid", txid, "logIndex", res.LogIndex)
 		return err
 	}
-	signedTx, txHash, err := mpcSignTransaction(resBridge, rawTx, args.GetExtraArgs())
+	signedTx, txHash, err := resBridge.MPCSignTransaction(rawTx, args.GetExtraArgs())
 	if err != nil {
 		return err
 	}
