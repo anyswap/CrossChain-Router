@@ -78,55 +78,6 @@ func (status SwapStatus) IsRegisteredOk() bool {
 	}
 }
 
-// CanManualMakePass can manual make pass
-func (status SwapStatus) CanManualMakePass() bool {
-	switch status {
-	case TxWithBigValue:
-		return true
-	default:
-		return false
-	}
-}
-
-// CanManualMakeFail can manual make fail
-func (status SwapStatus) CanManualMakeFail() bool {
-	switch status {
-	case TxNotStable, TxNotSwapped:
-		return true
-	default:
-		return false
-	}
-}
-
-// CanRetry can retry
-func (status SwapStatus) CanRetry() bool {
-	switch status {
-	case TxSenderNotRegistered, RPCQueryError:
-		return true
-	default:
-		return false
-	}
-}
-
-// CanReverify can reverify
-func (status SwapStatus) CanReverify() bool {
-	switch status {
-	case
-		TxVerifyFailed,
-		TxWithWrongValue,
-		TxWithBigValue,
-		TxSenderNotRegistered,
-		SwapInBlacklist,
-		ManualMakeFail,
-		TxIncompatible,
-		BindAddrIsContract,
-		RPCQueryError:
-		return true
-	default:
-		return false
-	}
-}
-
 // CanReswap can reswap
 func (status SwapStatus) CanReswap() bool {
 	switch status {

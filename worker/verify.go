@@ -36,9 +36,13 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 	txid := swap.TxID
 	logIndex := swap.LogIndex
 
+	var dbErr error
 	if params.IsSwapInBlacklist(fromChainID, swap.ToChainID, swap.GetTokenID()) {
 		err = tokens.ErrSwapInBlacklist
-		_ = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.SwapInBlacklist, now(), err.Error())
+		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.SwapInBlacklist, now(), err.Error())
+		if dbErr != nil {
+			logWorkerError("verify", "verify router swap db error", dbErr, "fromChainID", fromChainID, "txid", txid, "logIndex", logIndex)
+		}
 		return err
 	}
 
@@ -49,13 +53,6 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 		AllowUnstable: false,
 	}
 	swapInfo, err := bridge.VerifyTransaction(txid, verifyArgs)
-
-	if swapInfo.Height != 0 && swapInfo.Height < bridge.GetChainConfig().InitialHeight {
-		err = tokens.ErrTxBeforeInitialHeight
-	}
-
-	var dbErr error
-
 	switch err {
 	case nil:
 		if swapInfo.Value.Cmp(bridge.GetBigValueThreshold(swapInfo.Token)) > 0 {
@@ -81,7 +78,7 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 	}
 
 	if dbErr != nil {
-		logWorker("verify", "verify router swap db error", "dbErr", dbErr, "verifyErr", err, "fromChainID", fromChainID, "txid", txid, "logIndex", logIndex)
+		logWorkerError("verify", "verify router swap db error", dbErr, "fromChainID", fromChainID, "txid", txid, "logIndex", logIndex)
 	}
 
 	return err

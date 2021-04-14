@@ -83,6 +83,9 @@ func (b *Bridge) verifySwapTxReceipt(swapInfo *tokens.SwapTxInfo, contractAddr s
 	if txStatus.BlockHeight == 0 {
 		return nil, tokens.ErrTxNotFound
 	}
+	if txStatus.BlockHeight < b.ChainConfig.InitialHeight {
+		return nil, tokens.ErrTxBeforeInitialHeight
+	}
 
 	swapInfo.Height = txStatus.BlockHeight  // Height
 	swapInfo.Timestamp = txStatus.BlockTime // Timestamp
