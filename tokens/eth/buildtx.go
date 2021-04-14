@@ -7,6 +7,7 @@ import (
 
 	"github.com/anyswap/CrossChain-Router/common"
 	"github.com/anyswap/CrossChain-Router/log"
+	"github.com/anyswap/CrossChain-Router/params"
 	"github.com/anyswap/CrossChain-Router/tokens"
 	"github.com/anyswap/CrossChain-Router/types"
 )
@@ -72,16 +73,20 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs, extra *tokens.EthExtraArgs) (
 	return rawTx, nil
 }
 
+func getOrInitEthExtra(args *tokens.BuildTxArgs) *tokens.EthExtraArgs {
+	if args.Extra == nil {
+		args.Extra = &tokens.AllExtras{EthExtra: &tokens.EthExtraArgs{}}
+	} else if args.Extra.EthExtra == nil {
+		args.Extra.EthExtra = &tokens.EthExtraArgs{}
+	}
+	return args.Extra.EthExtra
+}
+
 func (b *Bridge) setDefaults(args *tokens.BuildTxArgs) (extra *tokens.EthExtraArgs, err error) {
 	if args.Value == nil {
 		args.Value = new(big.Int)
 	}
-	if args.Extra == nil || args.Extra.EthExtra == nil {
-		extra = &tokens.EthExtraArgs{}
-		args.Extra = &tokens.AllExtras{EthExtra: extra}
-	} else {
-		extra = args.Extra.EthExtra
-	}
+	extra = getOrInitEthExtra(args)
 	if extra.GasPrice == nil {
 		extra.GasPrice, err = b.getGasPrice()
 		if err != nil {
@@ -104,7 +109,7 @@ func (b *Bridge) setDefaults(args *tokens.BuildTxArgs) (extra *tokens.EthExtraAr
 			return nil, tokens.ErrEstimateGasFailed
 		}
 		esGasLimit += esGasLimit * 30 / 100
-		defGasLimit := b.getDefaultGasLimit()
+		defGasLimit := getDefaultGasLimit()
 		if esGasLimit < defGasLimit {
 			esGasLimit = defGasLimit
 		}
@@ -114,10 +119,11 @@ func (b *Bridge) setDefaults(args *tokens.BuildTxArgs) (extra *tokens.EthExtraAr
 	return extra, nil
 }
 
-func (b *Bridge) getDefaultGasLimit() (gasLimit uint64) {
-	gasLimit = b.ChainConfig.DefaultGasLimit
-	if gasLimit == 0 {
-		gasLimit = 90000
+func getDefaultGasLimit() uint64 {
+	gasLimit := uint64(90000)
+	serverCfg := params.GetRouterServerConfig()
+	if serverCfg != nil && serverCfg.DefaultGasLimit > 0 {
+		gasLimit = serverCfg.DefaultGasLimit
 	}
 	return gasLimit
 }
@@ -134,8 +140,12 @@ func (b *Bridge) getGasPrice() (price *big.Int, err error) {
 }
 
 func (b *Bridge) adjustSwapGasPrice(extra *tokens.EthExtraArgs) {
-	addPercent := b.ChainConfig.PlusGasPricePercentage
-	maxGasPriceFluctPercent := b.ChainConfig.MaxGasPriceFluctPercent
+	serverCfg := params.GetRouterServerConfig()
+	if serverCfg == nil {
+		return
+	}
+	addPercent := serverCfg.PlusGasPricePercentage
+	maxGasPriceFluctPercent := serverCfg.MaxGasPriceFluctPercent
 	if addPercent > 0 {
 		extra.GasPrice.Mul(extra.GasPrice, big.NewInt(int64(100+addPercent)))
 		extra.GasPrice.Div(extra.GasPrice, big.NewInt(100))

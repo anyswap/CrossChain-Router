@@ -27,10 +27,17 @@ type RouterServerConfig struct {
 	MongoDB   *MongoDBConfig
 	APIServer *APIServerConfig
 
-	ChainIDBlackList []string
-	TokenIDBlackList []string
+	ChainIDBlackList []string `toml:",omitempty" json:",omitempty"`
+	TokenIDBlackList []string `toml:",omitempty" json:",omitempty"`
 
-	EnableReplaceSwap bool
+	// extras
+	EnableReplaceSwap       bool
+	WaitTimeToReplace       int64  `toml:",omitempty" json:",omitempty"` // seconds
+	MaxReplaceCount         int    `toml:",omitempty" json:",omitempty"`
+	PlusGasPricePercentage  uint64 `toml:",omitempty" json:",omitempty"`
+	MaxGasPriceFluctPercent uint64 `toml:",omitempty" json:",omitempty"`
+	DefaultGasLimit         uint64 `toml:",omitempty" json:",omitempty"`
+	SwapDeadlineOffset      int64  `toml:",omitempty" json:",omitempty"` // seconds
 }
 
 // RouterConfig config
@@ -103,6 +110,11 @@ func IsMPCInitiator(account string) bool {
 // GetRouterConfig get router config
 func GetRouterConfig() *RouterConfig {
 	return routerConfig
+}
+
+// GetRouterServerConfig get router server config
+func GetRouterServerConfig() *RouterServerConfig {
+	return routerConfig.Server
 }
 
 // GetOnchainContract get onchain config contract address

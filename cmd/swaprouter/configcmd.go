@@ -30,12 +30,6 @@ config router swap
 					cRouterContractFlag,
 					cConfirmationsFlag,
 					cInitialHeightFlag,
-					cWaitTimeToReplaceFlag,
-					cMaxReplaceCountFlag,
-					cSwapDeadlineOffsetFlag,
-					cPlusGasPricePercentageFlag,
-					cMaxGasPriceFluctPercentFlag,
-					cDefaultGasLimitFlag,
 				},
 				Description: `
 generate ChainConfig json marshal data
@@ -210,40 +204,6 @@ generate TokenConfig json marshal data
 		Usage: "chain config",
 	}
 
-	cWaitTimeToReplaceFlag = &cli.Int64Flag{
-		Name:  "c.WaitTimeToReplace",
-		Usage: "chain config",
-		Value: 900,
-	}
-
-	cMaxReplaceCountFlag = &cli.Int64Flag{
-		Name:  "c.MaxReplaceCount",
-		Usage: "chain config",
-		Value: 20,
-	}
-
-	cSwapDeadlineOffsetFlag = &cli.Int64Flag{
-		Name:  "c.SwapDeadlineOffset",
-		Usage: "chain config",
-		Value: 36000,
-	}
-
-	cPlusGasPricePercentageFlag = &cli.Uint64Flag{
-		Name:  "c.PlusGasPricePercentage",
-		Usage: "chain config",
-	}
-
-	cMaxGasPriceFluctPercentFlag = &cli.Uint64Flag{
-		Name:  "c.MaxGasPriceFluctPercent",
-		Usage: "chain config",
-	}
-
-	cDefaultGasLimitFlag = &cli.Uint64Flag{
-		Name:  "c.DefaultGasLimit",
-		Usage: "chain config",
-		Value: 90000,
-	}
-
 	// --------- token config -------------------
 
 	cTokenIDFlag = &cli.StringFlag{
@@ -300,17 +260,11 @@ generate TokenConfig json marshal data
 
 func genSetChainConfigData(ctx *cli.Context) error {
 	chainCfg := &tokens.ChainConfig{
-		ChainID:                 ctx.String(cChainIDFlag.Name),
-		BlockChain:              ctx.String(cBlockChainFlag.Name),
-		RouterContract:          ctx.String(cRouterContractFlag.Name),
-		Confirmations:           ctx.Uint64(cConfirmationsFlag.Name),
-		InitialHeight:           ctx.Uint64(cInitialHeightFlag.Name),
-		WaitTimeToReplace:       ctx.Int64(cWaitTimeToReplaceFlag.Name),
-		MaxReplaceCount:         ctx.Int(cMaxReplaceCountFlag.Name),
-		SwapDeadlineOffset:      ctx.Int64(cSwapDeadlineOffsetFlag.Name),
-		PlusGasPricePercentage:  ctx.Uint64(cPlusGasPricePercentageFlag.Name),
-		MaxGasPriceFluctPercent: ctx.Uint64(cMaxGasPriceFluctPercentFlag.Name),
-		DefaultGasLimit:         ctx.Uint64(cDefaultGasLimitFlag.Name),
+		ChainID:        ctx.String(cChainIDFlag.Name),
+		BlockChain:     ctx.String(cBlockChainFlag.Name),
+		RouterContract: ctx.String(cRouterContractFlag.Name),
+		Confirmations:  ctx.Uint64(cConfirmationsFlag.Name),
+		InitialHeight:  ctx.Uint64(cInitialHeightFlag.Name),
 	}
 	err := chainCfg.CheckConfig()
 	if err != nil {
@@ -321,18 +275,12 @@ func genSetChainConfigData(ctx *cli.Context) error {
 		return err
 	}
 	fmt.Println("chain config struct is", string(jsdata))
-	funcHash := common.FromHex("0xdefb3a0d")
+	funcHash := common.FromHex("0x46bd32f5")
 	configData := abicoder.PackData(
 		chainCfg.BlockChain,
 		common.HexToAddress(chainCfg.RouterContract),
 		chainCfg.Confirmations,
 		chainCfg.InitialHeight,
-		chainCfg.WaitTimeToReplace,
-		chainCfg.MaxReplaceCount,
-		chainCfg.SwapDeadlineOffset,
-		chainCfg.PlusGasPricePercentage,
-		chainCfg.MaxGasPriceFluctPercent,
-		chainCfg.DefaultGasLimit,
 	)
 	chainID, _ := new(big.Int).SetString(chainCfg.ChainID, 0)
 	inputData := abicoder.PackDataWithFuncHash(funcHash, chainID)

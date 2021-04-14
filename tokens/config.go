@@ -13,17 +13,11 @@ import (
 
 // ChainConfig struct
 type ChainConfig struct {
-	ChainID                 string
-	BlockChain              string
-	RouterContract          string
-	Confirmations           uint64
-	InitialHeight           uint64 `json:",omitempty"`
-	WaitTimeToReplace       int64  `json:",omitempty"` // seconds
-	MaxReplaceCount         int    `json:",omitempty"`
-	SwapDeadlineOffset      int64  `json:",omitempty"` // seconds
-	PlusGasPricePercentage  uint64 `json:",omitempty"`
-	MaxGasPriceFluctPercent uint64 `json:",omitempty"`
-	DefaultGasLimit         uint64 `json:",omitempty"`
+	ChainID        string
+	BlockChain     string
+	RouterContract string
+	Confirmations  uint64
+	InitialHeight  uint64
 
 	// cached value
 	routerMPC       string
@@ -70,10 +64,6 @@ func (c *ChainConfig) CheckConfig() error {
 	}
 	if c.RouterContract == "" {
 		return errors.New("chain must config 'RouterContract'")
-	}
-	maxPlusGasPricePercentage := uint64(10000)
-	if c.PlusGasPricePercentage > maxPlusGasPricePercentage {
-		return errors.New("too large 'PlusGasPricePercentage' value")
 	}
 	return nil
 }

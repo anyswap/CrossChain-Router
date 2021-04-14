@@ -16,6 +16,18 @@ ChainIDBlackList = []
 TokenIDBlackList = []
 # enable replace swap job
 EnableReplaceSwap = true
+# wait time to replace swap
+WaitTimeToReplace = 900
+# maximum replace count
+MaxReplaceCount = 20
+# plus gas price percentage
+PlusGasPricePercentage = 10
+# maximum gas price flunct percentage
+MaxGasPriceFluctPercent = 10
+# default gas limit
+DefaultGasLimit = 90000
+# swap deadline offset for trading
+SwapDeadlineOffset = 36000
 
 # modgodb database connection config
 [Server.MongoDB]

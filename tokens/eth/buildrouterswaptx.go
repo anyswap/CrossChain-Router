@@ -8,6 +8,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/common"
 	"github.com/anyswap/CrossChain-Router/common/hexutil"
 	"github.com/anyswap/CrossChain-Router/log"
+	"github.com/anyswap/CrossChain-Router/params"
 	"github.com/anyswap/CrossChain-Router/router"
 	"github.com/anyswap/CrossChain-Router/tokens"
 	"github.com/anyswap/CrossChain-Router/tokens/eth/abicoder"
@@ -85,19 +86,13 @@ func (b *Bridge) buildRouterSwapTradeTxInput(args *tokens.BuildTxArgs) (err erro
 		funcHash = AnySwapInExactTokensForTokensFuncHash
 	}
 
-	swapDeadlineOffset := b.ChainConfig.SwapDeadlineOffset
-	if swapDeadlineOffset == 0 {
-		swapDeadlineOffset = defSwapDeadlineOffset
-	}
-	deadline := time.Now().Unix() + swapDeadlineOffset
-
 	input := abicoder.PackDataWithFuncHash(funcHash,
 		common.HexToHash(args.SwapID),
 		amount,
 		args.AmountOutMin,
 		toAddresses(args.Path),
 		receiver,
-		deadline,
+		calcSwapDeadline(args),
 		args.FromChainID,
 	)
 	args.Input = (*hexutil.Bytes)(&input)  // input
@@ -105,6 +100,21 @@ func (b *Bridge) buildRouterSwapTradeTxInput(args *tokens.BuildTxArgs) (err erro
 	args.SwapValue = amount                // swapValue
 
 	return nil
+}
+
+func calcSwapDeadline(args *tokens.BuildTxArgs) int64 {
+	var deadline int64
+	if args.Extra != nil && args.Extra.EthExtra != nil {
+		deadline = args.Extra.EthExtra.Deadline
+	} else if serverCfg := params.GetRouterServerConfig(); serverCfg != nil {
+		offset := serverCfg.SwapDeadlineOffset
+		if offset == 0 {
+			offset = defSwapDeadlineOffset
+		}
+		deadline = time.Now().Unix() + offset
+		getOrInitEthExtra(args).Deadline = deadline
+	}
+	return deadline
 }
 
 func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs) (receiver common.Address, amount *big.Int, err error) {

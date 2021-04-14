@@ -86,7 +86,22 @@ func (s *RouterServerConfig) CheckConfig() error {
 		}
 		tokenIDBlacklistMap[key] = struct{}{}
 	}
+	err := s.CheckExtra()
+	if err != nil {
+		return err
+	}
 	log.Info("check server config success")
+	return nil
+}
+
+// CheckExtra check extra server config
+func (s *RouterServerConfig) CheckExtra() error {
+	if s.PlusGasPricePercentage > 10000 {
+		return errors.New("too large 'PlusGasPricePercentage' value")
+	}
+	if s.MaxGasPriceFluctPercent > 100 {
+		return errors.New("too large 'MaxGasPriceFluctPercent' value")
+	}
 	return nil
 }
 

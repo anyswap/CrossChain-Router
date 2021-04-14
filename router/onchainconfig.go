@@ -134,7 +134,7 @@ func parseChainConfig(data []byte) (config *tokens.ChainConfig, err error) {
 	if overflow {
 		return nil, abicoder.ErrParseDataError
 	}
-	if uint64(len(data)) < offset+11*32 {
+	if uint64(len(data)) < offset+160 {
 		return nil, abicoder.ErrParseDataError
 	}
 	data = data[32:]
@@ -146,12 +146,6 @@ func parseChainConfig(data []byte) (config *tokens.ChainConfig, err error) {
 	config.RouterContract = common.BytesToAddress(common.GetData(data, 32, 32)).String()
 	config.Confirmations = common.GetBigInt(data, 64, 32).Uint64()
 	config.InitialHeight = common.GetBigInt(data, 96, 32).Uint64()
-	config.WaitTimeToReplace = common.GetBigInt(data, 128, 32).Int64()
-	config.MaxReplaceCount = int(common.GetBigInt(data, 160, 32).Int64())
-	config.SwapDeadlineOffset = common.GetBigInt(data, 192, 32).Int64()
-	config.PlusGasPricePercentage = common.GetBigInt(data, 224, 32).Uint64()
-	config.MaxGasPriceFluctPercent = common.GetBigInt(data, 256, 32).Uint64()
-	config.DefaultGasLimit = common.GetBigInt(data, 288, 32).Uint64()
 	return config, nil
 }
 

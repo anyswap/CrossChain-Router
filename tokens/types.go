@@ -129,6 +129,7 @@ type EthExtraArgs struct {
 	Gas      *uint64  `json:"gas,omitempty"`
 	GasPrice *big.Int `json:"gasPrice,omitempty"`
 	Nonce    *uint64  `json:"nonce,omitempty"`
+	Deadline int64    `json:"deadline,omitempty"`
 }
 
 // GetExtraArgs get extra args

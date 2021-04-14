@@ -12,6 +12,8 @@ import (
 )
 
 var (
+	serverCfg *params.RouterServerConfig
+
 	defWaitTimeToReplace = int64(900) // seconds
 	defMaxReplaceCount   = 20
 )
@@ -19,7 +21,12 @@ var (
 // StartReplaceJob replace job
 func StartReplaceJob() {
 	logWorker("replace", "start router swap replace job")
-	if !params.GetRouterConfig().Server.EnableReplaceSwap {
+	serverCfg = params.GetRouterServerConfig()
+	if serverCfg == nil {
+		logWorker("replace", "stop replace swap job as no router server config exist")
+		return
+	}
+	if !serverCfg.EnableReplaceSwap {
 		logWorker("replace", "stop replace swap job as disabled")
 		return
 	}
@@ -45,10 +52,8 @@ func findRouterSwapResultToReplace() ([]*mongodb.MgoSwapResult, error) {
 }
 
 func processRouterSwapReplace(res *mongodb.MgoSwapResult) error {
-	resBridge := router.GetBridgeByChainID(res.ToChainID)
-	chainCfg := resBridge.GetChainConfig()
-	waitTimeToReplace := chainCfg.WaitTimeToReplace
-	maxReplaceCount := chainCfg.MaxReplaceCount
+	waitTimeToReplace := serverCfg.WaitTimeToReplace
+	maxReplaceCount := serverCfg.MaxReplaceCount
 	if waitTimeToReplace == 0 {
 		waitTimeToReplace = defWaitTimeToReplace
 	}
