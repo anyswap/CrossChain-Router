@@ -124,6 +124,9 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs) (receiver common
 		return receiver, amount, errors.New("can not swapout to empty or invalid receiver")
 	}
 	fromBridge := router.GetBridgeByChainID(args.FromChainID.String())
+	if fromBridge == nil {
+		return receiver, amount, tokens.ErrNoBridgeForChainID
+	}
 	fromTokenCfg := fromBridge.GetTokenConfig(args.Token)
 	if fromTokenCfg == nil {
 		log.Warn("get token config failed", "chainID", args.FromChainID, "token", args.Token)

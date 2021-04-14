@@ -62,6 +62,9 @@ func getSwapTxStatus(resBridge tokens.IBridge, swap *mongodb.MgoSwapResult) *tok
 func processRouterSwapStable(swap *mongodb.MgoSwapResult) (err error) {
 	oldSwapTx := swap.SwapTx
 	resBridge := router.GetBridgeByChainID(swap.ToChainID)
+	if resBridge == nil {
+		return tokens.ErrNoBridgeForChainID
+	}
 	txStatus := getSwapTxStatus(resBridge, swap)
 	if txStatus == nil || txStatus.BlockHeight == 0 {
 		return nil

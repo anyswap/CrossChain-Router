@@ -37,6 +37,10 @@ func InitRouterBridges(isServer bool) {
 	log.Info("get all token ids success", "tokenIDs", tokenIDs)
 
 	for _, chainID := range chainIDs {
+		if params.IsChainIDInBlackList(chainID.String()) {
+			log.Warnf("ingore chainID %v in black list", chainID)
+			continue
+		}
 		bridge := NewCrossChainBridge(chainID)
 
 		bridge.InitGatewayConfig(chainID)

@@ -343,6 +343,9 @@ func RouterAdminReswap(fromChainID, txid string, logIndex int) error {
 	}
 
 	resBridge := router.GetBridgeByChainID(swap.ToChainID)
+	if resBridge == nil {
+		return tokens.ErrNoBridgeForChainID
+	}
 	_, err = resBridge.GetTransaction(res.SwapTx)
 	if err == nil && res.Status != MatchTxFailed {
 		return errors.New("swaptx exist in chain or pool")

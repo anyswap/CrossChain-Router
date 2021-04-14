@@ -47,6 +47,9 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 	}
 
 	bridge := router.GetBridgeByChainID(fromChainID)
+	if bridge == nil {
+		return tokens.ErrNoBridgeForChainID
+	}
 	verifyArgs := &tokens.VerifyArgs{
 		SwapType:      tokens.SwapType(swap.SwapType),
 		LogIndex:      logIndex,

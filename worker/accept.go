@@ -56,7 +56,8 @@ func StartAcceptSignJob() {
 			case errIdentifierMismatch,
 				errInitiatorMismatch,
 				errWrongMsgContext,
-				tokens.ErrTxWithWrongContract:
+				tokens.ErrTxWithWrongContract,
+				tokens.ErrNoBridgeForChainID:
 				logWorkerTrace("accept", "ignore sign", "keyID", keyID, "err", err)
 				addAcceptSignHistory(keyID, "IGNORE", info.MsgHash, info.MsgContext)
 				continue

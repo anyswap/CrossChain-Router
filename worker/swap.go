@@ -89,8 +89,8 @@ func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
 	logWorker("swap", "start process router swap", "fromChainID", fromChainID, "txid", txid, "logIndex", logIndex, "status", swap.Status, "value", res.Value)
 
 	dstBridge := router.GetBridgeByChainID(toChainID)
-	if err != nil {
-		return err
+	if dstBridge == nil {
+		return tokens.ErrNoBridgeForChainID
 	}
 
 	err = preventReswap(res)
@@ -163,6 +163,9 @@ func processNonEmptySwapResult(res *mongodb.MgoSwapResult) error {
 		return errAlreadySwapped
 	}
 	resBridge := router.GetBridgeByChainID(res.ToChainID)
+	if resBridge == nil {
+		return tokens.ErrNoBridgeForChainID
+	}
 	if _, err := resBridge.GetTransaction(res.SwapTx); err == nil {
 		return errAlreadySwapped
 	}
@@ -182,6 +185,9 @@ func processHistory(res *mongodb.MgoSwapResult) error {
 		return nil
 	}
 	resBridge := router.GetBridgeByChainID(res.ToChainID)
+	if resBridge == nil {
+		return tokens.ErrNoBridgeForChainID
+	}
 	if _, err := resBridge.GetTransaction(history.matchTx); err == nil {
 		matchTx := &MatchTx{
 			SwapTx:    history.matchTx,
@@ -215,7 +221,7 @@ func processSwapTask(swapChan <-chan *tokens.BuildTxArgs) {
 		args := <-swapChan
 		err := doSwap(args)
 		switch err {
-		case nil, errAlreadySwapped:
+		case nil, errAlreadySwapped, tokens.ErrNoBridgeForChainID:
 		default:
 			logWorkerError("doSwap", "process router swap failed", err, "args", args)
 		}
