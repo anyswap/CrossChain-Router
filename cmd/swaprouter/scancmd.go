@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/cmd/utils"
-	"github.com/anyswap/CrossChain-Router/common/hexutil"
 	"github.com/anyswap/CrossChain-Router/log"
 	"github.com/anyswap/CrossChain-Router/rpc/client"
 	"github.com/anyswap/CrossChain-Router/tokens/eth"
@@ -37,6 +36,7 @@ scan router swap and post register to swap server
 		Flags: []cli.Flag{
 			routerContractFlag,
 			utils.GatewayFlag,
+			utils.ChainIDFlag,
 			utils.SwapServerFlag,
 			utils.StartHeightFlag,
 			utils.EndHeightFlag,
@@ -77,6 +77,7 @@ func scanswap(ctx *cli.Context) error {
 		rpcRetryCount: 3,
 	}
 	scanner.routerContract = ctx.String(routerContractFlag.Name)
+	scanner.chainID = ctx.String(utils.ChainIDFlag.Name)
 	scanner.gateway = ctx.String(utils.GatewayFlag.Name)
 	scanner.swapServer = ctx.String(utils.SwapServerFlag.Name)
 	scanner.startHeight = ctx.Uint64(utils.StartHeightFlag.Name)
@@ -86,6 +87,7 @@ func scanswap(ctx *cli.Context) error {
 
 	log.Info("get argument success",
 		"routerContract", scanner.routerContract,
+		"chainID", scanner.chainID,
 		"gateway", scanner.gateway,
 		"swapServer", scanner.swapServer,
 		"start", scanner.startHeight,
@@ -124,13 +126,6 @@ func (scanner *routerSwapScanner) init() {
 		log.Fatal("ethclient.Dail failed", "gateway", scanner.gateway, "err", err)
 	}
 	scanner.client = ethcli
-
-	var biChainID hexutil.Big
-	err = client.RPCPost(&biChainID, scanner.gateway, "eth_chainId")
-	if err != nil {
-		log.Fatal("rpc get chain id failed", "gateway", scanner.gateway, "err", err)
-	}
-	scanner.chainID = biChainID.ToInt().String()
 
 	var version string
 	for i := 0; i < scanner.rpcRetryCount; i++ {
