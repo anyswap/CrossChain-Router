@@ -25,23 +25,23 @@ func newWrongStatusError(subject, status, errInfo string) error {
 }
 
 func wrapPostError(method string, err error) error {
-	return fmt.Errorf("[post] %v error, %v", method, err)
+	return fmt.Errorf("[post] %v error, %v", mpcAPIPrefix+method, err)
 }
 
 func httpPost(result interface{}, method string, params ...interface{}) error {
-	return client.RPCPost(&result, defaultMPCNode.mpcRPCAddress, method, params...)
+	return client.RPCPost(&result, defaultMPCNode.mpcRPCAddress, mpcAPIPrefix+method, params...)
 }
 
 func httpPostTo(result interface{}, rpcAddress, method string, params ...interface{}) error {
-	return client.RPCPost(&result, rpcAddress, method, params...)
+	return client.RPCPost(&result, rpcAddress, mpcAPIPrefix+method, params...)
 }
 
-// GetEnode call smpc_getEnode
+// GetEnode call getEnode
 func GetEnode(rpcAddr string) (string, error) {
 	var result GetEnodeResp
-	err := httpPostTo(&result, rpcAddr, "smpc_getEnode")
+	err := httpPostTo(&result, rpcAddr, "getEnode")
 	if err != nil {
-		return "", wrapPostError("smpc_getEnode", err)
+		return "", wrapPostError("getEnode", err)
 	}
 	if result.Status != successStatus {
 		return "", newWrongStatusError("getEnode", result.Status, result.Error)
@@ -49,12 +49,12 @@ func GetEnode(rpcAddr string) (string, error) {
 	return result.Data.Enode, nil
 }
 
-// GetSignNonce call smpc_getSignNonce
+// GetSignNonce call getSignNonce
 func GetSignNonce(mpcUser, rpcAddr string) (uint64, error) {
 	var result DataResultResp
-	err := httpPostTo(&result, rpcAddr, "smpc_getSignNonce", mpcUser)
+	err := httpPostTo(&result, rpcAddr, "getSignNonce", mpcUser)
 	if err != nil {
-		return 0, wrapPostError("smpc_getSignNonce", err)
+		return 0, wrapPostError("getSignNonce", err)
 	}
 	if result.Status != successStatus {
 		return 0, newWrongStatusError("getSignNonce", result.Status, result.Error)
@@ -66,12 +66,12 @@ func GetSignNonce(mpcUser, rpcAddr string) (uint64, error) {
 	return bi.Uint64(), nil
 }
 
-// GetSignStatus call smpc_getSignStatus
+// GetSignStatus call getSignStatus
 func GetSignStatus(key, rpcAddr string) (*SignStatus, error) {
 	var result DataResultResp
-	err := httpPostTo(&result, rpcAddr, "smpc_getSignStatus", key)
+	err := httpPostTo(&result, rpcAddr, "getSignStatus", key)
 	if err != nil {
-		return nil, wrapPostError("smpc_getSignStatus", err)
+		return nil, wrapPostError("getSignStatus", err)
 	}
 	if result.Status != successStatus {
 		return nil, newWrongStatusError("getSignStatus", result.Status, "response error "+result.Error)
@@ -80,7 +80,7 @@ func GetSignStatus(key, rpcAddr string) (*SignStatus, error) {
 	var signStatus SignStatus
 	err = json.Unmarshal([]byte(data), &signStatus)
 	if err != nil {
-		return nil, wrapPostError("smpc_getSignStatus", err)
+		return nil, wrapPostError("getSignStatus", err)
 	}
 	switch signStatus.Status {
 	case "Failure":
@@ -96,12 +96,12 @@ func GetSignStatus(key, rpcAddr string) (*SignStatus, error) {
 	}
 }
 
-// GetCurNodeSignInfo call smpc_getCurNodeSignInfo
+// GetCurNodeSignInfo call getCurNodeSignInfo
 func GetCurNodeSignInfo() ([]*SignInfoData, error) {
 	var result SignInfoResp
-	err := httpPost(&result, "smpc_getCurNodeSignInfo", defaultMPCNode.keyWrapper.Address.String())
+	err := httpPost(&result, "getCurNodeSignInfo", defaultMPCNode.keyWrapper.Address.String())
 	if err != nil {
-		return nil, wrapPostError("smpc_getCurNodeSignInfo", err)
+		return nil, wrapPostError("getCurNodeSignInfo", err)
 	}
 	if result.Status != successStatus {
 		return nil, newWrongStatusError("getCurNodeSignInfo", result.Status, result.Error)
@@ -109,12 +109,12 @@ func GetCurNodeSignInfo() ([]*SignInfoData, error) {
 	return result.Data, nil
 }
 
-// Sign call smpc_sign
+// Sign call sign
 func Sign(raw, rpcAddr string) (string, error) {
 	var result DataResultResp
-	err := httpPostTo(&result, rpcAddr, "smpc_sign", raw)
+	err := httpPostTo(&result, rpcAddr, "sign", raw)
 	if err != nil {
-		return "", wrapPostError("smpc_sign", err)
+		return "", wrapPostError("sign", err)
 	}
 	if result.Status != successStatus {
 		return "", newWrongStatusError("sign", result.Status, result.Error)
@@ -122,12 +122,12 @@ func Sign(raw, rpcAddr string) (string, error) {
 	return result.Data.Result, nil
 }
 
-// AcceptSign call smpc_acceptSign
+// AcceptSign call acceptSign
 func AcceptSign(raw string) (string, error) {
 	var result DataResultResp
-	err := httpPost(&result, "smpc_acceptSign", raw)
+	err := httpPost(&result, "acceptSign", raw)
 	if err != nil {
-		return "", wrapPostError("smpc_acceptSign", err)
+		return "", wrapPostError("acceptSign", err)
 	}
 	if result.Status != successStatus {
 		return "", newWrongStatusError("acceptSign", result.Status, result.Error)
@@ -135,12 +135,12 @@ func AcceptSign(raw string) (string, error) {
 	return result.Data.Result, nil
 }
 
-// GetGroupByID call smpc_getGroupByID
+// GetGroupByID call getGroupByID
 func GetGroupByID(groupID, rpcAddr string) (*GroupInfo, error) {
 	var result GetGroupByIDResp
-	err := httpPostTo(&result, rpcAddr, "smpc_getGroupByID", groupID)
+	err := httpPostTo(&result, rpcAddr, "getGroupByID", groupID)
 	if err != nil {
-		return nil, wrapPostError("smpc_getGroupByID", err)
+		return nil, wrapPostError("getGroupByID", err)
 	}
 	if result.Status != successStatus {
 		return nil, newWrongStatusError("getGroupByID", result.Status, result.Error)

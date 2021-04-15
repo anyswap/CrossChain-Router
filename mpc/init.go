@@ -23,6 +23,7 @@ var (
 	mpcSigner = types.MakeSigner("EIP155", big.NewInt(mpcWalletServiceID))
 	mpcToAddr = common.HexToAddress(mpcToAddress)
 
+	mpcAPIPrefix     string
 	mpcGroupID       string
 	mpcThreshold     string
 	mpcMode          string
@@ -46,6 +47,7 @@ type NodeInfo struct {
 
 // Init init mpc
 func Init(mpcConfig *params.MPCConfig, isServer bool) {
+	mpcAPIPrefix = mpcConfig.APIPrefix
 	setMPCGroup(*mpcConfig.GroupID, mpcConfig.Mode, *mpcConfig.NeededOracles, *mpcConfig.TotalOracles)
 	setDefaultMPCNodeInfo(initMPCNodeInfo(mpcConfig.DefaultNode, isServer))
 
