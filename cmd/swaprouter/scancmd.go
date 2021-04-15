@@ -109,6 +109,9 @@ func (scanner *routerSwapScanner) verifyOptions() {
 	if scanner.gateway == "" {
 		log.Fatal("must specify gateway address")
 	}
+	if scanner.chainID == "" {
+		log.Fatal("must specify chainID")
+	}
 	if scanner.swapServer == "" {
 		log.Fatal("must specify swap server address")
 	}

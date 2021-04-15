@@ -63,27 +63,27 @@ type SwapResultUpdateItems struct {
 
 // SwapInfo struct
 type SwapInfo struct {
-	*RouterSwapInfo  `bson:"routerSwapInfo,omitempty"`
-	*AnyCallSwapInfo `bson:"anycallSwapInfo,omitempty"`
+	*RouterSwapInfo  `bson:"routerSwapInfo,omitempty"  json:"routerSwapInfo,omitempty"`
+	*AnyCallSwapInfo `bson:"anycallSwapInfo,omitempty" json:"anycallSwapInfo,omitempty"`
 }
 
 // RouterSwapInfo struct
 type RouterSwapInfo struct {
-	ForNative     bool     `bson:"forNative,omitempty"`
-	ForUnderlying bool     `bson:"forUnderlying,omitempty"`
-	Token         string   `bson:"token"`
-	TokenID       string   `bson:"tokenID"`
-	Path          []string `bson:"path,omitempty"`
-	AmountOutMin  string   `bson:"amountOutMin,omitempty"`
+	ForNative     bool     `bson:"forNative,omitempty"     json:"forNative,omitempty"`
+	ForUnderlying bool     `bson:"forUnderlying,omitempty" json:"forUnderlying,omitempty"`
+	Token         string   `bson:"token"                   json:"token"`
+	TokenID       string   `bson:"tokenID"                 json:"tokenID"`
+	Path          []string `bson:"path,omitempty"          json:"path,omitempty"`
+	AmountOutMin  string   `bson:"amountOutMin,omitempty"  json:"amountOutMin,omitempty"`
 }
 
 // AnyCallSwapInfo struct
 type AnyCallSwapInfo struct {
-	CallFrom   string   `bson:"callFrom"`
-	CallTo     []string `bson:"callTo"`
-	CallData   []string `bson:"callData"`
-	Callbacks  []string `bson:"callbacks"`
-	CallNonces []string `bson:"callNonces"`
+	CallFrom   string   `bson:"callFrom"   json:"callFrom"`
+	CallTo     []string `bson:"callTo"     json:"callTo"`
+	CallData   []string `bson:"callData"   json:"callData"`
+	Callbacks  []string `bson:"callbacks"  json:"callbacks"`
+	CallNonces []string `bson:"callNonces" json:"callNonces"`
 }
 
 // GetTokenID get tokenID

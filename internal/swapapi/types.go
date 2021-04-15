@@ -26,9 +26,11 @@ type SwapInfo struct {
 	Bind          string             `json:"bind"`
 	Value         string             `json:"value"`
 	LogIndex      int                `json:"logIndex,omitempty"`
+	FromChainID   string             `json:"fromChainID"`
+	ToChainID     string             `json:"toChainID"`
 	SwapInfo      mongodb.SwapInfo   `json:"swapinfo"`
 	SwapTx        string             `json:"swaptx"`
-	OldSwapTxs    []string           `json:"oldswaptxs"`
+	OldSwapTxs    []string           `json:"oldswaptxs,omitempty"`
 	SwapHeight    uint64             `json:"swapheight"`
 	SwapTime      uint64             `json:"swaptime"`
 	SwapValue     string             `json:"swapvalue"`
@@ -36,6 +38,6 @@ type SwapInfo struct {
 	Status        mongodb.SwapStatus `json:"status"`
 	StatusMsg     string             `json:"statusmsg"`
 	Timestamp     int64              `json:"timestamp"`
-	Memo          string             `json:"memo"`
+	Memo          string             `json:"memo,omitempty"`
 	Confirmations uint64             `json:"confirmations"`
 }

@@ -13,19 +13,25 @@ import (
 func ConvertToSwapInfo(info *tokens.SwapInfo) SwapInfo {
 	swapinfo := SwapInfo{}
 	if info.RouterSwapInfo != nil {
-		swapinfo.ForNative = info.ForNative
-		swapinfo.ForUnderlying = info.ForUnderlying
-		swapinfo.Token = info.Token
-		swapinfo.TokenID = info.TokenID
-		swapinfo.Path = info.Path
-		swapinfo.AmountOutMin = info.AmountOutMin.String()
+		swapinfo.RouterSwapInfo = &RouterSwapInfo{
+			ForNative:     info.ForNative,
+			ForUnderlying: info.ForUnderlying,
+			Token:         info.Token,
+			TokenID:       info.TokenID,
+			Path:          info.Path,
+		}
+		if info.AmountOutMin != nil {
+			swapinfo.AmountOutMin = info.AmountOutMin.String()
+		}
 	}
 	if info.AnyCallSwapInfo != nil {
-		swapinfo.CallFrom = info.CallFrom
-		swapinfo.CallTo = info.CallTo
-		swapinfo.CallData = fromHexBytesSlice(info.CallData)
-		swapinfo.Callbacks = info.Callbacks
-		swapinfo.CallNonces = fromBigIntSlice(info.CallNonces)
+		swapinfo.AnyCallSwapInfo = &AnyCallSwapInfo{
+			CallFrom:   info.CallFrom,
+			CallTo:     info.CallTo,
+			CallData:   fromHexBytesSlice(info.CallData),
+			Callbacks:  info.Callbacks,
+			CallNonces: fromBigIntSlice(info.CallNonces),
+		}
 	}
 	return swapinfo
 }

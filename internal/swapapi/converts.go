@@ -8,16 +8,18 @@ import (
 // ConvertMgoSwapToSwapInfo convert
 func ConvertMgoSwapToSwapInfo(ms *mongodb.MgoSwap) *SwapInfo {
 	return &SwapInfo{
-		SwapType:  ms.SwapType,
-		TxID:      ms.TxID,
-		TxTo:      ms.TxTo,
-		Bind:      ms.Bind,
-		LogIndex:  ms.LogIndex,
-		SwapInfo:  ms.SwapInfo,
-		Status:    ms.Status,
-		StatusMsg: ms.Status.String(),
-		Timestamp: ms.Timestamp,
-		Memo:      ms.Memo,
+		SwapType:    ms.SwapType,
+		TxID:        ms.TxID,
+		TxTo:        ms.TxTo,
+		Bind:        ms.Bind,
+		LogIndex:    ms.LogIndex,
+		FromChainID: ms.FromChainID,
+		ToChainID:   ms.ToChainID,
+		SwapInfo:    ms.SwapInfo,
+		Status:      ms.Status,
+		StatusMsg:   ms.Status.String(),
+		Timestamp:   ms.Timestamp,
+		Memo:        ms.Memo,
 	}
 }
 
@@ -53,6 +55,8 @@ func ConvertMgoSwapResultToSwapInfo(mr *mongodb.MgoSwapResult) *SwapInfo {
 		Bind:          mr.Bind,
 		Value:         mr.Value,
 		LogIndex:      mr.LogIndex,
+		FromChainID:   mr.FromChainID,
+		ToChainID:     mr.ToChainID,
 		SwapInfo:      mr.SwapInfo,
 		SwapTx:        mr.SwapTx,
 		OldSwapTxs:    mr.OldSwapTxs,
