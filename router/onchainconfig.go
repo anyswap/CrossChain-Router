@@ -143,7 +143,7 @@ func parseChainConfig(data []byte) (config *tokens.ChainConfig, err error) {
 	if err != nil {
 		return nil, abicoder.ErrParseDataError
 	}
-	config.RouterContract = common.BytesToAddress(common.GetData(data, 32, 32)).String()
+	config.RouterContract = common.BytesToAddress(common.GetData(data, 32, 32)).LowerHex()
 	config.Confirmations = common.GetBigInt(data, 64, 32).Uint64()
 	config.InitialHeight = common.GetBigInt(data, 96, 32).Uint64()
 	return config, nil
@@ -173,7 +173,7 @@ func parseTokenConfig(data []byte) (config *tokens.TokenConfig, err error) {
 		return nil, abicoder.ErrParseDataError
 	}
 	decimals := uint8(common.GetBigInt(data, 0, 32).Uint64())
-	contractAddress := common.BytesToAddress(common.GetData(data, 32, 32)).String()
+	contractAddress := common.BytesToAddress(common.GetData(data, 32, 32)).LowerHex()
 	contractVersion := common.GetBigInt(data, 64, 32).Uint64()
 	maximumSwap := common.GetBigInt(data, 96, 32)
 	minimumSwap := common.GetBigInt(data, 128, 32)
@@ -293,7 +293,7 @@ func GetMultichainToken(tokenID string, chainID *big.Int) (tokenAddr string, err
 	if err != nil {
 		return "", err
 	}
-	return common.BigToAddress(common.GetBigInt(res, 0, 32)).String(), nil
+	return common.BigToAddress(common.GetBigInt(res, 0, 32)).LowerHex(), nil
 }
 
 // MultichainToken struct
@@ -318,7 +318,7 @@ func parseMultichainTokens(data []byte) (mcTokens []MultichainToken, err error) 
 	data = data[offset+32:]
 	for i := uint64(0); i < length; i++ {
 		mcTokens[i].ChainID = common.GetBigInt(data, i*64, 32)
-		mcTokens[i].TokenAddress = common.BytesToAddress(common.GetData(data, i*64+32, 32)).String()
+		mcTokens[i].TokenAddress = common.BytesToAddress(common.GetData(data, i*64+32, 32)).LowerHex()
 	}
 	return mcTokens, nil
 }

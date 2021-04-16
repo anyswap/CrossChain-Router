@@ -19,7 +19,7 @@ func (b *Bridge) IsValidAddress(address string) bool {
 	unprefixedHex, ok, hasUpperChar := common.GetUnprefixedHex(address)
 	if hasUpperChar {
 		// valid checksum
-		if unprefixedHex != common.HexToAddress(address).String()[2:] {
+		if unprefixedHex != common.HexToAddress(address).Hex()[2:] {
 			return false
 		}
 	}

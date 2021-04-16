@@ -131,7 +131,7 @@ func (b *Bridge) parseAnyCallSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.
 		return abicoder.ErrParseDataError
 	}
 
-	swapInfo.CallFrom = common.BytesToAddress(logTopics[1].Bytes()).String()
+	swapInfo.CallFrom = common.BytesToAddress(logTopics[1].Bytes()).LowerHex()
 	swapInfo.CallTo, err = abicoder.ParseAddressSliceInData(logData, 0)
 	if err != nil {
 		return nil

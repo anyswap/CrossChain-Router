@@ -37,7 +37,7 @@ func ParseAddressSliceInData(data []byte, pos uint64) ([]string, error) {
 	}
 	path := make([]string, length)
 	for i := uint64(0); i < length; i++ {
-		path[i] = common.BytesToAddress(common.GetData(data, offset, 32)).String()
+		path[i] = common.BytesToAddress(common.GetData(data, offset, 32)).LowerHex()
 		offset += 32
 	}
 	return path, nil

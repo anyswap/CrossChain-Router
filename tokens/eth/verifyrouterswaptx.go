@@ -2,7 +2,6 @@ package eth
 
 import (
 	"bytes"
-	"strings"
 
 	"github.com/anyswap/CrossChain-Router/common"
 	"github.com/anyswap/CrossChain-Router/log"
@@ -103,14 +102,14 @@ func (b *Bridge) verifySwapTxReceipt(swapInfo *tokens.SwapTxInfo, contractAddr s
 		return receipt, tokens.ErrTxWithWrongContract
 	}
 
-	txRecipient := strings.ToLower(receipt.Recipient.String())
+	txRecipient := receipt.Recipient.LowerHex()
 	if !common.IsEqualIgnoreCase(txRecipient, contractAddr) {
 		return receipt, tokens.ErrTxWithWrongContract
 	}
 
-	swapInfo.TxTo = txRecipient                            // TxTo
-	swapInfo.To = txRecipient                              // To
-	swapInfo.From = strings.ToLower(receipt.From.String()) // From
+	swapInfo.TxTo = txRecipient             // TxTo
+	swapInfo.To = txRecipient               // To
+	swapInfo.From = receipt.From.LowerHex() // From
 	return receipt, nil
 }
 
@@ -157,9 +156,9 @@ func (b *Bridge) parseRouterSwapoutTxLog(swapInfo *tokens.SwapTxInfo, rlog *type
 	if len(logData) != 96 {
 		return abicoder.ErrParseDataError
 	}
-	swapInfo.Token = common.BytesToAddress(logTopics[1].Bytes()).String()
-	swapInfo.From = common.BytesToAddress(logTopics[2].Bytes()).String()
-	swapInfo.Bind = common.BytesToAddress(logTopics[3].Bytes()).String()
+	swapInfo.Token = common.BytesToAddress(logTopics[1].Bytes()).LowerHex()
+	swapInfo.From = common.BytesToAddress(logTopics[2].Bytes()).LowerHex()
+	swapInfo.Bind = common.BytesToAddress(logTopics[3].Bytes()).LowerHex()
 	swapInfo.Value = common.GetBigInt(logData, 0, 32)
 	swapInfo.FromChainID = common.GetBigInt(logData, 32, 32)
 	swapInfo.ToChainID = common.GetBigInt(logData, 64, 32)
@@ -176,8 +175,8 @@ func (b *Bridge) parseRouterSwapTradeTxLog(swapInfo *tokens.SwapTxInfo, rlog *ty
 		return abicoder.ErrParseDataError
 	}
 	swapInfo.ForNative = forNative
-	swapInfo.From = common.BytesToAddress(logTopics[1].Bytes()).String()
-	swapInfo.Bind = common.BytesToAddress(logTopics[2].Bytes()).String()
+	swapInfo.From = common.BytesToAddress(logTopics[1].Bytes()).LowerHex()
+	swapInfo.Bind = common.BytesToAddress(logTopics[2].Bytes()).LowerHex()
 	path, err := abicoder.ParseAddressSliceInData(logData, 0)
 	if err != nil {
 		return err
