@@ -36,7 +36,7 @@ type IBridge interface {
 	SendTransaction(signedTx interface{}) (txHash string, err error)
 
 	GetTransaction(txHash string) (interface{}, error)
-	GetTransactionStatus(txHash string) *TxStatus
+	GetTransactionStatus(txHash string, withExt bool) *TxStatus
 	GetLatestBlockNumber() (uint64, error)
 
 	GetBigValueThreshold(token string) *big.Int

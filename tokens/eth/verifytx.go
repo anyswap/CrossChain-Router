@@ -12,29 +12,30 @@ func (b *Bridge) GetTransaction(txHash string) (interface{}, error) {
 }
 
 // GetTransactionStatus impl
-func (b *Bridge) GetTransactionStatus(txHash string) *tokens.TxStatus {
+func (b *Bridge) GetTransactionStatus(txHash string, withExt bool) *tokens.TxStatus {
 	var txStatus tokens.TxStatus
-	txr, err := b.GetTransactionReceipt(txHash)
+	txr, url, err := b.GetTransactionReceipt(txHash, withExt)
 	if err != nil {
 		log.Trace("GetTransactionReceipt fail", "hash", txHash, "err", err)
 		return &txStatus
 	}
 	txStatus.BlockHeight = txr.BlockNumber.ToInt().Uint64()
 	txStatus.BlockHash = txr.BlockHash.String()
-	block, err := b.GetBlockByHash(txStatus.BlockHash)
-	if err == nil {
-		txStatus.BlockTime = block.Time.ToInt().Uint64()
-	} else {
-		log.Debug("GetBlockByHash fail", "hash", txStatus.BlockHash, "err", err)
-	}
 	if txStatus.BlockHeight != 0 {
-		latest, err := b.GetLatestBlockNumber()
+		urls := []string{url}
+		latest, err := getLatestBlockNumber(urls)
 		if err == nil {
 			if latest > txStatus.BlockHeight {
 				txStatus.Confirmations = latest - txStatus.BlockHeight
 			}
 		} else {
-			log.Debug("GetLatestBlockNumber fail", "err", err)
+			log.Debug("GetLatestBlockNumber fail", "url", url, "err", err)
+		}
+		block, err := getBlockByHash(txStatus.BlockHash, urls)
+		if err == nil {
+			txStatus.BlockTime = block.Time.ToInt().Uint64()
+		} else {
+			log.Debug("GetBlockByHash fail", "hash", txStatus.BlockHash, "url", url, "err", err)
 		}
 	}
 	txStatus.Receipt = txr
