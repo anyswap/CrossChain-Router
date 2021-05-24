@@ -152,6 +152,9 @@ func (tx *Transaction) Gas() uint64 { return tx.data.GasLimit }
 // GasPrice tx gas price
 func (tx *Transaction) GasPrice() *big.Int { return new(big.Int).Set(tx.data.Price) }
 
+// SetGasPrice tx gas price
+func (tx *Transaction) SetGasPrice(gasPrice *big.Int) { tx.data.Price.Set(gasPrice) }
+
 // Value tx value
 func (tx *Transaction) Value() *big.Int { return new(big.Int).Set(tx.data.Amount) }
 

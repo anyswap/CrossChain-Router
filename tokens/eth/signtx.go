@@ -36,9 +36,11 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 		return nil, "", err
 	}
 
-	gasPrice, err := b.getGasPrice()
+	gasPrice, err := b.getGasPrice(args)
 	if err == nil && args.Extra.EthExtra.GasPrice.Cmp(gasPrice) < 0 {
+		log.Info(b.ChainConfig.BlockChain+" MPCSignTransaction update gas price", "txid", args.SwapID, "oldGasPrice", args.Extra.EthExtra.GasPrice, "newGasPrice", gasPrice)
 		args.Extra.EthExtra.GasPrice = gasPrice
+		tx.SetGasPrice(gasPrice)
 	}
 
 	mpcAddress := b.ChainConfig.GetRouterMPC()
@@ -72,21 +74,35 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 		return nil, "", errors.New("wrong signature length")
 	}
 
-	signedTx, err := tx.WithSignature(signer, signature)
+	signedTx, err := b.signTxWithSignature(tx, signature, common.HexToAddress(mpcAddress))
 	if err != nil {
 		return nil, "", err
-	}
-
-	sender, err := types.Sender(signer, signedTx)
-	if err != nil {
-		return nil, "", err
-	}
-
-	if !strings.EqualFold(sender.String(), mpcAddress) {
-		log.Error(logPrefix+"verify sender failed", "have", sender.String(), "want", mpcAddress)
-		return nil, "", errors.New("wrong sender address")
 	}
 	txHash = signedTx.Hash().String()
 	log.Info(logPrefix+"success", "keyID", keyID, "txid", txid, "txhash", txHash, "nonce", signedTx.Nonce())
-	return signedTx, txHash, err
+	return signedTx, txHash, nil
+}
+
+func (b *Bridge) signTxWithSignature(tx *types.Transaction, signature []byte, signerAddr common.Address) (*types.Transaction, error) {
+	signer := b.Signer
+	vPos := crypto.SignatureLength - 1
+	for i := 0; i < 2; i++ {
+		signedTx, err := tx.WithSignature(signer, signature)
+		if err != nil {
+			return nil, err
+		}
+
+		sender, err := types.Sender(signer, signedTx)
+		if err != nil {
+			return nil, err
+		}
+
+		if sender == signerAddr {
+			return signedTx, nil
+		}
+
+		signature[vPos] ^= 0x1 // v can only be 0 or 1
+	}
+
+	return nil, errors.New("wrong sender address")
 }

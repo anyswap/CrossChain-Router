@@ -63,7 +63,7 @@ func processRouterSwapReplace(res *mongodb.MgoSwapResult) error {
 		maxReplaceCount = defMaxReplaceCount
 	}
 	if len(res.OldSwapTxs) > maxReplaceCount {
-		return fmt.Errorf("replace swap too many times (> %v)", maxReplaceCount)
+		return nil
 	}
 	if getSepTimeInFind(waitTimeToReplace) < res.Timestamp {
 		return nil
@@ -88,6 +88,8 @@ func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int) error {
 	if err != nil {
 		return err
 	}
+
+	logWorker("replaceSwap", "process task", "swap", res)
 
 	txid := res.TxID
 	nonce := res.SwapNonce

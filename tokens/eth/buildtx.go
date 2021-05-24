@@ -88,11 +88,10 @@ func (b *Bridge) setDefaults(args *tokens.BuildTxArgs) (extra *tokens.EthExtraAr
 	}
 	extra = getOrInitEthExtra(args)
 	if extra.GasPrice == nil {
-		extra.GasPrice, err = b.getGasPrice()
+		extra.GasPrice, err = b.getGasPrice(args)
 		if err != nil {
 			return nil, err
 		}
-		b.adjustSwapGasPrice(extra)
 	}
 	if extra.Nonce == nil {
 		extra.Nonce, err = b.getAccountNonce(args.From)
@@ -128,40 +127,52 @@ func getDefaultGasLimit() uint64 {
 	return gasLimit
 }
 
-func (b *Bridge) getGasPrice() (price *big.Int, err error) {
+func (b *Bridge) getGasPrice(args *tokens.BuildTxArgs) (price *big.Int, err error) {
 	for i := 0; i < retryRPCCount; i++ {
 		price, err = b.SuggestPrice()
 		if err == nil {
-			return price, nil
+			break
 		}
 		time.Sleep(retryRPCInterval)
 	}
-	return nil, err
+	if err != nil {
+		return nil, err
+	}
+	if args != nil && args.SwapType != tokens.NonSwapType {
+		price, err = b.adjustSwapGasPrice(args, price)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return price, err
 }
 
-func (b *Bridge) adjustSwapGasPrice(extra *tokens.EthExtraArgs) {
+// args and oldGasPrice should be read only
+func (b *Bridge) adjustSwapGasPrice(_ *tokens.BuildTxArgs, oldGasPrice *big.Int) (newGasPrice *big.Int, err error) {
 	serverCfg := params.GetRouterServerConfig()
 	if serverCfg == nil {
-		return
+		return nil, fmt.Errorf("no router server config")
 	}
+	newGasPrice = new(big.Int).Set(oldGasPrice) // clone from old
 	addPercent := serverCfg.PlusGasPricePercentage
-	maxGasPriceFluctPercent := serverCfg.MaxGasPriceFluctPercent
 	if addPercent > 0 {
-		extra.GasPrice.Mul(extra.GasPrice, big.NewInt(int64(100+addPercent)))
-		extra.GasPrice.Div(extra.GasPrice, big.NewInt(100))
+		newGasPrice.Mul(newGasPrice, big.NewInt(int64(100+addPercent)))
+		newGasPrice.Div(newGasPrice, big.NewInt(100))
 	}
+	maxGasPriceFluctPercent := serverCfg.MaxGasPriceFluctPercent
 	if maxGasPriceFluctPercent > 0 {
 		if latestGasPrice != nil {
 			maxFluct := new(big.Int).Set(latestGasPrice)
 			maxFluct.Mul(maxFluct, new(big.Int).SetUint64(maxGasPriceFluctPercent))
 			maxFluct.Div(maxFluct, big.NewInt(100))
 			minGasPrice := new(big.Int).Sub(latestGasPrice, maxFluct)
-			if extra.GasPrice.Cmp(minGasPrice) < 0 {
-				extra.GasPrice = minGasPrice
+			if newGasPrice.Cmp(minGasPrice) < 0 {
+				newGasPrice = minGasPrice
 			}
 		}
-		latestGasPrice = extra.GasPrice
+		latestGasPrice = newGasPrice
 	}
+	return newGasPrice, nil
 }
 
 func (b *Bridge) getAccountNonce(from string) (nonceptr *uint64, err error) {
