@@ -1,6 +1,7 @@
 package mongodb
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/anyswap/CrossChain-Router/tokens"
@@ -148,16 +149,16 @@ func GetRouterSwapStatusByVerifyError(err error) SwapStatus {
 	if !tokens.ShouldRegisterRouterSwapForError(err) {
 		return TxVerifyFailed
 	}
-	switch err {
-	case nil:
+	switch {
+	case err == nil:
 		return TxNotStable
-	case tokens.ErrTxWithWrongValue:
+	case errors.Is(err, tokens.ErrTxWithWrongValue):
 		return TxWithWrongValue
-	case tokens.ErrTxWithWrongPath:
+	case errors.Is(err, tokens.ErrTxWithWrongPath):
 		return TxWithWrongPath
-	case tokens.ErrMissTokenConfig:
+	case errors.Is(err, tokens.ErrMissTokenConfig):
 		return MissTokenConfig
-	case tokens.ErrNoUnderlyingToken:
+	case errors.Is(err, tokens.ErrNoUnderlyingToken):
 		return NoUnderlyingToken
 	default:
 		return TxVerifyFailed

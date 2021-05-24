@@ -49,15 +49,16 @@ func StartAcceptSignJob() {
 			}
 			agreeResult := "AGREE"
 			err := verifySignInfo(info)
-			switch err {
-			case tokens.ErrTxNotStable, tokens.ErrTxNotFound:
+			switch {
+			case errors.Is(err, tokens.ErrTxNotStable),
+				errors.Is(err, tokens.ErrTxNotFound):
 				logWorkerTrace("accept", "ignore sign", "keyID", keyID, "err", err)
 				continue
-			case errIdentifierMismatch,
-				errInitiatorMismatch,
-				errWrongMsgContext,
-				tokens.ErrTxWithWrongContract,
-				tokens.ErrNoBridgeForChainID:
+			case errors.Is(err, errIdentifierMismatch),
+				errors.Is(err, errInitiatorMismatch),
+				errors.Is(err, errWrongMsgContext),
+				errors.Is(err, tokens.ErrTxWithWrongContract),
+				errors.Is(err, tokens.ErrNoBridgeForChainID):
 				logWorkerTrace("accept", "ignore sign", "keyID", keyID, "err", err)
 				addAcceptSignHistory(keyID, "IGNORE", info.MsgHash, info.MsgContext)
 				continue

@@ -34,12 +34,12 @@ var (
 
 // ShouldRegisterRouterSwapForError return true if this error should record in database
 func ShouldRegisterRouterSwapForError(err error) bool {
-	switch err {
-	case nil,
-		ErrTxWithWrongValue,
-		ErrTxWithWrongPath,
-		ErrMissTokenConfig,
-		ErrNoUnderlyingToken:
+	switch {
+	case err == nil,
+		errors.Is(err, ErrTxWithWrongValue),
+		errors.Is(err, ErrTxWithWrongPath),
+		errors.Is(err, ErrMissTokenConfig),
+		errors.Is(err, ErrNoUnderlyingToken):
 		return true
 	}
 	return false

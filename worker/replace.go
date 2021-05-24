@@ -160,7 +160,7 @@ func verifyReplaceSwap(res *mongodb.MgoSwapResult) (*mongodb.MgoSwap, error) {
 		mpc := resBridge.GetChainConfig().GetRouterMPC()
 		nonce, err := nonceSetter.GetPoolNonce(mpc, "latest")
 		if err != nil {
-			return nil, fmt.Errorf("get router mpc nonce failed, %v", err)
+			return nil, fmt.Errorf("get router mpc nonce failed, %w", err)
 		}
 		if nonce > res.SwapNonce {
 			return nil, fmt.Errorf("can not replace swap with nonce (%v) which is lower than latest nonce (%v)", res.SwapNonce, nonce)

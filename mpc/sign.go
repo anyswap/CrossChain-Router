@@ -113,8 +113,9 @@ func doSignImpl(mpcNode *NodeInfo, signGroupIndex int64, signPubkey string, msgH
 			rsvs = signStatus.Rsv
 			break
 		}
-		switch err {
-		case ErrGetSignStatusFailed, ErrGetSignStatusTimeout:
+		switch {
+		case errors.Is(err, ErrGetSignStatusFailed),
+			errors.Is(err, ErrGetSignStatusTimeout):
 			return "", nil, err
 		}
 		log.Warn("retry get sign status as error", "keyID", keyID, "err", err)

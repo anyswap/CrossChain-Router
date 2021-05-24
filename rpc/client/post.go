@@ -101,11 +101,13 @@ func RPCPostRequest(url string, req *Request, result interface{}) error {
 }
 
 func getResultFromJSONResponse(result interface{}, resp *http.Response) error {
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	const maxReadContentLength int64 = 1024 * 1024 * 10 // 10M
 	body, err := ioutil.ReadAll(io.LimitReader(resp.Body, maxReadContentLength))
 	if err != nil {
-		return fmt.Errorf("read body error: %v", err)
+		return fmt.Errorf("read body error: %w", err)
 	}
 	if resp.StatusCode != 200 {
 		return fmt.Errorf("wrong response status %v. message: %v", resp.StatusCode, string(body))
@@ -117,14 +119,14 @@ func getResultFromJSONResponse(result interface{}, resp *http.Response) error {
 	var jsonResp jsonrpcResponse
 	err = json.Unmarshal(body, &jsonResp)
 	if err != nil {
-		return fmt.Errorf("unmarshal body error, body is \"%v\" err=\"%v\"", string(body), err)
+		return fmt.Errorf("unmarshal body error, body is \"%v\" err=\"%w\"", string(body), err)
 	}
 	if jsonResp.Error != nil {
-		return fmt.Errorf("return error:  %v", jsonResp.Error.Error())
+		return fmt.Errorf("return error:  %w", jsonResp.Error)
 	}
 	err = json.Unmarshal(jsonResp.Result, &result)
 	if err != nil {
-		return fmt.Errorf("unmarshal result error: %v", err)
+		return fmt.Errorf("unmarshal result error: %w", err)
 	}
 	return nil
 }
@@ -140,11 +142,13 @@ func RPCRawPostWithTimeout(url, reqBody string, timeout int) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	const maxReadContentLength int64 = 1024 * 1024 * 10 // 10M
 	body, err := ioutil.ReadAll(io.LimitReader(resp.Body, maxReadContentLength))
 	if err != nil {
-		return "", fmt.Errorf("read body error: %v", err)
+		return "", fmt.Errorf("read body error: %w", err)
 	}
 	if resp.StatusCode != 200 {
 		return "", fmt.Errorf("wrong response status %v. message: %v", resp.StatusCode, string(body))

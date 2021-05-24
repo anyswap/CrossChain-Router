@@ -1,6 +1,8 @@
 package eth
 
 import (
+	"errors"
+
 	"github.com/anyswap/CrossChain-Router/log"
 	"github.com/anyswap/CrossChain-Router/tokens"
 )
@@ -50,10 +52,10 @@ func (b *Bridge) registerRouterSwapTx(txHash string, logIndex int) ([]*tokens.Sw
 		swapInfo.RouterSwapInfo = &tokens.RouterSwapInfo{}
 		swapInfo.LogIndex = i // LogIndex
 		err := b.verifyRouterSwapTxLog(swapInfo, receipt.Logs[i])
-		switch err {
-		case tokens.ErrSwapoutLogNotFound:
+		switch {
+		case errors.Is(err, tokens.ErrSwapoutLogNotFound):
 			continue
-		case nil:
+		case err == nil:
 			err = b.checkRouterSwapInfo(swapInfo)
 		default:
 			log.Debug(b.ChainConfig.BlockChain+" register router swap error", "txHash", txHash, "logIndex", swapInfo.LogIndex, "err", err)

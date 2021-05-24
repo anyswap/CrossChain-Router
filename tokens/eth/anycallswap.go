@@ -49,10 +49,10 @@ func (b *Bridge) registerAnyCallSwapTx(txHash string, logIndex int) ([]*tokens.S
 		swapInfo.AnyCallSwapInfo = &tokens.AnyCallSwapInfo{}
 		swapInfo.LogIndex = i // LogIndex
 		err := b.verifyAnyCallSwapTxLog(swapInfo, receipt.Logs[i])
-		switch err {
-		case tokens.ErrSwapoutLogNotFound:
+		switch {
+		case errors.Is(err, tokens.ErrSwapoutLogNotFound):
 			continue
-		case nil:
+		case err == nil:
 			err = b.checkAnyCallSwapInfo(swapInfo)
 		default:
 			log.Debug(b.ChainConfig.BlockChain+" register anycall swap error", "txHash", txHash, "logIndex", swapInfo.LogIndex, "err", err)
@@ -134,19 +134,19 @@ func (b *Bridge) parseAnyCallSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.
 	swapInfo.CallFrom = common.BytesToAddress(logTopics[1].Bytes()).LowerHex()
 	swapInfo.CallTo, err = abicoder.ParseAddressSliceInData(logData, 0)
 	if err != nil {
-		return nil
+		return err
 	}
 	swapInfo.CallData, err = abicoder.ParseBytesSliceInData(logData, 32)
 	if err != nil {
-		return nil
+		return err
 	}
 	swapInfo.Callbacks, err = abicoder.ParseAddressSliceInData(logData, 64)
 	if err != nil {
-		return nil
+		return err
 	}
 	swapInfo.CallNonces, err = abicoder.ParseNumberSliceAsBigIntsInData(logData, 96)
 	if err != nil {
-		return nil
+		return err
 	}
 	swapInfo.FromChainID = common.GetBigInt(logData, 128, 32)
 	swapInfo.ToChainID = common.GetBigInt(logData, 160, 32)

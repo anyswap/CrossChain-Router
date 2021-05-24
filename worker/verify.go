@@ -1,6 +1,8 @@
 package worker
 
 import (
+	"errors"
+
 	"github.com/anyswap/CrossChain-Router/mongodb"
 	"github.com/anyswap/CrossChain-Router/params"
 	"github.com/anyswap/CrossChain-Router/router"
@@ -21,8 +23,10 @@ func StartVerifyJob() {
 		}
 		for _, swap := range res {
 			err = processRouterSwapVerify(swap)
-			switch err {
-			case nil, tokens.ErrTxNotStable, tokens.ErrTxNotFound:
+			switch {
+			case err == nil,
+				errors.Is(err, tokens.ErrTxNotStable),
+				errors.Is(err, tokens.ErrTxNotFound):
 			default:
 				logWorkerError("verify", "verify router swap error", err, "chainid", swap.FromChainID, "txid", swap.TxID, "logIndex", swap.LogIndex)
 			}
@@ -56,8 +60,8 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 		AllowUnstable: false,
 	}
 	swapInfo, err := bridge.VerifyTransaction(txid, verifyArgs)
-	switch err {
-	case nil:
+	switch {
+	case err == nil:
 		if swapInfo.Value.Cmp(bridge.GetBigValueThreshold(swapInfo.Token)) > 0 {
 			dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxWithBigValue, now(), "")
 		} else {
@@ -66,15 +70,15 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 				dbErr = addInitialSwapResult(swapInfo, mongodb.MatchTxEmpty)
 			}
 		}
-	case tokens.ErrTxNotStable, tokens.ErrTxNotFound:
+	case errors.Is(err, tokens.ErrTxNotStable), errors.Is(err, tokens.ErrTxNotFound):
 		break
-	case tokens.ErrTxWithWrongValue:
+	case errors.Is(err, tokens.ErrTxWithWrongValue):
 		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxWithWrongValue, now(), err.Error())
-	case tokens.ErrTxWithWrongPath:
+	case errors.Is(err, tokens.ErrTxWithWrongPath):
 		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxWithWrongPath, now(), err.Error())
-	case tokens.ErrMissTokenConfig:
+	case errors.Is(err, tokens.ErrMissTokenConfig):
 		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.MissTokenConfig, now(), err.Error())
-	case tokens.ErrNoUnderlyingToken:
+	case errors.Is(err, tokens.ErrNoUnderlyingToken):
 		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.NoUnderlyingToken, now(), err.Error())
 	default:
 		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxVerifyFailed, now(), err.Error())

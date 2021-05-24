@@ -50,8 +50,9 @@ func startRouterSwapJob(chainID string) {
 		}
 		for _, swap := range res {
 			err = processRouterSwap(swap)
-			switch err {
-			case nil, errAlreadySwapped:
+			switch {
+			case err == nil,
+				errors.Is(err, errAlreadySwapped):
 			default:
 				logWorkerError("swap", "process router swap error", err, "chainID", chainID, "txid", swap.TxID, "logIndex", swap.LogIndex)
 			}
@@ -206,8 +207,10 @@ func processSwapTask(swapChan <-chan *tokens.BuildTxArgs) {
 	for {
 		args := <-swapChan
 		err := doSwap(args)
-		switch err {
-		case nil, errAlreadySwapped, tokens.ErrNoBridgeForChainID:
+		switch {
+		case err == nil,
+			errors.Is(err, errAlreadySwapped),
+			errors.Is(err, tokens.ErrNoBridgeForChainID):
 		default:
 			logWorkerError("doSwap", "process router swap failed", err, "args", args)
 		}
@@ -240,7 +243,7 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 	rawTx, err := resBridge.BuildRawTransaction(args)
 	if err != nil {
 		logWorkerError("doSwap", "build tx failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex)
-		if err == tokens.ErrEstimateGasFailed {
+		if errors.Is(err, tokens.ErrEstimateGasFailed) {
 			_ = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.EstimateGasFailed, now(), err.Error())
 			_ = mongodb.UpdateRouterSwapResultStatus(fromChainID, txid, logIndex, mongodb.EstimateGasFailed, now(), err.Error())
 		}

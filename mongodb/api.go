@@ -71,6 +71,7 @@ func UpdateRouterSwapStatus(fromChainID, txid string, logindex int, status SwapS
 		switch status {
 		case TxVerifyFailed, TxSwapFailed:
 			printLog = log.Warn
+		default:
 		}
 		printLog("mongodb update router swap status success", "chainid", fromChainID, "txid", txid, "logindex", logindex, "status", status)
 	} else {
