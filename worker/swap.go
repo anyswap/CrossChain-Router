@@ -152,21 +152,12 @@ func preventReswap(res *mongodb.MgoSwapResult) (err error) {
 }
 
 func processNonEmptySwapResult(res *mongodb.MgoSwapResult) error {
-	if res.SwapTx == "" {
-		return nil
-	}
-	chainID := res.FromChainID
-	txid := res.TxID
-	logIndex := res.LogIndex
-	_ = mongodb.UpdateRouterSwapStatus(chainID, txid, logIndex, mongodb.TxProcessed, now(), "")
-	if res.Status != mongodb.MatchTxEmpty {
-		return errAlreadySwapped
-	}
-	resBridge := router.GetBridgeByChainID(res.ToChainID)
-	if resBridge == nil {
-		return tokens.ErrNoBridgeForChainID
-	}
-	if _, err := resBridge.GetTransaction(res.SwapTx); err == nil {
+	if res.SwapNonce > 0 ||
+		res.Status != mongodb.MatchTxEmpty ||
+		res.SwapTx != "" ||
+		res.SwapHeight != 0 ||
+		len(res.OldSwapTxs) > 0 {
+		_ = mongodb.UpdateRouterSwapStatus(res.FromChainID, res.TxID, res.LogIndex, mongodb.TxProcessed, now(), "")
 		return errAlreadySwapped
 	}
 	return nil
@@ -180,7 +171,7 @@ func processHistory(res *mongodb.MgoSwapResult) error {
 	if history == nil {
 		return nil
 	}
-	if res.Status == mongodb.MatchTxFailed {
+	if res.Status == mongodb.MatchTxFailed || res.Status == mongodb.MatchTxEmpty {
 		history.txid = "" // mark ineffective
 		return nil
 	}
@@ -189,12 +180,7 @@ func processHistory(res *mongodb.MgoSwapResult) error {
 		return tokens.ErrNoBridgeForChainID
 	}
 	if _, err := resBridge.GetTransaction(history.matchTx); err == nil {
-		matchTx := &MatchTx{
-			SwapTx:    history.matchTx,
-			SwapValue: history.swapValue.String(),
-			SwapNonce: history.nonce,
-		}
-		_ = updateRouterSwapResult(chainID, txid, logIndex, matchTx)
+		_ = mongodb.UpdateRouterSwapStatus(chainID, txid, logIndex, mongodb.TxProcessed, now(), "")
 		logWorker("swap", "ignore swapped router swap", "chainID", chainID, "txid", txid, "matchTx", history.matchTx)
 		return errAlreadySwapped
 	}

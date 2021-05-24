@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sync"
 
 	"github.com/anyswap/CrossChain-Router/mongodb"
 	"github.com/anyswap/CrossChain-Router/params"
@@ -16,6 +17,8 @@ var (
 
 	defWaitTimeToReplace = int64(900) // seconds
 	defMaxReplaceCount   = 20
+
+	updateOldSwapTxsLock sync.Mutex
 )
 
 // StartReplaceJob replace job
@@ -46,9 +49,8 @@ func StartReplaceJob() {
 }
 
 func findRouterSwapResultToReplace() ([]*mongodb.MgoSwapResult, error) {
-	status := mongodb.MatchTxNotStable
 	septime := getSepTimeInFind(maxReplaceSwapLifetime)
-	return mongodb.FindRouterSwapResultsWithStatus(status, septime)
+	return mongodb.FindRouterSwapResultsToReplace(septime)
 }
 
 func processRouterSwapReplace(res *mongodb.MgoSwapResult) error {
@@ -66,6 +68,7 @@ func processRouterSwapReplace(res *mongodb.MgoSwapResult) error {
 	if getSepTimeInFind(waitTimeToReplace) < res.Timestamp {
 		return nil
 	}
+	_ = updateSwapTimestamp(res.FromChainID, res.TxID, res.LogIndex)
 	return ReplaceRouterSwap(res, nil)
 }
 
@@ -168,6 +171,9 @@ func verifyReplaceSwap(res *mongodb.MgoSwapResult) (*mongodb.MgoSwap, error) {
 }
 
 func replaceSwapResult(swapResult *mongodb.MgoSwapResult, txHash string) (err error) {
+	updateOldSwapTxsLock.Lock()
+	defer updateOldSwapTxsLock.Unlock()
+
 	fromChainID := swapResult.FromChainID
 	txid := swapResult.TxID
 	logIndex := swapResult.LogIndex

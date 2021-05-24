@@ -23,7 +23,8 @@ const (
 )
 
 var (
-	retryLock sync.Mutex
+	retryLock           sync.Mutex
+	updateSwapNonceLock sync.Mutex
 )
 
 func getRouterSwapKey(fromChainID, txid string, logindex int) string {
@@ -171,6 +172,7 @@ func UpdateRouterSwapResultStatus(fromChainID, txid string, logindex int, status
 		updates["oldswaptxs"] = nil
 		updates["swapheight"] = 0
 		updates["swaptime"] = 0
+		updates["swapnonce"] = 0
 	}
 	err := collRouterSwapResult.UpdateId(key, bson.M{"$set": updates})
 	if err == nil {
@@ -222,6 +224,18 @@ func FindRouterSwapResultsWithChainIDAndStatus(fromChainID string, status SwapSt
 	query := getStatusQueryWithChainID(fromChainID, status, septime)
 	q := collRouterSwapResult.Find(query).Sort("timestamp").Limit(maxCountOfResults)
 	result := make([]*MgoSwapResult, 0, 20)
+	err := q.All(&result)
+	if err != nil {
+		return nil, mgoError(err)
+	}
+	return result, nil
+}
+
+// FindRouterSwapResultsToReplace find router swap result with status
+func FindRouterSwapResultsToReplace(septime int64) ([]*MgoSwapResult, error) {
+	query := getStatusQuery(MatchTxNotStable, septime)
+	q := collRouterSwapResult.Find(query).Sort("timestamp").Limit(5)
+	result := make([]*MgoSwapResult, 0, 5)
 	err := q.All(&result)
 	if err != nil {
 		return nil, mgoError(err)
@@ -290,13 +304,23 @@ func UpdateRouterSwapResult(fromChainID, txid string, logindex int, items *SwapR
 	if items.SwapValue != "" {
 		updates["swapvalue"] = items.SwapValue
 	}
-	if items.SwapNonce != 0 {
-		updates["swapnonce"] = items.SwapNonce
-	}
 	if items.Memo != "" {
 		updates["memo"] = items.Memo
 	} else if items.Status == MatchTxNotStable {
 		updates["memo"] = ""
+	}
+	if items.SwapNonce != 0 {
+		updateSwapNonceLock.Lock()
+		defer updateSwapNonceLock.Unlock()
+		swapRes, err := FindRouterSwapResult(fromChainID, txid, logindex)
+		if err != nil {
+			return err
+		}
+		if swapRes.SwapNonce != 0 {
+			log.Error("forbid update swap nonce again", "old", swapRes.SwapNonce, "new", items.SwapNonce)
+			return ErrForbidUpdateNonce
+		}
+		updates["swapnonce"] = items.SwapNonce
 	}
 	err := collRouterSwapResult.UpdateId(key, bson.M{"$set": updates})
 	if err == nil {
@@ -317,6 +341,14 @@ func RouterAdminPassBigValue(fromChainID, txid string, logIndex int) error {
 	}
 	if swap.Status != TxWithBigValue {
 		return fmt.Errorf("swap status is %v, not big value status %v", swap.Status.String(), TxWithBigValue.String())
+	}
+
+	res, err := FindRouterSwapResult(fromChainID, txid, logIndex)
+	if err != nil {
+		return err
+	}
+	if res.SwapTx != "" || res.SwapHeight != 0 || len(res.OldSwapTxs) > 0 {
+		return fmt.Errorf("already swapped with swaptx %v", res.SwapTx)
 	}
 	return UpdateRouterSwapStatus(fromChainID, txid, logIndex, TxNotSwapped, time.Now().Unix(), "")
 }

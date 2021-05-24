@@ -86,6 +86,20 @@ func updateRouterSwapResult(fromChainID, txid string, logIndex int, mtx *MatchTx
 	return err
 }
 
+func updateSwapTimestamp(fromChainID, txid string, logIndex int) (err error) {
+	updates := &mongodb.SwapResultUpdateItems{
+		Status:    mongodb.KeepStatus,
+		Timestamp: now(),
+	}
+	err = mongodb.UpdateRouterSwapResult(fromChainID, txid, logIndex, updates)
+	if err != nil {
+		logWorkerError("update", "updateSwapTimestamp failed", err, "chainid", fromChainID, "txid", txid, "logIndex", logIndex)
+	} else {
+		logWorker("update", "updateSwapTimestamp success", "chainid", fromChainID, "txid", txid, "logIndex", logIndex)
+	}
+	return err
+}
+
 func updateSwapTx(fromChainID, txid string, logIndex int, swapTx string) (err error) {
 	updates := &mongodb.SwapResultUpdateItems{
 		Status:    mongodb.KeepStatus,
