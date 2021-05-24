@@ -18,8 +18,9 @@ var (
 	clientIdentifier = "swaprouter"
 	// Git SHA1 commit hash of the release (set via linker flags)
 	gitCommit = ""
+	gitDate   = ""
 	// The app that holds all commands and flags.
-	app = utils.NewApp(clientIdentifier, gitCommit, "the swaprouter command line interface")
+	app = utils.NewApp(clientIdentifier, gitCommit, gitDate, "the swaprouter command line interface")
 )
 
 func initApp() {
