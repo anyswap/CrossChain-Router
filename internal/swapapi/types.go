@@ -37,6 +37,7 @@ type SwapInfo struct {
 	SwapNonce     uint64             `json:"swapnonce"`
 	Status        mongodb.SwapStatus `json:"status"`
 	StatusMsg     string             `json:"statusmsg"`
+	InitTime      int64              `json:"inittime"`
 	Timestamp     int64              `json:"timestamp"`
 	Memo          string             `json:"memo,omitempty"`
 	Confirmations uint64             `json:"confirmations"`

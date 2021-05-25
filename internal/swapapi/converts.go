@@ -18,6 +18,7 @@ func ConvertMgoSwapToSwapInfo(ms *mongodb.MgoSwap) *SwapInfo {
 		SwapInfo:    ms.SwapInfo,
 		Status:      ms.Status,
 		StatusMsg:   ms.Status.String(),
+		InitTime:    ms.InitTime,
 		Timestamp:   ms.Timestamp,
 		Memo:        ms.Memo,
 	}
@@ -66,6 +67,7 @@ func ConvertMgoSwapResultToSwapInfo(mr *mongodb.MgoSwapResult) *SwapInfo {
 		SwapNonce:     mr.SwapNonce,
 		Status:        mr.Status,
 		StatusMsg:     mr.Status.String(),
+		InitTime:      mr.InitTime,
 		Timestamp:     mr.Timestamp,
 		Memo:          mr.Memo,
 		Confirmations: confirmations,

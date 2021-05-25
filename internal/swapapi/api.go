@@ -165,7 +165,7 @@ func GetRouterSwap(fromChainID, txid, logindexStr string) (*SwapInfo, error) {
 }
 
 // GetRouterSwapHistory impl
-func GetRouterSwapHistory(fromChainID, address string, offset, limit int) ([]*SwapInfo, error) {
+func GetRouterSwapHistory(fromChainID, address string, offset, limit int, status string) ([]*SwapInfo, error) {
 	switch {
 	case limit == 0:
 		limit = 20 // default
@@ -174,7 +174,7 @@ func GetRouterSwapHistory(fromChainID, address string, offset, limit int) ([]*Sw
 	case limit < -100:
 		limit = -100
 	}
-	result, err := mongodb.FindRouterSwapResults(fromChainID, address, offset, limit)
+	result, err := mongodb.FindRouterSwapResults(fromChainID, address, offset, limit, status)
 	if err != nil {
 		return nil, err
 	}

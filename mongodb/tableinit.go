@@ -16,8 +16,8 @@ func deinintCollections() {
 }
 
 func initCollections() {
-	initCollection(tbRouterSwaps, &collRouterSwap, "timestamp", "status", "fromChainID")
-	initCollection(tbRouterSwapResults, &collRouterSwapResult, "timestamp", "status", "fromChainID")
+	initCollection(tbRouterSwaps, &collRouterSwap, "inittime", "status", "fromChainID")
+	initCollection(tbRouterSwapResults, &collRouterSwapResult, "inittime", "status", "fromChainID")
 	_ = collRouterSwap.EnsureIndexKey("txid")                      // speed find swap
 	_ = collRouterSwapResult.EnsureIndexKey("txid")                // speed find swap result
 	_ = collRouterSwapResult.EnsureIndexKey("from", "fromChainID") // speed find history

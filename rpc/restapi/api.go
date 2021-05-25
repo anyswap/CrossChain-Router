@@ -66,14 +66,14 @@ func GetRouterSwapHandler(w http.ResponseWriter, r *http.Request) {
 	writeResponse(w, res, err)
 }
 
-func getHistoryRequestVaules(r *http.Request) (offset, limit int, err error) {
+func getHistoryRequestVaules(r *http.Request) (offset, limit int, status string, err error) {
 	vals := r.URL.Query()
 
 	offsetStr, exist := vals["offset"]
 	if exist {
 		offset, err = common.GetIntFromStr(offsetStr[0])
 		if err != nil {
-			return offset, limit, err
+			return offset, limit, status, err
 		}
 	}
 
@@ -81,11 +81,16 @@ func getHistoryRequestVaules(r *http.Request) (offset, limit int, err error) {
 	if exist {
 		limit, err = common.GetIntFromStr(limitStr[0])
 		if err != nil {
-			return offset, limit, err
+			return offset, limit, status, err
 		}
 	}
 
-	return offset, limit, nil
+	statusStr, exist := vals["status"]
+	if exist {
+		status = statusStr[0]
+	}
+
+	return offset, limit, status, nil
 }
 
 // GetRouterSwapHistoryHandler handler
@@ -93,11 +98,11 @@ func GetRouterSwapHistoryHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	chainID := vars["chainid"]
 	address := vars["address"]
-	offset, limit, err := getHistoryRequestVaules(r)
+	offset, limit, status, err := getHistoryRequestVaules(r)
 	if err != nil {
 		writeResponse(w, nil, err)
 	} else {
-		res, err := swapapi.GetRouterSwapHistory(chainID, address, offset, limit)
+		res, err := swapapi.GetRouterSwapHistory(chainID, address, offset, limit, status)
 		writeResponse(w, res, err)
 	}
 }

@@ -62,11 +62,12 @@ type RouterGetSwapHistoryArgs struct {
 	Address string `json:"address"`
 	Offset  int    `json:"offset"`
 	Limit   int    `json:"limit"`
+	Status  string `json:"status"`
 }
 
 // GetRouterSwapHistory api
 func (s *RouterSwapAPI) GetRouterSwapHistory(r *http.Request, args *RouterGetSwapHistoryArgs, result *[]*swapapi.SwapInfo) error {
-	res, err := swapapi.GetRouterSwapHistory(args.ChainID, args.Address, args.Offset, args.Limit)
+	res, err := swapapi.GetRouterSwapHistory(args.ChainID, args.Address, args.Offset, args.Limit, args.Status)
 	if err == nil && res != nil {
 		*result = res
 	}
