@@ -36,7 +36,7 @@ type IBridge interface {
 	SendTransaction(signedTx interface{}) (txHash string, err error)
 
 	GetTransaction(txHash string) (interface{}, error)
-	GetTransactionStatus(txHash string, withExt bool) *TxStatus
+	GetTransactionStatus(txHash string) *TxStatus
 	GetLatestBlockNumber() (uint64, error)
 
 	GetBigValueThreshold(token string) *big.Int
@@ -48,5 +48,4 @@ type NonceSetter interface {
 	GetPoolNonce(address, height string) (uint64, error)
 	SetNonce(pairID string, value uint64)
 	AdjustNonce(pairID string, value uint64) (nonce uint64)
-	IncreaseNonce(pairID string, value uint64)
 }

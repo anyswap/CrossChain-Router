@@ -52,17 +52,21 @@ func addInitialSwapResult(swapInfo *tokens.SwapTxInfo, status mongodb.SwapStatus
 
 func updateRouterSwapResult(fromChainID, txid string, logIndex int, mtx *MatchTx) (err error) {
 	updates := &mongodb.SwapResultUpdateItems{
-		Status:    mongodb.MatchTxNotStable,
+		Status:    mongodb.KeepStatus,
 		Timestamp: now(),
 	}
 	if mtx.SwapHeight == 0 {
-		updates.SwapTx = mtx.SwapTx
 		updates.OldSwapTxs = mtx.OldSwapTxs
 		updates.SwapValue = mtx.SwapValue
 		updates.SwapNonce = mtx.SwapNonce
 		updates.SwapHeight = 0
 		updates.SwapTime = 0
+		if mtx.SwapTx != "" {
+			updates.SwapTx = mtx.SwapTx
+			updates.Status = mongodb.MatchTxNotStable
+		}
 	} else {
+		updates.SwapNonce = mtx.SwapNonce
 		updates.SwapHeight = mtx.SwapHeight
 		updates.SwapTime = mtx.SwapTime
 		if mtx.SwapTx != "" {
@@ -156,9 +160,8 @@ func markSwapResultFailed(fromChainID, txid string, logIndex int) (err error) {
 	return err
 }
 
-func sendSignedTransaction(bridge tokens.IBridge, signedTx interface{}, args *tokens.BuildTxArgs, isReplace bool) (err error) {
+func sendSignedTransaction(bridge tokens.IBridge, signedTx interface{}, args *tokens.BuildTxArgs) (txHash string, err error) {
 	var (
-		txHash              string
 		retrySendTxCount    = 3
 		retrySendTxInterval = 1 * time.Second
 	)
@@ -166,7 +169,7 @@ func sendSignedTransaction(bridge tokens.IBridge, signedTx interface{}, args *to
 		txHash, err = bridge.SendTransaction(signedTx)
 		if txHash != "" {
 			if tx, _ := bridge.GetTransaction(txHash); tx != nil {
-				logWorker("sendtx", "send tx success", "txHash", txHash)
+				logWorker("sendtx", "send tx success", "txHash", txHash, "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex)
 				err = nil
 				break
 			}
@@ -174,16 +177,34 @@ func sendSignedTransaction(bridge tokens.IBridge, signedTx interface{}, args *to
 		time.Sleep(retrySendTxInterval)
 	}
 	if err != nil {
-		fromChainID, txid, logIndex := args.FromChainID.String(), args.SwapID, args.LogIndex
-		_ = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxSwapFailed, now(), err.Error())
-		_ = mongodb.UpdateRouterSwapResultStatus(fromChainID, txid, logIndex, mongodb.TxSwapFailed, now(), err.Error())
-		logWorkerError("sendtx", "update router swap status to TxSwapFailed", err, "txid", txid)
-		return err
+		logWorkerError("sendtx", "send tx failed", err, "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex)
+		return txHash, err
 	}
-	if !isReplace {
-		if nonceSetter, ok := bridge.(tokens.NonceSetter); ok {
-			nonceSetter.IncreaseNonce(args.From, 1)
+
+	if nonceSetter, ok := bridge.(tokens.NonceSetter); ok {
+		swapTxNonce := args.GetTxNonce()
+		nonceSetter.SetNonce(args.From, swapTxNonce+1)
+	}
+
+	// update swap result tx height in goroutine
+	go func() {
+		var txStatus *tokens.TxStatus
+		for i := int64(0); i < 10; i++ {
+			txStatus = bridge.GetTransactionStatus(txHash)
+			if txStatus.BlockHeight > 0 {
+				break
+			}
+			time.Sleep(5 * time.Second)
 		}
-	}
-	return nil
+		if txStatus.BlockHeight > 0 {
+			matchTx := &MatchTx{
+				SwapTx:     txHash,
+				SwapHeight: txStatus.BlockHeight,
+				SwapTime:   txStatus.BlockTime,
+			}
+			_ = updateRouterSwapResult(args.FromChainID.String(), args.SwapID, args.LogIndex, matchTx)
+		}
+	}()
+
+	return txHash, err
 }

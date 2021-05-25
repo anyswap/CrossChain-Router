@@ -22,14 +22,15 @@ func (b *Bridge) AdjustNonce(address string, value uint64) (nonce uint64) {
 	if b.SwapNonce[account] > value {
 		nonce = b.SwapNonce[account]
 	} else {
-		b.SwapNonce[account] = value
 		nonce = value
 	}
 	return nonce
 }
 
-// IncreaseNonce decrease account nonce (eth like chain)
-func (b *Bridge) IncreaseNonce(address string, value uint64) {
+// SetNonce set account nonce (eth like chain)
+func (b *Bridge) SetNonce(address string, value uint64) {
 	account := strings.ToLower(address)
-	b.SwapNonce[account] += value
+	if b.SwapNonce[account] < value {
+		b.SwapNonce[account] = value
+	}
 }

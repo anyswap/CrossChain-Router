@@ -22,7 +22,8 @@ var (
 	swapChanSize          = 10
 	routerSwapTaskChanMap = make(map[string]chan *tokens.BuildTxArgs) // key is chainID
 
-	errAlreadySwapped = errors.New("already swapped")
+	errAlreadySwapped     = errors.New("already swapped")
+	errSendTxWithDiffHash = errors.New("send tx with different hash")
 )
 
 // StartSwapJob swap job
@@ -165,6 +166,9 @@ func processNonEmptySwapResult(res *mongodb.MgoSwapResult) error {
 }
 
 func processHistory(res *mongodb.MgoSwapResult) error {
+	if res.Status == mongodb.MatchTxEmpty && res.SwapNonce == 0 {
+		return nil
+	}
 	chainID := res.FromChainID
 	txid := res.TxID
 	logIndex := res.LogIndex
@@ -172,20 +176,9 @@ func processHistory(res *mongodb.MgoSwapResult) error {
 	if history == nil {
 		return nil
 	}
-	if res.Status == mongodb.MatchTxFailed || res.Status == mongodb.MatchTxEmpty {
-		history.txid = "" // mark ineffective
-		return nil
-	}
-	resBridge := router.GetBridgeByChainID(res.ToChainID)
-	if resBridge == nil {
-		return tokens.ErrNoBridgeForChainID
-	}
-	if _, err := resBridge.GetTransaction(history.matchTx); err == nil {
-		_ = mongodb.UpdateRouterSwapStatus(chainID, txid, logIndex, mongodb.TxProcessed, now(), "")
-		logWorker("swap", "ignore swapped router swap", "chainID", chainID, "txid", txid, "matchTx", history.matchTx)
-		return errAlreadySwapped
-	}
-	return nil
+	_ = mongodb.UpdateRouterSwapStatus(chainID, txid, logIndex, mongodb.TxProcessed, now(), "")
+	logWorker("swap", "ignore swapped router swap", "chainID", chainID, "txid", txid, "logIndex", logIndex, "matchTx", history.matchTx)
+	return errAlreadySwapped
 }
 
 func dispatchSwapTask(args *tokens.BuildTxArgs) error {
@@ -258,30 +251,12 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 
 	swapTxNonce := args.GetTxNonce()
 
-	var oldSwapTxs []string
-	if len(res.OldSwapTxs) > 0 {
-		var existsInOld bool
-		for _, oldSwapTx := range res.OldSwapTxs {
-			if oldSwapTx == txHash {
-				existsInOld = true
-				break
-			}
-		}
-		if !existsInOld {
-			oldSwapTxs = res.OldSwapTxs
-			oldSwapTxs = append(oldSwapTxs, txHash)
-		}
-	} else if res.SwapTx != "" && txHash != res.SwapTx {
-		oldSwapTxs = []string{res.SwapTx, txHash}
-	}
-
 	// update database before sending transaction
-	addSwapHistory(fromChainID, txid, logIndex, args.SwapValue, txHash, swapTxNonce)
+	addSwapHistory(fromChainID, txid, logIndex, txHash)
 	matchTx := &MatchTx{
-		SwapTx:     txHash,
-		OldSwapTxs: oldSwapTxs,
-		SwapValue:  args.SwapValue.String(),
-		SwapNonce:  swapTxNonce,
+		SwapTx:    txHash,
+		SwapValue: args.SwapValue.String(),
+		SwapNonce: swapTxNonce,
 	}
 	err = updateRouterSwapResult(fromChainID, txid, logIndex, matchTx)
 	if err != nil {
@@ -295,28 +270,32 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 		return err
 	}
 
-	return sendSignedTransaction(resBridge, signedTx, args, false)
+	sentTxHash, err := sendSignedTransaction(resBridge, signedTx, args)
+	if err == nil {
+		logWorker("doSwap", "send tx success", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "swapNonce", swapTxNonce, "txHash", sentTxHash)
+		if txHash != sentTxHash {
+			logWorkerError("doSwap", "send tx success but with different hash", errSendTxWithDiffHash, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "txHash", txHash, "sentTxHash", sentTxHash)
+			_ = replaceSwapResult(res, sentTxHash)
+		}
+	}
+	return err
 }
 
 type swapInfo struct {
-	chainID   string
-	txid      string
-	logIndex  int
-	swapValue *big.Int
-	matchTx   string
-	nonce     uint64
+	chainID  string
+	txid     string
+	logIndex int
+	matchTx  string
 }
 
-func addSwapHistory(chainID, txid string, logIndex int, swapValue *big.Int, matchTx string, nonce uint64) {
+func addSwapHistory(chainID, txid string, logIndex int, matchTx string) {
 	// Create the new item as its own ring
 	item := ring.New(1)
 	item.Value = &swapInfo{
-		chainID:   chainID,
-		txid:      txid,
-		logIndex:  logIndex,
-		swapValue: swapValue,
-		matchTx:   matchTx,
-		nonce:     nonce,
+		chainID:  chainID,
+		txid:     txid,
+		logIndex: logIndex,
+		matchTx:  matchTx,
 	}
 
 	swapRingLock.Lock()

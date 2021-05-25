@@ -130,7 +130,12 @@ func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int) error {
 	if err != nil {
 		return err
 	}
-	return sendSignedTransaction(resBridge, signedTx, args, true)
+	sentTxHash, err := sendSignedTransaction(resBridge, signedTx, args)
+	if err == nil && txHash != sentTxHash {
+		logWorkerError("replaceSwap", "send tx success but with different hash", errSendTxWithDiffHash, "fromChainID", res.FromChainID, "toChainID", res.ToChainID, "txid", txid, "logIndex", res.LogIndex, "txHash", txHash, "sentTxHash", sentTxHash)
+		_ = replaceSwapResult(res, sentTxHash)
+	}
+	return err
 }
 
 func verifyReplaceSwap(res *mongodb.MgoSwapResult) (*mongodb.MgoSwap, error) {
@@ -181,19 +186,22 @@ func replaceSwapResult(swapResult *mongodb.MgoSwapResult, txHash string) (err er
 	logIndex := swapResult.LogIndex
 	var oldSwapTxs []string
 	if len(swapResult.OldSwapTxs) > 0 {
-		var existsInOld bool
 		for _, oldSwapTx := range swapResult.OldSwapTxs {
 			if oldSwapTx == txHash {
-				existsInOld = true
-				break
+				return nil
 			}
 		}
-		if !existsInOld {
-			oldSwapTxs = swapResult.OldSwapTxs
-			oldSwapTxs = append(oldSwapTxs, txHash)
+		oldSwapTxs = swapResult.OldSwapTxs
+		oldSwapTxs = append(oldSwapTxs, txHash)
+	} else {
+		if txHash == swapResult.SwapTx {
+			return nil
 		}
-	} else if swapResult.SwapTx != "" && txHash != swapResult.SwapTx {
-		oldSwapTxs = []string{swapResult.SwapTx, txHash}
+		if swapResult.SwapTx == "" {
+			oldSwapTxs = []string{txHash}
+		} else {
+			oldSwapTxs = []string{swapResult.SwapTx, txHash}
+		}
 	}
 	err = updateOldSwapTxs(fromChainID, txid, logIndex, oldSwapTxs)
 	if err != nil {
