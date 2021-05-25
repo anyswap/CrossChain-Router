@@ -117,6 +117,7 @@ type BuildTxArgs struct {
 	Memo        string         `json:"memo,omitempty"`
 	Input       *hexutil.Bytes `json:"input,omitempty"`
 	Extra       *AllExtras     `json:"extra,omitempty"`
+	ReplaceNum  uint64         `json:"replaceNum,omitempty"`
 }
 
 // AllExtras struct

@@ -31,13 +31,15 @@ type RouterServerConfig struct {
 	TokenIDBlackList []string `toml:",omitempty" json:",omitempty"`
 
 	// extras
-	EnableReplaceSwap       bool
-	WaitTimeToReplace       int64  `toml:",omitempty" json:",omitempty"` // seconds
-	MaxReplaceCount         int    `toml:",omitempty" json:",omitempty"`
-	PlusGasPricePercentage  uint64 `toml:",omitempty" json:",omitempty"`
-	MaxGasPriceFluctPercent uint64 `toml:",omitempty" json:",omitempty"`
-	DefaultGasLimit         uint64 `toml:",omitempty" json:",omitempty"`
-	SwapDeadlineOffset      int64  `toml:",omitempty" json:",omitempty"` // seconds
+	EnableReplaceSwap          bool
+	ReplacePlusGasPricePercent uint64 `toml:",omitempty" json:",omitempty"`
+	WaitTimeToReplace          int64  `toml:",omitempty" json:",omitempty"` // seconds
+	MaxReplaceCount            int    `toml:",omitempty" json:",omitempty"`
+	PlusGasPricePercentage     uint64 `toml:",omitempty" json:",omitempty"`
+	MaxPlusGasPricePercentage  uint64 `toml:",omitempty" json:",omitempty"`
+	MaxGasPriceFluctPercent    uint64 `toml:",omitempty" json:",omitempty"`
+	DefaultGasLimit            uint64 `toml:",omitempty" json:",omitempty"`
+	SwapDeadlineOffset         int64  `toml:",omitempty" json:",omitempty"` // seconds
 }
 
 // RouterConfig config

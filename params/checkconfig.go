@@ -96,7 +96,10 @@ func (s *RouterServerConfig) CheckConfig() error {
 
 // CheckExtra check extra server config
 func (s *RouterServerConfig) CheckExtra() error {
-	if s.PlusGasPricePercentage > 10000 {
+	if s.MaxPlusGasPricePercentage == 0 {
+		s.MaxPlusGasPricePercentage = 100 // default value
+	}
+	if s.PlusGasPricePercentage > s.MaxPlusGasPricePercentage {
 		return errors.New("too large 'PlusGasPricePercentage' value")
 	}
 	if s.MaxGasPriceFluctPercent > 100 {

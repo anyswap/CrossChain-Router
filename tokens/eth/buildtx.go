@@ -148,13 +148,19 @@ func (b *Bridge) getGasPrice(args *tokens.BuildTxArgs) (price *big.Int, err erro
 }
 
 // args and oldGasPrice should be read only
-func (b *Bridge) adjustSwapGasPrice(_ *tokens.BuildTxArgs, oldGasPrice *big.Int) (newGasPrice *big.Int, err error) {
+func (b *Bridge) adjustSwapGasPrice(args *tokens.BuildTxArgs, oldGasPrice *big.Int) (newGasPrice *big.Int, err error) {
 	serverCfg := params.GetRouterServerConfig()
 	if serverCfg == nil {
 		return nil, fmt.Errorf("no router server config")
 	}
 	newGasPrice = new(big.Int).Set(oldGasPrice) // clone from old
 	addPercent := serverCfg.PlusGasPricePercentage
+	if args.ReplaceNum > 0 {
+		addPercent += args.ReplaceNum * serverCfg.ReplacePlusGasPricePercent
+	}
+	if addPercent > serverCfg.MaxPlusGasPricePercentage {
+		addPercent = serverCfg.MaxPlusGasPricePercentage
+	}
 	if addPercent > 0 {
 		newGasPrice.Mul(newGasPrice, big.NewInt(int64(100+addPercent)))
 		newGasPrice.Div(newGasPrice, big.NewInt(100))
@@ -170,7 +176,9 @@ func (b *Bridge) adjustSwapGasPrice(_ *tokens.BuildTxArgs, oldGasPrice *big.Int)
 				newGasPrice = minGasPrice
 			}
 		}
-		latestGasPrice = newGasPrice
+		if args.ReplaceNum == 0 { // exclude replace situation
+			latestGasPrice = newGasPrice
+		}
 	}
 	return newGasPrice, nil
 }

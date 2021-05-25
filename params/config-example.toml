@@ -16,12 +16,16 @@ ChainIDBlackList = []
 TokenIDBlackList = []
 # enable replace swap job
 EnableReplaceSwap = true
+# replace plus gas price percentage
+ReplacePlusGasPricePercent = 1
 # wait time to replace swap
 WaitTimeToReplace = 900
 # maximum replace count
 MaxReplaceCount = 20
 # plus gas price percentage
 PlusGasPricePercentage = 10
+# maximum plus gas price percentage
+MaxPlusGasPricePercentage = 100
 # maximum gas price flunct percentage
 MaxGasPriceFluctPercent = 10
 # default gas limit
