@@ -48,10 +48,12 @@ type MgoSwapResult struct {
 	InitTime    int64      `bson:"inittime"`
 	Timestamp   int64      `bson:"timestamp"`
 	Memo        string     `bson:"memo"`
+	MPC         string     `bson:"mpc"`
 }
 
 // SwapResultUpdateItems swap update items
 type SwapResultUpdateItems struct {
+	MPC        string
 	SwapTx     string
 	OldSwapTxs []string
 	SwapHeight uint64

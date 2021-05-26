@@ -234,6 +234,19 @@ func FindRouterSwapResultsWithChainIDAndStatus(fromChainID string, status SwapSt
 	return result, nil
 }
 
+// FindNextSwapNonce find next swap nonce
+func FindNextSwapNonce(chainID, mpc string) (uint64, error) {
+	qchainid := bson.M{"toChainID": chainID}
+	qmpc := bson.M{"mpc": strings.ToLower(mpc)}
+	queries := []bson.M{qchainid, qmpc}
+	result := &MgoSwapResult{}
+	err := collRouterSwapResult.Find(bson.M{"$and": queries}).Sort("-swapnonce").One(result)
+	if err != nil {
+		return 0, mgoError(err)
+	}
+	return result.SwapNonce + 1, nil
+}
+
 // FindRouterSwapResultsToReplace find router swap result with status
 func FindRouterSwapResultsToReplace(septime int64) ([]*MgoSwapResult, error) {
 	query := getStatusQuery(MatchTxNotStable, septime)
@@ -316,6 +329,9 @@ func UpdateRouterSwapResult(fromChainID, txid string, logindex int, items *SwapR
 	}
 	if items.Status != KeepStatus {
 		updates["status"] = items.Status
+	}
+	if items.MPC != "" {
+		updates["mpc"] = strings.ToLower(items.MPC)
 	}
 	if items.SwapTx != "" {
 		updates["swaptx"] = items.SwapTx

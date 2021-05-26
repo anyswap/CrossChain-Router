@@ -8,6 +8,7 @@ import (
 
 	"github.com/anyswap/CrossChain-Router/common"
 	"github.com/anyswap/CrossChain-Router/log"
+	"github.com/anyswap/CrossChain-Router/mongodb"
 	"github.com/anyswap/CrossChain-Router/params"
 	"github.com/anyswap/CrossChain-Router/router"
 	"github.com/anyswap/CrossChain-Router/tokens"
@@ -89,6 +90,14 @@ func (b *Bridge) InitChainConfig(chainID *big.Int) {
 	b.SetChainConfig(chainCfg)
 	b.initSigner(chainID)
 	log.Infof(">>> [%5v] init chain config success. router contract is %v, mpc address is %v", chainID, chainCfg.RouterContract, routerMPC)
+
+	if mongodb.HasSession() {
+		nextSwapNonce, err := mongodb.FindNextSwapNonce(chainID.String(), strings.ToLower(routerMPC))
+		if err == nil {
+			log.Info("init next swap nonce from db", "chainID", chainID, "mpc", routerMPC, "nonce", nextSwapNonce)
+			b.SwapNonce[routerMPC] = nextSwapNonce
+		}
+	}
 }
 
 func (b *Bridge) initSigner(chainID *big.Int) {
