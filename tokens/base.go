@@ -62,22 +62,34 @@ func (b *CrossChainBridgeBase) GetBigValueThreshold(token string) *big.Int {
 }
 
 // CheckTokenSwapValue check swap value is in right range
-func CheckTokenSwapValue(token *TokenConfig, value *big.Int) bool {
-	if value == nil {
+func CheckTokenSwapValue(fromToken, toToken *TokenConfig, value *big.Int) bool {
+	if value == nil || value.Sign() <= 0 {
 		return false
 	}
-	if value.Cmp(token.MinimumSwap) < 0 {
+	if value.Cmp(fromToken.MinimumSwap) < 0 {
 		return false
 	}
-	if value.Cmp(token.MaximumSwap) > 0 {
+	if value.Cmp(fromToken.MaximumSwap) > 0 {
 		return false
 	}
-	swappedValue := CalcSwapValue(token, value)
-	return swappedValue.Sign() > 0
+	return CalcSwapValue(fromToken, toToken, value).Sign() > 0
 }
 
-// CalcSwapValue calc swap value (get rid of fee)
-func CalcSwapValue(token *TokenConfig, value *big.Int) *big.Int {
+// CalcSwapValue calc swap value (get rid of fee and convert by decimals)
+func CalcSwapValue(fromToken, toToken *TokenConfig, value *big.Int) *big.Int {
+	srcValue := calcSrcSwapValue(fromToken, value)
+	if fromToken.Decimals == toToken.Decimals {
+		return srcValue
+	}
+	// do value convert by decimals
+	oneSrcToken := cmath.BigPow(10, int64(fromToken.Decimals))
+	oneDstToken := cmath.BigPow(10, int64(toToken.Decimals))
+	dstValue := new(big.Int).Mul(srcValue, oneDstToken)
+	dstValue.Div(dstValue, oneSrcToken)
+	return dstValue
+}
+
+func calcSrcSwapValue(token *TokenConfig, value *big.Int) *big.Int {
 	if token.SwapFeeRatePerMillion == 0 {
 		return value
 	}

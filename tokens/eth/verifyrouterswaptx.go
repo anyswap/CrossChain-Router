@@ -59,11 +59,25 @@ func (b *Bridge) verifyRouterSwapTx(txHash string, logIndex int, allowUnstable b
 }
 
 func (b *Bridge) checkRouterSwapInfo(swapInfo *tokens.SwapTxInfo) error {
-	tokenCfg := b.GetTokenConfig(swapInfo.Token)
-	if tokenCfg == nil {
+	fromTokenCfg := b.GetTokenConfig(swapInfo.Token)
+	if fromTokenCfg == nil {
 		return tokens.ErrMissTokenConfig
 	}
-	if !tokens.CheckTokenSwapValue(tokenCfg, swapInfo.Value) {
+	multichainToken := router.GetCachedMultichainToken(swapInfo.TokenID, swapInfo.ToChainID.String())
+	if multichainToken == "" {
+		log.Warn("get multichain token failed", "tokenID", swapInfo.TokenID, "chainID", swapInfo.ToChainID)
+		return tokens.ErrMissTokenConfig
+	}
+	toBridge := router.GetBridgeByChainID(swapInfo.ToChainID.String())
+	if toBridge == nil {
+		return tokens.ErrNoBridgeForChainID
+	}
+	toTokenCfg := toBridge.GetTokenConfig(multichainToken)
+	if toTokenCfg == nil {
+		log.Warn("get token config failed", "chainID", swapInfo.ToChainID, "token", multichainToken)
+		return tokens.ErrMissTokenConfig
+	}
+	if !tokens.CheckTokenSwapValue(fromTokenCfg, toTokenCfg, swapInfo.Value) {
 		return tokens.ErrTxWithWrongValue
 	}
 	dstBridge := router.GetBridgeByChainID(swapInfo.ToChainID.String())

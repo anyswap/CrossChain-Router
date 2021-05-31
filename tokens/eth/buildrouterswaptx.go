@@ -34,14 +34,20 @@ func (b *Bridge) buildRouterSwapTxInput(args *tokens.BuildTxArgs) (err error) {
 	if args.RouterSwapInfo == nil || args.TokenID == "" {
 		return errors.New("build router swaptx without tokenID")
 	}
-	if len(args.Path) > 0 && args.AmountOutMin != nil {
-		return b.buildRouterSwapTradeTxInput(args)
+	multichainToken := router.GetCachedMultichainToken(args.TokenID, args.ToChainID.String())
+	if multichainToken == "" {
+		log.Warn("get multichain token failed", "tokenID", args.TokenID, "chainID", args.ToChainID)
+		return tokens.ErrMissTokenConfig
 	}
-	return b.buildRouterSwapoutTxInput(args)
+
+	if len(args.Path) > 0 && args.AmountOutMin != nil {
+		return b.buildRouterSwapTradeTxInput(args, multichainToken)
+	}
+	return b.buildRouterSwapoutTxInput(args, multichainToken)
 }
 
-func (b *Bridge) buildRouterSwapoutTxInput(args *tokens.BuildTxArgs) (err error) {
-	receiver, amount, err := b.getReceiverAndAmount(args)
+func (b *Bridge) buildRouterSwapoutTxInput(args *tokens.BuildTxArgs, multichainToken string) (err error) {
+	receiver, amount, err := b.getReceiverAndAmount(args, multichainToken)
 	if err != nil {
 		return err
 	}
@@ -51,12 +57,6 @@ func (b *Bridge) buildRouterSwapoutTxInput(args *tokens.BuildTxArgs) (err error)
 		funcHash = AnySwapInUnderlyingFuncHash
 	} else {
 		funcHash = AnySwapInAutoFuncHash // old:AnySwapInFuncHash
-	}
-
-	multichainToken := router.GetCachedMultichainToken(args.TokenID, args.ToChainID.String())
-	if multichainToken == "" {
-		log.Warn("get multichain token failed", "tokenID", args.TokenID, "chainID", args.ToChainID)
-		return tokens.ErrMissTokenConfig
 	}
 
 	input := abicoder.PackDataWithFuncHash(funcHash,
@@ -73,8 +73,8 @@ func (b *Bridge) buildRouterSwapoutTxInput(args *tokens.BuildTxArgs) (err error)
 	return nil
 }
 
-func (b *Bridge) buildRouterSwapTradeTxInput(args *tokens.BuildTxArgs) (err error) {
-	receiver, amount, err := b.getReceiverAndAmount(args)
+func (b *Bridge) buildRouterSwapTradeTxInput(args *tokens.BuildTxArgs, multichainToken string) (err error) {
+	receiver, amount, err := b.getReceiverAndAmount(args, multichainToken)
 	if err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func calcSwapDeadline(args *tokens.BuildTxArgs) int64 {
 	return deadline
 }
 
-func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs) (receiver common.Address, amount *big.Int, err error) {
+func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken string) (receiver common.Address, amount *big.Int, err error) {
 	receiver = common.HexToAddress(args.Bind)
 	if receiver == (common.Address{}) || !common.IsHexAddress(args.Bind) {
 		log.Warn("swapout to wrong receiver", "receiver", args.Bind)
@@ -132,7 +132,11 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs) (receiver common
 		log.Warn("get token config failed", "chainID", args.FromChainID, "token", args.Token)
 		return receiver, amount, tokens.ErrMissTokenConfig
 	}
-	amount = tokens.CalcSwapValue(fromTokenCfg, args.OriginValue)
+	toTokenCfg := b.GetTokenConfig(multichainToken)
+	if toTokenCfg == nil {
+		return receiver, amount, tokens.ErrMissTokenConfig
+	}
+	amount = tokens.CalcSwapValue(fromTokenCfg, toTokenCfg, args.OriginValue)
 	return receiver, amount, err
 }
 
