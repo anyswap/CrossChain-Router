@@ -108,7 +108,7 @@ func (b *Bridge) setDefaults(args *tokens.BuildTxArgs) (extra *tokens.EthExtraAr
 			return nil, tokens.ErrEstimateGasFailed
 		}
 		esGasLimit += esGasLimit * 30 / 100
-		defGasLimit := getDefaultGasLimit()
+		defGasLimit := b.getDefaultGasLimit()
 		if esGasLimit < defGasLimit {
 			esGasLimit = defGasLimit
 		}
@@ -118,11 +118,13 @@ func (b *Bridge) setDefaults(args *tokens.BuildTxArgs) (extra *tokens.EthExtraAr
 	return extra, nil
 }
 
-func getDefaultGasLimit() uint64 {
+func (b *Bridge) getDefaultGasLimit() uint64 {
 	gasLimit := uint64(90000)
 	serverCfg := params.GetRouterServerConfig()
-	if serverCfg != nil && serverCfg.DefaultGasLimit > 0 {
-		gasLimit = serverCfg.DefaultGasLimit
+	if serverCfg != nil {
+		if cfgGasLimit, exist := serverCfg.DefaultGasLimit[b.ChainConfig.ChainID]; exist {
+			gasLimit = cfgGasLimit
+		}
 	}
 	return gasLimit
 }

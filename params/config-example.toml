@@ -28,10 +28,13 @@ PlusGasPricePercentage = 10
 MaxPlusGasPricePercentage = 100
 # maximum gas price flunct percentage
 MaxGasPriceFluctPercent = 10
-# default gas limit
-DefaultGasLimit = 90000
 # swap deadline offset for trading
 SwapDeadlineOffset = 36000
+# default gas limit. key is chainID. if not set, use 90000 as default.
+[Server.DefaultGasLimit]
+4     = 90000
+256   = 90000
+46688 = 90000
 
 # modgodb database connection config
 [Server.MongoDB]
