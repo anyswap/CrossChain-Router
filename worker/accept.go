@@ -48,7 +48,7 @@ func StartAcceptSignJob() {
 				continue
 			}
 			agreeResult := "AGREE"
-			err := verifySignInfo(info)
+			args, err := verifySignInfo(info)
 			switch {
 			case errors.Is(err, tokens.ErrTxNotStable),
 				errors.Is(err, tokens.ErrTxNotFound):
@@ -67,12 +67,12 @@ func StartAcceptSignJob() {
 				logWorkerError("accept", "DISAGREE sign", err, "keyID", keyID)
 				agreeResult = "DISAGREE"
 			}
-			logWorker("accept", "mpc DoAcceptSign", "keyID", keyID, "result", agreeResult)
+			logWorker("accept", "mpc DoAcceptSign", "keyID", keyID, "result", agreeResult, "chainID", args.FromChainID, "swapID", args.SwapID, "logIndex", args.LogIndex)
 			res, err := mpc.DoAcceptSign(keyID, agreeResult, info.MsgHash, info.MsgContext)
 			if err != nil {
-				logWorkerError("accept", "accept sign job failed", err, "keyID", keyID, "result", res)
+				logWorkerError("accept", "accept sign job failed", err, "keyID", keyID, "result", res, agreeResult, "chainID", args.FromChainID, "swapID", args.SwapID, "logIndex", args.LogIndex)
 			} else {
-				logWorker("accept", "accept sign job finish", "keyID", keyID, "result", agreeResult)
+				logWorker("accept", "accept sign job finish", "keyID", keyID, "result", agreeResult, "chainID", args.FromChainID, "swapID", args.SwapID, "logIndex", args.LogIndex)
 				addAcceptSignHistory(keyID, agreeResult, info.MsgHash, info.MsgContext)
 			}
 		}
@@ -80,27 +80,28 @@ func StartAcceptSignJob() {
 	}
 }
 
-func verifySignInfo(signInfo *mpc.SignInfoData) error {
+func verifySignInfo(signInfo *mpc.SignInfoData) (*tokens.BuildTxArgs, error) {
 	if !params.IsMPCInitiator(signInfo.Account) {
-		return errInitiatorMismatch
+		return nil, errInitiatorMismatch
 	}
 	msgHash := signInfo.MsgHash
 	msgContext := signInfo.MsgContext
 	if len(msgContext) != 1 {
-		return errWrongMsgContext
+		return nil, errWrongMsgContext
 	}
 	var args tokens.BuildTxArgs
 	err := json.Unmarshal([]byte(msgContext[0]), &args)
 	if err != nil {
-		return errWrongMsgContext
+		return nil, errWrongMsgContext
 	}
 	switch args.Identifier {
 	case params.GetIdentifier():
 	default:
-		return errIdentifierMismatch
+		return nil, errIdentifierMismatch
 	}
 	logWorker("accept", "verifySignInfo", "msgHash", msgHash, "msgContext", msgContext)
-	return rebuildAndVerifyMsgHash(msgHash, &args)
+	err = rebuildAndVerifyMsgHash(msgHash, &args)
+	return &args, err
 }
 
 func getBridges(fromChainID, toChainID string) (srcBridge, dstBridge tokens.IBridge, err error) {
