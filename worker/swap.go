@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"sync"
 
 	"github.com/anyswap/CrossChain-Router/common"
@@ -21,6 +22,9 @@ var (
 
 	swapChanSize          = 10
 	routerSwapTaskChanMap = make(map[string]chan *tokens.BuildTxArgs) // key is chainID
+
+	processSwapTaskCache      = make(map[string]struct{})
+	maxCountOfCachedSwapTasks = 10000
 
 	errAlreadySwapped     = errors.New("already swapped")
 	errSendTxWithDiffHash = errors.New("send tx with different hash")
@@ -68,12 +72,21 @@ func findRouterSwapToSwap(chainID string) ([]*mongodb.MgoSwap, error) {
 	return mongodb.FindRouterSwapsWithChainIDAndStatus(chainID, status, septime)
 }
 
+func getSwapCacheKey(fromChainID, txid string, logIndex int) string {
+	return strings.ToLower(fmt.Sprintf("%s:%s:%d", fromChainID, txid, logIndex))
+}
+
 func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
 	fromChainID := swap.FromChainID
 	toChainID := swap.ToChainID
 	txid := swap.TxID
 	logIndex := swap.LogIndex
 	bind := swap.Bind
+
+	cacheKey := getSwapCacheKey(fromChainID, txid, logIndex)
+	if _, exist := processSwapTaskCache[cacheKey]; exist {
+		return errAlreadySwapped
+	}
 
 	if params.IsSwapInBlacklist(fromChainID, toChainID, swap.GetTokenID()) {
 		logWorkerTrace("swap", "swap is in black list", "txid", txid, "logIndex", logIndex,
@@ -217,14 +230,22 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 	logIndex := args.LogIndex
 	originValue := args.OriginValue
 
-	res, err := mongodb.FindRouterSwapResult(fromChainID, txid, logIndex)
-	if err != nil {
-		return err
+	isCachedSwapProcessed := false
+	cacheKey := getSwapCacheKey(fromChainID, txid, logIndex)
+	if _, exist := processSwapTaskCache[cacheKey]; exist {
+		return errAlreadySwapped
 	}
-	err = preventReswap(res)
-	if err != nil {
-		return err
+	if len(processSwapTaskCache) > maxCountOfCachedSwapTasks {
+		processSwapTaskCache = make(map[string]struct{}) // clear
 	}
+	logWorker("doSwap", "add swap cache", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "value", originValue)
+	processSwapTaskCache[cacheKey] = struct{}{}
+	defer func() {
+		if !isCachedSwapProcessed {
+			logWorkerError("doSwap", "delete swap cache", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "value", originValue)
+			delete(processSwapTaskCache, cacheKey)
+		}
+	}()
 
 	logWorker("doSwap", "start to process", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "value", originValue)
 
@@ -249,6 +270,16 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 		return err
 	}
 
+	// recheck reswap before update db
+	res, err := mongodb.FindRouterSwapResult(fromChainID, txid, logIndex)
+	if err != nil {
+		return err
+	}
+	err = preventReswap(res)
+	if err != nil {
+		return err
+	}
+
 	swapTxNonce := args.GetTxNonce()
 
 	// update database before sending transaction
@@ -264,6 +295,7 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 		logWorkerError("doSwap", "update router swap result failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex)
 		return err
 	}
+	isCachedSwapProcessed = true
 
 	err = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxProcessed, now(), "")
 	if err != nil {
