@@ -23,8 +23,8 @@ const (
 )
 
 var (
-	retryLock           sync.Mutex
-	updateSwapNonceLock sync.Mutex
+	retryLock        sync.Mutex
+	updateResultLock sync.Mutex
 )
 
 func getRouterSwapKey(fromChainID, txid string, logindex int) string {
@@ -353,9 +353,9 @@ func UpdateRouterSwapResult(fromChainID, txid string, logindex int, items *SwapR
 	} else if items.Status == MatchTxNotStable {
 		updates["memo"] = ""
 	}
-	if items.SwapNonce != 0 {
-		updateSwapNonceLock.Lock()
-		defer updateSwapNonceLock.Unlock()
+	if items.SwapNonce != 0 || items.Status == MatchTxNotStable {
+		updateResultLock.Lock()
+		defer updateResultLock.Unlock()
 		swapRes, err := FindRouterSwapResult(fromChainID, txid, logindex)
 		if err != nil {
 			return err
@@ -364,7 +364,13 @@ func UpdateRouterSwapResult(fromChainID, txid string, logindex int, items *SwapR
 			log.Error("forbid update swap nonce again", "old", swapRes.SwapNonce, "new", items.SwapNonce)
 			return ErrForbidUpdateNonce
 		}
-		updates["swapnonce"] = items.SwapNonce
+		if swapRes.SwapTx != "" {
+			log.Error("forbid update swap tx again", "old", swapRes.SwapTx, "new", items.SwapTx)
+			return ErrForbidUpdateSwapTx
+		}
+		if items.SwapNonce != 0 {
+			updates["swapnonce"] = items.SwapNonce
+		}
 	}
 	err := collRouterSwapResult.UpdateId(key, bson.M{"$set": updates})
 	if err == nil {
