@@ -15,8 +15,9 @@ import (
 var (
 	serverCfg *params.RouterServerConfig
 
-	defWaitTimeToReplace = int64(900) // seconds
-	defMaxReplaceCount   = 20
+	treatAsNoncePassedInterval = int64(300) // seconds
+	defWaitTimeToReplace       = int64(300) // seconds
+	defMaxReplaceCount         = 20
 
 	updateOldSwapTxsLock sync.Mutex
 )
@@ -67,6 +68,14 @@ func processRouterSwapReplace(res *mongodb.MgoSwapResult) error {
 	}
 	if getSepTimeInFind(waitTimeToReplace) < res.Timestamp {
 		return nil
+	}
+	resBridge := router.GetBridgeByChainID(res.ToChainID)
+	if resBridge == nil {
+		return tokens.ErrNoBridgeForChainID
+	}
+	err := checkIfSwapNonceHasPassed(resBridge, res, true)
+	if err != nil {
+		return err
 	}
 	_ = updateSwapTimestamp(res.FromChainID, res.TxID, res.LogIndex)
 	return ReplaceRouterSwap(res, nil)
@@ -166,20 +175,42 @@ func verifyReplaceSwap(res *mongodb.MgoSwapResult) (*mongodb.MgoSwap, error) {
 	if txStat != nil && txStat.BlockHeight > 0 {
 		return nil, errors.New("swaptx exist in chain")
 	}
+	err = checkIfSwapNonceHasPassed(resBridge, res, true)
+	if err != nil {
+		return nil, err
+	}
+	return swap, nil
+}
 
-	nonceSetter, ok := resBridge.(tokens.NonceSetter)
-	if ok {
-		mpc := resBridge.GetChainConfig().GetRouterMPC()
-		nonce, err := nonceSetter.GetPoolNonce(mpc, "latest")
-		if err != nil {
-			return nil, fmt.Errorf("get router mpc nonce failed, %w", err)
+func checkIfSwapNonceHasPassed(bridge tokens.IBridge, res *mongodb.MgoSwapResult, isReplace bool) error {
+	nonceSetter, ok := bridge.(tokens.NonceSetter)
+	if !ok {
+		return nil
+	}
+	mpc := bridge.GetChainConfig().GetRouterMPC()
+	nonce, err := nonceSetter.GetPoolNonce(mpc, "latest")
+	if err != nil {
+		return fmt.Errorf("get router mpc nonce failed, %w", err)
+	}
+	if nonce > res.SwapNonce && res.SwapNonce > 0 {
+		var iden string
+		if isReplace {
+			iden = "[replace]"
+		} else {
+			iden = "[stable]"
 		}
-		if nonce > res.SwapNonce {
-			return nil, fmt.Errorf("can not replace swap with nonce (%v) which is lower than latest nonce (%v)", res.SwapNonce, nonce)
+		fromChainID, txid, logIndex := res.FromChainID, res.TxID, res.LogIndex
+		if res.Timestamp < getSepTimeInFind(treatAsNoncePassedInterval) {
+			logWorker(iden, "mark swap result nonce passed",
+				"fromChainID", fromChainID, "txid", txid, "logIndex", logIndex,
+				"swaptime", res.Timestamp, "nowtime", now())
+			_ = markSwapResultFailed(fromChainID, txid, logIndex)
+		}
+		if isReplace {
+			return fmt.Errorf("swap nonce (%v) is lower than latest nonce (%v)", res.SwapNonce, nonce)
 		}
 	}
-
-	return swap, nil
+	return nil
 }
 
 func replaceSwapResult(swapResult *mongodb.MgoSwapResult, txHash string) (err error) {

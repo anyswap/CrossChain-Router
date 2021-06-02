@@ -66,9 +66,10 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs, extra *tokens.EthExtraArgs) (
 
 	rawTx = types.NewTransaction(nonce, to, value, gasLimit, gasPrice, input)
 
-	log.Trace("build routerswap raw tx", "swapID", args.SwapID,
+	log.Info("build routerswap raw tx", "swapID", args.SwapID,
 		"from", args.From, "to", to.String(), "bind", args.Bind, "nonce", nonce,
-		"value", value, "originValue", args.OriginValue, "gasLimit", gasLimit, "gasPrice", gasPrice)
+		"value", value, "originValue", args.OriginValue, "swapValue", args.SwapValue,
+		"gasLimit", gasLimit, "gasPrice", gasPrice, "replaceNum", args.ReplaceNum)
 
 	return rawTx, nil
 }

@@ -67,6 +67,7 @@ const (
 
 	EstimateGasFailed = 127
 	KeepStatus        = 255
+	Reswapping        = 256
 )
 
 // IsRegisteredOk is successfully registered
@@ -139,6 +140,8 @@ func (status SwapStatus) String() string {
 
 	case EstimateGasFailed:
 		return "EstimateGasFailed"
+	case Reswapping:
+		return "Reswapping"
 	default:
 		return fmt.Sprintf("unknown swap status %d", status)
 	}

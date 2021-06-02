@@ -67,7 +67,7 @@ func processRouterSwapStable(swap *mongodb.MgoSwapResult) (err error) {
 	}
 	txStatus := getSwapTxStatus(resBridge, swap)
 	if txStatus == nil || txStatus.BlockHeight == 0 {
-		return nil
+		return checkIfSwapNonceHasPassed(resBridge, swap, false)
 	}
 
 	if swap.SwapHeight != 0 {
@@ -81,6 +81,9 @@ func processRouterSwapStable(swap *mongodb.MgoSwapResult) (err error) {
 			receipt, ok := txStatus.Receipt.(*types.RPCTxReceipt)
 			txFailed := !ok || receipt == nil || *receipt.Status != 1 || len(receipt.Logs) == 0
 			if txFailed {
+				logWorker("[stable]", "mark swap result onchain failed",
+					"fromChainID", swap.FromChainID, "txid", swap.TxID, "logIndex", swap.LogIndex,
+					"swaptime", swap.Timestamp, "nowtime", now())
 				return markSwapResultFailed(swap.FromChainID, swap.TxID, swap.LogIndex)
 			}
 		}

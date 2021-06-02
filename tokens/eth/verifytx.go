@@ -11,7 +11,6 @@ func (b *Bridge) GetTransactionStatus(txHash string) *tokens.TxStatus {
 	var txStatus tokens.TxStatus
 	txr, url, err := b.GetTransactionReceipt(txHash)
 	if err != nil {
-		log.Trace("GetTransactionReceipt fail", "hash", txHash, "err", err)
 		return &txStatus
 	}
 	txStatus.BlockHeight = txr.BlockNumber.ToInt().Uint64()

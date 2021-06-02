@@ -169,7 +169,8 @@ func UpdateRouterSwapResultStatus(fromChainID, txid string, logindex int, status
 	updates := bson.M{"status": status, "timestamp": timestamp}
 	if memo != "" {
 		updates["memo"] = memo
-	} else if status == MatchTxEmpty {
+	}
+	if status == Reswapping {
 		updates["memo"] = ""
 		updates["swaptx"] = ""
 		updates["oldswaptxs"] = nil
@@ -250,8 +251,9 @@ func FindNextSwapNonce(chainID, mpc string) (uint64, error) {
 // FindRouterSwapResultsToReplace find router swap result with status
 func FindRouterSwapResultsToReplace(septime int64) ([]*MgoSwapResult, error) {
 	query := getStatusQuery(MatchTxNotStable, septime)
-	q := collRouterSwapResult.Find(query).Sort("inittime").Limit(5)
-	result := make([]*MgoSwapResult, 0, 5)
+	limit := 3
+	q := collRouterSwapResult.Find(query).Sort("inittime").Limit(limit)
+	result := make([]*MgoSwapResult, 0, limit)
 	err := q.All(&result)
 	if err != nil {
 		return nil, mgoError(err)
@@ -432,9 +434,6 @@ func RouterAdminReswap(fromChainID, txid string, logIndex int) error {
 	if err == nil && res.Status != MatchTxFailed {
 		return errors.New("swaptx exist in chain or pool")
 	}
-	if err != nil && res.Status == MatchTxFailed {
-		return errors.New("failed swaptx not exist in chain or pool")
-	}
 
 	nonceSetter, ok := resBridge.(tokens.NonceSetter)
 	if ok {
@@ -451,7 +450,7 @@ func RouterAdminReswap(fromChainID, txid string, logIndex int) error {
 
 	log.Info("[reswap] update status to TxNotSwapped", "chainid", fromChainID, "txid", txid, "logIndex", logIndex, "swaptx", res.SwapTx)
 
-	err = UpdateRouterSwapResultStatus(fromChainID, txid, logIndex, MatchTxEmpty, time.Now().Unix(), "")
+	err = UpdateRouterSwapResultStatus(fromChainID, txid, logIndex, Reswapping, time.Now().Unix(), "")
 	if err != nil {
 		return err
 	}

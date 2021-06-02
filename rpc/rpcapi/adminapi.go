@@ -109,6 +109,7 @@ func routerReswap(args *admin.CallArgs, result *string) (err error) {
 	if err != nil {
 		return err
 	}
+	worker.DeleteCachedSwap(chainID, txid, logIndex)
 	*result = successReuslt
 	return nil
 }

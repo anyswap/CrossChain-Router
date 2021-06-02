@@ -168,7 +168,7 @@ func preventReswap(res *mongodb.MgoSwapResult) (err error) {
 
 func processNonEmptySwapResult(res *mongodb.MgoSwapResult) error {
 	if res.SwapNonce > 0 ||
-		res.Status != mongodb.MatchTxEmpty ||
+		!(res.Status == mongodb.MatchTxEmpty || res.Status == mongodb.Reswapping) ||
 		res.SwapTx != "" ||
 		res.SwapHeight != 0 ||
 		len(res.OldSwapTxs) > 0 {
@@ -179,7 +179,7 @@ func processNonEmptySwapResult(res *mongodb.MgoSwapResult) error {
 }
 
 func processHistory(res *mongodb.MgoSwapResult) error {
-	if res.Status == mongodb.MatchTxEmpty && res.SwapNonce == 0 {
+	if (res.Status == mongodb.MatchTxEmpty || res.Status == mongodb.Reswapping) && res.SwapNonce == 0 {
 		return nil
 	}
 	chainID := res.FromChainID
@@ -195,17 +195,18 @@ func processHistory(res *mongodb.MgoSwapResult) error {
 }
 
 func dispatchSwapTask(args *tokens.BuildTxArgs) error {
+	toChainID := args.ToChainID.String()
 	switch args.SwapType {
 	case tokens.RouterSwapType, tokens.AnyCallSwapType:
-		swapChan, exist := routerSwapTaskChanMap[args.FromChainID.String()]
+		swapChan, exist := routerSwapTaskChanMap[toChainID]
 		if !exist {
-			return fmt.Errorf("no swapout task channel for chainID '%v'", args.FromChainID)
+			return fmt.Errorf("no swapout task channel for chainID '%v'", args.ToChainID)
 		}
 		swapChan <- args
 	default:
 		return fmt.Errorf("wrong swap type '%v'", args.SwapType.String())
 	}
-	logWorker("doSwap", "dispatch router swap task", "chainID", args.FromChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "value", args.OriginValue)
+	logWorker("doSwap", "dispatch router swap task", "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "value", args.OriginValue, "swapNonce", args.GetTxNonce())
 	return nil
 }
 
@@ -292,7 +293,7 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 	}
 	err = updateRouterSwapResult(fromChainID, txid, logIndex, matchTx)
 	if err != nil {
-		logWorkerError("doSwap", "update router swap result failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex)
+		logWorkerError("doSwap", "update router swap result failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "swapNonce", swapTxNonce)
 		return err
 	}
 	isCachedSwapProcessed = true
@@ -305,13 +306,18 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 
 	sentTxHash, err := sendSignedTransaction(resBridge, signedTx, args)
 	if err == nil {
-		logWorker("doSwap", "send tx success", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "swapNonce", swapTxNonce, "txHash", sentTxHash)
 		if txHash != sentTxHash {
-			logWorkerError("doSwap", "send tx success but with different hash", errSendTxWithDiffHash, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "txHash", txHash, "sentTxHash", sentTxHash)
+			logWorkerError("doSwap", "send tx success but with different hash", errSendTxWithDiffHash, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "txHash", txHash, "sentTxHash", sentTxHash, "swapNonce", swapTxNonce)
 			_ = replaceSwapResult(res, sentTxHash)
 		}
 	}
 	return err
+}
+
+// DeleteCachedSwap delete cached swap
+func DeleteCachedSwap(fromChainID, txid string, logIndex int) {
+	cacheKey := getSwapCacheKey(fromChainID, txid, logIndex)
+	delete(processSwapTaskCache, cacheKey)
 }
 
 type swapInfo struct {

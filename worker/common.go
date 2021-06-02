@@ -164,25 +164,22 @@ func sendSignedTransaction(bridge tokens.IBridge, signedTx interface{}, args *to
 	var (
 		retrySendTxCount    = 3
 		retrySendTxInterval = 1 * time.Second
+		swapTxNonce         = args.GetTxNonce()
 	)
 	for i := 0; i < retrySendTxCount; i++ {
 		txHash, err = bridge.SendTransaction(signedTx)
-		if txHash != "" {
-			if tx, _ := bridge.GetTransaction(txHash); tx != nil {
-				logWorker("sendtx", "send tx success", "txHash", txHash, "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex)
-				err = nil
-				break
-			}
+		if err == nil {
+			logWorker("sendtx", "send tx success", "txHash", txHash, "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "swapNonce", swapTxNonce, "replaceNum", args.ReplaceNum)
+			break
 		}
 		time.Sleep(retrySendTxInterval)
 	}
 	if err != nil {
-		logWorkerError("sendtx", "send tx failed", err, "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex)
+		logWorkerError("sendtx", "send tx failed", err, "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "swapNonce", swapTxNonce, "replaceNum", args.ReplaceNum)
 		return txHash, err
 	}
 
 	if nonceSetter, ok := bridge.(tokens.NonceSetter); ok {
-		swapTxNonce := args.GetTxNonce()
 		nonceSetter.SetNonce(args.From, swapTxNonce+1)
 	}
 
