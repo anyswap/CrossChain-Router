@@ -34,6 +34,10 @@ func logWorkerError(job, subject string, err error, context ...interface{}) {
 	log.Error("["+job+"] "+subject, fields...)
 }
 
+func logWorkerWarn(job, subject string, context ...interface{}) {
+	log.Warn("["+job+"] "+subject, context...)
+}
+
 func logWorkerTrace(job, subject string, context ...interface{}) {
 	log.Trace("["+job+"] "+subject, context...)
 }

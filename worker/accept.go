@@ -13,6 +13,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/params"
 	"github.com/anyswap/CrossChain-Router/router"
 	"github.com/anyswap/CrossChain-Router/tokens"
+	mapset "github.com/deckarep/golang-set"
 )
 
 var (
@@ -20,14 +21,15 @@ var (
 	acceptRingLock    sync.RWMutex
 	acceptRingMaxSize = 500
 
+	cachedAcceptInfos    = mapset.NewSet()
+	maxCachedAcceptInfos = 500
+
 	retryInterval = 1 * time.Second
 	waitInterval  = 1 * time.Second
 
-	acceptInfoCh        = make(chan *mpc.SignInfoData, 10)
-	cachedAcceptInfoMap = make(map[string]struct{})
-	maxCachedAcceptInfo = 500
-	maxAcceptRoutines   = int64(10)
-	curAcceptRoutines   = int64(0)
+	acceptInfoCh      = make(chan *mpc.SignInfoData, 10)
+	maxAcceptRoutines = int64(10)
+	curAcceptRoutines = int64(0)
 
 	// those errors will be ignored in accepting
 	errIdentifierMismatch = errors.New("cross chain bridge identifier mismatch")
@@ -57,6 +59,10 @@ func startAcceptProducer() {
 		}
 		for _, info := range signInfo {
 			keyID := info.Key
+			if keyID == "" || info.Account == "" || info.GroupID == "" {
+				logWorkerWarn("accept", "invalid accept sign info", "signInfo", info)
+				continue
+			}
 			history := getAcceptSignHistory(keyID)
 			if history != nil {
 				if history.result != "IGNORE" {
@@ -65,7 +71,7 @@ func startAcceptProducer() {
 				}
 				continue
 			}
-			if _, exist := cachedAcceptInfoMap[keyID]; exist {
+			if cachedAcceptInfos.Contains(keyID) {
 				logWorkerTrace("accept", "ignore cached accept sign info before dispatch", "keyID", keyID)
 				continue
 			}
@@ -93,23 +99,29 @@ func startAcceptConsumer() {
 	}
 }
 
+func checkAndUpdateCachedAcceptInfoMap(keyID string) (ok bool) {
+	if cachedAcceptInfos.Contains(keyID) {
+		logWorkerTrace("accept", "ignore cached accept sign info in process", "keyID", keyID)
+		return false
+	}
+	if cachedAcceptInfos.Cardinality() >= maxCachedAcceptInfos {
+		cachedAcceptInfos.Pop()
+	}
+	cachedAcceptInfos.Add(keyID)
+	return true
+}
+
 func processAcceptInfo(info *mpc.SignInfoData) {
 	defer atomic.AddInt64(&curAcceptRoutines, -1)
 
 	keyID := info.Key
-
-	if _, exist := cachedAcceptInfoMap[keyID]; exist {
-		logWorkerTrace("accept", "ignore cached accept sign info in process", "keyID", keyID)
+	if !checkAndUpdateCachedAcceptInfoMap(keyID) {
 		return
 	}
-	if len(cachedAcceptInfoMap) > maxCachedAcceptInfo {
-		cachedAcceptInfoMap = make(map[string]struct{}) // clear
-	}
-	cachedAcceptInfoMap[keyID] = struct{}{}
 	isProcessed := false
 	defer func() {
 		if !isProcessed {
-			delete(cachedAcceptInfoMap, keyID)
+			cachedAcceptInfos.Remove(keyID)
 		}
 	}()
 

@@ -13,6 +13,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/params"
 	"github.com/anyswap/CrossChain-Router/router"
 	"github.com/anyswap/CrossChain-Router/tokens"
+	mapset "github.com/deckarep/golang-set"
 )
 
 var (
@@ -20,11 +21,11 @@ var (
 	swapRingLock    sync.RWMutex
 	swapRingMaxSize = 1000
 
+	cachedSwapTasks    = mapset.NewSet()
+	maxCachedSwapTasks = 1000
+
 	swapChanSize          = 10
 	routerSwapTaskChanMap = make(map[string]chan *tokens.BuildTxArgs) // key is chainID
-
-	processSwapTaskCache      = make(map[string]struct{})
-	maxCountOfCachedSwapTasks = 10000
 
 	errAlreadySwapped     = errors.New("already swapped")
 	errSendTxWithDiffHash = errors.New("send tx with different hash")
@@ -84,7 +85,7 @@ func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
 	bind := swap.Bind
 
 	cacheKey := getSwapCacheKey(fromChainID, txid, logIndex)
-	if _, exist := processSwapTaskCache[cacheKey]; exist {
+	if cachedSwapTasks.Contains(cacheKey) {
 		return errAlreadySwapped
 	}
 
@@ -224,6 +225,17 @@ func processSwapTask(swapChan <-chan *tokens.BuildTxArgs) {
 	}
 }
 
+func checkAndUpdateProcessSwapTaskCache(key string) error {
+	if cachedSwapTasks.Contains(key) {
+		return errAlreadySwapped
+	}
+	if cachedSwapTasks.Cardinality() >= maxCachedSwapTasks {
+		cachedSwapTasks.Pop()
+	}
+	cachedSwapTasks.Add(key)
+	return nil
+}
+
 func doSwap(args *tokens.BuildTxArgs) (err error) {
 	fromChainID := args.FromChainID.String()
 	toChainID := args.ToChainID.String()
@@ -231,20 +243,17 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 	logIndex := args.LogIndex
 	originValue := args.OriginValue
 
-	isCachedSwapProcessed := false
 	cacheKey := getSwapCacheKey(fromChainID, txid, logIndex)
-	if _, exist := processSwapTaskCache[cacheKey]; exist {
-		return errAlreadySwapped
-	}
-	if len(processSwapTaskCache) > maxCountOfCachedSwapTasks {
-		processSwapTaskCache = make(map[string]struct{}) // clear
+	err = checkAndUpdateProcessSwapTaskCache(cacheKey)
+	if err != nil {
+		return err
 	}
 	logWorker("doSwap", "add swap cache", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "value", originValue)
-	processSwapTaskCache[cacheKey] = struct{}{}
+	isCachedSwapProcessed := false
 	defer func() {
 		if !isCachedSwapProcessed {
 			logWorkerError("doSwap", "delete swap cache", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "value", originValue)
-			delete(processSwapTaskCache, cacheKey)
+			cachedSwapTasks.Remove(cacheKey)
 		}
 	}()
 
@@ -317,7 +326,7 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 // DeleteCachedSwap delete cached swap
 func DeleteCachedSwap(fromChainID, txid string, logIndex int) {
 	cacheKey := getSwapCacheKey(fromChainID, txid, logIndex)
-	delete(processSwapTaskCache, cacheKey)
+	cachedSwapTasks.Remove(cacheKey)
 }
 
 type swapInfo struct {
