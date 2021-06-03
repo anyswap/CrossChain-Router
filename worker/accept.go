@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/mpc"
@@ -19,8 +20,14 @@ var (
 	acceptRingLock    sync.RWMutex
 	acceptRingMaxSize = 500
 
-	retryInterval = 3 * time.Second
-	waitInterval  = 20 * time.Second
+	retryInterval = 1 * time.Second
+	waitInterval  = 1 * time.Second
+
+	acceptInfoCh        = make(chan *mpc.SignInfoData, 10)
+	cachedAcceptInfoMap = make(map[string]struct{})
+	maxCachedAcceptInfo = 500
+	maxAcceptRoutines   = int64(10)
+	curAcceptRoutines   = int64(0)
 
 	// those errors will be ignored in accepting
 	errIdentifierMismatch = errors.New("cross chain bridge identifier mismatch")
@@ -31,6 +38,11 @@ var (
 // StartAcceptSignJob accept job
 func StartAcceptSignJob() {
 	logWorker("accept", "start accept sign job")
+	go startAcceptProducer()
+	go startAcceptConsumer()
+}
+
+func startAcceptProducer() {
 	for {
 		signInfo, err := mpc.GetCurNodeSignInfo()
 		if err != nil {
@@ -38,45 +50,89 @@ func StartAcceptSignJob() {
 			time.Sleep(retryInterval)
 			continue
 		}
-		logWorker("accept", "acceptSign", "count", len(signInfo))
 		for _, info := range signInfo {
 			keyID := info.Key
 			history := getAcceptSignHistory(keyID)
 			if history != nil && history.result != "IGNORE" {
-				logWorker("accept", "history sign", "keyID", keyID, "result", history.result)
+				logWorkerTrace("accept", "quick process history accept sign info", "keyID", keyID)
 				_, _ = mpc.DoAcceptSign(keyID, history.result, history.msgHash, history.msgContext)
 				continue
 			}
-			agreeResult := "AGREE"
-			args, err := verifySignInfo(info)
-			switch {
-			case errors.Is(err, tokens.ErrTxNotStable),
-				errors.Is(err, tokens.ErrTxNotFound):
-				logWorkerTrace("accept", "ignore sign", "keyID", keyID, "err", err)
-				continue
-			case errors.Is(err, errIdentifierMismatch),
-				errors.Is(err, errInitiatorMismatch),
-				errors.Is(err, errWrongMsgContext),
-				errors.Is(err, tokens.ErrTxWithWrongContract),
-				errors.Is(err, tokens.ErrNoBridgeForChainID):
-				logWorkerTrace("accept", "ignore sign", "keyID", keyID, "err", err)
-				addAcceptSignHistory(keyID, "IGNORE", info.MsgHash, info.MsgContext)
+			if _, exist := cachedAcceptInfoMap[keyID]; exist {
+				logWorkerTrace("accept", "ignore cached accept sign info before dispatch", "keyID", keyID)
 				continue
 			}
-			if err != nil {
-				logWorkerError("accept", "DISAGREE sign", err, "keyID", keyID)
-				agreeResult = "DISAGREE"
-			}
-			logWorker("accept", "mpc DoAcceptSign", "keyID", keyID, "result", agreeResult, "chainID", args.FromChainID, "swapID", args.SwapID, "logIndex", args.LogIndex)
-			res, err := mpc.DoAcceptSign(keyID, agreeResult, info.MsgHash, info.MsgContext)
-			if err != nil {
-				logWorkerError("accept", "accept sign job failed", err, "keyID", keyID, "result", res, agreeResult, "chainID", args.FromChainID, "swapID", args.SwapID, "logIndex", args.LogIndex)
-			} else {
-				logWorker("accept", "accept sign job finish", "keyID", keyID, "result", agreeResult, "chainID", args.FromChainID, "swapID", args.SwapID, "logIndex", args.LogIndex)
-				addAcceptSignHistory(keyID, agreeResult, info.MsgHash, info.MsgContext)
-			}
+			logWorker("accept", "dispatch accept sign info", "keyID", keyID, "msgContext", info.MsgContext)
+			acceptInfoCh <- info // produce
 		}
 		time.Sleep(waitInterval)
+	}
+}
+
+func startAcceptConsumer() {
+	for {
+		info := <-acceptInfoCh // consume
+
+		// loop and check, break if free worker exist
+		for {
+			if atomic.LoadInt64(&curAcceptRoutines) < maxAcceptRoutines {
+				break
+			}
+			time.Sleep(1 * time.Second)
+		}
+
+		atomic.AddInt64(&curAcceptRoutines, 1)
+		go processAcceptInfo(info)
+	}
+}
+
+func processAcceptInfo(info *mpc.SignInfoData) {
+	defer atomic.AddInt64(&curAcceptRoutines, -1)
+
+	keyID := info.Key
+
+	if _, exist := cachedAcceptInfoMap[keyID]; exist {
+		logWorkerTrace("accept", "ignore cached accept sign info in process", "keyID", keyID)
+		return
+	}
+	if len(cachedAcceptInfoMap) > maxCachedAcceptInfo {
+		cachedAcceptInfoMap = make(map[string]struct{}) // clear
+	}
+	cachedAcceptInfoMap[keyID] = struct{}{}
+	isProcessed := false
+	defer func() {
+		if !isProcessed {
+			delete(cachedAcceptInfoMap, keyID)
+		}
+	}()
+
+	agreeResult := "AGREE"
+	args, err := verifySignInfo(info)
+	switch {
+	case errors.Is(err, tokens.ErrTxNotStable),
+		errors.Is(err, tokens.ErrTxNotFound):
+		logWorkerTrace("accept", "ignore sign", "keyID", keyID, "err", err)
+		return
+	case errors.Is(err, errIdentifierMismatch),
+		errors.Is(err, errInitiatorMismatch),
+		errors.Is(err, errWrongMsgContext),
+		errors.Is(err, tokens.ErrTxWithWrongContract),
+		errors.Is(err, tokens.ErrNoBridgeForChainID):
+		logWorkerTrace("accept", "ignore sign", "keyID", keyID, "err", err)
+		addAcceptSignHistory(keyID, "IGNORE", info.MsgHash, info.MsgContext)
+		return
+	}
+	if err != nil {
+		agreeResult = "DISAGREE"
+	}
+	logWorker("accept", "mpc DoAcceptSign", "keyID", keyID, "result", agreeResult, "chainID", args.FromChainID, "swapID", args.SwapID, "logIndex", args.LogIndex)
+	res, err := mpc.DoAcceptSign(keyID, agreeResult, info.MsgHash, info.MsgContext)
+	if err != nil {
+		logWorkerError("accept", "accept sign job failed", err, "keyID", keyID, "result", res, agreeResult, "chainID", args.FromChainID, "swapID", args.SwapID, "logIndex", args.LogIndex)
+	} else {
+		logWorker("accept", "accept sign job finish", "keyID", keyID, "result", agreeResult, "chainID", args.FromChainID, "swapID", args.SwapID, "logIndex", args.LogIndex)
+		addAcceptSignHistory(keyID, agreeResult, info.MsgHash, info.MsgContext)
+		isProcessed = true
 	}
 }
 
