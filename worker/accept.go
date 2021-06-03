@@ -43,6 +43,7 @@ func StartAcceptSignJob() {
 }
 
 func startAcceptProducer() {
+	i := 0
 	for {
 		signInfo, err := mpc.GetCurNodeSignInfo()
 		if err != nil {
@@ -50,19 +51,25 @@ func startAcceptProducer() {
 			time.Sleep(retryInterval)
 			continue
 		}
+		i++
+		if i%20 == 0 {
+			logWorker("accept", "getCurNodeSignInfo", "count", len(signInfo))
+		}
 		for _, info := range signInfo {
 			keyID := info.Key
 			history := getAcceptSignHistory(keyID)
-			if history != nil && history.result != "IGNORE" {
-				logWorkerTrace("accept", "quick process history accept sign info", "keyID", keyID)
-				_, _ = mpc.DoAcceptSign(keyID, history.result, history.msgHash, history.msgContext)
+			if history != nil {
+				if history.result != "IGNORE" {
+					logWorkerTrace("accept", "quick process history accept", "keyID", keyID, "result", history.result)
+					_, _ = mpc.DoAcceptSign(keyID, history.result, history.msgHash, history.msgContext)
+				}
 				continue
 			}
 			if _, exist := cachedAcceptInfoMap[keyID]; exist {
 				logWorkerTrace("accept", "ignore cached accept sign info before dispatch", "keyID", keyID)
 				continue
 			}
-			logWorker("accept", "dispatch accept sign info", "keyID", keyID, "msgContext", info.MsgContext)
+			logWorker("accept", "dispatch accept sign info", "keyID", keyID)
 			acceptInfoCh <- info // produce
 		}
 		time.Sleep(waitInterval)
@@ -120,6 +127,7 @@ func processAcceptInfo(info *mpc.SignInfoData) {
 		errors.Is(err, tokens.ErrNoBridgeForChainID):
 		logWorkerTrace("accept", "ignore sign", "keyID", keyID, "err", err)
 		addAcceptSignHistory(keyID, "IGNORE", info.MsgHash, info.MsgContext)
+		isProcessed = true
 		return
 	}
 	if err != nil {
@@ -155,7 +163,7 @@ func verifySignInfo(signInfo *mpc.SignInfoData) (*tokens.BuildTxArgs, error) {
 	default:
 		return nil, errIdentifierMismatch
 	}
-	logWorker("accept", "verifySignInfo", "msgHash", msgHash, "msgContext", msgContext)
+	logWorker("accept", "verifySignInfo", "keyID", signInfo.Key, "msgHash", msgHash, "msgContext", msgContext)
 	err = rebuildAndVerifyMsgHash(msgHash, &args)
 	return &args, err
 }
