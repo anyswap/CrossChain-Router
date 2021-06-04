@@ -4,8 +4,8 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/anyswap/CrossChain-Router/log"
-	"github.com/anyswap/CrossChain-Router/tokens"
+	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
 // router bridges

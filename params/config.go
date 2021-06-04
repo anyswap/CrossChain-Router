@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
-	"github.com/anyswap/CrossChain-Router/common"
-	"github.com/anyswap/CrossChain-Router/log"
+	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/anyswap/CrossChain-Router/v3/log"
 )
 
 // router swap constants

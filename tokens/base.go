@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"strings"
 
-	cmath "github.com/anyswap/CrossChain-Router/common/math"
+	cmath "github.com/anyswap/CrossChain-Router/v3/common/math"
 )
 
 // CrossChainBridgeBase base bridge

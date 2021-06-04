@@ -3,8 +3,8 @@ package worker
 import (
 	"time"
 
-	"github.com/anyswap/CrossChain-Router/router/bridge"
-	"github.com/anyswap/CrossChain-Router/rpc/client"
+	"github.com/anyswap/CrossChain-Router/v3/router/bridge"
+	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 )
 
 const interval = 10 * time.Millisecond

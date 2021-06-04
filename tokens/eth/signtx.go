@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anyswap/CrossChain-Router/common"
-	"github.com/anyswap/CrossChain-Router/log"
-	"github.com/anyswap/CrossChain-Router/mpc"
-	"github.com/anyswap/CrossChain-Router/tokens"
-	"github.com/anyswap/CrossChain-Router/tools/crypto"
-	"github.com/anyswap/CrossChain-Router/types"
+	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/mpc"
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/anyswap/CrossChain-Router/v3/tools/crypto"
+	"github.com/anyswap/CrossChain-Router/v3/types"
 )
 
 func (b *Bridge) verifyTransactionReceiver(rawTx interface{}) (*types.Transaction, error) {

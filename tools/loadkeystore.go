@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/anyswap/CrossChain-Router/tools/keystore"
+	"github.com/anyswap/CrossChain-Router/v3/tools/keystore"
 )
 
 // LoadKeyStore load keystore from keyfile and passfile

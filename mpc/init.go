@@ -6,12 +6,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anyswap/CrossChain-Router/common"
-	"github.com/anyswap/CrossChain-Router/log"
-	"github.com/anyswap/CrossChain-Router/params"
-	"github.com/anyswap/CrossChain-Router/tools"
-	"github.com/anyswap/CrossChain-Router/tools/keystore"
-	"github.com/anyswap/CrossChain-Router/types"
+	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/params"
+	"github.com/anyswap/CrossChain-Router/v3/tools"
+	"github.com/anyswap/CrossChain-Router/v3/tools/keystore"
+	"github.com/anyswap/CrossChain-Router/v3/types"
 )
 
 const (

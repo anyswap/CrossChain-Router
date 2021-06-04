@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/anyswap/CrossChain-Router/common/hexutil"
+	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
 )
 
 type MyType [5]byte

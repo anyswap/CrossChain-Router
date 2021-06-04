@@ -5,8 +5,8 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/anyswap/CrossChain-Router/common"
-	"github.com/anyswap/CrossChain-Router/common/hexutil"
+	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
 )
 
 // token types (should be all upper case)

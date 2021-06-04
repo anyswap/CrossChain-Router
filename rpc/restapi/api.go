@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/anyswap/CrossChain-Router/common"
-	"github.com/anyswap/CrossChain-Router/internal/swapapi"
-	"github.com/anyswap/CrossChain-Router/params"
-	"github.com/anyswap/CrossChain-Router/router"
+	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/anyswap/CrossChain-Router/v3/internal/swapapi"
+	"github.com/anyswap/CrossChain-Router/v3/params"
+	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/gorilla/mux"
 )
 

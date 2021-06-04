@@ -3,8 +3,8 @@ package worker
 import (
 	"time"
 
-	"github.com/anyswap/CrossChain-Router/mongodb"
-	"github.com/anyswap/CrossChain-Router/tokens"
+	"github.com/anyswap/CrossChain-Router/v3/mongodb"
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
 // MatchTx struct

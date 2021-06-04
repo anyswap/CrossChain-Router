@@ -35,8 +35,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/anyswap/CrossChain-Router/common/math"
-	"github.com/anyswap/CrossChain-Router/tools/crypto"
+	"github.com/anyswap/CrossChain-Router/v3/common/math"
+	"github.com/anyswap/CrossChain-Router/v3/tools/crypto"
 	"github.com/pborman/uuid"
 	"golang.org/x/crypto/pbkdf2"
 	"golang.org/x/crypto/scrypt"

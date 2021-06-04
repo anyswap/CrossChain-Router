@@ -3,7 +3,7 @@ package mpc
 import (
 	"encoding/json"
 
-	"github.com/anyswap/CrossChain-Router/common"
+	"github.com/anyswap/CrossChain-Router/v3/common"
 )
 
 // DoAcceptSign accept sign

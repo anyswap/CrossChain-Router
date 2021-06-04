@@ -1,9 +1,9 @@
 package eth
 
 import (
-	"github.com/anyswap/CrossChain-Router/log"
-	"github.com/anyswap/CrossChain-Router/tokens"
-	"github.com/anyswap/CrossChain-Router/types"
+	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/anyswap/CrossChain-Router/v3/types"
 )
 
 // GetTransactionStatus impl

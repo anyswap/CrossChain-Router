@@ -1,11 +1,11 @@
 package worker
 
 import (
-	"github.com/anyswap/CrossChain-Router/cmd/utils"
-	"github.com/anyswap/CrossChain-Router/mongodb"
-	"github.com/anyswap/CrossChain-Router/router"
-	"github.com/anyswap/CrossChain-Router/tokens"
-	"github.com/anyswap/CrossChain-Router/types"
+	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
+	"github.com/anyswap/CrossChain-Router/v3/mongodb"
+	"github.com/anyswap/CrossChain-Router/v3/router"
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/anyswap/CrossChain-Router/v3/types"
 )
 
 // StartStableJob stable job

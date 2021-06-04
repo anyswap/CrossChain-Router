@@ -3,12 +3,12 @@ package bridge
 import (
 	"math/big"
 
-	"github.com/anyswap/CrossChain-Router/log"
-	"github.com/anyswap/CrossChain-Router/mpc"
-	"github.com/anyswap/CrossChain-Router/params"
-	"github.com/anyswap/CrossChain-Router/router"
-	"github.com/anyswap/CrossChain-Router/tokens"
-	"github.com/anyswap/CrossChain-Router/tokens/eth"
+	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/mpc"
+	"github.com/anyswap/CrossChain-Router/v3/params"
+	"github.com/anyswap/CrossChain-Router/v3/router"
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/eth"
 )
 
 // NewCrossChainBridge new bridge

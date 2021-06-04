@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anyswap/CrossChain-Router/common"
-	"github.com/anyswap/CrossChain-Router/tokens/eth/abicoder"
+	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/eth/abicoder"
 )
 
 var (

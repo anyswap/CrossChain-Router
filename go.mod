@@ -1,4 +1,4 @@
-module github.com/anyswap/CrossChain-Router
+module github.com/anyswap/CrossChain-Router/v3
 
 go 1.15
 

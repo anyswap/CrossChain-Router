@@ -3,8 +3,8 @@ package admin
 import (
 	"errors"
 
-	"github.com/anyswap/CrossChain-Router/cmd/utils"
-	"github.com/anyswap/CrossChain-Router/rpc/client"
+	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
+	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/urfave/cli/v2"
 )
 

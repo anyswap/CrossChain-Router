@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/anyswap/CrossChain-Router/log"
+	"github.com/anyswap/CrossChain-Router/v3/log"
 )
 
 const (

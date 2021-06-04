@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/anyswap/CrossChain-Router/tokens"
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
 // -----------------------------------------------

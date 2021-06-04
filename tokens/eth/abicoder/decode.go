@@ -4,8 +4,8 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/anyswap/CrossChain-Router/common"
-	"github.com/anyswap/CrossChain-Router/common/hexutil"
+	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
 )
 
 // parse errors

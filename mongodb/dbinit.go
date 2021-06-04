@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/anyswap/CrossChain-Router/cmd/utils"
-	"github.com/anyswap/CrossChain-Router/log"
+	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
+	"github.com/anyswap/CrossChain-Router/v3/log"
 	"gopkg.in/mgo.v2"
 )
 

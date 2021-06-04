@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/anyswap/CrossChain-Router/cmd/utils"
-	"github.com/anyswap/CrossChain-Router/log"
-	"github.com/anyswap/CrossChain-Router/router"
-	"github.com/anyswap/CrossChain-Router/tokens"
-	"github.com/anyswap/CrossChain-Router/tools"
+	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
+	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/router"
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/anyswap/CrossChain-Router/v3/tools"
 )
 
 var (

@@ -3,8 +3,8 @@ package bridge
 import (
 	"strings"
 
-	"github.com/anyswap/CrossChain-Router/log"
-	"github.com/anyswap/CrossChain-Router/router"
+	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/router"
 )
 
 // ReloadRouterConfig reload router config

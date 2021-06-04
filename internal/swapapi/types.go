@@ -1,7 +1,7 @@
 package swapapi
 
 import (
-	"github.com/anyswap/CrossChain-Router/mongodb"
+	"github.com/anyswap/CrossChain-Router/v3/mongodb"
 )
 
 // MapIntResult type

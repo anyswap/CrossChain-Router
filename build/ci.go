@@ -10,7 +10,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/anyswap/CrossChain-Router/internal/build"
+	"github.com/anyswap/CrossChain-Router/v3/internal/build"
 )
 
 var gobin, _ = filepath.Abs(filepath.Join("build", "bin"))

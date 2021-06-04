@@ -1,8 +1,8 @@
 package swapapi
 
 import (
-	"github.com/anyswap/CrossChain-Router/mongodb"
-	"github.com/anyswap/CrossChain-Router/router"
+	"github.com/anyswap/CrossChain-Router/v3/mongodb"
+	"github.com/anyswap/CrossChain-Router/v3/router"
 )
 
 // ConvertMgoSwapToSwapInfo convert

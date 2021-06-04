@@ -5,11 +5,11 @@ import (
 	"math/big"
 	"net/http"
 
-	"github.com/anyswap/CrossChain-Router/admin"
-	"github.com/anyswap/CrossChain-Router/common"
-	"github.com/anyswap/CrossChain-Router/mongodb"
-	"github.com/anyswap/CrossChain-Router/params"
-	"github.com/anyswap/CrossChain-Router/worker"
+	"github.com/anyswap/CrossChain-Router/v3/admin"
+	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/anyswap/CrossChain-Router/v3/mongodb"
+	"github.com/anyswap/CrossChain-Router/v3/params"
+	"github.com/anyswap/CrossChain-Router/v3/worker"
 )
 
 const (

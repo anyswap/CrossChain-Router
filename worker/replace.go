@@ -6,11 +6,11 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/anyswap/CrossChain-Router/cmd/utils"
-	"github.com/anyswap/CrossChain-Router/mongodb"
-	"github.com/anyswap/CrossChain-Router/params"
-	"github.com/anyswap/CrossChain-Router/router"
-	"github.com/anyswap/CrossChain-Router/tokens"
+	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
+	"github.com/anyswap/CrossChain-Router/v3/mongodb"
+	"github.com/anyswap/CrossChain-Router/v3/params"
+	"github.com/anyswap/CrossChain-Router/v3/router"
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
 var (

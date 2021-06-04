@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"github.com/anyswap/CrossChain-Router/log"
+	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/urfave/cli/v2"
 )
 

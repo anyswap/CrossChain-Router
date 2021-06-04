@@ -5,12 +5,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/anyswap/CrossChain-Router/cmd/utils"
-	"github.com/anyswap/CrossChain-Router/log"
-	"github.com/anyswap/CrossChain-Router/mongodb"
-	"github.com/anyswap/CrossChain-Router/params"
-	rpcserver "github.com/anyswap/CrossChain-Router/rpc/server"
-	"github.com/anyswap/CrossChain-Router/worker"
+	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
+	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/mongodb"
+	"github.com/anyswap/CrossChain-Router/v3/params"
+	rpcserver "github.com/anyswap/CrossChain-Router/v3/rpc/server"
+	"github.com/anyswap/CrossChain-Router/v3/worker"
 	"github.com/urfave/cli/v2"
 )
 

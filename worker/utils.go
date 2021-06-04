@@ -3,7 +3,7 @@ package worker
 import (
 	"time"
 
-	"github.com/anyswap/CrossChain-Router/log"
+	"github.com/anyswap/CrossChain-Router/v3/log"
 )
 
 var (

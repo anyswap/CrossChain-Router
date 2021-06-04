@@ -12,11 +12,11 @@ import (
 	"github.com/gorilla/rpc/v2"
 	rpcjson "github.com/gorilla/rpc/v2/json2"
 
-	"github.com/anyswap/CrossChain-Router/cmd/utils"
-	"github.com/anyswap/CrossChain-Router/log"
-	"github.com/anyswap/CrossChain-Router/params"
-	"github.com/anyswap/CrossChain-Router/rpc/restapi"
-	"github.com/anyswap/CrossChain-Router/rpc/rpcapi"
+	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
+	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/params"
+	"github.com/anyswap/CrossChain-Router/v3/rpc/restapi"
+	"github.com/anyswap/CrossChain-Router/v3/rpc/rpcapi"
 )
 
 // StartAPIServer start api server
