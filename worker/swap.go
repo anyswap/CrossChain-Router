@@ -39,7 +39,7 @@ func StartSwapJob() {
 		if _, exist := routerSwapTaskChanMap[chainID]; !exist {
 			routerSwapTaskChanMap[chainID] = make(chan *tokens.BuildTxArgs, swapChanSize)
 			utils.TopWaitGroup.Add(1)
-			go processSwapTask(routerSwapTaskChanMap[chainID])
+			go processSwapTask(chainID, routerSwapTaskChanMap[chainID])
 		}
 
 		go startRouterSwapJob(chainID)
@@ -217,13 +217,18 @@ func dispatchSwapTask(args *tokens.BuildTxArgs) error {
 	return nil
 }
 
-func processSwapTask(swapChan <-chan *tokens.BuildTxArgs) {
+func processSwapTask(chainID string, swapChan <-chan *tokens.BuildTxArgs) {
 	defer utils.TopWaitGroup.Done()
 	for {
 		select {
 		case <-utils.CleanupChan:
+			logWorker("doSwap", "stop process swap task", "chainID", chainID)
 			return
 		case args := <-swapChan:
+			if args.ToChainID.String() != chainID {
+				logWorkerWarn("doSwap", "ignore swap task as toChainID mismatch", "want", chainID, "args", args)
+				continue
+			}
 			err := doSwap(args)
 			switch {
 			case err == nil,
