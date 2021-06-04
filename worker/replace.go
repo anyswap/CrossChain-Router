@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/anyswap/CrossChain-Router/cmd/utils"
 	"github.com/anyswap/CrossChain-Router/mongodb"
 	"github.com/anyswap/CrossChain-Router/params"
 	"github.com/anyswap/CrossChain-Router/router"
@@ -40,6 +41,10 @@ func StartReplaceJob() {
 			logWorkerError("replace", "find router swap result error", err)
 		}
 		for _, swap := range res {
+			if utils.IsCleanuping() {
+				logWorker("replace", "stop router swap replace job")
+				return
+			}
 			err = processRouterSwapReplace(swap)
 			if err != nil {
 				logWorkerError("replace", "process router swap replace error", err, "chainID", swap.FromChainID, "txid", swap.TxID, "logIndex", swap.LogIndex)

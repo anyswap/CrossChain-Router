@@ -3,6 +3,7 @@ package worker
 import (
 	"errors"
 
+	"github.com/anyswap/CrossChain-Router/cmd/utils"
 	"github.com/anyswap/CrossChain-Router/mongodb"
 	"github.com/anyswap/CrossChain-Router/params"
 	"github.com/anyswap/CrossChain-Router/router"
@@ -22,6 +23,10 @@ func StartVerifyJob() {
 			logWorker("verify", "find router swap to verify", "count", len(res))
 		}
 		for _, swap := range res {
+			if utils.IsCleanuping() {
+				logWorker("verify", "stop router swap verify job")
+				return
+			}
 			err = processRouterSwapVerify(swap)
 			switch {
 			case err == nil,

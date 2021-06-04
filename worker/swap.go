@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/anyswap/CrossChain-Router/cmd/utils"
 	"github.com/anyswap/CrossChain-Router/common"
 	"github.com/anyswap/CrossChain-Router/mongodb"
 	"github.com/anyswap/CrossChain-Router/params"
@@ -37,6 +38,7 @@ func StartSwapJob() {
 		chainID := bridge.GetChainConfig().ChainID
 		if _, exist := routerSwapTaskChanMap[chainID]; !exist {
 			routerSwapTaskChanMap[chainID] = make(chan *tokens.BuildTxArgs, swapChanSize)
+			utils.TopWaitGroup.Add(1)
 			go processSwapTask(routerSwapTaskChanMap[chainID])
 		}
 
@@ -55,6 +57,10 @@ func startRouterSwapJob(chainID string) {
 			logWorker("swap", "find out router swap", "count", len(res))
 		}
 		for _, swap := range res {
+			if utils.IsCleanuping() {
+				logWorker("swap", "stop router swap job")
+				return
+			}
 			err = processRouterSwap(swap)
 			switch {
 			case err == nil,
@@ -212,15 +218,20 @@ func dispatchSwapTask(args *tokens.BuildTxArgs) error {
 }
 
 func processSwapTask(swapChan <-chan *tokens.BuildTxArgs) {
+	defer utils.TopWaitGroup.Done()
 	for {
-		args := <-swapChan
-		err := doSwap(args)
-		switch {
-		case err == nil,
-			errors.Is(err, errAlreadySwapped),
-			errors.Is(err, tokens.ErrNoBridgeForChainID):
-		default:
-			logWorkerError("doSwap", "process router swap failed", err, "args", args)
+		select {
+		case <-utils.CleanupChan:
+			return
+		case args := <-swapChan:
+			err := doSwap(args)
+			switch {
+			case err == nil,
+				errors.Is(err, errAlreadySwapped),
+				errors.Is(err, tokens.ErrNoBridgeForChainID):
+			default:
+				logWorkerError("doSwap", "process router swap failed", err, "args", args)
+			}
 		}
 	}
 }

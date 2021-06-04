@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anyswap/CrossChain-Router/cmd/utils"
 	"github.com/anyswap/CrossChain-Router/log"
 	"gopkg.in/mgo.v2"
 )
@@ -26,6 +27,24 @@ func MongoServerInit(addrs []string, dbname, user, pass string) {
 	mongoConnect()
 	initCollections()
 	go checkMongoSession()
+
+	utils.TopWaitGroup.Add(1)
+	go utils.WaitAndCleanup(doCleanup)
+}
+
+func doCleanup() {
+	defer utils.TopWaitGroup.Done()
+	if session == nil {
+		return
+	}
+	err := session.Fsync(false)
+	if err != nil {
+		log.Warn("[mongodb] session flush failed", "err", err)
+	} else {
+		log.Info("[mongodb] session flush success")
+	}
+	session.Close()
+	log.Info("[mongodb] session close success")
 }
 
 func initDialInfo(addrs []string, db, user, pass string) {

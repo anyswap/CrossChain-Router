@@ -60,7 +60,6 @@ func swaprouter(ctx *cli.Context) error {
 	if ctx.NArg() > 0 {
 		return fmt.Errorf("invalid command: %q", ctx.Args().Get(0))
 	}
-	exitCh := make(chan struct{})
 	isServer := ctx.Bool(utils.RunServerFlag.Name)
 
 	configFile := utils.GetConfigFilePath(ctx)
@@ -76,6 +75,6 @@ func swaprouter(ctx *cli.Context) error {
 		worker.StartRouterSwapWork(false)
 	}
 
-	<-exitCh
+	utils.TopWaitGroup.Wait()
 	return nil
 }

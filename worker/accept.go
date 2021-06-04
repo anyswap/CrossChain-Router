@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/anyswap/CrossChain-Router/cmd/utils"
 	"github.com/anyswap/CrossChain-Router/mpc"
 	"github.com/anyswap/CrossChain-Router/params"
 	"github.com/anyswap/CrossChain-Router/router"
@@ -41,6 +42,8 @@ var (
 func StartAcceptSignJob() {
 	logWorker("accept", "start accept sign job")
 	go startAcceptProducer()
+
+	utils.TopWaitGroup.Add(1)
 	go startAcceptConsumer()
 }
 
@@ -83,19 +86,24 @@ func startAcceptProducer() {
 }
 
 func startAcceptConsumer() {
+	defer utils.TopWaitGroup.Done()
 	for {
-		info := <-acceptInfoCh // consume
-
-		// loop and check, break if free worker exist
-		for {
-			if atomic.LoadInt64(&curAcceptRoutines) < maxAcceptRoutines {
-				break
+		select {
+		case <-utils.CleanupChan:
+			logWorker("accept", "stop accept sign job")
+			return
+		case info := <-acceptInfoCh: // consume
+			// loop and check, break if free worker exist
+			for {
+				if atomic.LoadInt64(&curAcceptRoutines) < maxAcceptRoutines {
+					break
+				}
+				time.Sleep(1 * time.Second)
 			}
-			time.Sleep(1 * time.Second)
-		}
 
-		atomic.AddInt64(&curAcceptRoutines, 1)
-		go processAcceptInfo(info)
+			atomic.AddInt64(&curAcceptRoutines, 1)
+			go processAcceptInfo(info)
+		}
 	}
 }
 

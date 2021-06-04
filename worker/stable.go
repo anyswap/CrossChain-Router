@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"github.com/anyswap/CrossChain-Router/cmd/utils"
 	"github.com/anyswap/CrossChain-Router/mongodb"
 	"github.com/anyswap/CrossChain-Router/router"
 	"github.com/anyswap/CrossChain-Router/tokens"
@@ -19,6 +20,10 @@ func StartStableJob() {
 			logWorker("stable", "find router swap results to stable", "count", len(res))
 		}
 		for _, swap := range res {
+			if utils.IsCleanuping() {
+				logWorker("stable", "stop router swap stable job")
+				return
+			}
 			err = processRouterSwapStable(swap)
 			if err != nil {
 				logWorkerError("stable", "process router swap stable error", err, "chainID", swap.FromChainID, "txid", swap.TxID, "logIndex", swap.LogIndex)
