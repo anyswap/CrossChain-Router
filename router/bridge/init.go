@@ -44,6 +44,7 @@ func InitRouterBridges(isServer bool) {
 		bridge := NewCrossChainBridge(chainID)
 
 		bridge.InitGatewayConfig(chainID)
+		AdjustGatewayOrder(bridge, chainID.String())
 		bridge.InitChainConfig(chainID)
 
 		for _, tokenID := range tokenIDs {
