@@ -62,8 +62,8 @@ func UpdateRouterSwapStatus(fromChainID, txid string, logindex int, status SwapS
 		}
 		result := &MgoSwapResult{}
 		err := collRouterSwapResult.FindId(key).One(result)
-		if err == nil && result.SwapTx != "" {
-			return fmt.Errorf("forbid update swap status to TxNotStable as swaptx exist %v", result.SwapTx)
+		if err == nil {
+			return fmt.Errorf("forbid update swap status to TxNotStable as swap result exist")
 		}
 	}
 	err := collRouterSwap.UpdateId(key, bson.M{"$set": updates})

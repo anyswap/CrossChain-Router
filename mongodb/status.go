@@ -65,9 +65,8 @@ const (
 	MissTokenConfig                         // 20
 	NoUnderlyingToken                       // 21
 
-	EstimateGasFailed = 127
-	KeepStatus        = 255
-	Reswapping        = 256
+	KeepStatus = 255
+	Reswapping = 256
 )
 
 // IsRegisteredOk is successfully registered
@@ -137,9 +136,6 @@ func (status SwapStatus) String() string {
 		return "MissTokenConfig"
 	case NoUnderlyingToken:
 		return "NoUnderlyingToken"
-
-	case EstimateGasFailed:
-		return "EstimateGasFailed"
 	case Reswapping:
 		return "Reswapping"
 	default:
