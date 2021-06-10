@@ -10,7 +10,7 @@
 [swap.GetRouterSwap](#swapgetrouterswap)  
 [swap.GetRouterSwapHistory](#swapgetrouterswaphistory)  
 [swap.GetVersionInfo](#swapgetversioninfo)  
-[swap.GetSeverInfo](#swapgetseverinfo)  
+[swap.GetServerInfo](#swapgetserverinfo)  
 [swap.GetAllChainIDs](#swapgetallchainids)  
 [swap.GetAllTokenIDs](#swapgetalltokenids)  
 [swap.GetAllMultichainTokens](#swapgetallmultichaintokens)  
@@ -77,7 +77,7 @@
 返回版本号信息
 ```
 
-### swap.GetSeverInfo
+### swap.GetServerInfo
 
 ##### 参数：
 ```text
