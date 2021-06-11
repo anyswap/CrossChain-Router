@@ -395,12 +395,9 @@ func RouterAdminPassBigValue(fromChainID, txid string, logIndex int) error {
 		return fmt.Errorf("swap status is %v, not big value status %v", swap.Status.String(), TxWithBigValue.String())
 	}
 
-	res, err := FindRouterSwapResult(fromChainID, txid, logIndex)
-	if err != nil {
-		return err
-	}
-	if res.SwapTx != "" || res.SwapHeight != 0 || len(res.OldSwapTxs) > 0 {
-		return fmt.Errorf("already swapped with swaptx %v", res.SwapTx)
+	_, err = FindRouterSwapResult(fromChainID, txid, logIndex)
+	if err == nil {
+		return fmt.Errorf("can not pass big value swap with result exist")
 	}
 	return UpdateRouterSwapStatus(fromChainID, txid, logIndex, TxNotSwapped, time.Now().Unix(), "")
 }
