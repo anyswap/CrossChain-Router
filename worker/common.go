@@ -17,7 +17,8 @@ type MatchTx struct {
 	SwapNonce  uint64
 }
 
-func addInitialSwapResult(swapInfo *tokens.SwapTxInfo, status mongodb.SwapStatus) (err error) {
+// AddInitialSwapResult add initial result
+func AddInitialSwapResult(swapInfo *tokens.SwapTxInfo, status mongodb.SwapStatus) (err error) {
 	swapResult := &mongodb.MgoSwapResult{
 		SwapType:    uint32(swapInfo.SwapType),
 		TxID:        swapInfo.Hash,

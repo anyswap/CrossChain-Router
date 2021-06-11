@@ -9,6 +9,8 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
 	"github.com/anyswap/CrossChain-Router/v3/params"
+	"github.com/anyswap/CrossChain-Router/v3/router"
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/worker"
 )
 
@@ -92,10 +94,24 @@ func routerPassBigValue(args *admin.CallArgs, result *string) (err error) {
 	if err != nil {
 		return err
 	}
+	bridge := router.GetBridgeByChainID(chainID)
+	if bridge == nil {
+		return tokens.ErrNoBridgeForChainID
+	}
+	verifyArgs := &tokens.VerifyArgs{
+		SwapType:      tokens.RouterSwapType,
+		LogIndex:      logIndex,
+		AllowUnstable: false,
+	}
+	swapInfo, err := bridge.VerifyTransaction(txid, verifyArgs)
+	if err != nil {
+		return err
+	}
 	err = mongodb.RouterAdminPassBigValue(chainID, txid, logIndex)
 	if err != nil {
 		return err
 	}
+	_ = worker.AddInitialSwapResult(swapInfo, mongodb.MatchTxEmpty)
 	*result = successReuslt
 	return nil
 }
