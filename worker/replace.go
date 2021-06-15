@@ -74,15 +74,6 @@ func processRouterSwapReplace(res *mongodb.MgoSwapResult) error {
 	if getSepTimeInFind(waitTimeToReplace) < res.Timestamp {
 		return nil
 	}
-	resBridge := router.GetBridgeByChainID(res.ToChainID)
-	if resBridge == nil {
-		return tokens.ErrNoBridgeForChainID
-	}
-	err := checkIfSwapNonceHasPassed(resBridge, res, true)
-	if err != nil {
-		return err
-	}
-	_ = updateSwapTimestamp(res.FromChainID, res.TxID, res.LogIndex)
 	return ReplaceRouterSwap(res, nil)
 }
 
@@ -104,6 +95,7 @@ func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int) error {
 	}
 
 	logWorker("replaceSwap", "process task", "swap", res)
+	_ = updateSwapTimestamp(res.FromChainID, res.TxID, res.LogIndex)
 
 	txid := res.TxID
 	nonce := res.SwapNonce
@@ -166,6 +158,9 @@ func verifyReplaceSwap(res *mongodb.MgoSwapResult) (*mongodb.MgoSwap, error) {
 	if res.SwapTx == "" {
 		return nil, errors.New("swap without swaptx")
 	}
+	if res.SwapNonce == 0 {
+		return nil, errors.New("swap nonce is zero")
+	}
 	if res.Status != mongodb.MatchTxNotStable {
 		return nil, errors.New("swap result status is not 'MatchTxNotStable'")
 	}
@@ -188,6 +183,12 @@ func verifyReplaceSwap(res *mongodb.MgoSwapResult) (*mongodb.MgoSwap, error) {
 }
 
 func checkIfSwapNonceHasPassed(bridge tokens.IBridge, res *mongodb.MgoSwapResult, isReplace bool) error {
+	if res.SwapHeight != 0 {
+		if isReplace {
+			return errors.New("swaptx with block height")
+		}
+		return nil
+	}
 	nonceSetter, ok := bridge.(tokens.NonceSetter)
 	if !ok {
 		return nil

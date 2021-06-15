@@ -1,11 +1,9 @@
 package worker
 
 import (
-	"container/ring"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -18,15 +16,11 @@ import (
 )
 
 var (
-	acceptRing        *ring.Ring
-	acceptRingLock    sync.RWMutex
-	acceptRingMaxSize = 500
-
 	cachedAcceptInfos    = mapset.NewSet()
 	maxCachedAcceptInfos = 500
 
 	retryInterval = 1 * time.Second
-	waitInterval  = 1 * time.Second
+	waitInterval  = 3 * time.Second
 
 	acceptInfoCh      = make(chan *mpc.SignInfoData, 10)
 	maxAcceptRoutines = int64(10)
@@ -64,14 +58,6 @@ func startAcceptProducer() {
 			keyID := info.Key
 			if keyID == "" || info.Account == "" || info.GroupID == "" {
 				logWorkerWarn("accept", "invalid accept sign info", "signInfo", info)
-				continue
-			}
-			history := getAcceptSignHistory(keyID)
-			if history != nil {
-				if history.result != "IGNORE" {
-					logWorkerTrace("accept", "quick process history accept", "keyID", keyID, "result", history.result)
-					_, _ = mpc.DoAcceptSign(keyID, history.result, history.msgHash, history.msgContext)
-				}
 				continue
 			}
 			if cachedAcceptInfos.Contains(keyID) {
@@ -145,8 +131,7 @@ func processAcceptInfo(info *mpc.SignInfoData) {
 		errors.Is(err, errWrongMsgContext),
 		errors.Is(err, tokens.ErrTxWithWrongContract),
 		errors.Is(err, tokens.ErrNoBridgeForChainID):
-		logWorkerTrace("accept", "ignore sign", "keyID", keyID, "err", err)
-		addAcceptSignHistory(keyID, "IGNORE", info.MsgHash, info.MsgContext)
+		logWorker("accept", "ignore sign", "keyID", keyID, "err", err)
 		isProcessed = true
 		return
 	}
@@ -159,7 +144,6 @@ func processAcceptInfo(info *mpc.SignInfoData) {
 		logWorkerError("accept", "accept sign job failed", err, "keyID", keyID, "result", res, agreeResult, "chainID", args.FromChainID, "swapID", args.SwapID, "logIndex", args.LogIndex)
 	} else {
 		logWorker("accept", "accept sign job finish", "keyID", keyID, "result", agreeResult, "chainID", args.FromChainID, "swapID", args.SwapID, "logIndex", args.LogIndex)
-		addAcceptSignHistory(keyID, agreeResult, info.MsgHash, info.MsgContext)
 		isProcessed = true
 	}
 }
@@ -233,57 +217,4 @@ func rebuildAndVerifyMsgHash(msgHash []string, args *tokens.BuildTxArgs) (err er
 		return err
 	}
 	return dstBridge.VerifyMsgHash(rawTx, msgHash)
-}
-
-type acceptSignInfo struct {
-	keyID      string
-	result     string
-	msgHash    []string
-	msgContext []string
-}
-
-func addAcceptSignHistory(keyID, result string, msgHash, msgContext []string) {
-	// Create the new item as its own ring
-	item := ring.New(1)
-	item.Value = &acceptSignInfo{
-		keyID:      keyID,
-		result:     result,
-		msgHash:    msgHash,
-		msgContext: msgContext,
-	}
-
-	acceptRingLock.Lock()
-	defer acceptRingLock.Unlock()
-
-	if acceptRing == nil {
-		acceptRing = item
-	} else {
-		if acceptRing.Len() == acceptRingMaxSize {
-			// Drop the block out of the ring
-			acceptRing = acceptRing.Move(-1)
-			acceptRing.Unlink(1)
-			acceptRing = acceptRing.Move(1)
-		}
-		acceptRing.Move(-1).Link(item)
-	}
-}
-
-func getAcceptSignHistory(keyID string) *acceptSignInfo {
-	acceptRingLock.RLock()
-	defer acceptRingLock.RUnlock()
-
-	if acceptRing == nil {
-		return nil
-	}
-
-	r := acceptRing
-	for i := 0; i < r.Len(); i++ {
-		item := r.Value.(*acceptSignInfo)
-		if item.keyID == keyID {
-			return item
-		}
-		r = r.Prev()
-	}
-
-	return nil
 }
