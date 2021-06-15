@@ -94,7 +94,7 @@ func (b *Bridge) verifyAnyCallSwapTx(txHash string, logIndex int, allowUnstable 
 	}
 
 	if !allowUnstable {
-		log.Debug("verify anycall swap tx stable pass",
+		log.Info("verify anycall swap tx stable pass",
 			"from", swapInfo.From, "to", swapInfo.To, "txid", txHash, "logIndex", logIndex,
 			"height", swapInfo.Height, "timestamp", swapInfo.Timestamp,
 			"fromChainID", swapInfo.FromChainID, "toChainID", swapInfo.ToChainID)

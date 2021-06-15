@@ -47,7 +47,7 @@ func (b *Bridge) verifyRouterSwapTx(txHash string, logIndex int, allowUnstable b
 	}
 
 	if !allowUnstable {
-		log.Debug("verify router swap tx stable pass",
+		log.Info("verify router swap tx stable pass",
 			"from", swapInfo.From, "to", swapInfo.To, "bind", swapInfo.Bind, "value", swapInfo.Value,
 			"txid", txHash, "logIndex", logIndex, "height", swapInfo.Height, "timestamp", swapInfo.Timestamp,
 			"fromChainID", swapInfo.FromChainID, "toChainID", swapInfo.ToChainID,

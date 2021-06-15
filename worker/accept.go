@@ -51,7 +51,7 @@ func startAcceptProducer() {
 			continue
 		}
 		i++
-		if i%20 == 0 {
+		if i%7 == 0 {
 			logWorker("accept", "getCurNodeSignInfo", "count", len(signInfo))
 		}
 		for _, info := range signInfo {
@@ -95,7 +95,7 @@ func startAcceptConsumer() {
 
 func checkAndUpdateCachedAcceptInfoMap(keyID string) (ok bool) {
 	if cachedAcceptInfos.Contains(keyID) {
-		logWorkerTrace("accept", "ignore cached accept sign info in process", "keyID", keyID)
+		logWorker("accept", "ignore cached accept sign info in process", "keyID", keyID)
 		return false
 	}
 	if cachedAcceptInfos.Cardinality() >= maxCachedAcceptInfos {
@@ -168,7 +168,7 @@ func verifySignInfo(signInfo *mpc.SignInfoData) (*tokens.BuildTxArgs, error) {
 		return nil, errIdentifierMismatch
 	}
 	logWorker("accept", "verifySignInfo", "keyID", signInfo.Key, "msgHash", msgHash, "msgContext", msgContext)
-	err = rebuildAndVerifyMsgHash(msgHash, &args)
+	err = rebuildAndVerifyMsgHash(signInfo.Key, msgHash, &args)
 	return &args, err
 }
 
@@ -181,7 +181,7 @@ func getBridges(fromChainID, toChainID string) (srcBridge, dstBridge tokens.IBri
 	return
 }
 
-func rebuildAndVerifyMsgHash(msgHash []string, args *tokens.BuildTxArgs) (err error) {
+func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildTxArgs) (err error) {
 	var srcBridge, dstBridge tokens.IBridge
 	switch args.SwapType {
 	case tokens.RouterSwapType, tokens.AnyCallSwapType:
@@ -202,7 +202,7 @@ func rebuildAndVerifyMsgHash(msgHash []string, args *tokens.BuildTxArgs) (err er
 	}
 	swapInfo, err := srcBridge.VerifyTransaction(txid, verifyArgs)
 	if err != nil {
-		logWorkerError("accept", "verifySignInfo failed", err, "fromChainID", args.FromChainID, "txid", txid, "logIndex", logIndex)
+		logWorkerError("accept", "verifySignInfo failed", err, "keyID", keyID, "swapType", args.SwapType.String(), "fromChainID", args.FromChainID, "txid", txid, "logIndex", logIndex)
 		return err
 	}
 
@@ -216,5 +216,10 @@ func rebuildAndVerifyMsgHash(msgHash []string, args *tokens.BuildTxArgs) (err er
 	if err != nil {
 		return err
 	}
-	return dstBridge.VerifyMsgHash(rawTx, msgHash)
+	err = dstBridge.VerifyMsgHash(rawTx, msgHash)
+	if err != nil {
+		return err
+	}
+	logWorker("accept", "verify message hash success", "keyID", keyID, "swapType", args.SwapType.String(), "fromChainID", args.FromChainID, "txid", txid, "logIndex", logIndex)
+	return nil
 }
