@@ -50,7 +50,6 @@ func ConvertMgoSwapResultToSwapInfo(mr *mongodb.MgoSwapResult) *SwapInfo {
 		TxID:          mr.TxID,
 		TxTo:          mr.TxTo,
 		TxHeight:      mr.TxHeight,
-		TxTime:        mr.TxTime,
 		From:          mr.From,
 		To:            mr.To,
 		Bind:          mr.Bind,
@@ -60,9 +59,7 @@ func ConvertMgoSwapResultToSwapInfo(mr *mongodb.MgoSwapResult) *SwapInfo {
 		ToChainID:     mr.ToChainID,
 		SwapInfo:      mr.SwapInfo,
 		SwapTx:        mr.SwapTx,
-		OldSwapTxs:    mr.OldSwapTxs,
 		SwapHeight:    mr.SwapHeight,
-		SwapTime:      mr.SwapTime,
 		SwapValue:     mr.SwapValue,
 		SwapNonce:     mr.SwapNonce,
 		Status:        mr.Status,
@@ -70,6 +67,7 @@ func ConvertMgoSwapResultToSwapInfo(mr *mongodb.MgoSwapResult) *SwapInfo {
 		InitTime:      mr.InitTime,
 		Timestamp:     mr.Timestamp,
 		Memo:          mr.Memo,
+		ReplaceCount:  len(mr.OldSwapTxs),
 		Confirmations: confirmations,
 	}
 }

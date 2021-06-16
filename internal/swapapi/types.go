@@ -20,7 +20,6 @@ type SwapInfo struct {
 	TxID          string             `json:"txid"`
 	TxTo          string             `json:"txto"`
 	TxHeight      uint64             `json:"txheight"`
-	TxTime        uint64             `json:"txtime"`
 	From          string             `json:"from"`
 	To            string             `json:"to"`
 	Bind          string             `json:"bind"`
@@ -30,9 +29,7 @@ type SwapInfo struct {
 	ToChainID     string             `json:"toChainID"`
 	SwapInfo      mongodb.SwapInfo   `json:"swapinfo"`
 	SwapTx        string             `json:"swaptx"`
-	OldSwapTxs    []string           `json:"oldswaptxs,omitempty"`
 	SwapHeight    uint64             `json:"swapheight"`
-	SwapTime      uint64             `json:"swaptime"`
 	SwapValue     string             `json:"swapvalue"`
 	SwapNonce     uint64             `json:"swapnonce"`
 	Status        mongodb.SwapStatus `json:"status"`
@@ -40,5 +37,6 @@ type SwapInfo struct {
 	InitTime      int64              `json:"inittime"`
 	Timestamp     int64              `json:"timestamp"`
 	Memo          string             `json:"memo,omitempty"`
+	ReplaceCount  int                `json:"replaceCount"`
 	Confirmations uint64             `json:"confirmations"`
 }

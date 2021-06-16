@@ -1,6 +1,8 @@
 package eth
 
 import (
+	"time"
+
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/types"
@@ -15,20 +17,16 @@ func (b *Bridge) GetTransactionStatus(txHash string) *tokens.TxStatus {
 	}
 	txStatus.BlockHeight = txr.BlockNumber.ToInt().Uint64()
 	txStatus.BlockHash = txr.BlockHash.String()
-	block, err := b.GetBlockByHash(txStatus.BlockHash)
-	if err == nil {
-		txStatus.BlockTime = block.Time.ToInt().Uint64()
-	} else {
-		log.Debug("GetBlockByHash fail", "hash", txStatus.BlockHash, "err", err)
-	}
 	if txStatus.BlockHeight != 0 {
-		latest, err := b.GetLatestBlockNumberOf(url)
-		if err == nil {
-			if latest > txStatus.BlockHeight {
-				txStatus.Confirmations = latest - txStatus.BlockHeight
+		for i := 0; i < 3; i++ {
+			latest, err := b.GetLatestBlockNumberOf(url)
+			if err == nil {
+				if latest > txStatus.BlockHeight {
+					txStatus.Confirmations = latest - txStatus.BlockHeight
+				}
+				break
 			}
-		} else {
-			log.Debug("GetLatestBlockNumber fail", "err", err)
+			time.Sleep(1 * time.Second)
 		}
 	}
 	txStatus.Receipt = txr
