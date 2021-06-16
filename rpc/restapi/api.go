@@ -135,7 +135,7 @@ func GetChainConfigHandler(w http.ResponseWriter, r *http.Request) {
 	if bridge == nil {
 		writeResponse(w, nil, fmt.Errorf("chainID %v not exist", chainID))
 	} else {
-		chainConfig := bridge.GetChainConfig()
+		chainConfig := swapapi.ConvertChainConfig(bridge.GetChainConfig())
 		writeResponse(w, chainConfig, nil)
 	}
 }
@@ -149,7 +149,7 @@ func GetTokenConfigHandler(w http.ResponseWriter, r *http.Request) {
 	if bridge == nil {
 		writeResponse(w, nil, fmt.Errorf("chainID %v not exist", chainID))
 	} else {
-		tokenConfig := bridge.GetTokenConfig(address)
+		tokenConfig := swapapi.ConvertTokenConfig(bridge.GetTokenConfig(address))
 		writeResponse(w, tokenConfig, nil)
 	}
 }

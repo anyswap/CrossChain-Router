@@ -3,6 +3,7 @@ package swapapi
 import (
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
 	"github.com/anyswap/CrossChain-Router/v3/router"
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
 // ConvertMgoSwapToSwapInfo convert
@@ -79,4 +80,39 @@ func ConvertMgoSwapResultsToSwapInfos(mrSlice []*mongodb.MgoSwapResult) []*SwapI
 		result[k] = ConvertMgoSwapResultToSwapInfo(v)
 	}
 	return result
+}
+
+// ConvertChainConfig convert chain config
+func ConvertChainConfig(c *tokens.ChainConfig) *ChainConfig {
+	if c == nil {
+		return nil
+	}
+	return &ChainConfig{
+		ChainID:        c.ChainID,
+		BlockChain:     c.BlockChain,
+		RouterContract: c.RouterContract,
+		Confirmations:  c.Confirmations,
+		InitialHeight:  c.InitialHeight,
+		RouterMPC:      c.GetRouterMPC(),
+	}
+}
+
+// ConvertTokenConfig convert token config
+func ConvertTokenConfig(c *tokens.TokenConfig) *TokenConfig {
+	if c == nil {
+		return nil
+	}
+	return &TokenConfig{
+		TokenID:               c.TokenID,
+		Decimals:              c.Decimals,
+		ContractAddress:       c.ContractAddress,
+		ContractVersion:       c.ContractVersion,
+		MaximumSwap:           c.MaximumSwap.String(),
+		MinimumSwap:           c.MinimumSwap.String(),
+		BigValueThreshold:     c.BigValueThreshold.String(),
+		SwapFeeRatePerMillion: c.SwapFeeRatePerMillion,
+		MaximumSwapFee:        c.MaximumSwapFee.String(),
+		MinimumSwapFee:        c.MinimumSwapFee.String(),
+		Underlying:            c.GetUnderlying().String(),
+	}
 }

@@ -40,3 +40,28 @@ type SwapInfo struct {
 	ReplaceCount  int                `json:"replaceCount"`
 	Confirmations uint64             `json:"confirmations"`
 }
+
+// ChainConfig rpc type
+type ChainConfig struct {
+	ChainID        string
+	BlockChain     string
+	RouterContract string
+	Confirmations  uint64
+	InitialHeight  uint64
+	RouterMPC      string
+}
+
+// TokenConfig rpc type
+type TokenConfig struct {
+	TokenID               string
+	Decimals              uint8
+	ContractAddress       string
+	ContractVersion       uint64
+	MaximumSwap           string
+	MinimumSwap           string
+	BigValueThreshold     string
+	SwapFeeRatePerMillion uint64
+	MaximumSwapFee        string
+	MinimumSwapFee        string
+	Underlying            string
+}

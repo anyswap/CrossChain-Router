@@ -8,7 +8,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/internal/swapapi"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
-	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
 // RouterSwapAPI rpc api handler
@@ -95,13 +94,13 @@ func (s *RouterSwapAPI) GetAllMultichainTokens(r *http.Request, args *string, re
 }
 
 // GetChainConfig api
-func (s *RouterSwapAPI) GetChainConfig(r *http.Request, args *string, result *tokens.ChainConfig) error {
+func (s *RouterSwapAPI) GetChainConfig(r *http.Request, args *string, result *swapapi.ChainConfig) error {
 	chainID := *args
 	bridge := router.GetBridgeByChainID(chainID)
 	if bridge == nil {
 		return fmt.Errorf("chainID %v not exist", chainID)
 	}
-	chainConfig := bridge.GetChainConfig()
+	chainConfig := swapapi.ConvertChainConfig(bridge.GetChainConfig())
 	if chainConfig != nil {
 		*result = *chainConfig
 		return nil
@@ -116,14 +115,14 @@ type GetTokenConfigArgs struct {
 }
 
 // GetTokenConfig api
-func (s *RouterSwapAPI) GetTokenConfig(r *http.Request, args *GetTokenConfigArgs, result *tokens.TokenConfig) error {
+func (s *RouterSwapAPI) GetTokenConfig(r *http.Request, args *GetTokenConfigArgs, result *swapapi.TokenConfig) error {
 	chainID := args.ChainID
 	address := args.Address
 	bridge := router.GetBridgeByChainID(chainID)
 	if bridge == nil {
 		return fmt.Errorf("chainID %v not exist", chainID)
 	}
-	tokenConfig := bridge.GetTokenConfig(address)
+	tokenConfig := swapapi.ConvertTokenConfig(bridge.GetTokenConfig(address))
 	if tokenConfig != nil {
 		*result = *tokenConfig
 		return nil
