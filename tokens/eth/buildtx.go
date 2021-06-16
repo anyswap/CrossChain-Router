@@ -202,6 +202,17 @@ func (b *Bridge) getAccountNonce(from string) (nonceptr *uint64, err error) {
 	return &nonce, nil
 }
 
+func (b *Bridge) getMinReserveFee() *big.Int {
+	minReserve := big.NewInt(1e16) // default 0.01 ETH
+	serverCfg := params.GetRouterServerConfig()
+	if serverCfg != nil {
+		if cfgMinReserve, exist := serverCfg.MinReserveFee[b.ChainConfig.ChainID]; exist {
+			minReserve = new(big.Int).SetUint64(cfgMinReserve)
+		}
+	}
+	return minReserve
+}
+
 func (b *Bridge) checkBalance(sender string, amount, gasPrice *big.Int, gasLimit uint64, isBuildTx bool) (err error) {
 	var needValue *big.Int
 	if amount != nil {
@@ -211,7 +222,7 @@ func (b *Bridge) checkBalance(sender string, amount, gasPrice *big.Int, gasLimit
 	}
 	gasFee := new(big.Int).Mul(gasPrice, new(big.Int).SetUint64(gasLimit))
 	if isBuildTx {
-		gasFee.Mul(gasFee, big.NewInt(3)) // amplify gas gee to keep some reserve
+		gasFee.Add(gasFee, b.getMinReserveFee())
 	}
 	needValue.Add(needValue, gasFee)
 

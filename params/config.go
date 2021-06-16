@@ -40,6 +40,7 @@ type RouterServerConfig struct {
 	MaxGasPriceFluctPercent    uint64            `toml:",omitempty" json:",omitempty"`
 	SwapDeadlineOffset         int64             `toml:",omitempty" json:",omitempty"` // seconds
 	DefaultGasLimit            map[string]uint64 `toml:",omitempty" json:",omitempty"`
+	MinReserveFee              map[string]uint64 `toml:",omitempty" json:",omitempty"`
 }
 
 // RouterConfig config
