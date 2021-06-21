@@ -90,7 +90,7 @@ func (s *RouterServerConfig) CheckConfig() error {
 	if err != nil {
 		return err
 	}
-	log.Info("check server config success")
+	log.Info("check server config success", "minReserveFee", s.MinReserveFee)
 	return nil
 }
 

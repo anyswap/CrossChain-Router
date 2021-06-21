@@ -234,7 +234,7 @@ func (b *Bridge) checkBalance(sender string, amount, gasPrice *big.Int, gasLimit
 		}
 		time.Sleep(retryRPCInterval)
 	}
-	if err == nil && balance.Cmp(amount) < 0 {
+	if err == nil && balance.Cmp(needValue) < 0 {
 		return fmt.Errorf("not enough coin balance. %v < %v", balance, needValue)
 	}
 	if err != nil {
