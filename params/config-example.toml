@@ -16,6 +16,8 @@ ChainIDBlackList = []
 TokenIDBlackList = []
 # enable replace swap job
 EnableReplaceSwap = true
+# enable pass big value swap job
+EnablePassBigValueSwap = true
 # replace plus gas price percentage
 ReplacePlusGasPricePercent = 1
 # wait time to replace swap

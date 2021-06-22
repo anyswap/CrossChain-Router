@@ -32,6 +32,7 @@ type RouterServerConfig struct {
 
 	// extras
 	EnableReplaceSwap          bool
+	EnablePassBigValueSwap     bool
 	ReplacePlusGasPricePercent uint64            `toml:",omitempty" json:",omitempty"`
 	WaitTimeToReplace          int64             `toml:",omitempty" json:",omitempty"` // seconds
 	MaxReplaceCount            int               `toml:",omitempty" json:",omitempty"`
