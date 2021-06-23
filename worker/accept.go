@@ -136,6 +136,7 @@ func processAcceptInfo(info *mpc.SignInfoData) {
 		return
 	}
 	if err != nil {
+		logWorkerError("accept", "DISAGREE sign", err, "keyID", keyID, "chainID", args.FromChainID, "swapID", args.SwapID, "logIndex", args.LogIndex)
 		agreeResult = "DISAGREE"
 	}
 	logWorker("accept", "mpc DoAcceptSign", "keyID", keyID, "result", agreeResult, "chainID", args.FromChainID, "swapID", args.SwapID, "logIndex", args.LogIndex)
