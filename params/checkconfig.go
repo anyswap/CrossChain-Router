@@ -38,6 +38,8 @@ func (config *RouterConfig) CheckConfig(isServer bool) (err error) {
 		}
 	}
 
+	log.Info("show min reserve fee info", "minReserveFee", config.MinReserveFee)
+
 	if config.MPC == nil {
 		return errors.New("server must config 'MPC'")
 	}
@@ -90,7 +92,7 @@ func (s *RouterServerConfig) CheckConfig() error {
 	if err != nil {
 		return err
 	}
-	log.Info("check server config success", "minReserveFee", s.MinReserveFee)
+	log.Info("check server config success", "defaultGasLimit", s.DefaultGasLimit)
 	return nil
 }
 

@@ -35,11 +35,6 @@ SwapDeadlineOffset = 36000
 4     = 90000
 256   = 90000
 46688 = 90000
-# min reserve fee. key is chainID. defaults to 1e16 wei
-[Server.MinReserveFee]
-4     = 10000000000000000
-256   = 10000000000000000
-46688 = 10000000000000000
 
 # modgodb database connection config
 [Server.MongoDB]
@@ -54,6 +49,13 @@ Password = "password"
 Port = 11556
 # CORS config
 AllowedOrigins = []
+
+
+# min reserve fee. key is chainID. defaults to 1e16 wei
+[MinReserveFee]
+4     = 10000000000000000
+256   = 10000000000000000
+46688 = 10000000000000000
 
 
 # OnChain config

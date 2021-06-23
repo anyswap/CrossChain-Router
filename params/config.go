@@ -40,18 +40,18 @@ type RouterServerConfig struct {
 	MaxGasPriceFluctPercent    uint64            `toml:",omitempty" json:",omitempty"`
 	SwapDeadlineOffset         int64             `toml:",omitempty" json:",omitempty"` // seconds
 	DefaultGasLimit            map[string]uint64 `toml:",omitempty" json:",omitempty"`
-	MinReserveFee              map[string]uint64 `toml:",omitempty" json:",omitempty"`
 }
 
 // RouterConfig config
 type RouterConfig struct {
 	Server *RouterServerConfig `toml:",omitempty" json:",omitempty"`
 
-	Identifier  string
-	Onchain     *OnchainConfig
-	Gateways    map[string][]string // key is chain ID
-	GatewaysExt map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
-	MPC         *MPCConfig
+	Identifier    string
+	MinReserveFee map[string]uint64 `toml:",omitempty" json:",omitempty"`
+	Onchain       *OnchainConfig
+	Gateways      map[string][]string // key is chain ID
+	GatewaysExt   map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+	MPC           *MPCConfig
 }
 
 // OnchainConfig struct

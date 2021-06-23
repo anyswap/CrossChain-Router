@@ -203,12 +203,13 @@ func (b *Bridge) getAccountNonce(from string) (nonceptr *uint64, err error) {
 }
 
 func (b *Bridge) getMinReserveFee() *big.Int {
+	config := params.GetRouterConfig()
+	if config == nil {
+		return big.NewInt(0)
+	}
 	minReserve := big.NewInt(1e16) // default 0.01 ETH
-	serverCfg := params.GetRouterServerConfig()
-	if serverCfg != nil {
-		if cfgMinReserve, exist := serverCfg.MinReserveFee[b.ChainConfig.ChainID]; exist {
-			minReserve = new(big.Int).SetUint64(cfgMinReserve)
-		}
+	if cfgMinReserve, exist := config.MinReserveFee[b.ChainConfig.ChainID]; exist {
+		minReserve = new(big.Int).SetUint64(cfgMinReserve)
 	}
 	return minReserve
 }
