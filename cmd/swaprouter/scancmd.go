@@ -25,6 +25,11 @@ var (
 		Usage: "router contract address",
 	}
 
+	whitelistFlag = &cli.StringSliceFlag{
+		Name:  "whitelist",
+		Usage: "white list of contracts call into router contract",
+	}
+
 	scanswapCommand = &cli.Command{
 		Action:    scanswap,
 		Name:      "scanswap",
@@ -35,6 +40,7 @@ scan router swap and post register to swap server
 `,
 		Flags: []cli.Flag{
 			routerContractFlag,
+			whitelistFlag,
 			utils.GatewayFlag,
 			utils.ChainIDFlag,
 			utils.SwapServerFlag,
@@ -55,6 +61,7 @@ scan router swap and post register to swap server
 type routerSwapScanner struct {
 	chainID        string
 	routerContract string
+	whitelist      []string
 	gateway        string
 	swapServer     string
 	startHeight    uint64
@@ -77,6 +84,7 @@ func scanswap(ctx *cli.Context) error {
 		rpcRetryCount: 3,
 	}
 	scanner.routerContract = ctx.String(routerContractFlag.Name)
+	scanner.whitelist = ctx.StringSlice(whitelistFlag.Name)
 	scanner.chainID = ctx.String(utils.ChainIDFlag.Name)
 	scanner.gateway = ctx.String(utils.GatewayFlag.Name)
 	scanner.swapServer = ctx.String(utils.SwapServerFlag.Name)
@@ -94,6 +102,7 @@ func scanswap(ctx *cli.Context) error {
 		"end", scanner.endHeight,
 		"stable", scanner.stableHeight,
 		"jobs", scanner.jobCount,
+		"whitelist", scanner.whitelist,
 	)
 
 	scanner.verifyOptions()
@@ -253,13 +262,41 @@ func (scanner *routerSwapScanner) scanBlock(job, height uint64, cache bool) {
 	}
 }
 
+func (scanner *routerSwapScanner) checkTxToAddress(tx *types.Transaction) bool {
+	if tx.To() == nil {
+		return false
+	}
+
+	txtoAddress := tx.To().String()
+
+	if strings.EqualFold(txtoAddress, scanner.routerContract) {
+		return true
+	}
+
+	for _, whiteAddr := range scanner.whitelist {
+		if strings.EqualFold(txtoAddress, whiteAddr) {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (scanner *routerSwapScanner) scanTransaction(tx *types.Transaction) {
-	if tx.To() == nil || !strings.EqualFold(tx.To().String(), scanner.routerContract) {
+	if !scanner.checkTxToAddress(tx) {
 		return
 	}
 
 	txHash := tx.Hash()
-	receipt, err := scanner.client.TransactionReceipt(scanner.ctx, txHash)
+	var receipt *types.Receipt
+	var err error
+	for i := 0; i < 3; i++ {
+		receipt, err = scanner.client.TransactionReceipt(scanner.ctx, txHash)
+		if err == nil {
+			break
+		}
+		time.Sleep(scanner.rpcInterval)
+	}
 	if err != nil || receipt == nil || receipt.Status != 1 {
 		return
 	}
@@ -267,6 +304,9 @@ func (scanner *routerSwapScanner) scanTransaction(tx *types.Transaction) {
 	for i := 1; i < len(receipt.Logs); i++ {
 		rlog := receipt.Logs[i]
 		if rlog.Removed {
+			continue
+		}
+		if !strings.EqualFold(rlog.Address.String(), scanner.routerContract) {
 			continue
 		}
 		logTopic := rlog.Topics[0].Bytes()

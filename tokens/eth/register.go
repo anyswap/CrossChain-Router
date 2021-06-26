@@ -29,7 +29,7 @@ func (b *Bridge) registerRouterSwapTx(txHash string, logIndex int) ([]*tokens.Sw
 	commonInfo.Hash = txHash                    // Hash
 	commonInfo.LogIndex = logIndex              // LogIndex
 
-	receipt, err := b.verifySwapTxReceipt(commonInfo, b.ChainConfig.RouterContract, true)
+	receipt, err := b.verifySwapTxReceipt(commonInfo, true)
 	if err != nil {
 		return []*tokens.SwapTxInfo{commonInfo}, []error{err}
 	}
@@ -53,7 +53,8 @@ func (b *Bridge) registerRouterSwapTx(txHash string, logIndex int) ([]*tokens.Sw
 		swapInfo.LogIndex = i // LogIndex
 		err := b.verifyRouterSwapTxLog(swapInfo, receipt.Logs[i])
 		switch {
-		case errors.Is(err, tokens.ErrSwapoutLogNotFound):
+		case errors.Is(err, tokens.ErrSwapoutLogNotFound),
+			errors.Is(err, tokens.ErrTxWithWrongContract):
 			continue
 		case err == nil:
 			err = b.checkRouterSwapInfo(swapInfo)

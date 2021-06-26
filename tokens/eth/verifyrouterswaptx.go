@@ -27,7 +27,7 @@ func (b *Bridge) verifyRouterSwapTx(txHash string, logIndex int, allowUnstable b
 	swapInfo.Hash = txHash                    // Hash
 	swapInfo.LogIndex = logIndex              // LogIndex
 
-	receipt, err := b.verifySwapTxReceipt(swapInfo, b.ChainConfig.RouterContract, allowUnstable)
+	receipt, err := b.verifySwapTxReceipt(swapInfo, allowUnstable)
 	if err != nil {
 		return swapInfo, err
 	}
@@ -91,7 +91,7 @@ func (b *Bridge) checkRouterSwapInfo(swapInfo *tokens.SwapTxInfo) error {
 	return nil
 }
 
-func (b *Bridge) verifySwapTxReceipt(swapInfo *tokens.SwapTxInfo, contractAddr string, allowUnstable bool) (receipt *types.RPCTxReceipt, err error) {
+func (b *Bridge) verifySwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable bool) (receipt *types.RPCTxReceipt, err error) {
 	txStatus := b.GetTransactionStatus(swapInfo.Hash)
 	if txStatus.BlockHeight == 0 {
 		return nil, tokens.ErrTxNotFound
@@ -116,18 +116,17 @@ func (b *Bridge) verifySwapTxReceipt(swapInfo *tokens.SwapTxInfo, contractAddr s
 		return receipt, tokens.ErrTxWithWrongContract
 	}
 
-	txRecipient := receipt.Recipient.LowerHex()
-	if !common.IsEqualIgnoreCase(txRecipient, contractAddr) {
-		return receipt, tokens.ErrTxWithWrongContract
-	}
-
-	swapInfo.TxTo = txRecipient             // TxTo
-	swapInfo.To = txRecipient               // To
-	swapInfo.From = receipt.From.LowerHex() // From
+	swapInfo.TxTo = receipt.Recipient.LowerHex() // TxTo
+	swapInfo.From = receipt.From.LowerHex()      // From
 	return receipt, nil
 }
 
 func (b *Bridge) verifyRouterSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
+	swapInfo.To = rlog.Address.LowerHex() // To
+	if !common.IsEqualIgnoreCase(rlog.Address.LowerHex(), b.ChainConfig.RouterContract) {
+		return tokens.ErrTxWithWrongContract
+	}
+
 	logTopic := rlog.Topics[0].Bytes()
 	switch {
 	case bytes.Equal(logTopic, LogAnySwapOutTopic):

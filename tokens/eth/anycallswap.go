@@ -26,7 +26,7 @@ func (b *Bridge) registerAnyCallSwapTx(txHash string, logIndex int) ([]*tokens.S
 	commonInfo.Hash = txHash                     // Hash
 	commonInfo.LogIndex = logIndex               // LogIndex
 
-	receipt, err := b.verifySwapTxReceipt(commonInfo, b.ChainConfig.RouterContract, true)
+	receipt, err := b.verifySwapTxReceipt(commonInfo, true)
 	if err != nil {
 		return []*tokens.SwapTxInfo{commonInfo}, []error{err}
 	}
@@ -50,7 +50,8 @@ func (b *Bridge) registerAnyCallSwapTx(txHash string, logIndex int) ([]*tokens.S
 		swapInfo.LogIndex = i // LogIndex
 		err := b.verifyAnyCallSwapTxLog(swapInfo, receipt.Logs[i])
 		switch {
-		case errors.Is(err, tokens.ErrSwapoutLogNotFound):
+		case errors.Is(err, tokens.ErrSwapoutLogNotFound),
+			errors.Is(err, tokens.ErrTxWithWrongContract):
 			continue
 		case err == nil:
 			err = b.checkAnyCallSwapInfo(swapInfo)
@@ -74,7 +75,7 @@ func (b *Bridge) verifyAnyCallSwapTx(txHash string, logIndex int, allowUnstable 
 	swapInfo.Hash = txHash                     // Hash
 	swapInfo.LogIndex = logIndex               // LogIndex
 
-	receipt, err := b.verifySwapTxReceipt(swapInfo, b.ChainConfig.RouterContract, allowUnstable)
+	receipt, err := b.verifySwapTxReceipt(swapInfo, allowUnstable)
 	if err != nil {
 		return swapInfo, err
 	}
@@ -104,6 +105,11 @@ func (b *Bridge) verifyAnyCallSwapTx(txHash string, logIndex int, allowUnstable 
 }
 
 func (b *Bridge) verifyAnyCallSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
+	swapInfo.To = rlog.Address.LowerHex() // To
+	if !common.IsEqualIgnoreCase(rlog.Address.LowerHex(), b.ChainConfig.RouterContract) {
+		return tokens.ErrTxWithWrongContract
+	}
+
 	logTopic := rlog.Topics[0].Bytes()
 	if !bytes.Equal(logTopic, LogAnyCallTopic) {
 		return tokens.ErrSwapoutLogNotFound
