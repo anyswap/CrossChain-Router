@@ -30,6 +30,11 @@ var (
 		Usage: "white list of contracts call into router contract",
 	}
 
+	noPostFlag = &cli.BoolFlag{
+		Name:  "nopost",
+		Usage: "no post, used in test",
+	}
+
 	scanswapCommand = &cli.Command{
 		Action:    scanswap,
 		Name:      "scanswap",
@@ -48,6 +53,7 @@ scan router swap and post register to swap server
 			utils.EndHeightFlag,
 			utils.StableHeightFlag,
 			utils.JobsFlag,
+			noPostFlag,
 		},
 	}
 
@@ -68,6 +74,7 @@ type routerSwapScanner struct {
 	endHeight      uint64
 	stableHeight   uint64
 	jobCount       uint64
+	noPost         bool
 
 	client *ethclient.Client
 	ctx    context.Context
@@ -92,6 +99,7 @@ func scanswap(ctx *cli.Context) error {
 	scanner.endHeight = ctx.Uint64(utils.EndHeightFlag.Name)
 	scanner.stableHeight = ctx.Uint64(utils.StableHeightFlag.Name)
 	scanner.jobCount = ctx.Uint64(utils.JobsFlag.Name)
+	scanner.noPost = ctx.Bool(noPostFlag.Name)
 
 	log.Info("get argument success",
 		"routerContract", scanner.routerContract,
@@ -103,6 +111,7 @@ func scanswap(ctx *cli.Context) error {
 		"stable", scanner.stableHeight,
 		"jobs", scanner.jobCount,
 		"whitelist", scanner.whitelist,
+		"noPost", scanner.noPost,
 	)
 
 	scanner.verifyOptions()
@@ -138,6 +147,10 @@ func (scanner *routerSwapScanner) init() {
 		log.Fatal("ethclient.Dail failed", "gateway", scanner.gateway, "err", err)
 	}
 	scanner.client = ethcli
+
+	if scanner.noPost {
+		return
+	}
 
 	var version string
 	for i := 0; i < scanner.rpcRetryCount; i++ {
@@ -322,6 +335,11 @@ func (scanner *routerSwapScanner) scanTransaction(tx *types.Transaction) {
 }
 
 func (scanner *routerSwapScanner) postSwap(chainID, txid string, logIndex int) {
+	if scanner.noPost {
+		log.Info("find router swap", "chainid", chainID, "txid", txid, "logindex", logIndex)
+		return
+	}
+
 	subject := "post router swap register"
 	rpcMethod := "swap.RegisterRouterSwap"
 	log.Info(subject, "chainid", chainID, "txid", txid, "logindex", logIndex)
