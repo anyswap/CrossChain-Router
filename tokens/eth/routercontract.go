@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	cachedPairsMap map[string]string // key is of format `chainid:token0:token1` (lowercase)
+	cachedPairsMap = make(map[string]string) // key is of format `chainid:token0:token1` (lowercase)
 )
 
 func getCachedPairKey(chainID, token0, token1 string) string {
