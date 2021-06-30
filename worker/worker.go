@@ -16,7 +16,7 @@ func StartRouterSwapWork(isServer bool) {
 	client.InitHTTPClient()
 	bridge.InitRouterBridges(isServer)
 
-	go bridge.StartAdjustGatewayOrderJob()
+	bridge.StartAdjustGatewayOrderJob()
 	time.Sleep(interval)
 
 	if !isServer {
@@ -27,11 +27,11 @@ func StartRouterSwapWork(isServer bool) {
 	StartSwapJob()
 	time.Sleep(interval)
 
-	go StartVerifyJob()
+	StartVerifyJob()
 	time.Sleep(interval)
 
-	go StartStableJob()
+	StartStableJob()
 	time.Sleep(interval)
 
-	go StartReplaceJob()
+	StartReplaceJob()
 }

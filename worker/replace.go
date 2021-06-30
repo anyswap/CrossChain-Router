@@ -35,6 +35,13 @@ func StartReplaceJob() {
 		logWorker("replace", "stop replace swap job as disabled")
 		return
 	}
+
+	mongodb.MgoWaitGroup.Add(1)
+	go doReplaceJob()
+}
+
+func doReplaceJob() {
+	defer mongodb.MgoWaitGroup.Done()
 	for {
 		res, err := findRouterSwapResultToReplace()
 		if err != nil {
@@ -49,6 +56,10 @@ func StartReplaceJob() {
 			if err != nil {
 				logWorkerError("replace", "process router swap replace error", err, "chainID", swap.FromChainID, "txid", swap.TxID, "logIndex", swap.LogIndex)
 			}
+		}
+		if utils.IsCleanuping() {
+			logWorker("replace", "stop router swap replace job")
+			return
 		}
 		restInJob(restIntervalInReplaceSwapJob)
 	}

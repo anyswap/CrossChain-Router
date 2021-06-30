@@ -42,23 +42,25 @@ func StartSwapJob() {
 			go processSwapTask(chainID, routerSwapTaskChanMap[chainID])
 		}
 
+		mongodb.MgoWaitGroup.Add(1)
 		go startRouterSwapJob(chainID)
 	}
 }
 
 func startRouterSwapJob(chainID string) {
-	logWorker("swap", "start router swap job")
+	defer mongodb.MgoWaitGroup.Done()
+	logWorker("swap", "start router swap job", "chainID", chainID)
 	for {
 		res, err := findRouterSwapToSwap(chainID)
 		if err != nil {
 			logWorkerError("swap", "find out router swap error", err)
 		}
 		if len(res) > 0 {
-			logWorker("swap", "find out router swap", "count", len(res))
+			logWorker("swap", "find out router swap", "chainID", chainID, "count", len(res))
 		}
 		for _, swap := range res {
 			if utils.IsCleanuping() {
-				logWorker("swap", "stop router swap job")
+				logWorker("swap", "stop router swap job", "chainID", chainID)
 				return
 			}
 			err = processRouterSwap(swap)
@@ -68,6 +70,10 @@ func startRouterSwapJob(chainID string) {
 			default:
 				logWorkerError("swap", "process router swap error", err, "chainID", chainID, "txid", swap.TxID, "logIndex", swap.LogIndex)
 			}
+		}
+		if utils.IsCleanuping() {
+			logWorker("swap", "stop router swap job", "chainID", chainID)
+			return
 		}
 		restInJob(restIntervalInDoSwapJob)
 	}

@@ -18,8 +18,17 @@ var (
 
 // StartAdjustGatewayOrderJob adjust gateway order job
 func StartAdjustGatewayOrderJob() {
+	log.Info("star adjust gateway order job")
+
+	go doAdjustGatewayOrderJob()
+}
+
+func doAdjustGatewayOrderJob() {
 	for {
 		for _, chainID := range router.AllChainIDs {
+			if utils.IsCleanuping() {
+				return
+			}
 			adjustGatewayOrder(chainID.String())
 		}
 		for i := 0; i < adjustInterval; i++ {

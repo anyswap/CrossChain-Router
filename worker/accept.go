@@ -44,6 +44,9 @@ func StartAcceptSignJob() {
 func startAcceptProducer() {
 	i := 0
 	for {
+		if utils.IsCleanuping() {
+			return
+		}
 		signInfo, err := mpc.GetCurNodeSignInfo()
 		if err != nil {
 			logWorkerError("accept", "getCurNodeSignInfo failed", err)
@@ -55,6 +58,9 @@ func startAcceptProducer() {
 			logWorker("accept", "getCurNodeSignInfo", "count", len(signInfo))
 		}
 		for _, info := range signInfo {
+			if utils.IsCleanuping() {
+				return
+			}
 			keyID := info.Key
 			if keyID == "" || info.Account == "" || info.GroupID == "" {
 				logWorkerWarn("accept", "invalid accept sign info", "signInfo", info)

@@ -13,6 +13,13 @@ import (
 // StartVerifyJob verify job
 func StartVerifyJob() {
 	logWorker("verify", "start router swap verify job")
+
+	mongodb.MgoWaitGroup.Add(1)
+	go doVerifyJob()
+}
+
+func doVerifyJob() {
+	defer mongodb.MgoWaitGroup.Done()
 	for {
 		septime := getSepTimeInFind(maxVerifyLifetime)
 		res, err := mongodb.FindRouterSwapsWithStatus(mongodb.TxNotStable, septime)
@@ -35,6 +42,10 @@ func StartVerifyJob() {
 			default:
 				logWorkerError("verify", "verify router swap error", err, "chainid", swap.FromChainID, "txid", swap.TxID, "logIndex", swap.LogIndex)
 			}
+		}
+		if utils.IsCleanuping() {
+			logWorker("verify", "stop router swap verify job")
+			return
 		}
 		restInJob(restIntervalInVerifyJob)
 	}

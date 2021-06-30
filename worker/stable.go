@@ -11,6 +11,13 @@ import (
 // StartStableJob stable job
 func StartStableJob() {
 	logWorker("stable", "start router swap stable job")
+
+	mongodb.MgoWaitGroup.Add(1)
+	go doStableJob()
+}
+
+func doStableJob() {
+	defer mongodb.MgoWaitGroup.Done()
 	for {
 		res, err := findRouterSwapResultsToStable()
 		if err != nil {
@@ -28,6 +35,10 @@ func StartStableJob() {
 			if err != nil {
 				logWorkerError("stable", "process router swap stable error", err, "chainID", swap.FromChainID, "txid", swap.TxID, "logIndex", swap.LogIndex)
 			}
+		}
+		if utils.IsCleanuping() {
+			logWorker("stable", "stop router swap stable job")
+			return
 		}
 		restInJob(restIntervalInStableJob)
 	}
