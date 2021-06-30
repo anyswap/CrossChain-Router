@@ -85,14 +85,17 @@ func CallOnchainContract(data hexutil.Bytes, blockNumber string) (result []byte,
 }
 
 // SubscribeUpdateConfig subscribe update ID and reload configs
-func SubscribeUpdateConfig(callback func()) {
+func SubscribeUpdateConfig(callback func() bool) {
+	if len(routerWebSocketClients) == 0 {
+		return
+	}
 	SubscribeRouterConfig([]ethcommon.Hash{updateConfigTopic})
 	for _, ch := range channels {
 		go processUpdateConfig(ch, callback)
 	}
 }
 
-func processUpdateConfig(ch <-chan ethtypes.Log, callback func()) {
+func processUpdateConfig(ch <-chan ethtypes.Log, callback func() bool) {
 	for {
 		rlog := <-ch
 

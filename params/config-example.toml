@@ -62,6 +62,8 @@ AllowedOrigins = []
 
 # OnChain config
 [OnChain]
+# 0: disable, min:600, unit is seconds
+ReloadCycle = 0
 Contract = "0x77bc292e465cfff6dda1fd5ca67a2a1320d2657e"
 APIAddress = ["http://127.0.0.1:8711", "http://127.0.0.1:8722"]
 WSServers = ["ws://127.0.0.1:7711"]

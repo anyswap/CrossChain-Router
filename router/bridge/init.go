@@ -58,7 +58,7 @@ func InitRouterBridges(isServer bool) {
 	cfg := params.GetRouterConfig()
 	mpc.Init(cfg.MPC, isServer)
 
-	router.SubscribeUpdateConfig(ReloadRouterConfig)
+	startReloadRouterConfigTask()
 
 	log.Info(">>> init router bridges success", "isServer", isServer)
 }

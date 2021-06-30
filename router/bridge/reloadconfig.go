@@ -2,21 +2,60 @@ package bridge
 
 import (
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 )
+
+var reloadRouterConfigLock sync.Mutex
+
+func startReloadRouterConfigTask() {
+	log.Info("start reload router config task")
+	go doReloadRouterConfigTask()
+}
+
+func doReloadRouterConfigTask() {
+	// method 1: use web socket event subscriber
+	router.SubscribeUpdateConfig(ReloadRouterConfig)
+
+	// method 2: use fix period timer
+	reloadCycle := params.GetRouterConfig().Onchain.ReloadCycle
+	if reloadCycle == 0 {
+		log.Info("stop reload router config task as it's disabled")
+		return
+	}
+	reloadInterval := time.Duration(reloadCycle) * time.Second
+	reloadTimer := time.NewTimer(reloadInterval)
+	for {
+		<-reloadTimer.C
+		reloadTimer.Reset(reloadInterval)
+		for i := 0; i < 3; i++ {
+			success := ReloadRouterConfig()
+			if success {
+				break
+			}
+		}
+	}
+}
 
 // ReloadRouterConfig reload router config
 // support modify exist chain config
 // support add/remove/modify token config
-func ReloadRouterConfig() {
+func ReloadRouterConfig() bool {
+	log.Info("[reload] start reload router config")
+	reloadRouterConfigLock.Lock()
+	defer reloadRouterConfigLock.Unlock()
+
 	chainIDs := router.AllChainIDs
 	log.Info("[reload] get all chain ids success", "chainIDs", chainIDs)
 
 	tokenIDs, err := router.GetAllTokenIDs()
 	if err != nil {
-		log.Fatal("[reload] call GetAllTokenIDs failed", "err", err)
+		log.Error("[reload] call GetAllTokenIDs failed", "err", err)
+		return false
 	}
 	log.Info("[reload] get all token ids success", "tokenIDs", tokenIDs)
 
@@ -63,4 +102,6 @@ func ReloadRouterConfig() {
 			bridge.ReloadTokenConfig(tokenID, chainID)
 		}
 	}
+	log.Info("[reload] reload router config success")
+	return true
 }

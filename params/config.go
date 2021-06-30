@@ -57,9 +57,10 @@ type RouterConfig struct {
 
 // OnchainConfig struct
 type OnchainConfig struct {
-	Contract   string
-	APIAddress []string
-	WSServers  []string
+	Contract    string
+	APIAddress  []string
+	WSServers   []string
+	ReloadCycle uint64 // seconds
 }
 
 // MPCConfig mpc related config
