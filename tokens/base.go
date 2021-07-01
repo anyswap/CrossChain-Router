@@ -62,7 +62,7 @@ func (b *CrossChainBridgeBase) GetBigValueThreshold(token string) *big.Int {
 }
 
 // CheckTokenSwapValue check swap value is in right range
-func CheckTokenSwapValue(fromToken, toToken *TokenConfig, value *big.Int) bool {
+func CheckTokenSwapValue(fromToken, toToken *TokenConfig, value *big.Int, swapFeeOn bool) bool {
 	if value == nil || value.Sign() <= 0 {
 		return false
 	}
@@ -72,12 +72,12 @@ func CheckTokenSwapValue(fromToken, toToken *TokenConfig, value *big.Int) bool {
 	if value.Cmp(fromToken.MaximumSwap) > 0 {
 		return false
 	}
-	return CalcSwapValue(fromToken, toToken, value).Sign() > 0
+	return CalcSwapValue(fromToken, toToken, value, swapFeeOn).Sign() > 0
 }
 
 // CalcSwapValue calc swap value (get rid of fee and convert by decimals)
-func CalcSwapValue(fromToken, toToken *TokenConfig, value *big.Int) *big.Int {
-	srcValue := calcSrcSwapValue(fromToken, value)
+func CalcSwapValue(fromToken, toToken *TokenConfig, value *big.Int, swapFeeOn bool) *big.Int {
+	srcValue := calcSrcSwapValue(fromToken, value, swapFeeOn)
 	if fromToken.Decimals == toToken.Decimals {
 		return srcValue
 	}
@@ -89,8 +89,8 @@ func CalcSwapValue(fromToken, toToken *TokenConfig, value *big.Int) *big.Int {
 	return dstValue
 }
 
-func calcSrcSwapValue(token *TokenConfig, value *big.Int) *big.Int {
-	if token.SwapFeeRatePerMillion == 0 {
+func calcSrcSwapValue(token *TokenConfig, value *big.Int, swapFeeOn bool) *big.Int {
+	if !swapFeeOn || token.SwapFeeRatePerMillion == 0 {
 		return value
 	}
 
