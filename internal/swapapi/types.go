@@ -53,15 +53,19 @@ type ChainConfig struct {
 
 // TokenConfig rpc type
 type TokenConfig struct {
-	TokenID               string
-	Decimals              uint8
-	ContractAddress       string
-	ContractVersion       uint64
+	TokenID         string
+	Decimals        uint8
+	ContractAddress string
+	ContractVersion uint64
+	Underlying      string
+}
+
+// SwapConfig rpc type
+type SwapConfig struct {
 	MaximumSwap           string
 	MinimumSwap           string
 	BigValueThreshold     string
 	SwapFeeRatePerMillion uint64
 	MaximumSwapFee        string
 	MinimumSwapFee        string
-	Underlying            string
 }

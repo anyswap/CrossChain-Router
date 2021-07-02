@@ -77,7 +77,7 @@ func (b *Bridge) checkRouterSwapInfo(swapInfo *tokens.SwapTxInfo) error {
 		log.Warn("get token config failed", "chainID", swapInfo.ToChainID, "token", multichainToken)
 		return tokens.ErrMissTokenConfig
 	}
-	if !tokens.CheckTokenSwapValue(fromTokenCfg, toTokenCfg, swapInfo.Value) {
+	if !tokens.CheckTokenSwapValue(swapInfo.TokenID, swapInfo.ToChainID.String(), swapInfo.Value, fromTokenCfg.Decimals, toTokenCfg.Decimals) {
 		return tokens.ErrTxWithWrongValue
 	}
 	dstBridge := router.GetBridgeByChainID(swapInfo.ToChainID.String())

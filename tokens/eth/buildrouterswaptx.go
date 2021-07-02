@@ -136,7 +136,7 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 	if toTokenCfg == nil {
 		return receiver, amount, tokens.ErrMissTokenConfig
 	}
-	amount = tokens.CalcSwapValue(fromTokenCfg, toTokenCfg, args.OriginValue)
+	amount = tokens.CalcSwapValue(args.TokenID, b.ChainConfig.ChainID, args.OriginValue, fromTokenCfg.Decimals, toTokenCfg.Decimals)
 	return receiver, amount, err
 }
 

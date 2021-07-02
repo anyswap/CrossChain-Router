@@ -55,10 +55,32 @@ func InitRouterBridges(isServer bool) {
 	}
 	router.PrintMultichainTokens()
 
+	err = loadSwapConfigs()
+	if err != nil {
+		log.Fatal("load swap configs failed", "err", err)
+	}
+
 	cfg := params.GetRouterConfig()
 	mpc.Init(cfg.MPC, isServer)
 
 	startReloadRouterConfigTask()
 
 	log.Info(">>> init router bridges success", "isServer", isServer)
+}
+
+func loadSwapConfigs() error {
+	swapConfigs := make(map[string]map[string]*tokens.SwapConfig)
+	for _, tokenID := range router.AllTokenIDs {
+		swapConfigs[tokenID] = make(map[string]*tokens.SwapConfig)
+		for _, chainID := range router.AllChainIDs {
+			swapCfg, err := router.GetSwapConfig(tokenID, chainID)
+			if err != nil {
+				log.Warn("get token config failed", "tokenID", tokenID, "chainID", chainID, "err", err)
+				return err
+			}
+			swapConfigs[tokenID][chainID.String()] = swapCfg
+		}
+	}
+	tokens.SetSwapConfigs(swapConfigs)
+	return nil
 }

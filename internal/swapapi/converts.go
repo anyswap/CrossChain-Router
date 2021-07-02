@@ -103,16 +103,25 @@ func ConvertTokenConfig(c *tokens.TokenConfig) *TokenConfig {
 		return nil
 	}
 	return &TokenConfig{
-		TokenID:               c.TokenID,
-		Decimals:              c.Decimals,
-		ContractAddress:       c.ContractAddress,
-		ContractVersion:       c.ContractVersion,
+		TokenID:         c.TokenID,
+		Decimals:        c.Decimals,
+		ContractAddress: c.ContractAddress,
+		ContractVersion: c.ContractVersion,
+		Underlying:      c.GetUnderlying().String(),
+	}
+}
+
+// ConvertSwapConfig convert swap config
+func ConvertSwapConfig(c *tokens.SwapConfig) *SwapConfig {
+	if c == nil {
+		return nil
+	}
+	return &SwapConfig{
 		MaximumSwap:           c.MaximumSwap.String(),
 		MinimumSwap:           c.MinimumSwap.String(),
 		BigValueThreshold:     c.BigValueThreshold.String(),
 		SwapFeeRatePerMillion: c.SwapFeeRatePerMillion,
 		MaximumSwapFee:        c.MaximumSwapFee.String(),
 		MinimumSwapFee:        c.MinimumSwapFee.String(),
-		Underlying:            c.GetUnderlying().String(),
 	}
 }

@@ -7,6 +7,10 @@ import (
 	cmath "github.com/anyswap/CrossChain-Router/v3/common/math"
 )
 
+var (
+	swapConfigMap = make(map[string]map[string]*SwapConfig) // key is tokenID,toChainID
+)
+
 // CrossChainBridgeBase base bridge
 type CrossChainBridgeBase struct {
 	ChainConfig    *ChainConfig
@@ -56,51 +60,77 @@ func (b *CrossChainBridgeBase) GetTokenConfig(token string) *TokenConfig {
 	return b.TokenConfigMap[strings.ToLower(token)]
 }
 
+// SetSwapConfigs set swap configs
+func SetSwapConfigs(swapCfgs map[string]map[string]*SwapConfig) {
+	swapConfigMap = swapCfgs
+}
+
+// GetSwapConfig get swap config
+func GetSwapConfig(tokenID, toChainID string) *SwapConfig {
+	cfgs := swapConfigMap[tokenID]
+	if cfgs == nil {
+		return nil
+	}
+	return cfgs[toChainID]
+}
+
 // GetBigValueThreshold get big value threshold
-func (b *CrossChainBridgeBase) GetBigValueThreshold(token string) *big.Int {
-	return b.GetTokenConfig(token).BigValueThreshold
+func GetBigValueThreshold(tokenID, toChainID string) *big.Int {
+	swapCfg := GetSwapConfig(tokenID, toChainID)
+	if swapCfg == nil {
+		return big.NewInt(0)
+	}
+	return swapCfg.BigValueThreshold
 }
 
 // CheckTokenSwapValue check swap value is in right range
-func CheckTokenSwapValue(fromToken, toToken *TokenConfig, value *big.Int) bool {
+func CheckTokenSwapValue(tokenID, toChainID string, value *big.Int, fromDecimals, toDecimals uint8) bool {
 	if value == nil || value.Sign() <= 0 {
 		return false
 	}
-	if value.Cmp(fromToken.MinimumSwap) < 0 {
+	swapCfg := GetSwapConfig(tokenID, toChainID)
+	if swapCfg == nil {
 		return false
 	}
-	if value.Cmp(fromToken.MaximumSwap) > 0 {
+	if value.Cmp(swapCfg.MinimumSwap) < 0 {
 		return false
 	}
-	return CalcSwapValue(fromToken, toToken, value).Sign() > 0
+	if value.Cmp(swapCfg.MaximumSwap) > 0 {
+		return false
+	}
+	return CalcSwapValue(tokenID, toChainID, value, fromDecimals, toDecimals).Sign() > 0
 }
 
 // CalcSwapValue calc swap value (get rid of fee and convert by decimals)
-func CalcSwapValue(fromToken, toToken *TokenConfig, value *big.Int) *big.Int {
-	srcValue := calcSrcSwapValue(fromToken, value)
-	if fromToken.Decimals == toToken.Decimals {
+func CalcSwapValue(tokenID, toChainID string, value *big.Int, fromDecimals, toDecimals uint8) *big.Int {
+	swapCfg := GetSwapConfig(tokenID, toChainID)
+	if swapCfg == nil {
+		return big.NewInt(0)
+	}
+	srcValue := calcSrcSwapValue(swapCfg, value)
+	if fromDecimals == toDecimals {
 		return srcValue
 	}
 	// do value convert by decimals
-	oneSrcToken := cmath.BigPow(10, int64(fromToken.Decimals))
-	oneDstToken := cmath.BigPow(10, int64(toToken.Decimals))
+	oneSrcToken := cmath.BigPow(10, int64(fromDecimals))
+	oneDstToken := cmath.BigPow(10, int64(toDecimals))
 	dstValue := new(big.Int).Mul(srcValue, oneDstToken)
 	dstValue.Div(dstValue, oneSrcToken)
 	return dstValue
 }
 
-func calcSrcSwapValue(token *TokenConfig, value *big.Int) *big.Int {
-	if token.SwapFeeRatePerMillion == 0 {
+func calcSrcSwapValue(swapCfg *SwapConfig, value *big.Int) *big.Int {
+	if swapCfg.SwapFeeRatePerMillion == 0 {
 		return value
 	}
 
-	swapFee := new(big.Int).Mul(value, new(big.Int).SetUint64(token.SwapFeeRatePerMillion))
+	swapFee := new(big.Int).Mul(value, new(big.Int).SetUint64(swapCfg.SwapFeeRatePerMillion))
 	swapFee.Div(swapFee, big.NewInt(1000000))
 
-	if swapFee.Cmp(token.MinimumSwapFee) < 0 {
-		swapFee = token.MinimumSwapFee
-	} else if swapFee.Cmp(token.MaximumSwapFee) > 0 {
-		swapFee = token.MaximumSwapFee
+	if swapFee.Cmp(swapCfg.MinimumSwapFee) < 0 {
+		swapFee = swapCfg.MinimumSwapFee
+	} else if swapFee.Cmp(swapCfg.MaximumSwapFee) > 0 {
+		swapFee = swapCfg.MaximumSwapFee
 	}
 
 	if value.Cmp(swapFee) > 0 {

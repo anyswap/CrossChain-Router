@@ -8,6 +8,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/internal/swapapi"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
 // RouterSwapAPI rpc api handler
@@ -128,4 +129,22 @@ func (s *RouterSwapAPI) GetTokenConfig(r *http.Request, args *GetTokenConfigArgs
 		return nil
 	}
 	return fmt.Errorf("token config not found")
+}
+
+// GetSwapConfigArgs args
+type GetSwapConfigArgs struct {
+	TokenID string `json:"tokenid"`
+	ChainID string `json:"chainid"`
+}
+
+// GetSwapConfig api
+func (s *RouterSwapAPI) GetSwapConfig(r *http.Request, args *GetSwapConfigArgs, result *swapapi.SwapConfig) error {
+	tokenID := args.TokenID
+	chainID := args.ChainID
+	swapConfig := swapapi.ConvertSwapConfig(tokens.GetSwapConfig(tokenID, chainID))
+	if swapConfig != nil {
+		*result = *swapConfig
+		return nil
+	}
+	return fmt.Errorf("swap config not found")
 }

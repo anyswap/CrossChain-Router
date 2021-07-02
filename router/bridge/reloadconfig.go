@@ -81,7 +81,7 @@ func ReloadRouterConfig() bool {
 		chainIDStr := chainID.String()
 		bridge := router.GetBridgeByChainID(chainIDStr)
 		if bridge == nil {
-			log.Error("[reload] do not support new chainID", "chainID", chainID)
+			log.Warn("[reload] do not support new chainID", "chainID", chainID)
 			continue
 		}
 
@@ -102,6 +102,13 @@ func ReloadRouterConfig() bool {
 			bridge.ReloadTokenConfig(tokenID, chainID)
 		}
 	}
+
+	err = loadSwapConfigs()
+	if err != nil {
+		log.Error("[reload] load swap configs failed", "err", err)
+		return false
+	}
+
 	log.Info("[reload] reload router config success")
 	return true
 }

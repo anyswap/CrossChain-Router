@@ -9,6 +9,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/internal/swapapi"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/gorilla/mux"
 )
 
@@ -151,5 +152,18 @@ func GetTokenConfigHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		tokenConfig := swapapi.ConvertTokenConfig(bridge.GetTokenConfig(address))
 		writeResponse(w, tokenConfig, nil)
+	}
+}
+
+// GetSwapConfigHandler handler
+func GetSwapConfigHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	tokenID := vars["tokenid"]
+	chainID := vars["chainid"]
+	swapConfig := swapapi.ConvertSwapConfig(tokens.GetSwapConfig(tokenID, chainID))
+	if swapConfig == nil {
+		writeResponse(w, nil, fmt.Errorf("swap config not found"))
+	} else {
+		writeResponse(w, swapConfig, nil)
 	}
 }

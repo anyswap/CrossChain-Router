@@ -78,7 +78,8 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 	swapInfo, err := bridge.VerifyTransaction(txid, verifyArgs)
 	switch {
 	case err == nil:
-		if swapInfo.Value.Cmp(bridge.GetBigValueThreshold(swapInfo.Token)) > 0 {
+		if verifyArgs.SwapType == tokens.RouterSwapType &&
+			swapInfo.Value.Cmp(tokens.GetBigValueThreshold(swapInfo.TokenID, swap.ToChainID)) > 0 {
 			dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxWithBigValue, now(), "")
 		} else {
 			dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxNotSwapped, now(), "")
