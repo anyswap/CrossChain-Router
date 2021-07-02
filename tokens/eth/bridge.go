@@ -91,15 +91,6 @@ func (b *Bridge) InitChainConfig(chainID *big.Int) {
 	b.initSigner(chainID)
 	log.Infof(">>> [%5v] init chain config success. router contract is %v, mpc address is %v", chainID, chainCfg.RouterContract, routerMPC)
 
-	swapFeeFlagValue, err := router.GetCustomConfig(chainID, router.SwapFeeOnCustomKey)
-	if err != nil {
-		log.Fatal("get custom config failed", "chainID", chainID, "key", router.SwapFeeOnCustomKey)
-	}
-	if strings.EqualFold(swapFeeFlagValue, "true") {
-		router.SwapFeeOnFlags[chainID.String()] = true
-	}
-	log.Info("init swap fee flag", "chainID", chainID, "flag", router.SwapFeeOnFlags[chainID.String()])
-
 	if mongodb.HasSession() {
 		nextSwapNonce, err := mongodb.FindNextSwapNonce(chainID.String(), strings.ToLower(routerMPC))
 		if err == nil {

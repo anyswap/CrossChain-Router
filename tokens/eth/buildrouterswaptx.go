@@ -136,8 +136,7 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 	if toTokenCfg == nil {
 		return receiver, amount, tokens.ErrMissTokenConfig
 	}
-	swapFeeOn := router.SwapFeeOnFlags[b.ChainConfig.ChainID]
-	amount = tokens.CalcSwapValue(fromTokenCfg, toTokenCfg, args.OriginValue, swapFeeOn)
+	amount = tokens.CalcSwapValue(fromTokenCfg, toTokenCfg, args.OriginValue)
 	return receiver, amount, err
 }
 

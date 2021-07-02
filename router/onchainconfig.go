@@ -232,9 +232,6 @@ func GetCustomConfig(chainID *big.Int, key string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if len(res) == 0 {
-		return "", nil
-	}
 	return abicoder.ParseStringInData(res, 0)
 }
 

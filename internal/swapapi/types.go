@@ -49,7 +49,6 @@ type ChainConfig struct {
 	Confirmations  uint64
 	InitialHeight  uint64
 	RouterMPC      string
-	SwapFeeOnFlag  bool
 }
 
 // TokenConfig rpc type

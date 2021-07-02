@@ -94,7 +94,6 @@ func ConvertChainConfig(c *tokens.ChainConfig) *ChainConfig {
 		Confirmations:  c.Confirmations,
 		InitialHeight:  c.InitialHeight,
 		RouterMPC:      c.GetRouterMPC(),
-		SwapFeeOnFlag:  router.SwapFeeOnFlags[c.ChainID],
 	}
 }
 
