@@ -57,7 +57,6 @@ generate TokenConfig json marshal data
 				Flags: []cli.Flag{
 					cToChainIDFlag,
 					cTokenIDFlag,
-					cDecimalsFlag,
 					cMaximumSwapFlag,
 					cMinimumSwapFlag,
 					cBigValueThresholdFlag,
@@ -330,9 +329,10 @@ func genSetTokenConfigData(ctx *cli.Context) error {
 	if decimalsVal < 0 || decimalsVal > 256 {
 		return fmt.Errorf("wrong decimals '%v'", decimalsVal)
 	}
+	tokenID := ctx.String(cTokenIDFlag.Name)
 	decimals := uint8(decimalsVal)
 	tokenCfg := &tokens.TokenConfig{
-		TokenID:         ctx.String(cTokenIDFlag.Name),
+		TokenID:         tokenID,
 		Decimals:        decimals,
 		ContractAddress: ctx.String(cContractAddressFlag.Name),
 		ContractVersion: ctx.Uint64(cContractVersionFlag.Name),
@@ -345,11 +345,12 @@ func genSetTokenConfigData(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	fmt.Println("tokenID is", tokenID)
 	fmt.Println("chainID is", chainID)
 	fmt.Println("token config struct is", string(jsdata))
 	funcHash := common.FromHex("0xba6e0d0f")
 	inputData := abicoder.PackDataWithFuncHash(funcHash,
-		tokenCfg.TokenID,
+		tokenID,
 		chainID,
 		decimals,
 		common.HexToAddress(tokenCfg.ContractAddress),
@@ -365,12 +366,8 @@ func genSetSwapConfigData(ctx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("wrong chainID '%v'", chainIDStr)
 	}
-	decimalsVal := ctx.Int(cDecimalsFlag.Name)
-	if decimalsVal < 0 || decimalsVal > 256 {
-		return fmt.Errorf("wrong decimals '%v'", decimalsVal)
-	}
 	tokenID := ctx.String(cTokenIDFlag.Name)
-	decimals := uint8(decimalsVal)
+	decimals := uint8(18)
 	tokenCfg := &tokens.SwapConfig{
 		MaximumSwap:           tokens.ToBits(ctx.String(cMaximumSwapFlag.Name), decimals),
 		MinimumSwap:           tokens.ToBits(ctx.String(cMinimumSwapFlag.Name), decimals),
@@ -443,7 +440,6 @@ func getTokenConfigImpl(ctx *cli.Context, isUserConfig bool) error {
 		return fmt.Errorf("miss required position argument")
 	}
 	tokenID := ctx.Args().Get(0)
-	fmt.Printf("tokenID is %v, hex text is %v\n", tokenID, common.ToHex([]byte(tokenID)))
 	chainID, err := getChainIDArgument(ctx, 1)
 	if err != nil {
 		return err
@@ -482,7 +478,6 @@ func getSwapConfig(ctx *cli.Context) error {
 		return fmt.Errorf("miss required position argument")
 	}
 	tokenID := ctx.Args().Get(0)
-	fmt.Printf("tokenID is %v, hex text is %v\n", tokenID, common.ToHex([]byte(tokenID)))
 	toChainID, err := getChainIDArgument(ctx, 1)
 	if err != nil {
 		return err

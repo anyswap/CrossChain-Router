@@ -75,12 +75,12 @@ func GetSwapConfig(tokenID, toChainID string) *SwapConfig {
 }
 
 // GetBigValueThreshold get big value threshold
-func GetBigValueThreshold(tokenID, toChainID string) *big.Int {
+func GetBigValueThreshold(tokenID, toChainID string, fromDecimals uint8) *big.Int {
 	swapCfg := GetSwapConfig(tokenID, toChainID)
 	if swapCfg == nil {
 		return big.NewInt(0)
 	}
-	return swapCfg.BigValueThreshold
+	return ConvertTokenValue(swapCfg.BigValueThreshold, 18, fromDecimals)
 }
 
 // CheckTokenSwapValue check swap value is in right range
@@ -92,10 +92,12 @@ func CheckTokenSwapValue(tokenID, toChainID string, value *big.Int, fromDecimals
 	if swapCfg == nil {
 		return false
 	}
-	if value.Cmp(swapCfg.MinimumSwap) < 0 {
+	minSwapValue := ConvertTokenValue(swapCfg.MinimumSwap, 18, fromDecimals)
+	if value.Cmp(minSwapValue) < 0 {
 		return false
 	}
-	if value.Cmp(swapCfg.MaximumSwap) > 0 {
+	maxSwapValue := ConvertTokenValue(swapCfg.MaximumSwap, 18, fromDecimals)
+	if value.Cmp(maxSwapValue) > 0 {
 		return false
 	}
 	return CalcSwapValue(tokenID, toChainID, value, fromDecimals, toDecimals).Sign() > 0
@@ -107,36 +109,30 @@ func CalcSwapValue(tokenID, toChainID string, value *big.Int, fromDecimals, toDe
 	if swapCfg == nil {
 		return big.NewInt(0)
 	}
-	srcValue := calcSrcSwapValue(swapCfg, value)
-	if fromDecimals == toDecimals {
-		return srcValue
-	}
-	// do value convert by decimals
-	oneSrcToken := cmath.BigPow(10, int64(fromDecimals))
-	oneDstToken := cmath.BigPow(10, int64(toDecimals))
-	dstValue := new(big.Int).Mul(srcValue, oneDstToken)
-	dstValue.Div(dstValue, oneSrcToken)
-	return dstValue
-}
 
-func calcSrcSwapValue(swapCfg *SwapConfig, value *big.Int) *big.Int {
-	if swapCfg.SwapFeeRatePerMillion == 0 {
-		return value
-	}
+	valueLeft := value
+	if swapCfg.SwapFeeRatePerMillion > 0 {
+		swapFee := new(big.Int).Mul(value, new(big.Int).SetUint64(swapCfg.SwapFeeRatePerMillion))
+		swapFee.Div(swapFee, big.NewInt(1000000))
 
-	swapFee := new(big.Int).Mul(value, new(big.Int).SetUint64(swapCfg.SwapFeeRatePerMillion))
-	swapFee.Div(swapFee, big.NewInt(1000000))
+		minSwapFee := ConvertTokenValue(swapCfg.MinimumSwapFee, 18, fromDecimals)
+		if swapFee.Cmp(minSwapFee) < 0 {
+			swapFee = minSwapFee
+		} else {
+			maxSwapFee := ConvertTokenValue(swapCfg.MaximumSwapFee, 18, fromDecimals)
+			if swapFee.Cmp(maxSwapFee) > 0 {
+				swapFee = maxSwapFee
+			}
+		}
 
-	if swapFee.Cmp(swapCfg.MinimumSwapFee) < 0 {
-		swapFee = swapCfg.MinimumSwapFee
-	} else if swapFee.Cmp(swapCfg.MaximumSwapFee) > 0 {
-		swapFee = swapCfg.MaximumSwapFee
+		if value.Cmp(swapFee) <= 0 {
+			return big.NewInt(0)
+		}
+
+		valueLeft = new(big.Int).Sub(value, swapFee)
 	}
 
-	if value.Cmp(swapFee) > 0 {
-		return new(big.Int).Sub(value, swapFee)
-	}
-	return big.NewInt(0)
+	return ConvertTokenValue(valueLeft, fromDecimals, toDecimals)
 }
 
 // ToBits calc
@@ -166,4 +162,15 @@ func ToBits(valueStr string, decimals uint8) *big.Int {
 	}
 
 	return result
+}
+
+// ConvertTokenValue convert token value
+func ConvertTokenValue(fromValue *big.Int, fromDecimals, toDecimals uint8) *big.Int {
+	if fromDecimals == toDecimals || fromValue == nil {
+		return fromValue
+	}
+	if fromDecimals > toDecimals {
+		return new(big.Int).Div(fromValue, cmath.BigPow(10, int64(fromDecimals-toDecimals)))
+	}
+	return new(big.Int).Mul(fromValue, cmath.BigPow(10, int64(toDecimals-fromDecimals)))
 }

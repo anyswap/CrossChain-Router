@@ -172,7 +172,7 @@ func GetChainConfig(chainID *big.Int) (*tokens.ChainConfig, error) {
 }
 
 func parseTokenConfig(data []byte) (config *tokens.TokenConfig, err error) {
-	if uint64(len(data)) < 9*32 {
+	if uint64(len(data)) < 3*32 {
 		return nil, abicoder.ErrParseDataError
 	}
 	decimals := uint8(common.GetBigInt(data, 0, 32).Uint64())
@@ -213,7 +213,7 @@ func GetUserTokenConfig(chainID *big.Int, token string) (tokenCfg *tokens.TokenC
 }
 
 func parseSwapConfig(data []byte) (config *tokens.SwapConfig, err error) {
-	if uint64(len(data)) < 9*32 {
+	if uint64(len(data)) < 6*32 {
 		return nil, abicoder.ErrParseDataError
 	}
 	maximumSwap := common.GetBigInt(data, 0, 32)

@@ -75,12 +75,13 @@ func loadSwapConfigs() error {
 		for _, chainID := range router.AllChainIDs {
 			swapCfg, err := router.GetSwapConfig(tokenID, chainID)
 			if err != nil {
-				log.Warn("get token config failed", "tokenID", tokenID, "chainID", chainID, "err", err)
+				log.Warn("get swap config failed", "tokenID", tokenID, "chainID", chainID, "err", err)
 				return err
 			}
 			swapConfigs[tokenID][chainID.String()] = swapCfg
 		}
 	}
 	tokens.SetSwapConfigs(swapConfigs)
+	log.Info("load swap configs success")
 	return nil
 }
