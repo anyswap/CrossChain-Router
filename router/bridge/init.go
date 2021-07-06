@@ -78,6 +78,11 @@ func loadSwapConfigs() error {
 				log.Warn("get swap config failed", "tokenID", tokenID, "chainID", chainID, "err", err)
 				return err
 			}
+			err = swapCfg.CheckConfig()
+			if err != nil {
+				log.Warn("check swap config failed", "tokenID", tokenID, "chainID", chainID, "err", err)
+				return err
+			}
 			swapConfigs[tokenID][chainID.String()] = swapCfg
 		}
 	}
