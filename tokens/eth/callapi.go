@@ -9,6 +9,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tools/rlp"
 	"github.com/anyswap/CrossChain-Router/v3/types"
 )
@@ -25,7 +26,7 @@ func (b *Bridge) GetLatestBlockNumberOf(url string) (latest uint64, err error) {
 	if err == nil {
 		return common.GetUint64FromStr(result)
 	}
-	return 0, err
+	return 0, tokens.ErrRPCQueryError
 }
 
 // GetLatestBlockNumber call eth_blockNumber
@@ -51,7 +52,7 @@ func getMaxLatestBlockNumber(urls []string) (maxHeight uint64, err error) {
 	if maxHeight > 0 {
 		return maxHeight, nil
 	}
-	return 0, err
+	return 0, tokens.ErrRPCQueryError
 }
 
 // GetBlockByHash call eth_getBlockByHash
@@ -70,10 +71,10 @@ func getBlockByHash(blockHash string, urls []string) (result *types.RPCBlock, er
 			return result, nil
 		}
 	}
-	if result == nil {
-		return nil, errors.New("block not found")
+	if err != nil {
+		return nil, tokens.ErrRPCQueryError
 	}
-	return nil, err
+	return nil, errors.New("block not found")
 }
 
 // GetBlockByNumber call eth_getBlockByNumber
@@ -81,17 +82,18 @@ func (b *Bridge) GetBlockByNumber(number *big.Int) (*types.RPCBlock, error) {
 	gateway := b.GatewayConfig
 	var result *types.RPCBlock
 	var err error
+	blockNumber := types.ToBlockNumArg(number)
 	for _, apiAddress := range gateway.APIAddress {
 		url := apiAddress
-		err = client.RPCPost(&result, url, "eth_getBlockByNumber", types.ToBlockNumArg(number), false)
+		err = client.RPCPost(&result, url, "eth_getBlockByNumber", blockNumber, false)
 		if err == nil && result != nil {
 			return result, nil
 		}
 	}
-	if result == nil {
-		return nil, errors.New("block not found")
+	if err != nil {
+		return nil, tokens.ErrRPCQueryError
 	}
-	return nil, err
+	return nil, errors.New("block not found")
 }
 
 // GetTransaction impl
@@ -122,10 +124,10 @@ func getTransactionByHash(txHash string, urls []string) (result *types.RPCTransa
 			return result, nil
 		}
 	}
-	if result == nil {
-		return nil, errors.New("tx not found")
+	if err != nil {
+		return nil, tokens.ErrRPCQueryError
 	}
-	return nil, err
+	return nil, errors.New("tx not found")
 }
 
 // GetPendingTransactions call eth_pendingTransactions
@@ -138,7 +140,7 @@ func (b *Bridge) GetPendingTransactions() (result []*types.RPCTransaction, err e
 			return result, nil
 		}
 	}
-	return nil, err
+	return nil, tokens.ErrRPCQueryError
 }
 
 // GetTransactionReceipt call eth_getTransactionReceipt
@@ -164,10 +166,10 @@ func getTransactionReceipt(txHash string, urls []string) (result *types.RPCTxRec
 			return result, url, nil
 		}
 	}
-	if result == nil {
-		return nil, "", errors.New("tx receipt not found")
+	if err != nil {
+		return nil, "", tokens.ErrRPCQueryError
 	}
-	return nil, "", err
+	return nil, "", errors.New("tx receipt not found")
 }
 
 // GetContractLogs get contract logs
@@ -197,7 +199,7 @@ func (b *Bridge) GetLogs(filterQuery *types.FilterQuery) (result []*types.RPCLog
 			return result, nil
 		}
 	}
-	return nil, err
+	return nil, tokens.ErrRPCQueryError
 }
 
 // GetPoolNonce call eth_getTransactionCount
@@ -225,7 +227,7 @@ func getMaxPoolNonce(account common.Address, height string, urls []string) (maxN
 	if success {
 		return maxNonce, nil
 	}
-	return 0, err
+	return 0, tokens.ErrRPCQueryError
 }
 
 // SuggestPrice call eth_gasPrice
@@ -266,7 +268,7 @@ func getMaxGasPrice(urls []string) (maxGasPrice *big.Int, err error) {
 	if success {
 		return maxGasPrice, nil
 	}
-	return nil, err
+	return nil, tokens.ErrRPCQueryError
 }
 
 // SendSignedTransaction call eth_sendRawTransaction
@@ -308,7 +310,7 @@ func sendRawTransaction(hexData string, urls []string) (txHash string, err error
 		return txHash, nil
 	}
 	if err != nil {
-		return "", err
+		return "", tokens.ErrRPCQueryError
 	}
 	return "", errors.New("call eth_sendRawTransaction failed")
 }
@@ -326,7 +328,7 @@ func (b *Bridge) ChainID() (*big.Int, error) {
 			return result.ToInt(), nil
 		}
 	}
-	return nil, err
+	return nil, tokens.ErrRPCQueryError
 }
 
 // NetworkID call net_version
@@ -345,7 +347,7 @@ func (b *Bridge) NetworkID() (*big.Int, error) {
 			return version, nil
 		}
 	}
-	return nil, err
+	return nil, tokens.ErrRPCQueryError
 }
 
 // GetCode call eth_getCode
@@ -370,7 +372,7 @@ func getCode(contract string, urls []string) ([]byte, error) {
 			return []byte(result), nil
 		}
 	}
-	return nil, err
+	return nil, tokens.ErrRPCQueryError
 }
 
 // CallContract call eth_call
@@ -389,7 +391,7 @@ func (b *Bridge) CallContract(contract string, data hexutil.Bytes, blockNumber s
 			return result, nil
 		}
 	}
-	return "", err
+	return "", tokens.ErrRPCQueryError
 }
 
 // GetBalance call eth_getBalance
@@ -404,7 +406,7 @@ func (b *Bridge) GetBalance(account string) (*big.Int, error) {
 			return result.ToInt(), nil
 		}
 	}
-	return nil, err
+	return nil, tokens.ErrRPCQueryError
 }
 
 // EstimateGas call eth_estimateGas
@@ -425,5 +427,5 @@ func (b *Bridge) EstimateGas(from, to string, value *big.Int, data []byte) (uint
 			return uint64(result), nil
 		}
 	}
-	return 0, err
+	return 0, tokens.ErrRPCQueryError
 }

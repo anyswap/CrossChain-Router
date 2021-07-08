@@ -58,16 +58,16 @@ func isTxOnChain(txStatus *tokens.TxStatus) bool {
 }
 
 func getSwapTxStatus(resBridge tokens.IBridge, swap *mongodb.MgoSwapResult) *tokens.TxStatus {
-	txStatus := resBridge.GetTransactionStatus(swap.SwapTx)
-	if isTxOnChain(txStatus) {
+	txStatus, err := resBridge.GetTransactionStatus(swap.SwapTx)
+	if err == nil && isTxOnChain(txStatus) {
 		return txStatus
 	}
 	for _, oldSwapTx := range swap.OldSwapTxs {
 		if swap.SwapTx == oldSwapTx {
 			continue
 		}
-		txStatus2 := resBridge.GetTransactionStatus(oldSwapTx)
-		if isTxOnChain(txStatus2) {
+		txStatus2, err2 := resBridge.GetTransactionStatus(oldSwapTx)
+		if err2 == nil && isTxOnChain(txStatus2) {
 			swap.SwapTx = oldSwapTx
 			return txStatus2
 		}

@@ -9,18 +9,18 @@ import (
 )
 
 // GetTransactionStatus impl
-func (b *Bridge) GetTransactionStatus(txHash string) *tokens.TxStatus {
+func (b *Bridge) GetTransactionStatus(txHash string) (*tokens.TxStatus, error) {
 	var txStatus tokens.TxStatus
 	txr, url, err := b.GetTransactionReceipt(txHash)
 	if err != nil {
-		return &txStatus
+		return &txStatus, err
 	}
 	txStatus.BlockHeight = txr.BlockNumber.ToInt().Uint64()
 	txStatus.BlockHash = txr.BlockHash.String()
 	if txStatus.BlockHeight != 0 {
 		for i := 0; i < 3; i++ {
-			latest, err := b.GetLatestBlockNumberOf(url)
-			if err == nil {
+			latest, errt := b.GetLatestBlockNumberOf(url)
+			if errt == nil {
 				if latest > txStatus.BlockHeight {
 					txStatus.Confirmations = latest - txStatus.BlockHeight
 				}
@@ -30,7 +30,7 @@ func (b *Bridge) GetTransactionStatus(txHash string) *tokens.TxStatus {
 		}
 	}
 	txStatus.Receipt = txr
-	return &txStatus
+	return &txStatus, nil
 }
 
 // VerifyMsgHash verify msg hash

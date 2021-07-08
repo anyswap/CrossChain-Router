@@ -92,7 +92,10 @@ func (b *Bridge) checkRouterSwapInfo(swapInfo *tokens.SwapTxInfo) error {
 }
 
 func (b *Bridge) verifySwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable bool) (receipt *types.RPCTxReceipt, err error) {
-	txStatus := b.GetTransactionStatus(swapInfo.Hash)
+	txStatus, err := b.GetTransactionStatus(swapInfo.Hash)
+	if err != nil {
+		return nil, err
+	}
 	if txStatus.BlockHeight == 0 {
 		return nil, tokens.ErrTxNotFound
 	}

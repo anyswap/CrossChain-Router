@@ -25,6 +25,7 @@ var (
 	ErrSwapInBlacklist       = errors.New("swap is in black list")
 	ErrTxBeforeInitialHeight = errors.New("transaction before initial block height")
 	ErrEstimateGasFailed     = errors.New("estimate gas failed")
+	ErrRPCQueryError         = errors.New("rpc query error")
 	// errors should register in router swap
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")
 	ErrTxWithWrongPath   = errors.New("swap trade tx with wrong path")
