@@ -73,6 +73,11 @@ func loadSwapConfigs() error {
 	for _, tokenID := range router.AllTokenIDs {
 		swapConfigs[tokenID] = make(map[string]*tokens.SwapConfig)
 		for _, chainID := range router.AllChainIDs {
+			multichainToken := router.GetCachedMultichainToken(tokenID, chainID.String())
+			if multichainToken == "" {
+				log.Warn("ignore swap config as no multichain token exist", "tokenID", tokenID, "chainID", chainID)
+				continue
+			}
 			swapCfg, err := router.GetSwapConfig(tokenID, chainID)
 			if err != nil {
 				log.Warn("get swap config failed", "tokenID", tokenID, "chainID", chainID, "err", err)
@@ -84,9 +89,10 @@ func loadSwapConfigs() error {
 				return err
 			}
 			swapConfigs[tokenID][chainID.String()] = swapCfg
+			log.Info("load swap config success", "tokenID", tokenID, "chainID", chainID, "multichainToken", multichainToken)
 		}
 	}
 	tokens.SetSwapConfigs(swapConfigs)
-	log.Info("load swap configs success")
+	log.Info("load all swap config success")
 	return nil
 }
