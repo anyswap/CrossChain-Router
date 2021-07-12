@@ -3,6 +3,7 @@ package mongodb
 const (
 	tbRouterSwaps       string = "RouterSwaps"
 	tbRouterSwapResults string = "RouterSwapResults"
+	tbUsedRValues       string = "UsedRValues"
 )
 
 // MgoSwap registered swap
@@ -49,6 +50,12 @@ type MgoSwapResult struct {
 	Timestamp   int64      `bson:"timestamp"`
 	Memo        string     `bson:"memo"`
 	MPC         string     `bson:"mpc"`
+}
+
+// MgoUsedRValue security enhancement
+type MgoUsedRValue struct {
+	Key       string `bson:"_id"` // r + pubkey
+	Timestamp int64  `bson:"timestamp"`
 }
 
 // SwapResultUpdateItems swap update items
