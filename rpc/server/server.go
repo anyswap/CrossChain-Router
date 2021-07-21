@@ -51,7 +51,7 @@ func StartAPIServer() {
 	}
 	go func() {
 		if err := svr.ListenAndServe(); err != nil {
-			log.Error("ListenAndServe error", "err", err)
+			log.Fatal("ListenAndServe error", "err", err)
 		}
 	}()
 
@@ -73,7 +73,10 @@ func doCleanup(svr *http.Server) {
 func initRouterSwapRouter(r *mux.Router) {
 	rpcserver := rpc.NewServer()
 	rpcserver.RegisterCodec(rpcjson.NewCodec(), "application/json")
-	_ = rpcserver.RegisterService(new(rpcapi.RouterSwapAPI), "swap")
+	err := rpcserver.RegisterService(new(rpcapi.RouterSwapAPI), "swap")
+	if err != nil {
+		log.Fatal("start rpc service failed", "err", err)
+	}
 
 	r.Handle("/rpc", rpcserver)
 
