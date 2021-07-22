@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/didip/tollbooth/v6"
+	"github.com/didip/tollbooth/v6/limiter"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc/v2"
@@ -39,15 +41,17 @@ func StartAPIServer() {
 	}
 
 	log.Info("JSON RPC service listen and serving", "port", apiPort, "allowedOrigins", allowedOrigins)
+	lmt := tollbooth.NewLimiter(10, &limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour})
+	handler := tollbooth.LimitHandler(lmt, handlers.CORS(corsOptions...)(router))
 	svr := http.Server{
 		Addr:         fmt.Sprintf(":%v", apiPort),
 		ReadTimeout:  60 * time.Second,
 		WriteTimeout: 300 * time.Second,
-		Handler:      handlers.CORS(corsOptions...)(router),
+		Handler:      handler,
 	}
 	go func() {
 		if err := svr.ListenAndServe(); err != nil {
-			log.Error("ListenAndServe error", "err", err)
+			log.Fatal("ListenAndServe error", "err", err)
 		}
 	}()
 
@@ -69,7 +73,10 @@ func doCleanup(svr *http.Server) {
 func initRouterSwapRouter(r *mux.Router) {
 	rpcserver := rpc.NewServer()
 	rpcserver.RegisterCodec(rpcjson.NewCodec(), "application/json")
-	_ = rpcserver.RegisterService(new(rpcapi.RouterSwapAPI), "swap")
+	err := rpcserver.RegisterService(new(rpcapi.RouterSwapAPI), "swap")
+	if err != nil {
+		log.Fatal("start rpc service failed", "err", err)
+	}
 
 	r.Handle("/rpc", rpcserver)
 
@@ -84,6 +91,7 @@ func initRouterSwapRouter(r *mux.Router) {
 	registerHandleFunc(r, "/allmultichaintokens/{tokenid}", restapi.GetAllMultichainTokensHandler, "GET")
 	registerHandleFunc(r, "/chainconfig/{chainid}", restapi.GetChainConfigHandler, "GET")
 	registerHandleFunc(r, "/tokenconfig/{chainid}/{address}", restapi.GetTokenConfigHandler, "GET")
+	registerHandleFunc(r, "/swapconfig/{tokenid}/{chainid}", restapi.GetSwapConfigHandler, "GET")
 }
 
 type handleFuncType = func(w http.ResponseWriter, r *http.Request)

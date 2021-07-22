@@ -7,17 +7,20 @@ import (
 var (
 	collRouterSwap       *mgo.Collection
 	collRouterSwapResult *mgo.Collection
+	collUsedRValue       *mgo.Collection
 )
 
 // do this when reconnect to the database
 func deinintCollections() {
 	collRouterSwap = database.C(tbRouterSwaps)
 	collRouterSwapResult = database.C(tbRouterSwapResults)
+	collUsedRValue = database.C(tbUsedRValues)
 }
 
 func initCollections() {
 	initCollection(tbRouterSwaps, &collRouterSwap, "inittime", "status", "fromChainID")
 	initCollection(tbRouterSwapResults, &collRouterSwapResult, "inittime", "status", "fromChainID")
+	initCollection(tbUsedRValues, &collUsedRValue)
 	_ = collRouterSwap.EnsureIndexKey("txid")                      // speed find swap
 	_ = collRouterSwapResult.EnsureIndexKey("txid")                // speed find swap result
 	_ = collRouterSwapResult.EnsureIndexKey("from", "fromChainID") // speed find history

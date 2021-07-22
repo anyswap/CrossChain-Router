@@ -9,21 +9,34 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/internal/swapapi"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/gorilla/mux"
 )
 
 func writeResponse(w http.ResponseWriter, resp interface{}, err error) {
+	if err != nil {
+		writeErrResponse(w, err)
+		return
+	}
+	jsonData, err := json.Marshal(resp)
+	if err != nil {
+		writeErrResponse(w, err)
+		return
+	}
 	// Note: must set header before write header
-	if err == nil {
-		w.Header().Set("Content-Type", "application/json")
-	}
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	if err == nil {
-		jsonData, _ := json.Marshal(resp)
-		_, _ = w.Write(jsonData)
-	} else {
-		fmt.Fprintln(w, err.Error())
+	_, err = w.Write(jsonData)
+	if err != nil {
+		fmt.Println("write response error:", err)
 	}
+}
+
+func writeErrResponse(w http.ResponseWriter, err error) {
+	// Note: must set header before write header
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintln(w, err.Error())
 }
 
 // VersionInfoHandler handler
@@ -151,5 +164,18 @@ func GetTokenConfigHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		tokenConfig := swapapi.ConvertTokenConfig(bridge.GetTokenConfig(address))
 		writeResponse(w, tokenConfig, nil)
+	}
+}
+
+// GetSwapConfigHandler handler
+func GetSwapConfigHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	tokenID := vars["tokenid"]
+	chainID := vars["chainid"]
+	swapConfig := swapapi.ConvertSwapConfig(tokens.GetSwapConfig(tokenID, chainID))
+	if swapConfig == nil {
+		writeResponse(w, nil, fmt.Errorf("swap config not found"))
+	} else {
+		writeResponse(w, swapConfig, nil)
 	}
 }

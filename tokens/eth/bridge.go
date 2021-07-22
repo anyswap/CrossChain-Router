@@ -21,6 +21,9 @@ type Bridge struct {
 	*NonceSetterBase
 	Signer        types.Signer
 	SignerChainID *big.Int
+
+	// eg. RSK chain do not check mixed case or not same as eth
+	DontCheckAddressMixedCase bool
 }
 
 // NewCrossChainBridge new bridge
@@ -330,11 +333,11 @@ func (b *Bridge) getETCSignerChainID() (*big.Int, error) {
 	var chainID uint64
 	switch networkID.Uint64() {
 	case 1:
-		chainID = 61
+		chainID = 61 // mainnet
 	case 6:
-		chainID = 6
+		chainID = 6 // kotti
 	case 7:
-		chainID = 63
+		chainID = 63 // mordor
 	default:
 		log.Warnf("unsupported etc network id '%v'", networkID)
 		return nil, errors.New("unsupported etc network id")

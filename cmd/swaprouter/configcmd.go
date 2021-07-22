@@ -45,6 +45,18 @@ generate ChainConfig json marshal data
 					cDecimalsFlag,
 					cContractAddressFlag,
 					cContractVersionFlag,
+				},
+				Description: `
+generate TokenConfig json marshal data
+`,
+			},
+			{
+				Name:   "genSetSwapConfigData",
+				Usage:  "generate setSwapConfig input data",
+				Action: genSetSwapConfigData,
+				Flags: []cli.Flag{
+					cToChainIDFlag,
+					cTokenIDFlag,
 					cMaximumSwapFlag,
 					cMinimumSwapFlag,
 					cBigValueThresholdFlag,
@@ -53,7 +65,7 @@ generate ChainConfig json marshal data
 					cMinimumSwapFeeFlag,
 				},
 				Description: `
-generate TokenConfig json marshal data
+generate SwapConfig json marshal data
 `,
 			},
 			{
@@ -125,6 +137,16 @@ generate TokenConfig json marshal data
 				},
 			},
 			{
+				Name:      "getSwapConfig",
+				Usage:     "get swap config by tokenID and dest chainID",
+				Action:    getSwapConfig,
+				ArgsUsage: "<tokenID> <toChainID>",
+				Flags: []cli.Flag{
+					onchainContractFlag,
+					gatewaysFlag,
+				},
+			},
+			{
 				Name:      "getCustomConfig",
 				Usage:     "get custom config",
 				Action:    getCustomConfig,
@@ -181,80 +203,87 @@ generate TokenConfig json marshal data
 
 	cChainIDFlag = &cli.StringFlag{
 		Name:  "c.ChainID",
-		Usage: "chain config (require)",
+		Usage: "block chain ID (require)",
 	}
 
 	cBlockChainFlag = &cli.StringFlag{
 		Name:  "c.BlockChain",
-		Usage: "chain config (require)",
+		Usage: "block chain name (require)",
 	}
 
 	cRouterContractFlag = &cli.StringFlag{
 		Name:  "c.RouterContract",
-		Usage: "chain config (require)",
+		Usage: "swap router contract address (require)",
 	}
 
 	cConfirmationsFlag = &cli.Uint64Flag{
 		Name:  "c.Confirmations",
-		Usage: "chain config (require)",
+		Usage: "chain stable confirmations (require)",
 	}
 
 	cInitialHeightFlag = &cli.Uint64Flag{
 		Name:  "c.InitialHeight",
-		Usage: "chain config",
+		Usage: "initial swap height",
 	}
 
 	// --------- token config -------------------
 
 	cTokenIDFlag = &cli.StringFlag{
 		Name:  "c.TokenID",
-		Usage: "token config (require)",
+		Usage: "token identifier (require)",
 	}
 
 	cDecimalsFlag = &cli.IntFlag{
 		Name:  "c.Decimals",
-		Usage: "token config",
+		Usage: "token decimals (require)",
 		Value: 18,
 	}
 
 	cContractAddressFlag = &cli.StringFlag{
 		Name:  "c.ContractAddress",
-		Usage: "token config (require)",
+		Usage: "token contract address (require)",
 	}
 
 	cContractVersionFlag = &cli.Uint64Flag{
 		Name:  "c.ContractVersion",
-		Usage: "token config (require)",
+		Usage: "token version number (require)",
+	}
+
+	// --------- swap config -------------------
+
+	cToChainIDFlag = &cli.StringFlag{
+		Name:  "c.ToChainID",
+		Usage: "dest chain ID (require)",
 	}
 
 	cMaximumSwapFlag = &cli.StringFlag{
 		Name:  "c.MaximumSwap",
-		Usage: "token config (require)",
+		Usage: "maximum swap value (require)",
 	}
 
 	cMinimumSwapFlag = &cli.StringFlag{
 		Name:  "c.MinimumSwap",
-		Usage: "token config (require)",
+		Usage: "minimum swap value (require)",
 	}
 
 	cBigValueThresholdFlag = &cli.StringFlag{
 		Name:  "c.BigValueThreshold",
-		Usage: "token config (require)",
+		Usage: "big swap value threshold (require)",
 	}
 
-	cSwapFeeRateFlag = &cli.StringFlag{
+	cSwapFeeRateFlag = &cli.Float64Flag{
 		Name:  "c.SwapFeeRate",
-		Usage: "token config (require)",
+		Usage: "swap fee rate (eg. 0.001)",
 	}
 
-	cMaximumSwapFeeFlag = &cli.Float64Flag{
+	cMaximumSwapFeeFlag = &cli.StringFlag{
 		Name:  "c.MaximumSwapFee",
-		Usage: "token config",
+		Usage: "maximum swap fee",
 	}
 
 	cMinimumSwapFeeFlag = &cli.StringFlag{
 		Name:  "c.MinimumSwapFee",
-		Usage: "token config",
+		Usage: "minimum swap fee",
 	}
 )
 
@@ -300,12 +329,46 @@ func genSetTokenConfigData(ctx *cli.Context) error {
 	if decimalsVal < 0 || decimalsVal > 256 {
 		return fmt.Errorf("wrong decimals '%v'", decimalsVal)
 	}
+	tokenID := ctx.String(cTokenIDFlag.Name)
 	decimals := uint8(decimalsVal)
 	tokenCfg := &tokens.TokenConfig{
-		TokenID:               ctx.String(cTokenIDFlag.Name),
-		Decimals:              decimals,
-		ContractAddress:       ctx.String(cContractAddressFlag.Name),
-		ContractVersion:       ctx.Uint64(cContractVersionFlag.Name),
+		TokenID:         tokenID,
+		Decimals:        decimals,
+		ContractAddress: ctx.String(cContractAddressFlag.Name),
+		ContractVersion: ctx.Uint64(cContractVersionFlag.Name),
+	}
+	err = tokenCfg.CheckConfig()
+	if err != nil {
+		return err
+	}
+	jsdata, err := json.MarshalIndent(tokenCfg, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Println("tokenID is", tokenID)
+	fmt.Println("chainID is", chainID)
+	fmt.Println("token config struct is", string(jsdata))
+	funcHash := common.FromHex("0xba6e0d0f")
+	inputData := abicoder.PackDataWithFuncHash(funcHash,
+		tokenID,
+		chainID,
+		decimals,
+		common.HexToAddress(tokenCfg.ContractAddress),
+		tokenCfg.ContractVersion,
+	)
+	fmt.Println("set token config input data is", common.ToHex(inputData))
+	return nil
+}
+
+func genSetSwapConfigData(ctx *cli.Context) error {
+	chainIDStr := ctx.String(cToChainIDFlag.Name)
+	chainID, err := common.GetBigIntFromStr(chainIDStr)
+	if err != nil {
+		return fmt.Errorf("wrong chainID '%v'", chainIDStr)
+	}
+	tokenID := ctx.String(cTokenIDFlag.Name)
+	decimals := uint8(18)
+	tokenCfg := &tokens.SwapConfig{
 		MaximumSwap:           tokens.ToBits(ctx.String(cMaximumSwapFlag.Name), decimals),
 		MinimumSwap:           tokens.ToBits(ctx.String(cMinimumSwapFlag.Name), decimals),
 		BigValueThreshold:     tokens.ToBits(ctx.String(cBigValueThresholdFlag.Name), decimals),
@@ -321,15 +384,13 @@ func genSetTokenConfigData(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("chainID is", chainID)
-	fmt.Println("token config struct is", string(jsdata))
-	funcHash := common.FromHex("0x69bda9eb")
+	fmt.Println("tokenID is", tokenID)
+	fmt.Println("toChainID is", chainID)
+	fmt.Println("swap config struct is", string(jsdata))
+	funcHash := common.FromHex("0xca29ee96")
 	inputData := abicoder.PackDataWithFuncHash(funcHash,
-		tokenCfg.TokenID,
+		tokenID,
 		chainID,
-		decimals,
-		common.HexToAddress(tokenCfg.ContractAddress),
-		tokenCfg.ContractVersion,
 		tokenCfg.MaximumSwap,
 		tokenCfg.MinimumSwap,
 		tokenCfg.BigValueThreshold,
@@ -337,7 +398,7 @@ func genSetTokenConfigData(ctx *cli.Context) error {
 		tokenCfg.MaximumSwapFee,
 		tokenCfg.MinimumSwapFee,
 	)
-	fmt.Println("set token config input data is", common.ToHex(inputData))
+	fmt.Println("set swap config input data is", common.ToHex(inputData))
 	return nil
 }
 
@@ -379,7 +440,6 @@ func getTokenConfigImpl(ctx *cli.Context, isUserConfig bool) error {
 		return fmt.Errorf("miss required position argument")
 	}
 	tokenID := ctx.Args().Get(0)
-	fmt.Printf("tokenID is %v, hex text is %v\n", tokenID, common.ToHex([]byte(tokenID)))
 	chainID, err := getChainIDArgument(ctx, 1)
 	if err != nil {
 		return err
@@ -411,6 +471,31 @@ func getTokenConfig(ctx *cli.Context) error {
 
 func getUserTokenConfig(ctx *cli.Context) error {
 	return getTokenConfigImpl(ctx, true)
+}
+
+func getSwapConfig(ctx *cli.Context) error {
+	if ctx.NArg() < 2 {
+		return fmt.Errorf("miss required position argument")
+	}
+	tokenID := ctx.Args().Get(0)
+	toChainID, err := getChainIDArgument(ctx, 1)
+	if err != nil {
+		return err
+	}
+	router.InitRouterConfigClientsWithArgs(
+		ctx.String(onchainContractFlag.Name),
+		ctx.StringSlice(gatewaysFlag.Name),
+	)
+	swapCfg, err := router.GetSwapConfig(tokenID, toChainID)
+	if err != nil {
+		return err
+	}
+	jsdata, err := json.MarshalIndent(swapCfg, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Println("swap config is", string(jsdata))
+	return nil
 }
 
 func getCustomConfig(ctx *cli.Context) error {

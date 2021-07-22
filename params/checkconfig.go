@@ -119,6 +119,9 @@ func (c *OnchainConfig) CheckConfig() error {
 	if len(c.APIAddress) == 0 {
 		return errors.New("onchain must config 'APIAddress'")
 	}
+	if c.ReloadCycle > 0 && c.ReloadCycle < 600 {
+		return errors.New("onchain config wrong 'ReloadCycle' value (must be 0 or >= 600)")
+	}
 	if len(c.WSServers) == 0 {
 		log.Warn("onchain does not config web socket server, so do not support reload config.")
 	}

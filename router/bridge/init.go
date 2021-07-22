@@ -55,10 +55,44 @@ func InitRouterBridges(isServer bool) {
 	}
 	router.PrintMultichainTokens()
 
+	err = loadSwapConfigs()
+	if err != nil {
+		log.Fatal("load swap configs failed", "err", err)
+	}
+
 	cfg := params.GetRouterConfig()
 	mpc.Init(cfg.MPC, isServer)
 
-	router.SubscribeUpdateConfig(ReloadRouterConfig)
+	startReloadRouterConfigTask()
 
 	log.Info(">>> init router bridges success", "isServer", isServer)
+}
+
+func loadSwapConfigs() error {
+	swapConfigs := make(map[string]map[string]*tokens.SwapConfig)
+	for _, tokenID := range router.AllTokenIDs {
+		swapConfigs[tokenID] = make(map[string]*tokens.SwapConfig)
+		for _, chainID := range router.AllChainIDs {
+			multichainToken := router.GetCachedMultichainToken(tokenID, chainID.String())
+			if multichainToken == "" {
+				log.Warn("ignore swap config as no multichain token exist", "tokenID", tokenID, "chainID", chainID)
+				continue
+			}
+			swapCfg, err := router.GetSwapConfig(tokenID, chainID)
+			if err != nil {
+				log.Warn("get swap config failed", "tokenID", tokenID, "chainID", chainID, "err", err)
+				return err
+			}
+			err = swapCfg.CheckConfig()
+			if err != nil {
+				log.Warn("check swap config failed", "tokenID", tokenID, "chainID", chainID, "err", err)
+				return err
+			}
+			swapConfigs[tokenID][chainID.String()] = swapCfg
+			log.Info("load swap config success", "tokenID", tokenID, "chainID", chainID, "multichainToken", multichainToken)
+		}
+	}
+	tokens.SetSwapConfigs(swapConfigs)
+	log.Info("load all swap config success")
+	return nil
 }

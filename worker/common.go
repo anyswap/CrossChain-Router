@@ -187,9 +187,10 @@ func sendSignedTransaction(bridge tokens.IBridge, signedTx interface{}, args *to
 	// update swap result tx height in goroutine
 	go func() {
 		var txStatus *tokens.TxStatus
+		var errt error
 		for i := int64(0); i < 10; i++ {
-			txStatus = bridge.GetTransactionStatus(txHash)
-			if txStatus.BlockHeight > 0 {
+			txStatus, errt = bridge.GetTransactionStatus(txHash)
+			if errt == nil && txStatus.BlockHeight > 0 {
 				break
 			}
 			time.Sleep(5 * time.Second)

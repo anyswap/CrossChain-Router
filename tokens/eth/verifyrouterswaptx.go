@@ -77,7 +77,7 @@ func (b *Bridge) checkRouterSwapInfo(swapInfo *tokens.SwapTxInfo) error {
 		log.Warn("get token config failed", "chainID", swapInfo.ToChainID, "token", multichainToken)
 		return tokens.ErrMissTokenConfig
 	}
-	if !tokens.CheckTokenSwapValue(fromTokenCfg, toTokenCfg, swapInfo.Value) {
+	if !tokens.CheckTokenSwapValue(swapInfo.TokenID, swapInfo.ToChainID.String(), swapInfo.Value, fromTokenCfg.Decimals, toTokenCfg.Decimals) {
 		return tokens.ErrTxWithWrongValue
 	}
 	dstBridge := router.GetBridgeByChainID(swapInfo.ToChainID.String())
@@ -92,7 +92,10 @@ func (b *Bridge) checkRouterSwapInfo(swapInfo *tokens.SwapTxInfo) error {
 }
 
 func (b *Bridge) verifySwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable bool) (receipt *types.RPCTxReceipt, err error) {
-	txStatus := b.GetTransactionStatus(swapInfo.Hash)
+	txStatus, err := b.GetTransactionStatus(swapInfo.Hash)
+	if err != nil {
+		return nil, err
+	}
 	if txStatus.BlockHeight == 0 {
 		return nil, tokens.ErrTxNotFound
 	}

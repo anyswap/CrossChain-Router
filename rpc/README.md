@@ -16,6 +16,7 @@
 [swap.GetAllMultichainTokens](#swapgetallmultichaintokens)  
 [swap.GetChainConfig](#swapgetchainconfig)  
 [swap.GetTokenConfig](#swapgettokenconfig)  
+[swap.GetSwapConfig](#swapgetswapconfig)  
 
 ### swap.RegisterRouterSwap
 
@@ -55,8 +56,9 @@
 
 ##### 参数：
 ```json
-[{"chainid":"链ChainID", "address":"账户地址", "offset":"偏移量", "limit":"数量限制"}]
+[{"chainid":"链ChainID", "address":"账户地址", "offset":"偏移量", "limit":"数量限制", "status":"8,9"}]
 ```
+其中 status 为可选参数，如果指定可以根据状态进行查询。
 其中 offset，limit 为可选参数，默认值分别为 0 和 20。
 如果 limit 为负数，表示按时间逆序排序后取结果。
 
@@ -149,6 +151,18 @@
 获取指定 chainID 和 token 地址的 token 配置
 ```
 
+### swap.GetSwapConfig
+
+##### 参数：
+```json
+[{"tokenid": "tokenID", "chainid":"目标链ChainID"}]
+```
+
+##### 返回值：
+```text
+获取指定 tokenID 和目标链 chainID 对应的 swap 配置
+```
+
 
 ## RESTful API Reference
 
@@ -166,10 +180,11 @@
 其中 logindex 为可选参数，对应日志下标，默认值为 0。
 如果 logindex 为 0, 则自动查询本交易中的第一个置换。
 
-### GET /swap/history/{chainid}/{address}?offset=0&limit=20
+### GET /swap/history/{chainid}/{address}?offset=0&limit=20&status=8,9
 
 查询置换历史，支持分页，addess 为账户地址
 
+其中 status 为可选参数，如果指定可以根据状态进行查询。
 其中 offset，limit 为可选参数，默认值分别为 0 和 20。
 如果 limit 为负数，表示按时间逆序排序后取结果。
 
@@ -193,3 +208,6 @@
 
 ### GET /tokenconfig/{chainid}/{address}
 获取指定 chainID 和 token 地址的 token 配置
+
+### GET /swapconfig/{tokenid}/{chainid}
+获取指定 tokenID 和目标链 chainID 对应的 swap 配置

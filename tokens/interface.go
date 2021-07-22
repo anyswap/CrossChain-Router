@@ -36,11 +36,10 @@ type IBridge interface {
 	SendTransaction(signedTx interface{}) (txHash string, err error)
 
 	GetTransaction(txHash string) (interface{}, error)
-	GetTransactionStatus(txHash string) *TxStatus
+	GetTransactionStatus(txHash string) (*TxStatus, error)
 	GetLatestBlockNumber() (uint64, error)
 	GetLatestBlockNumberOf(url string) (uint64, error)
 
-	GetBigValueThreshold(token string) *big.Int
 	IsValidAddress(address string) bool
 }
 

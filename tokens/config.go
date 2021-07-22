@@ -27,19 +27,23 @@ type ChainConfig struct {
 
 // TokenConfig struct
 type TokenConfig struct {
-	TokenID               string
-	Decimals              uint8
-	ContractAddress       string
-	ContractVersion       uint64
+	TokenID         string
+	Decimals        uint8
+	ContractAddress string
+	ContractVersion uint64
+
+	// calced value
+	underlying common.Address
+}
+
+// SwapConfig struct
+type SwapConfig struct {
 	MaximumSwap           *big.Int
 	MinimumSwap           *big.Int
 	BigValueThreshold     *big.Int
 	SwapFeeRatePerMillion uint64
 	MaximumSwapFee        *big.Int
 	MinimumSwapFee        *big.Int
-
-	// calced value
-	underlying common.Address
 }
 
 // GatewayConfig struct
@@ -99,7 +103,6 @@ func (c *ChainConfig) GetRouterFactory() string {
 }
 
 // CheckConfig check token config
-// nolint:gocyclo // check all together
 func (c *TokenConfig) CheckConfig() error {
 	if c.TokenID == "" {
 		return errors.New("token must config 'TokenID'")
@@ -107,6 +110,21 @@ func (c *TokenConfig) CheckConfig() error {
 	if c.ContractAddress == "" {
 		return errors.New("token must config 'ContractAddress'")
 	}
+	return nil
+}
+
+// SetUnderlying set underlying
+func (c *TokenConfig) SetUnderlying(underlying common.Address) {
+	c.underlying = underlying
+}
+
+// GetUnderlying get underlying
+func (c *TokenConfig) GetUnderlying() common.Address {
+	return c.underlying
+}
+
+// CheckConfig check swap config
+func (c *SwapConfig) CheckConfig() error {
 	if c.MaximumSwap == nil || c.MaximumSwap.Sign() <= 0 {
 		return errors.New("token must config 'MaximumSwap' (positive)")
 	}
@@ -138,16 +156,6 @@ func (c *TokenConfig) CheckConfig() error {
 		return errors.New("wrong token config, MinimumSwapFee should be 0 if SwapFeeRatePerMillion is 0")
 	}
 	return nil
-}
-
-// SetUnderlying set underlying
-func (c *TokenConfig) SetUnderlying(underlying common.Address) {
-	c.underlying = underlying
-}
-
-// GetUnderlying get underlying
-func (c *TokenConfig) GetUnderlying() common.Address {
-	return c.underlying
 }
 
 // VerifyMPCPubKey verify mpc address and public key is matching
