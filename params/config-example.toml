@@ -1,6 +1,8 @@
 # router swap identifier, must have prefix 'routerswap'
 Identifier = "routerswap#20210326"
 
+# allow call into router from contract
+AllowCallByContract = false
 
 # router sever config (server only)
 [Server]

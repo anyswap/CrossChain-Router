@@ -5,6 +5,7 @@ import (
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/eth/abicoder"
@@ -121,6 +122,10 @@ func (b *Bridge) verifySwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable 
 
 	swapInfo.TxTo = receipt.Recipient.LowerHex() // TxTo
 	swapInfo.From = receipt.From.LowerHex()      // From
+
+	if !params.AllowCallByContract() && !common.IsEqualIgnoreCase(swapInfo.TxTo, b.ChainConfig.RouterContract) {
+		return receipt, tokens.ErrTxWithWrongContract
+	}
 	return receipt, nil
 }
 

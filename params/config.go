@@ -53,6 +53,8 @@ type RouterConfig struct {
 	Gateways      map[string][]string // key is chain ID
 	GatewaysExt   map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	MPC           *MPCConfig
+
+	AllowCallByContract bool
 }
 
 // OnchainConfig struct
@@ -100,6 +102,11 @@ type MongoDBConfig struct {
 // GetIdentifier get identifier (to distiguish in mpc accept)
 func GetIdentifier() string {
 	return GetRouterConfig().Identifier
+}
+
+// AllowCallByContract allow call into router from contract
+func AllowCallByContract() bool {
+	return GetRouterConfig().AllowCallByContract
 }
 
 // IsMPCInitiator is initiator of mpc sign
