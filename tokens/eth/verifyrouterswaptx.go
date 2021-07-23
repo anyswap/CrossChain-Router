@@ -197,7 +197,7 @@ func (b *Bridge) parseRouterSwapTradeTxLog(swapInfo *tokens.SwapTxInfo, rlog *ty
 	if err != nil {
 		return err
 	}
-	if len(swapInfo.Path) < 2 {
+	if len(path) < 3 {
 		return tokens.ErrTxWithWrongPath
 	}
 	swapInfo.Value = common.GetBigInt(logData, 32, 32)
@@ -227,15 +227,23 @@ func (b *Bridge) chekcAndAmendSwapTradePath(swapInfo *tokens.SwapTxInfo) error {
 		return tokens.ErrMissTokenConfig
 	}
 	path := swapInfo.Path
-	if common.HexToAddress(path[0]) != common.HexToAddress(multichainToken) {
-		path = append([]string{multichainToken}, path...)
-		swapInfo.Path = path
-	}
 	if len(path) < 2 {
 		return tokens.ErrTxWithWrongPath
 	}
+	srcToken := common.HexToAddress(path[0])
+	if !(srcToken == tokenCfg.GetUnderlying() || srcToken == common.HexToAddress(multichainToken)) {
+		return tokens.ErrTxWithWrongPath
+	}
+	if swapInfo.ForNative {
+		wNative := b.ChainConfig.GetRouterWNative()
+		wNativeAddr := common.HexToAddress(wNative)
+		if wNativeAddr == (common.Address{}) ||
+			wNativeAddr != common.HexToAddress(path[len(path)-1]) {
+			return tokens.ErrTxWithWrongPath
+		}
+	}
 	factory := b.ChainConfig.GetRouterFactory()
-	if factory == "" {
+	if common.HexToAddress(factory) == (common.Address{}) {
 		return tokens.ErrTxWithWrongPath
 	}
 	for i := 1; i < len(path); i++ {
