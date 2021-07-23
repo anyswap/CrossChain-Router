@@ -76,6 +76,10 @@ func (b *Bridge) InitChainConfig(chainID *big.Int) {
 	if err != nil {
 		log.Warn("get router factory address failed", "routerContract", chainCfg.RouterContract, "err", err)
 	}
+	routerWNative, err := b.GetWNativeAddress(chainCfg.RouterContract)
+	if err != nil {
+		log.Warn("get router wNative address failed", "routerContract", chainCfg.RouterContract, "err", err)
+	}
 	routerMPC, err := b.GetMPCAddress(chainCfg.RouterContract)
 	if err != nil {
 		log.Fatal("get router mpc address failed", "routerContract", chainCfg.RouterContract, "err", err)
@@ -88,10 +92,14 @@ func (b *Bridge) InitChainConfig(chainID *big.Int) {
 		log.Fatal("verify mpc public key failed", "mpc", routerMPC, "mpcPubkey", routerMPCPubkey, "err", err)
 	}
 	chainCfg.SetRouterFactory(routerFactory)
+	chainCfg.SetRouterWNative(routerWNative)
 	chainCfg.SetRouterMPC(routerMPC)
 	chainCfg.SetRouterMPCPubkey(routerMPCPubkey)
 	b.SetChainConfig(chainCfg)
 	b.initSigner(chainID)
+	log.Info("init chain config success", "blockChain", chainCfg.BlockChain, "chainID", chainID,
+		"routerContract", chainCfg.RouterContract, "routerMPC", routerMPC,
+		"routerFactory", routerFactory, "routerWNative", routerWNative)
 	log.Infof(">>> [%5v] init chain config success. router contract is %v, mpc address is %v", chainID, chainCfg.RouterContract, routerMPC)
 
 	if mongodb.HasSession() {
@@ -192,6 +200,10 @@ func (b *Bridge) ReloadChainConfig(chainID *big.Int) {
 	if err != nil {
 		log.Warn("[reload] get router factory address failed", "routerContract", chainCfg.RouterContract, "err", err)
 	}
+	routerWNative, err := b.GetWNativeAddress(chainCfg.RouterContract)
+	if err != nil {
+		log.Warn("get router wNative address failed", "routerContract", chainCfg.RouterContract, "err", err)
+	}
 	routerMPC, err := b.GetMPCAddress(chainCfg.RouterContract)
 	if err != nil {
 		log.Error("[reload] get router mpc address failed", "routerContract", chainCfg.RouterContract, "err", err)
@@ -207,10 +219,13 @@ func (b *Bridge) ReloadChainConfig(chainID *big.Int) {
 		return
 	}
 	chainCfg.SetRouterFactory(routerFactory)
+	chainCfg.SetRouterWNative(routerWNative)
 	chainCfg.SetRouterMPC(routerMPC)
 	chainCfg.SetRouterMPCPubkey(routerMPCPubkey)
 	b.SetChainConfig(chainCfg)
-	log.Info("reload chain config success", "chainID", chainID, "routerContract", chainCfg.RouterContract, "routerMPC", routerMPC)
+	log.Info("reload chain config success", "blockChain", chainCfg.BlockChain, "chainID", chainID,
+		"routerContract", chainCfg.RouterContract, "routerMPC", routerMPC,
+		"routerFactory", routerFactory, "routerWNative", routerWNative)
 }
 
 // ReloadTokenConfig reload token config

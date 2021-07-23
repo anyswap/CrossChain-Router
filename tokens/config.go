@@ -23,6 +23,7 @@ type ChainConfig struct {
 	routerMPC       string
 	routerMPCPubkey string
 	routerFactory   string
+	routerWNative   string
 }
 
 // TokenConfig struct
@@ -100,6 +101,16 @@ func (c *ChainConfig) SetRouterFactory(factory string) {
 // GetRouterFactory get factory address of router contract
 func (c *ChainConfig) GetRouterFactory() string {
 	return c.routerFactory
+}
+
+// SetRouterWNative set wNative address of router contract
+func (c *ChainConfig) SetRouterWNative(wNative string) {
+	c.routerWNative = wNative
+}
+
+// GetRouterWNative get wNative address of router contract
+func (c *ChainConfig) GetRouterWNative() string {
+	return c.routerWNative
 }
 
 // CheckConfig check token config

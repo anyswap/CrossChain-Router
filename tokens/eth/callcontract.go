@@ -93,6 +93,16 @@ func (b *Bridge) GetFactoryAddress(contractAddr string) (string, error) {
 	return common.BytesToAddress(common.GetData(common.FromHex(res), 0, 32)).LowerHex(), nil
 }
 
+// GetWNativeAddress call "wNATIVE()"
+func (b *Bridge) GetWNativeAddress(contractAddr string) (string, error) {
+	data := common.FromHex("0x8fd903f5")
+	res, err := b.CallContract(contractAddr, data, "latest")
+	if err != nil {
+		return "", err
+	}
+	return common.BytesToAddress(common.GetData(common.FromHex(res), 0, 32)).LowerHex(), nil
+}
+
 // GetUnderlyingAddress call "underlying()"
 func (b *Bridge) GetUnderlyingAddress(contractAddr string) (string, error) {
 	data := common.FromHex("0x6f307dc3")

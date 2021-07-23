@@ -49,6 +49,8 @@ type ChainConfig struct {
 	Confirmations  uint64
 	InitialHeight  uint64
 	RouterMPC      string
+	RouterFactory  string
+	RouterWNative  string
 }
 
 // TokenConfig rpc type

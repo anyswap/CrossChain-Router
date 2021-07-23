@@ -94,6 +94,8 @@ func ConvertChainConfig(c *tokens.ChainConfig) *ChainConfig {
 		Confirmations:  c.Confirmations,
 		InitialHeight:  c.InitialHeight,
 		RouterMPC:      c.GetRouterMPC(),
+		RouterFactory:  c.GetRouterFactory(),
+		RouterWNative:  c.GetRouterWNative(),
 	}
 }
 
