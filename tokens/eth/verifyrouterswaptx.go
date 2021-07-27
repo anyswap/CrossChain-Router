@@ -147,7 +147,7 @@ func (b *Bridge) verifyRouterSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.
 		return tokens.ErrSwapoutLogNotFound
 	}
 	if err != nil {
-		log.Info(b.ChainConfig.BlockChain+" b.verifyRouterSwapTxLog fail", "tx", swapInfo.Hash, "logIndex", rlog.Index, "err", err)
+		log.Info(b.ChainConfig.BlockChain+" b.verifyRouterSwapTxLog fail", "tx", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "err", err)
 		return err
 	}
 

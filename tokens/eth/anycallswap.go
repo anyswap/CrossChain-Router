@@ -117,7 +117,7 @@ func (b *Bridge) verifyAnyCallSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types
 
 	err = b.parseAnyCallSwapTxLog(swapInfo, rlog)
 	if err != nil {
-		log.Info(b.ChainConfig.BlockChain+" b.verifyAnyCallSwapTxLog fail", "tx", swapInfo.Hash, "logIndex", rlog.Index, "err", err)
+		log.Info(b.ChainConfig.BlockChain+" b.verifyAnyCallSwapTxLog fail", "tx", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "err", err)
 		return err
 	}
 
