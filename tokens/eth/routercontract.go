@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
-	"github.com/anyswap/CrossChain-Router/v3/tokens/eth/abicoder"
 )
 
 var (
@@ -34,10 +33,7 @@ func (b *Bridge) GetPairFor(factory, token0, token1 string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	pairs, err := abicoder.ParseStringInData(common.FromHex(res), 0)
-	if err != nil {
-		return "", err
-	}
+	pairs := common.BytesToAddress(common.GetData(common.FromHex(res), 0, 32)).LowerHex()
 	cachedPairsMap[key] = pairs
 	cachedPairsMap[getCachedPairKey(b.ChainConfig.ChainID, token1, token0)] = pairs
 	return pairs, nil

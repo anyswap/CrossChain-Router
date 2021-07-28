@@ -245,6 +245,7 @@ func checkSwapTradePath(swapInfo *tokens.SwapTxInfo) error {
 	}
 	srcToken := common.HexToAddress(path[0])
 	if !(srcToken == tokenCfg.GetUnderlying() || srcToken == common.HexToAddress(multichainToken)) {
+		log.Warn("check swap trade path first element failed", "token", path[0])
 		return tokens.ErrTxWithWrongPath
 	}
 	if swapInfo.ForNative {
@@ -254,6 +255,7 @@ func checkSwapTradePath(swapInfo *tokens.SwapTxInfo) error {
 			return tokens.ErrSwapTradeNotSupport
 		}
 		if wNativeAddr != common.HexToAddress(path[len(path)-1]) {
+			log.Warn("check swap trade path last element failed", "token", path[len(path)-1])
 			return tokens.ErrTxWithWrongPath
 		}
 	}
@@ -273,6 +275,7 @@ func checkSwapTradePath(swapInfo *tokens.SwapTxInfo) error {
 			if errors.Is(err, tokens.ErrRPCQueryError) {
 				return err
 			}
+			log.Warn("check swap trade path pairs failed", "factory", factory, "token0", path[i-1], "token1", path[i], "err", err)
 			return tokens.ErrTxWithWrongPath
 		}
 	}
