@@ -2,6 +2,7 @@ package eth
 
 import (
 	"bytes"
+	"errors"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -254,6 +255,9 @@ func (b *Bridge) chekcAndAmendSwapTradePath(swapInfo *tokens.SwapTxInfo) error {
 	for i := 1; i < len(path); i++ {
 		pairs, err := b.GetPairFor(factory, path[i-1], path[i])
 		if err != nil || pairs == "" {
+			if errors.Is(err, tokens.ErrRPCQueryError) {
+				return err
+			}
 			return tokens.ErrTxWithWrongPath
 		}
 	}

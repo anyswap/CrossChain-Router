@@ -87,7 +87,9 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 				dbErr = AddInitialSwapResult(swapInfo, mongodb.MatchTxEmpty)
 			}
 		}
-	case errors.Is(err, tokens.ErrTxNotStable), errors.Is(err, tokens.ErrTxNotFound):
+	case errors.Is(err, tokens.ErrTxNotStable),
+		errors.Is(err, tokens.ErrTxNotFound),
+		errors.Is(err, tokens.ErrRPCQueryError):
 		break
 	case errors.Is(err, tokens.ErrTxWithWrongValue):
 		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxWithWrongValue, now(), err.Error())
