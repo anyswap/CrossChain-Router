@@ -220,12 +220,12 @@ func (b *Bridge) parseRouterSwapTradeTxLog(swapInfo *tokens.SwapTxInfo, rlog *ty
 	}
 	swapInfo.TokenID = tokenCfg.TokenID
 
-	return b.chekcAndAmendSwapTradePath(swapInfo)
+	return checkSwapTradePath(swapInfo)
 }
 
 // amend trade path [0] if missing,
 // then check path exists in pairs of dest chain
-func (b *Bridge) chekcAndAmendSwapTradePath(swapInfo *tokens.SwapTxInfo) error {
+func checkSwapTradePath(swapInfo *tokens.SwapTxInfo) error {
 	dstChainID := swapInfo.ToChainID.String()
 	dstBridge := router.GetBridgeByChainID(dstChainID)
 	if dstBridge == nil {
@@ -248,19 +248,27 @@ func (b *Bridge) chekcAndAmendSwapTradePath(swapInfo *tokens.SwapTxInfo) error {
 		return tokens.ErrTxWithWrongPath
 	}
 	if swapInfo.ForNative {
-		wNative := b.ChainConfig.GetRouterWNative()
+		wNative := dstBridge.GetChainConfig().GetRouterWNative()
 		wNativeAddr := common.HexToAddress(wNative)
-		if wNativeAddr == (common.Address{}) ||
-			wNativeAddr != common.HexToAddress(path[len(path)-1]) {
+		if wNativeAddr == (common.Address{}) {
+			return tokens.ErrSwapTradeNotSupport
+		}
+		if wNativeAddr != common.HexToAddress(path[len(path)-1]) {
 			return tokens.ErrTxWithWrongPath
 		}
 	}
-	factory := b.ChainConfig.GetRouterFactory()
+	factory := dstBridge.GetChainConfig().GetRouterFactory()
 	if common.HexToAddress(factory) == (common.Address{}) {
-		return tokens.ErrTxWithWrongPath
+		return tokens.ErrSwapTradeNotSupport
 	}
+
+	swapTrader, ok := dstBridge.(tokens.ISwapTrade)
+	if !ok {
+		return tokens.ErrSwapTradeNotSupport
+	}
+
 	for i := 1; i < len(path); i++ {
-		pairs, err := b.GetPairFor(factory, path[i-1], path[i])
+		pairs, err := swapTrader.GetPairFor(factory, path[i-1], path[i])
 		if err != nil || pairs == "" {
 			if errors.Is(err, tokens.ErrRPCQueryError) {
 				return err

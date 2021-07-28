@@ -8,6 +8,7 @@ import (
 var (
 	ErrSwapTypeNotSupported  = errors.New("swap type not supported")
 	ErrNoBridgeForChainID    = errors.New("no bridge for chain id")
+	ErrSwapTradeNotSupport   = errors.New("swap trade not support")
 	ErrWrongRegisterArgs     = errors.New("wrong register arguments")
 	ErrWrongVerifyArgs       = errors.New("wrong verify arguments")
 	ErrTxNotFound            = errors.New("tx not found")

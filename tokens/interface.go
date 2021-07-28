@@ -43,6 +43,11 @@ type IBridge interface {
 	IsValidAddress(address string) bool
 }
 
+// ISwapTrade interface
+type ISwapTrade interface {
+	GetPairFor(factory, token0, token1 string) (string, error)
+}
+
 // NonceSetter interface (for eth-like)
 type NonceSetter interface {
 	GetPoolNonce(address, height string) (uint64, error)
