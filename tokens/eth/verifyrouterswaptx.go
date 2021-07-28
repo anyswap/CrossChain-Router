@@ -79,6 +79,9 @@ func (b *Bridge) checkRouterSwapInfo(swapInfo *tokens.SwapTxInfo) error {
 		log.Warn("get token config failed", "chainID", swapInfo.ToChainID, "token", multichainToken)
 		return tokens.ErrMissTokenConfig
 	}
+	if swapInfo.ForUnderlying && toTokenCfg.GetUnderlying() == (common.Address{}) {
+		return tokens.ErrNoUnderlyingToken
+	}
 	if !tokens.CheckTokenSwapValue(swapInfo.TokenID, swapInfo.ToChainID.String(), swapInfo.Value, fromTokenCfg.Decimals, toTokenCfg.Decimals) {
 		return tokens.ErrTxWithWrongValue
 	}
@@ -148,7 +151,7 @@ func (b *Bridge) verifyRouterSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.
 		return tokens.ErrSwapoutLogNotFound
 	}
 	if err != nil {
-		log.Info(b.ChainConfig.BlockChain+" b.verifyRouterSwapTxLog fail", "tx", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "err", err)
+		log.Info(b.ChainConfig.BlockChain+" verifyRouterSwapTxLog fail", "tx", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "err", err)
 		return err
 	}
 
@@ -156,16 +159,6 @@ func (b *Bridge) verifyRouterSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.
 		return tokens.ErrTxWithRemovedLog
 	}
 
-	tokenCfg := b.GetTokenConfig(swapInfo.Token)
-	if tokenCfg == nil {
-		return tokens.ErrMissTokenConfig
-	}
-	swapInfo.TokenID = tokenCfg.TokenID
-	// NOTE: swap tx may fail as lack of balance if set 'ForUnderlying'
-	//# swapInfo.ForUnderlying = tokenCfg.GetUnderlying() != (common.Address{})
-	if swapInfo.ForUnderlying && tokenCfg.GetUnderlying() == (common.Address{}) {
-		return tokens.ErrNoUnderlyingToken
-	}
 	return nil
 }
 
@@ -184,6 +177,13 @@ func (b *Bridge) parseRouterSwapoutTxLog(swapInfo *tokens.SwapTxInfo, rlog *type
 	swapInfo.Value = common.GetBigInt(logData, 0, 32)
 	swapInfo.FromChainID = common.GetBigInt(logData, 32, 32)
 	swapInfo.ToChainID = common.GetBigInt(logData, 64, 32)
+
+	tokenCfg := b.GetTokenConfig(swapInfo.Token)
+	if tokenCfg == nil {
+		return tokens.ErrMissTokenConfig
+	}
+	swapInfo.TokenID = tokenCfg.TokenID
+
 	return nil
 }
 
@@ -213,6 +213,13 @@ func (b *Bridge) parseRouterSwapTradeTxLog(swapInfo *tokens.SwapTxInfo, rlog *ty
 
 	swapInfo.Token = path[0]
 	swapInfo.Path = path[1:]
+
+	tokenCfg := b.GetTokenConfig(swapInfo.Token)
+	if tokenCfg == nil {
+		return tokens.ErrMissTokenConfig
+	}
+	swapInfo.TokenID = tokenCfg.TokenID
+
 	return b.chekcAndAmendSwapTradePath(swapInfo)
 }
 
