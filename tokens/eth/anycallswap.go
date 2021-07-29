@@ -3,6 +3,7 @@ package eth
 import (
 	"bytes"
 	"errors"
+	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
@@ -72,7 +73,7 @@ func (b *Bridge) registerAnyCallSwapTx(txHash string, logIndex int) ([]*tokens.S
 func (b *Bridge) verifyAnyCallSwapTx(txHash string, logIndex int, allowUnstable bool) (*tokens.SwapTxInfo, error) {
 	swapInfo := &tokens.SwapTxInfo{SwapInfo: tokens.SwapInfo{AnyCallSwapInfo: &tokens.AnyCallSwapInfo{}}}
 	swapInfo.SwapType = tokens.AnyCallSwapType // SwapType
-	swapInfo.Hash = txHash                     // Hash
+	swapInfo.Hash = strings.ToLower(txHash)    // Hash
 	swapInfo.LogIndex = logIndex               // LogIndex
 
 	receipt, err := b.verifySwapTxReceipt(swapInfo, allowUnstable)
