@@ -28,7 +28,7 @@ var (
 )
 
 func getRouterSwapKey(fromChainID, txid string, logindex int) string {
-	return fmt.Sprintf("%v:%v:%v", fromChainID, txid, logindex)
+	return strings.ToLower(fmt.Sprintf("%v:%v:%v", fromChainID, txid, logindex))
 }
 
 // AddRouterSwap add router swap

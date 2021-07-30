@@ -24,7 +24,7 @@ var (
 func (b *Bridge) registerAnyCallSwapTx(txHash string, logIndex int) ([]*tokens.SwapTxInfo, []error) {
 	commonInfo := &tokens.SwapTxInfo{SwapInfo: tokens.SwapInfo{AnyCallSwapInfo: &tokens.AnyCallSwapInfo{}}}
 	commonInfo.SwapType = tokens.AnyCallSwapType // SwapType
-	commonInfo.Hash = txHash                     // Hash
+	commonInfo.Hash = strings.ToLower(txHash)    // Hash
 	commonInfo.LogIndex = logIndex               // LogIndex
 
 	receipt, err := b.verifySwapTxReceipt(commonInfo, true)

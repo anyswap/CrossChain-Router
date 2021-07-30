@@ -2,6 +2,7 @@ package eth
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
@@ -26,7 +27,7 @@ func (b *Bridge) RegisterSwap(txHash string, args *tokens.RegisterArgs) ([]*toke
 func (b *Bridge) registerRouterSwapTx(txHash string, logIndex int) ([]*tokens.SwapTxInfo, []error) {
 	commonInfo := &tokens.SwapTxInfo{SwapInfo: tokens.SwapInfo{RouterSwapInfo: &tokens.RouterSwapInfo{}}}
 	commonInfo.SwapType = tokens.RouterSwapType // SwapType
-	commonInfo.Hash = txHash                    // Hash
+	commonInfo.Hash = strings.ToLower(txHash)   // Hash
 	commonInfo.LogIndex = logIndex              // LogIndex
 
 	receipt, err := b.verifySwapTxReceipt(commonInfo, true)
