@@ -8,6 +8,19 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
 )
 
+// RPCBaseBlock struct
+type RPCBaseBlock struct {
+	Hash       *common.Hash    `json:"hash"`
+	ParentHash *common.Hash    `json:"parentHash"`
+	Coinbase   *common.Address `json:"miner"`
+	Difficulty *hexutil.Big    `json:"difficulty"`
+	Number     *hexutil.Big    `json:"number"`
+	GasLimit   *hexutil.Uint64 `json:"gasLimit"`
+	GasUsed    *hexutil.Uint64 `json:"gasUsed"`
+	Time       *hexutil.Big    `json:"timestamp"`
+	BaseFee    *hexutil.Big    `json:"baseFeePerGas"`
+}
+
 // RPCBlock struct
 type RPCBlock struct {
 	Hash         *common.Hash    `json:"hash"`
@@ -18,15 +31,19 @@ type RPCBlock struct {
 	GasLimit     *hexutil.Uint64 `json:"gasLimit"`
 	GasUsed      *hexutil.Uint64 `json:"gasUsed"`
 	Time         *hexutil.Big    `json:"timestamp"`
+	BaseFee      *hexutil.Big    `json:"baseFeePerGas"`
 	Transactions []*common.Hash  `json:"transactions"`
 }
 
 // RPCTransaction struct
 type RPCTransaction struct {
+	Type         hexutil.Uint64  `json:"type"`
 	Hash         *common.Hash    `json:"hash"`
 	From         *common.Address `json:"from"`
 	AccountNonce string          `json:"nonce"` // unexpect RSK has leading zero (eg. 0x01)
 	Price        *hexutil.Big    `json:"gasPrice"`
+	GasTipCap    *hexutil.Big    `json:"maxPriorityFeePerGas,omitempty"`
+	GasFeeCap    *hexutil.Big    `json:"maxFeePerGas,omitempty"`
 	GasLimit     *hexutil.Uint64 `json:"gas"`
 	Recipient    *common.Address `json:"to"`
 	Amount       *hexutil.Big    `json:"value"`
@@ -34,6 +51,15 @@ type RPCTransaction struct {
 	V            *hexutil.Big    `json:"v"`
 	R            *hexutil.Big    `json:"r"`
 	S            *hexutil.Big    `json:"s"`
+	ChainID      *hexutil.Big    `json:"chainId,omitempty"`
+}
+
+// FeeHistoryResult fee history result
+type FeeHistoryResult struct {
+	OldestBlock  int64            `json:"oldestBlock"`
+	Reward       [][]*hexutil.Big `json:"reward,omitempty"`
+	BaseFee      []*hexutil.Big   `json:"baseFeePerGas,omitempty"`
+	GasUsedRatio []float64        `json:"gasUsedRatio"`
 }
 
 // GetAccountNonce convert
@@ -57,6 +83,7 @@ type RPCLog struct {
 
 // RPCTxReceipt struct
 type RPCTxReceipt struct {
+	Type        hexutil.Uint64  `json:"type"`
 	TxHash      *common.Hash    `json:"transactionHash"`
 	TxIndex     *hexutil.Uint   `json:"transactionIndex"`
 	BlockNumber *hexutil.Big    `json:"blockNumber"`
