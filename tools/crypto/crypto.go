@@ -174,11 +174,13 @@ func LoadECDSA(file string) (*ecdsa.PrivateKey, error) {
 	if fi.Mode() != 0400 {
 		return nil, errors.New("unsafe file permissions, want 0400")
 	}
-	fd, err := os.Open(file)
+	fd, err := os.Open(file) // nolint:gosec // ok
 	if err != nil {
 		return nil, err
 	}
-	defer fd.Close()
+	defer func() {
+		_ = fd.Close()
+	}()
 	if _, err = io.ReadFull(fd, buf); err != nil {
 		return nil, err
 	}
