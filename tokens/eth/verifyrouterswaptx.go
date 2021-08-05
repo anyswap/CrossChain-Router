@@ -128,7 +128,9 @@ func (b *Bridge) verifySwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable 
 	swapInfo.TxTo = receipt.Recipient.LowerHex() // TxTo
 	swapInfo.From = receipt.From.LowerHex()      // From
 
-	if !params.AllowCallByContract() && !common.IsEqualIgnoreCase(swapInfo.TxTo, b.ChainConfig.RouterContract) {
+	if !params.AllowCallByContract() &&
+		!common.IsEqualIgnoreCase(swapInfo.TxTo, b.ChainConfig.RouterContract) &&
+		!params.IsInCallByContractWhitelist(b.ChainConfig.ChainID, swapInfo.From) {
 		return receipt, tokens.ErrTxWithWrongContract
 	}
 	return receipt, nil

@@ -3,6 +3,13 @@ Identifier = "routerswap#20210326"
 
 # allow call into router from contract
 AllowCallByContract = false
+# call by contract whitelist
+[CallByContractWhitelist]
+4 = [
+	"0x1111111111111111111111111111111111111111",
+	"0x2222222222222222222222222222222222222222"
+]
+
 # apecify dynamic fee tx enabled chainids
 DynamicFeeTxEnabledChains = ["3"]
 
@@ -77,7 +84,7 @@ AllowedOrigins = []
 ReloadCycle = 0
 Contract = "0x77bc292e465cfff6dda1fd5ca67a2a1320d2657e"
 APIAddress = ["http://127.0.0.1:8711", "http://127.0.0.1:8722"]
-WSServers = ["ws://127.0.0.1:7711"]
+#WSServers = ["ws://127.0.0.1:7711"]
 
 
 # Gateways config. key is chainID

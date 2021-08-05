@@ -21,6 +21,7 @@ var (
 	chainIDBlacklistMap = make(map[string]struct{})
 	tokenIDBlacklistMap = make(map[string]struct{})
 
+	callByContractWhitelist   map[string]map[string]struct{} // chainID -> caller
 	dynamicFeeTxEnabledChains map[string]struct{}
 )
 
@@ -59,8 +60,9 @@ type RouterConfig struct {
 	GatewaysExt   map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	MPC           *MPCConfig
 
-	IsDebugMode         bool `toml:",omitempty" json:",omitempty"`
-	AllowCallByContract bool
+	IsDebugMode             bool `toml:",omitempty" json:",omitempty"`
+	AllowCallByContract     bool
+	CallByContractWhitelist map[string][]string // chainID -> whitelist
 
 	DynamicFeeTxEnabledChains []string
 }
@@ -143,6 +145,26 @@ func IsDebugMode() bool {
 // AllowCallByContract allow call into router from contract
 func AllowCallByContract() bool {
 	return GetRouterConfig().AllowCallByContract
+}
+
+// IsInCallByContractWhitelist is in call by contract whitelist
+func IsInCallByContractWhitelist(chainID, caller string) bool {
+	if callByContractWhitelist == nil {
+		callByContractWhitelist = make(map[string]map[string]struct{})
+		for cid, whitelist := range GetRouterConfig().CallByContractWhitelist {
+			whitelistMap := make(map[string]struct{}, len(whitelist))
+			for _, address := range whitelist {
+				whitelistMap[strings.ToLower(address)] = struct{}{}
+			}
+			callByContractWhitelist[cid] = whitelistMap
+		}
+	}
+	whitelist, exist := callByContractWhitelist[chainID]
+	if !exist {
+		return false
+	}
+	_, exist = whitelist[strings.ToLower(caller)]
+	return exist
 }
 
 // IsMPCInitiator is initiator of mpc sign
