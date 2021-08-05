@@ -27,6 +27,7 @@ var (
 	ErrTxBeforeInitialHeight = errors.New("transaction before initial block height")
 	ErrEstimateGasFailed     = errors.New("estimate gas failed")
 	ErrRPCQueryError         = errors.New("rpc query error")
+	ErrMissDynamicFeeConfig  = errors.New("miss dynamic fee config")
 	// errors should register in router swap
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")
 	ErrTxWithWrongPath   = errors.New("swap trade tx with wrong path")

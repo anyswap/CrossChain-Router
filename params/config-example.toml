@@ -3,6 +3,8 @@ Identifier = "routerswap#20210326"
 
 # allow call into router from contract
 AllowCallByContract = false
+# apecify dynamic fee tx enabled chainids
+DynamicFeeTxEnabledChains = ["3"]
 
 # router sever config (server only)
 [Server]
@@ -39,6 +41,13 @@ SwapDeadlineOffset = 36000
 4     = 90000
 256   = 90000
 46688 = 90000
+# dynamic fee tx config
+[Server.DynamicFeeTx.3]
+PlusGasTipCapPercent = 10
+PlusGasFeeCapPercent = 10
+BlockCountFeeHistory = 3
+MaxGasTipCap         = "5000000000"
+MaxGasFeeCap         = "10000000000"
 
 # modgodb database connection config
 [Server.MongoDB]

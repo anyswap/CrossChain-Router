@@ -120,7 +120,11 @@ func (b *Bridge) initSigner(chainID *big.Int) {
 		log.Fatal("chain ID mismatch", "inconfig", chainID, "inbridge", signerChainID)
 	}
 	b.SignerChainID = signerChainID
-	b.Signer = types.MakeSigner("EIP155", signerChainID) // init Signer
+	if params.IsDynamicFeeTxEnabled(signerChainID.String()) {
+		b.Signer = types.MakeSigner("London", signerChainID)
+	} else {
+		b.Signer = types.MakeSigner("EIP155", signerChainID)
+	}
 }
 
 // InitTokenConfig impl

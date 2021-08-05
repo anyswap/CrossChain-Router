@@ -127,10 +127,12 @@ type AllExtras struct {
 
 // EthExtraArgs struct
 type EthExtraArgs struct {
-	Gas      *uint64  `json:"gas,omitempty"`
-	GasPrice *big.Int `json:"gasPrice,omitempty"`
-	Nonce    *uint64  `json:"nonce,omitempty"`
-	Deadline int64    `json:"deadline,omitempty"`
+	Gas       *uint64  `json:"gas,omitempty"`
+	GasPrice  *big.Int `json:"gasPrice,omitempty"`
+	GasTipCap *big.Int `json:"gasTipCap,omitempty"`
+	GasFeeCap *big.Int `json:"gasFeeCap,omitempty"`
+	Nonce     *uint64  `json:"nonce,omitempty"`
+	Deadline  int64    `json:"deadline,omitempty"`
 }
 
 // GetExtraArgs get extra args

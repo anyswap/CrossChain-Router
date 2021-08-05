@@ -88,11 +88,63 @@ func (s *RouterServerConfig) CheckConfig() error {
 		}
 		tokenIDBlacklistMap[key] = struct{}{}
 	}
-	err := s.CheckExtra()
+	err := s.CheckDynamicFeeTxConfig()
+	if err != nil {
+		return err
+	}
+	err = s.CheckExtra()
 	if err != nil {
 		return err
 	}
 	log.Info("check server config success", "defaultGasLimit", s.DefaultGasLimit)
+	return nil
+}
+
+// CheckDynamicFeeTxConfig check dynamic fee tx config
+func (s *RouterServerConfig) CheckDynamicFeeTxConfig() error {
+	for cid, c := range s.DynamicFeeTx {
+		if !IsDynamicFeeTxEnabled(cid) {
+			continue
+		}
+		if c.MaxGasTipCap != "" {
+			bi, err := common.GetBigIntFromStr(c.MaxGasTipCap)
+			if err != nil {
+				return errors.New("wrong 'MaxGasTipCap'")
+			}
+			c.maxGasTipCap = bi
+		}
+		if c.MaxGasFeeCap != "" {
+			bi, err := common.GetBigIntFromStr(c.MaxGasFeeCap)
+			if err != nil {
+				return errors.New("wrong 'MaxGasFeeCap'")
+			}
+			c.maxGasFeeCap = bi
+		}
+		if c.PlusGasTipCapPercent > 100 {
+			return errors.New("too large 'PlusGasTipCapPercent'")
+		}
+		if c.PlusGasFeeCapPercent > 100 {
+			return errors.New("too large 'PlusGasFeeCapPercent'")
+		}
+		if c.BlockCountFeeHistory > 1024 {
+			return errors.New("too large 'BlockCountFeeHistory'")
+		}
+
+		if c.maxGasTipCap == nil {
+			return errors.New("server must config 'MaxGasTipCap'")
+		}
+		if c.maxGasFeeCap == nil {
+			return errors.New("server must config 'MaxGasFeeCap'")
+		}
+		if c.maxGasTipCap.Cmp(c.maxGasFeeCap) > 0 {
+			return errors.New("must satisfy 'MaxGasTipCap <= MaxGasFeeCap'")
+		}
+	}
+	for cid := range dynamicFeeTxEnabledChains {
+		if _, exist := s.DynamicFeeTx[cid]; !exist {
+			return fmt.Errorf("chain %v enabled dynamic fee but without concrete config", cid)
+		}
+	}
 	return nil
 }
 

@@ -2,6 +2,7 @@ package params
 
 import (
 	"encoding/json"
+	"math/big"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -19,6 +20,8 @@ var (
 
 	chainIDBlacklistMap = make(map[string]struct{})
 	tokenIDBlacklistMap = make(map[string]struct{})
+
+	dynamicFeeTxEnabledChains map[string]struct{}
 )
 
 // RouterServerConfig only for server
@@ -40,7 +43,9 @@ type RouterServerConfig struct {
 	MaxPlusGasPricePercentage  uint64            `toml:",omitempty" json:",omitempty"`
 	MaxGasPriceFluctPercent    uint64            `toml:",omitempty" json:",omitempty"`
 	SwapDeadlineOffset         int64             `toml:",omitempty" json:",omitempty"` // seconds
-	DefaultGasLimit            map[string]uint64 `toml:",omitempty" json:",omitempty"`
+	DefaultGasLimit            map[string]uint64 `toml:",omitempty" json:",omitempty"` // key is chain ID
+
+	DynamicFeeTx map[string]*DynamicFeeTxConfig `toml:",omitempty" json:",omitempty"` // key is chain ID
 }
 
 // RouterConfig config
@@ -56,6 +61,8 @@ type RouterConfig struct {
 
 	IsDebugMode         bool `toml:",omitempty" json:",omitempty"`
 	AllowCallByContract bool
+
+	DynamicFeeTxEnabledChains []string
 }
 
 // OnchainConfig struct
@@ -98,6 +105,29 @@ type MongoDBConfig struct {
 	DBName   string
 	UserName string `json:"-"`
 	Password string `json:"-"`
+}
+
+// DynamicFeeTxConfig dynamic fee tx config
+type DynamicFeeTxConfig struct {
+	PlusGasTipCapPercent uint64
+	PlusGasFeeCapPercent uint64
+	BlockCountFeeHistory int
+	MaxGasTipCap         string
+	MaxGasFeeCap         string
+
+	// cached values
+	maxGasTipCap *big.Int
+	maxGasFeeCap *big.Int
+}
+
+// GetMaxGasTipCap get max gas tip cap
+func (c *DynamicFeeTxConfig) GetMaxGasTipCap() *big.Int {
+	return c.maxGasTipCap
+}
+
+// GetMaxGasFeeCap get max fee gas cap
+func (c *DynamicFeeTxConfig) GetMaxGasFeeCap() *big.Int {
+	return c.maxGasFeeCap
 }
 
 // GetIdentifier get identifier (to distiguish in mpc accept)
@@ -173,6 +203,34 @@ func IsSwapInBlacklist(fromChainID, toChainID, tokenID string) bool {
 	return IsChainIDInBlackList(fromChainID) ||
 		IsChainIDInBlackList(toChainID) ||
 		IsTokenIDInBlackList(tokenID)
+}
+
+// IsDynamicFeeTxEnabled is dynamic fee tx enabled (EIP-1559)
+func IsDynamicFeeTxEnabled(chainID string) bool {
+	if dynamicFeeTxEnabledChains == nil {
+		chainIDs := routerConfig.DynamicFeeTxEnabledChains
+		dynamicFeeTxEnabledChains = make(map[string]struct{}, len(chainIDs))
+		for _, item := range chainIDs {
+			dynamicFeeTxEnabledChains[item] = struct{}{}
+		}
+	}
+	_, exist := dynamicFeeTxEnabledChains[chainID]
+	return exist
+}
+
+// GetDynamicFeeTxConfig get dynamic fee tx config (EIP-1559)
+func GetDynamicFeeTxConfig(chainID string) *DynamicFeeTxConfig {
+	if !IsDynamicFeeTxEnabled(chainID) {
+		return nil
+	}
+	serverCfg := GetRouterServerConfig()
+	if serverCfg == nil {
+		return nil
+	}
+	if cfg, exist := serverCfg.DynamicFeeTx[chainID]; exist {
+		return cfg
+	}
+	return nil
 }
 
 // LoadRouterConfig load router swap config

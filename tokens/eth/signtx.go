@@ -9,6 +9,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mpc"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tools/crypto"
 	"github.com/anyswap/CrossChain-Router/v3/types"
@@ -36,11 +37,13 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 		return nil, "", err
 	}
 
-	gasPrice, err := b.getGasPrice(args)
-	if err == nil && args.Extra.EthExtra.GasPrice.Cmp(gasPrice) < 0 {
-		log.Info(b.ChainConfig.BlockChain+" MPCSignTransaction update gas price", "txid", args.SwapID, "oldGasPrice", args.Extra.EthExtra.GasPrice, "newGasPrice", gasPrice)
-		args.Extra.EthExtra.GasPrice = gasPrice
-		tx.SetGasPrice(gasPrice)
+	if !params.IsDynamicFeeTxEnabled(b.ChainConfig.ChainID) {
+		gasPrice, errt := b.getGasPrice(args)
+		if errt == nil && args.Extra.EthExtra.GasPrice.Cmp(gasPrice) < 0 {
+			log.Info(b.ChainConfig.BlockChain+" MPCSignTransaction update gas price", "txid", args.SwapID, "oldGasPrice", args.Extra.EthExtra.GasPrice, "newGasPrice", gasPrice)
+			args.Extra.EthExtra.GasPrice = gasPrice
+			tx.SetGasPrice(gasPrice)
+		}
 	}
 
 	mpcAddress := b.ChainConfig.GetRouterMPC()
