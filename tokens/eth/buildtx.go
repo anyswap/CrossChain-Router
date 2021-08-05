@@ -63,7 +63,12 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs, extra *tokens.EthExtraArgs) (
 		isDynamicFeeTx = params.IsDynamicFeeTxEnabled(b.ChainConfig.ChainID)
 	)
 
-	err = b.checkBalance(args.From, value, gasPrice, gasLimit, true)
+	needValue := b.getMinReserveFee()
+	if value != nil {
+		needValue.Add(needValue, value)
+	}
+
+	err = b.checkCoinBalance(args.From, needValue)
 	if err != nil {
 		return nil, err
 	}
@@ -167,13 +172,7 @@ func (b *Bridge) getGasPrice(args *tokens.BuildTxArgs) (price *big.Int, err erro
 	if err != nil {
 		return nil, err
 	}
-	if args != nil && args.SwapType != tokens.NonSwapType {
-		price, err = b.adjustSwapGasPrice(args, price)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return price, err
+	return b.adjustSwapGasPrice(args, price)
 }
 
 // args and oldGasPrice should be read only
@@ -240,19 +239,7 @@ func (b *Bridge) getMinReserveFee() *big.Int {
 	return minReserve
 }
 
-func (b *Bridge) checkBalance(sender string, amount, gasPrice *big.Int, gasLimit uint64, isBuildTx bool) (err error) {
-	var needValue *big.Int
-	if amount != nil {
-		needValue = new(big.Int).Set(amount)
-	} else {
-		needValue = big.NewInt(0)
-	}
-	gasFee := new(big.Int).Mul(gasPrice, new(big.Int).SetUint64(gasLimit))
-	if isBuildTx {
-		gasFee.Add(gasFee, b.getMinReserveFee())
-	}
-	needValue.Add(needValue, gasFee)
-
+func (b *Bridge) checkCoinBalance(sender string, needValue *big.Int) (err error) {
 	var balance *big.Int
 	for i := 0; i < retryRPCCount; i++ {
 		balance, err = b.GetBalance(sender)
@@ -271,6 +258,12 @@ func (b *Bridge) checkBalance(sender string, amount, gasPrice *big.Int, gasLimit
 }
 
 func (b *Bridge) getGasTipCap(args *tokens.BuildTxArgs) (gasTipCap *big.Int, err error) {
+	serverCfg := params.GetRouterServerConfig()
+	dfConfig := params.GetDynamicFeeTxConfig(b.ChainConfig.ChainID)
+	if serverCfg == nil || dfConfig == nil {
+		return nil, tokens.ErrMissDynamicFeeConfig
+	}
+
 	for i := 0; i < retryRPCCount; i++ {
 		gasTipCap, err = b.SuggestGasTipCap()
 		if err == nil {
@@ -281,15 +274,7 @@ func (b *Bridge) getGasTipCap(args *tokens.BuildTxArgs) (gasTipCap *big.Int, err
 	if err != nil {
 		return nil, err
 	}
-	if args == nil || args.SwapType == tokens.NonSwapType {
-		return gasTipCap, err
-	}
 
-	dfConfig := params.GetDynamicFeeTxConfig(b.ChainConfig.ChainID)
-	if dfConfig == nil {
-		return nil, tokens.ErrMissDynamicFeeConfig
-	}
-	serverCfg := params.GetRouterServerConfig()
 	addPercent := dfConfig.PlusGasTipCapPercent
 	if args.ReplaceNum > 0 {
 		addPercent += args.ReplaceNum * serverCfg.ReplacePlusGasPricePercent
@@ -309,11 +294,12 @@ func (b *Bridge) getGasTipCap(args *tokens.BuildTxArgs) (gasTipCap *big.Int, err
 	return gasTipCap, nil
 }
 
-func (b *Bridge) getGasFeeCap(args *tokens.BuildTxArgs, gasTipCap *big.Int) (gasFeeCap *big.Int, err error) {
+func (b *Bridge) getGasFeeCap(_ *tokens.BuildTxArgs, gasTipCap *big.Int) (gasFeeCap *big.Int, err error) {
 	dfConfig := params.GetDynamicFeeTxConfig(b.ChainConfig.ChainID)
 	if dfConfig == nil {
 		return nil, tokens.ErrMissDynamicFeeConfig
 	}
+
 	blockCount := dfConfig.BlockCountFeeHistory
 	var baseFee *big.Int
 	for i := 0; i < retryRPCCount; i++ {
@@ -329,9 +315,6 @@ func (b *Bridge) getGasFeeCap(args *tokens.BuildTxArgs, gasTipCap *big.Int) (gas
 
 	newGasFeeCap := new(big.Int).Set(gasTipCap) // copy
 	newGasFeeCap.Add(newGasFeeCap, baseFee.Mul(baseFee, big.NewInt(2)))
-	if args == nil || args.SwapType == tokens.NonSwapType {
-		return newGasFeeCap, err
-	}
 
 	newGasFeeCap.Mul(newGasFeeCap, big.NewInt(int64(100+dfConfig.PlusGasFeeCapPercent)))
 	newGasFeeCap.Div(newGasFeeCap, big.NewInt(100))

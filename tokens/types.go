@@ -12,15 +12,12 @@ type SwapType uint32
 
 // SwapType constants
 const (
-	NonSwapType SwapType = iota
-	RouterSwapType
+	RouterSwapType SwapType = iota + 1
 	AnyCallSwapType
 )
 
 func (s SwapType) String() string {
 	switch s {
-	case NonSwapType:
-		return "nonswap"
 	case RouterSwapType:
 		return "routerswap"
 	case AnyCallSwapType:
