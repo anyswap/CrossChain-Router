@@ -3,7 +3,7 @@ Identifier = "routerswap#20210326"
 
 # allow call into router from contract
 AllowCallByContract = false
-# call by contract whitelist
+# call by contract whitelist, key is chainID
 [CallByContractWhitelist]
 4 = [
 	"0x1111111111111111111111111111111111111111",
@@ -48,7 +48,7 @@ SwapDeadlineOffset = 36000
 4     = 90000
 256   = 90000
 46688 = 90000
-# dynamic fee tx config
+# dynamic fee tx config, the last part (3 here) is chainID
 [Server.DynamicFeeTx.3]
 PlusGasTipCapPercent = 10
 PlusGasFeeCapPercent = 10
