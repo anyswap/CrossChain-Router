@@ -53,14 +53,19 @@ type RouterServerConfig struct {
 type RouterConfig struct {
 	Server *RouterServerConfig `toml:",omitempty" json:",omitempty"`
 
-	Identifier    string
-	MinReserveFee map[string]uint64 `toml:",omitempty" json:",omitempty"`
-	Onchain       *OnchainConfig
-	Gateways      map[string][]string // key is chain ID
-	GatewaysExt   map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
-	MPC           *MPCConfig
+	Identifier  string
+	Onchain     *OnchainConfig
+	Gateways    map[string][]string // key is chain ID
+	GatewaysExt map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+	MPC         *MPCConfig
+	Extra       *ExtraConfig `toml:",omitempty" json:",omitempty"`
+}
 
-	IsDebugMode             bool `toml:",omitempty" json:",omitempty"`
+// ExtraConfig extra config
+type ExtraConfig struct {
+	IsDebugMode   bool              `toml:",omitempty" json:",omitempty"`
+	MinReserveFee map[string]uint64 `toml:",omitempty" json:",omitempty"`
+
 	AllowCallByContract     bool
 	CallByContractWhitelist map[string][]string // chainID -> whitelist
 
@@ -137,28 +142,50 @@ func GetIdentifier() string {
 	return GetRouterConfig().Identifier
 }
 
+// GetMinReserveFee get min reserve fee
+func GetMinReserveFee(chainID string) *big.Int {
+	if GetExtraConfig() == nil {
+		return nil
+	}
+	if minReserve, exist := GetExtraConfig().MinReserveFee[chainID]; exist {
+		return new(big.Int).SetUint64(minReserve)
+	}
+	return nil
+}
+
 // IsDebugMode is debug mode, add more debugging log infos
 func IsDebugMode() bool {
-	return GetRouterConfig().IsDebugMode
+	return GetExtraConfig() != nil && GetExtraConfig().IsDebugMode
 }
 
 // AllowCallByContract allow call into router from contract
 func AllowCallByContract() bool {
-	return GetRouterConfig().AllowCallByContract
+	return GetExtraConfig() != nil && GetExtraConfig().AllowCallByContract
+}
+
+func initCallByContractWhitelist() {
+	callByContractWhitelist = make(map[string]map[string]struct{})
+	if GetExtraConfig() == nil {
+		return
+	}
+	for cid, whitelist := range GetExtraConfig().CallByContractWhitelist {
+		if _, err := common.GetBigIntFromStr(cid); err != nil {
+			log.Fatal("initCallByContractWhitelist wrong chainID", "chainID", cid, "err", err)
+		}
+		whitelistMap := make(map[string]struct{}, len(whitelist))
+		for _, address := range whitelist {
+			if !common.IsHexAddress(address) {
+				log.Fatal("initCallByContractWhitelist wrong address", "chainID", cid, "address", address)
+			}
+			whitelistMap[strings.ToLower(address)] = struct{}{}
+		}
+		callByContractWhitelist[cid] = whitelistMap
+	}
+	log.Info("initCallByContractWhitelist success", "callByContractWhitelist", callByContractWhitelist)
 }
 
 // IsInCallByContractWhitelist is in call by contract whitelist
 func IsInCallByContractWhitelist(chainID, caller string) bool {
-	if callByContractWhitelist == nil {
-		callByContractWhitelist = make(map[string]map[string]struct{})
-		for cid, whitelist := range GetRouterConfig().CallByContractWhitelist {
-			whitelistMap := make(map[string]struct{}, len(whitelist))
-			for _, address := range whitelist {
-				whitelistMap[strings.ToLower(address)] = struct{}{}
-			}
-			callByContractWhitelist[cid] = whitelistMap
-		}
-	}
 	whitelist, exist := callByContractWhitelist[chainID]
 	if !exist {
 		return false
@@ -191,6 +218,11 @@ func GetRouterServerConfig() *RouterServerConfig {
 // GetOnchainContract get onchain config contract address
 func GetOnchainContract() string {
 	return routerConfig.Onchain.Contract
+}
+
+// GetExtraConfig get extra config
+func GetExtraConfig() *ExtraConfig {
+	return routerConfig.Extra
 }
 
 // HasRouterAdmin has admin
@@ -227,15 +259,22 @@ func IsSwapInBlacklist(fromChainID, toChainID, tokenID string) bool {
 		IsTokenIDInBlackList(tokenID)
 }
 
+func initDynamicFeeTxEnabledChains() {
+	dynamicFeeTxEnabledChains = make(map[string]struct{})
+	if GetExtraConfig() == nil {
+		return
+	}
+	for _, cid := range GetExtraConfig().DynamicFeeTxEnabledChains {
+		if _, err := common.GetBigIntFromStr(cid); err != nil {
+			log.Fatal("initDynamicFeeTxEnabledChains wrong chainID", "chainID", cid, "err", err)
+		}
+		dynamicFeeTxEnabledChains[cid] = struct{}{}
+	}
+	log.Info("initDynamicFeeTxEnabledChains success", "dynamicFeeTxEnabledChains", dynamicFeeTxEnabledChains)
+}
+
 // IsDynamicFeeTxEnabled is dynamic fee tx enabled (EIP-1559)
 func IsDynamicFeeTxEnabled(chainID string) bool {
-	if dynamicFeeTxEnabledChains == nil {
-		chainIDs := routerConfig.DynamicFeeTxEnabledChains
-		dynamicFeeTxEnabledChains = make(map[string]struct{}, len(chainIDs))
-		for _, item := range chainIDs {
-			dynamicFeeTxEnabledChains[item] = struct{}{}
-		}
-	}
 	_, exist := dynamicFeeTxEnabledChains[chainID]
 	return exist
 }
@@ -273,6 +312,8 @@ func LoadRouterConfig(configFile string, isServer bool) *RouterConfig {
 		config.Server = nil
 	}
 
+	routerConfig = config
+
 	var bs []byte
 	if log.JSONFormat {
 		bs, _ = json.Marshal(config)
@@ -280,10 +321,10 @@ func LoadRouterConfig(configFile string, isServer bool) *RouterConfig {
 		bs, _ = json.MarshalIndent(config, "", "  ")
 	}
 	log.Println("LoadRouterConfig finished.", string(bs))
+
 	if err := config.CheckConfig(isServer); err != nil {
 		log.Fatalf("Check config failed. %v", err)
 	}
 
-	routerConfig = config
 	return routerConfig
 }

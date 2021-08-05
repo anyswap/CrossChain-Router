@@ -232,9 +232,9 @@ func (b *Bridge) getMinReserveFee() *big.Int {
 	if config == nil {
 		return big.NewInt(0)
 	}
-	minReserve := big.NewInt(1e16) // default 0.01 ETH
-	if cfgMinReserve, exist := config.MinReserveFee[b.ChainConfig.ChainID]; exist {
-		minReserve = new(big.Int).SetUint64(cfgMinReserve)
+	minReserve := params.GetMinReserveFee(b.ChainConfig.ChainID)
+	if minReserve == nil {
+		minReserve = big.NewInt(1e16) // default 0.01 ETH
 	}
 	return minReserve
 }

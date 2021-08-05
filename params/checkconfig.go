@@ -31,14 +31,21 @@ func (config *RouterConfig) CheckConfig(isServer bool) (err error) {
 		return fmt.Errorf("wrong identifier '%v', missing prefix '%v'", config.Identifier, RouterSwapPrefixID)
 	}
 	log.Info("check identifier pass", "identifier", config.Identifier, "isServer", isServer)
+
+	// check and init extra firstly
+	if config.Extra != nil {
+		err = config.Extra.CheckConfig()
+		if err != nil {
+			return err
+		}
+	}
+
 	if isServer {
 		err = config.Server.CheckConfig()
 		if err != nil {
 			return err
 		}
 	}
-
-	log.Info("show min reserve fee info", "minReserveFee", config.MinReserveFee)
 
 	if config.MPC == nil {
 		return errors.New("server must config 'MPC'")
@@ -102,10 +109,7 @@ func (s *RouterServerConfig) CheckConfig() error {
 
 // CheckDynamicFeeTxConfig check dynamic fee tx config
 func (s *RouterServerConfig) CheckDynamicFeeTxConfig() error {
-	for cid, c := range s.DynamicFeeTx {
-		if !IsDynamicFeeTxEnabled(cid) {
-			continue
-		}
+	for _, c := range s.DynamicFeeTx {
 		if c.MaxGasTipCap != "" {
 			bi, err := common.GetBigIntFromStr(c.MaxGasTipCap)
 			if err != nil {
@@ -145,6 +149,7 @@ func (s *RouterServerConfig) CheckDynamicFeeTxConfig() error {
 			return fmt.Errorf("chain %v enabled dynamic fee but without concrete config", cid)
 		}
 	}
+	log.Info("check server dynamic fee tx config success")
 	return nil
 }
 
@@ -239,5 +244,18 @@ func (c *MPCNodeConfig) CheckConfig(isServer bool) (err error) {
 		return errors.New("swap server mpc node must config 'SignGroups'")
 	}
 	log.Info("check mpc config pass", "isServer", isServer)
+	return nil
+}
+
+// CheckConfig check extra config
+func (c *ExtraConfig) CheckConfig() (err error) {
+	initCallByContractWhitelist()
+	initDynamicFeeTxEnabledChains()
+
+	log.Info("check extra config success",
+		"minReserveFee", c.MinReserveFee,
+		"allowCallByContract", c.AllowCallByContract,
+		"dynamicFeeTxEnabledChains", c.DynamicFeeTxEnabledChains,
+	)
 	return nil
 }

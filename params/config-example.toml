@@ -1,18 +1,6 @@
 # router swap identifier, must have prefix 'routerswap'
 Identifier = "routerswap#20210326"
 
-# allow call into router from contract
-AllowCallByContract = false
-# call by contract whitelist, key is chainID
-[CallByContractWhitelist]
-4 = [
-	"0x1111111111111111111111111111111111111111",
-	"0x2222222222222222222222222222222222222222"
-]
-
-# apecify dynamic fee tx enabled chainids
-DynamicFeeTxEnabledChains = ["3"]
-
 # router sever config (server only)
 [Server]
 # administrators who can do admin work
@@ -71,8 +59,19 @@ Port = 11556
 AllowedOrigins = []
 
 
+[Extra]
+# apecify dynamic fee tx enabled chainids
+DynamicFeeTxEnabledChains = ["3"]
+# allow call into router from contract
+AllowCallByContract = false
+# call by contract whitelist, key is chainID
+[Extra.CallByContractWhitelist]
+4 = [
+	"0x1111111111111111111111111111111111111111",
+	"0x2222222222222222222222222222222222222222"
+]
 # min reserve fee. key is chainID. defaults to 1e16 wei
-[MinReserveFee]
+[Extra.MinReserveFee]
 4     = 10000000000000000
 256   = 10000000000000000
 46688 = 10000000000000000
