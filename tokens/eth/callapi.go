@@ -8,6 +8,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/types"
@@ -293,14 +294,15 @@ func sendRawTransaction(hexData string, urls []string) (txHash string, err error
 	if len(urls) == 0 {
 		return "", errEmptyURLs
 	}
+	logFunc := log.GetPrintFuncOr(params.IsDebugMode, log.Info, log.Trace)
 	var result string
 	for _, url := range urls {
 		err = client.RPCPost(&result, url, "eth_sendRawTransaction", hexData)
 		if err != nil {
-			log.Trace("call eth_sendRawTransaction failed", "txHash", result, "url", url, "err", err)
+			logFunc("call eth_sendRawTransaction failed", "txHash", result, "url", url, "err", err)
 			continue
 		}
-		log.Trace("call eth_sendRawTransaction success", "txHash", result, "url", url)
+		logFunc("call eth_sendRawTransaction success", "txHash", result, "url", url)
 		if txHash == "" {
 			txHash = result
 		}
@@ -389,6 +391,10 @@ func (b *Bridge) CallContract(contract string, data hexutil.Bytes, blockNumber s
 		if err == nil {
 			return result, nil
 		}
+	}
+	if err != nil {
+		logFunc := log.GetPrintFuncOr(params.IsDebugMode, log.Info, log.Trace)
+		logFunc("call CallContract failed", "contract", contract, "data", data, "err", err)
 	}
 	return "", tokens.ErrRPCQueryError
 }

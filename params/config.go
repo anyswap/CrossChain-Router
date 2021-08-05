@@ -54,6 +54,7 @@ type RouterConfig struct {
 	GatewaysExt   map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	MPC           *MPCConfig
 
+	IsDebugMode         bool `toml:",omitempty" json:",omitempty"`
 	AllowCallByContract bool
 }
 
@@ -102,6 +103,11 @@ type MongoDBConfig struct {
 // GetIdentifier get identifier (to distiguish in mpc accept)
 func GetIdentifier() string {
 	return GetRouterConfig().Identifier
+}
+
+// IsDebugMode is debug mode, add more debugging log infos
+func IsDebugMode() bool {
+	return GetRouterConfig().IsDebugMode
 }
 
 // AllowCallByContract allow call into router from contract

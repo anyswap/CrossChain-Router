@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/types"
 )
 
@@ -26,9 +27,11 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error
 	txHash, err = b.SendSignedTransaction(tx)
 	if err != nil {
 		log.Info("SendTransaction failed", "hash", txHash, "err", err)
-		return txHash, err
+	} else {
+		log.Info("SendTransaction success", "hash", txHash)
 	}
-	log.Info("SendTransaction success", "hash", txHash)
-	//#log.Trace("SendTransaction success", "raw", tx.RawStr())
-	return txHash, nil
+	if params.IsDebugMode() {
+		log.Infof("SendTransaction rawtx is %v", tx.RawStr())
+	}
+	return txHash, err
 }
