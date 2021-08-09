@@ -31,7 +31,6 @@ func initApp() {
 	app.Commands = []*cli.Command{
 		adminCommand,
 		configCommand,
-		scanswapCommand,
 		utils.LicenseCommand,
 		utils.VersionCommand,
 	}
