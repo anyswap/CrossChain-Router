@@ -83,6 +83,7 @@ type OnchainConfig struct {
 // MPCConfig mpc related config
 type MPCConfig struct {
 	APIPrefix     string
+	SignTimeout   uint64
 	GroupID       *string
 	NeededOracles *uint32
 	TotalOracles  *uint32

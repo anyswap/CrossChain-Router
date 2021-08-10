@@ -19,7 +19,6 @@ import (
 const (
 	pingCount     = 3
 	retrySignLoop = 3
-	signTimeout   = 120 * time.Second
 )
 
 var (
@@ -132,7 +131,7 @@ func getSignResult(keyID, rpcAddr string) (rsvs []string, err error) {
 	log.Info("start get sign status", "keyID", keyID)
 	var signStatus *SignStatus
 	i := 0
-	signTimer := time.NewTimer(signTimeout)
+	signTimer := time.NewTimer(mpcSignTimeout)
 	defer signTimer.Stop()
 LOOP_GET_SIGN_STATUS:
 	for {

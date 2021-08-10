@@ -30,6 +30,8 @@ var (
 	mpcNeededOracles uint32
 	mpcTotalOracles  uint32
 
+	mpcSignTimeout = 120 * time.Second // default to 120 seconds
+
 	defaultMPCNode    *NodeInfo
 	allInitiatorNodes []*NodeInfo // server only
 
@@ -48,6 +50,10 @@ type NodeInfo struct {
 // Init init mpc
 func Init(mpcConfig *params.MPCConfig, isServer bool) {
 	mpcAPIPrefix = mpcConfig.APIPrefix
+	if mpcConfig.SignTimeout > 0 {
+		mpcSignTimeout = time.Duration(mpcConfig.SignTimeout) * time.Second
+	}
+
 	setMPCGroup(*mpcConfig.GroupID, mpcConfig.Mode, *mpcConfig.NeededOracles, *mpcConfig.TotalOracles)
 	setDefaultMPCNodeInfo(initMPCNodeInfo(mpcConfig.DefaultNode, isServer))
 
@@ -61,7 +67,7 @@ func Init(mpcConfig *params.MPCConfig, isServer bool) {
 	initAllEnodes()
 
 	verifyInitiators(mpcConfig.Initiators)
-	log.Info("init mpc success")
+	log.Info("init mpc success", "apiPrefix", mpcAPIPrefix, "signTimeout", mpcSignTimeout, "isServer", isServer)
 }
 
 // setDefaultMPCNodeInfo set default mpc node info
