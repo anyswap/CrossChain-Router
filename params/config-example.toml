@@ -100,9 +100,11 @@ APIAddress = ["http://127.0.0.1:8711", "http://127.0.0.1:8722"]
 46688 = ["http://127.0.0.1:8000"]
 
 
-# DCRM config
+# MPC config
 [MPC]
 APIPrefix = "smpc_"
+# RPC timeout
+RPCTimeout = 10
 # sign timeout of seconds
 SignTimeout = 120
 # mpc group ID
@@ -120,7 +122,7 @@ Initiators = [
 	"0x897a9980808a2cae0d09ff693f02a4f80abb2233"
 ]
 
-# DCRM default node config
+# MPC default node config
 [MPC.DefaultNode]
 # mpc sub groups for signing (server only)
 SignGroups = [

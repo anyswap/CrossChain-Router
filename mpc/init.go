@@ -30,6 +30,7 @@ var (
 	mpcNeededOracles uint32
 	mpcTotalOracles  uint32
 
+	mpcRPCTimeout  = 10                // default to 10 seconds
 	mpcSignTimeout = 120 * time.Second // default to 120 seconds
 
 	defaultMPCNode    *NodeInfo
@@ -50,6 +51,10 @@ type NodeInfo struct {
 // Init init mpc
 func Init(mpcConfig *params.MPCConfig, isServer bool) {
 	mpcAPIPrefix = mpcConfig.APIPrefix
+
+	if mpcConfig.RPCTimeout > 0 {
+		mpcRPCTimeout = int(mpcConfig.RPCTimeout)
+	}
 	if mpcConfig.SignTimeout > 0 {
 		mpcSignTimeout = time.Duration(mpcConfig.SignTimeout) * time.Second
 	}

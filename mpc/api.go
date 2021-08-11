@@ -29,11 +29,11 @@ func wrapPostError(method string, err error) error {
 }
 
 func httpPost(result interface{}, method string, params ...interface{}) error {
-	return client.RPCPost(&result, defaultMPCNode.mpcRPCAddress, mpcAPIPrefix+method, params...)
+	return client.RPCPostWithTimeout(mpcRPCTimeout, &result, defaultMPCNode.mpcRPCAddress, mpcAPIPrefix+method, params...)
 }
 
 func httpPostTo(result interface{}, rpcAddress, method string, params ...interface{}) error {
-	return client.RPCPost(&result, rpcAddress, mpcAPIPrefix+method, params...)
+	return client.RPCPostWithTimeout(mpcRPCTimeout, &result, rpcAddress, mpcAPIPrefix+method, params...)
 }
 
 // GetEnode call getEnode

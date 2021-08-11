@@ -50,6 +50,12 @@ func RPCPost(result interface{}, url, method string, params ...interface{}) erro
 	return RPCPostRequest(url, req, result)
 }
 
+// RPCPostWithTimeout rpc post with timeout
+func RPCPostWithTimeout(timeout int, result interface{}, url, method string, params ...interface{}) error {
+	req := NewRequestWithTimeoutAndID(timeout, defaultRequestID, method, params...)
+	return RPCPostRequest(url, req, result)
+}
+
 // RPCPostWithTimeoutAndID rpc post with timeout and id
 func RPCPostWithTimeoutAndID(result interface{}, timeout, id int, url, method string, params ...interface{}) error {
 	req := NewRequestWithTimeoutAndID(timeout, id, method, params...)
@@ -123,7 +129,7 @@ func getResultFromJSONResponse(result interface{}, resp *http.Response) error {
 		return fmt.Errorf("unmarshal body error, body is \"%v\" err=\"%w\"", string(body), err)
 	}
 	if jsonResp.Error != nil {
-		return fmt.Errorf("return error:  %w", jsonResp.Error)
+		return fmt.Errorf("return error: %w", jsonResp.Error)
 	}
 	err = json.Unmarshal(jsonResp.Result, &result)
 	if err != nil {
