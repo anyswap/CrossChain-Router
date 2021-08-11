@@ -14,10 +14,11 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/eth/abicoder"
-	ethereum "github.com/fsn-dev/fsn-go-sdk/efsn"
-	ethcommon "github.com/fsn-dev/fsn-go-sdk/efsn/common"
-	ethtypes "github.com/fsn-dev/fsn-go-sdk/efsn/core/types"
-	"github.com/fsn-dev/fsn-go-sdk/efsn/ethclient"
+
+	ethclient "github.com/jowenshaw/gethclient"
+	ethcommon "github.com/jowenshaw/gethclient/common"
+	ethtypes "github.com/jowenshaw/gethclient/types"
+	"github.com/jowenshaw/gethclient/types/ethereum"
 )
 
 var (
