@@ -203,7 +203,7 @@ func processHistory(res *mongodb.MgoSwapResult) error {
 		return nil
 	}
 	_ = mongodb.UpdateRouterSwapStatus(chainID, txid, logIndex, mongodb.TxProcessed, now(), "")
-	logWorker("swap", "ignore swapped router swap", "chainID", chainID, "txid", txid, "logIndex", logIndex, "matchTx", history.matchTx)
+	logWorker("swap", "ignore swapped router swap", "fromChainID", res.FromChainID, "toChainID", res.ToChainID, "txid", txid, "logIndex", logIndex, "matchTx", history.matchTx)
 	return errAlreadySwapped
 }
 

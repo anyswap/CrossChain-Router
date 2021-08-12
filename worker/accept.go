@@ -126,34 +126,58 @@ func processAcceptInfo(info *mpc.SignInfoData) {
 		}
 	}()
 
-	agreeResult := "AGREE"
 	args, err := verifySignInfo(info)
+
+	ctx := []interface{}{
+		"keyID", keyID,
+	}
+	if args != nil {
+		ctx = append(ctx,
+			"swapType", args.SwapType.String(),
+			"fromChainID", args.FromChainID,
+			"toChainID", args.ToChainID,
+			"swapID", args.SwapID,
+			"logIndex", args.LogIndex,
+		)
+	}
+
 	switch {
 	case errors.Is(err, tokens.ErrTxNotStable),
-		errors.Is(err, tokens.ErrTxNotFound):
-		logWorkerTrace("accept", "ignore sign", "keyID", keyID, "err", err)
+		errors.Is(err, tokens.ErrTxNotFound),
+		errors.Is(err, tokens.ErrRPCQueryError):
+		ctx = append(ctx, "err", err)
+		logWorkerTrace("accept", "ignore sign", ctx...)
 		return
-	case errors.Is(err, errIdentifierMismatch),
-		errors.Is(err, errInitiatorMismatch),
+	case errors.Is(err, errIdentifierMismatch):
+		ctx = append(ctx, "err", err)
+		logWorkerTrace("accept", "discard sign", ctx...)
+		isProcessed = true
+		return
+	case errors.Is(err, errInitiatorMismatch),
 		errors.Is(err, errWrongMsgContext),
 		errors.Is(err, errExpiredSignInfo),
 		errors.Is(err, errInvalidSignInfo),
 		errors.Is(err, tokens.ErrTxWithWrongContract),
 		errors.Is(err, tokens.ErrNoBridgeForChainID):
-		logWorker("accept", "ignore sign", "keyID", keyID, "err", err)
+		ctx = append(ctx, "err", err)
+		logWorker("accept", "discard sign", ctx...)
 		isProcessed = true
 		return
 	}
+
+	agreeResult := "AGREE"
 	if err != nil {
-		logWorkerError("accept", "DISAGREE sign", err, "keyID", keyID, "chainID", args.FromChainID, "swapID", args.SwapID, "logIndex", args.LogIndex)
+		logWorkerError("accept", "DISAGREE sign", err, ctx...)
 		agreeResult = "DISAGREE"
 	}
-	logWorker("accept", "mpc DoAcceptSign", "keyID", keyID, "result", agreeResult, "chainID", args.FromChainID, "swapID", args.SwapID, "logIndex", args.LogIndex)
+	ctx = append(ctx, "result", agreeResult)
+
 	res, err := mpc.DoAcceptSign(keyID, agreeResult, info.MsgHash, info.MsgContext)
 	if err != nil {
-		logWorkerError("accept", "accept sign job failed", err, "keyID", keyID, "result", res, agreeResult, "chainID", args.FromChainID, "swapID", args.SwapID, "logIndex", args.LogIndex)
+		ctx = append(ctx, "rpcResult", res)
+		logWorkerError("accept", "accept sign job failed", err, ctx...)
 	} else {
-		logWorker("accept", "accept sign job finish", "keyID", keyID, "result", agreeResult, "chainID", args.FromChainID, "swapID", args.SwapID, "logIndex", args.LogIndex)
+		logWorker("accept", "accept sign job finish", ctx...)
 		isProcessed = true
 	}
 }
@@ -212,6 +236,15 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 		return fmt.Errorf("unknown router swap type %v", args.SwapType)
 	}
 
+	ctx := []interface{}{
+		"keyID", keyID,
+		"swapType", args.SwapType.String(),
+		"fromChainID", args.FromChainID,
+		"toChainID", args.ToChainID,
+		"swapID", args.SwapID,
+		"logIndex", args.LogIndex,
+	}
+
 	txid := args.SwapID
 	logIndex := args.LogIndex
 	verifyArgs := &tokens.VerifyArgs{
@@ -221,7 +254,7 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 	}
 	swapInfo, err := srcBridge.VerifyTransaction(txid, verifyArgs)
 	if err != nil {
-		logWorkerError("accept", "verifySignInfo failed", err, "keyID", keyID, "swapType", args.SwapType.String(), "fromChainID", args.FromChainID, "txid", txid, "logIndex", logIndex)
+		logWorkerError("accept", "verifySignInfo failed", err, ctx...)
 		return err
 	}
 
@@ -233,12 +266,14 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 	}
 	rawTx, err := dstBridge.BuildRawTransaction(buildTxArgs)
 	if err != nil {
+		logWorkerError("accept", "build raw tx failed", err, ctx...)
 		return err
 	}
 	err = dstBridge.VerifyMsgHash(rawTx, msgHash)
 	if err != nil {
+		logWorkerError("accept", "verify message hash failed", err, ctx...)
 		return err
 	}
-	logWorker("accept", "verify message hash success", "keyID", keyID, "swapType", args.SwapType.String(), "fromChainID", args.FromChainID, "txid", txid, "logIndex", logIndex)
+	logWorker("accept", "verify message hash success", ctx...)
 	return nil
 }

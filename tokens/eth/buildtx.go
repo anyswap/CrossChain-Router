@@ -80,6 +80,7 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs, extra *tokens.EthExtraArgs) (
 	}
 
 	log.Info("build routerswap raw tx", "swapID", args.SwapID,
+		"fromChainID", args.FromChainID, "toChainID", args.ToChainID,
 		"from", args.From, "to", to.String(), "bind", args.Bind, "nonce", nonce,
 		"value", value, "originValue", args.OriginValue, "swapValue", args.SwapValue,
 		"gasLimit", gasLimit, "gasPrice", gasPrice, "replaceNum", args.ReplaceNum,
