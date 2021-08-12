@@ -167,7 +167,10 @@ func (b *Bridge) InitTokenConfig(tokenID string, chainID *big.Int) {
 	if err = b.checkTokenMinter(tokenAddr, tokenCfg.ContractVersion); err != nil {
 		log.Fatal("check token minter failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
 	}
-	underlying, _ := b.GetUnderlyingAddress(tokenAddr)
+	underlying, err := b.GetUnderlyingAddress(tokenAddr)
+	if err != nil {
+		log.Fatal("get underlying address failed", "err", err)
+	}
 	tokenCfg.SetUnderlying(common.HexToAddress(underlying)) // init underlying address
 	b.SetTokenConfig(tokenAddr, tokenCfg)
 	log.Info(fmt.Sprintf(">>> [%5v] init '%v' token config success", chainID, tokenID), "tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "underlying", underlying)
@@ -281,7 +284,11 @@ func (b *Bridge) ReloadTokenConfig(tokenID string, chainID *big.Int) {
 		log.Error("[reload] check token minter failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
 		return
 	}
-	underlying, _ := b.GetUnderlyingAddress(tokenAddr)
+	underlying, err := b.GetUnderlyingAddress(tokenAddr)
+	if err != nil {
+		log.Error("[reload] get underlying address failed", "err", err)
+		return
+	}
 	tokenCfg.SetUnderlying(common.HexToAddress(underlying)) // init underlying address
 	b.SetTokenConfig(tokenAddr, tokenCfg)
 	log.Info("reload token config success", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "underlying", underlying)
