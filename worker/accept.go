@@ -133,6 +133,7 @@ func processAcceptInfo(info *mpc.SignInfoData) {
 	}
 	if args != nil {
 		ctx = append(ctx,
+			"identifier", args.Identifier,
 			"swapType", args.SwapType.String(),
 			"fromChainID", args.FromChainID,
 			"toChainID", args.ToChainID,
@@ -238,6 +239,7 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 
 	ctx := []interface{}{
 		"keyID", keyID,
+		"identifier", args.Identifier,
 		"swapType", args.SwapType.String(),
 		"fromChainID", args.FromChainID,
 		"toChainID", args.ToChainID,
