@@ -79,13 +79,18 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs, extra *tokens.EthExtraArgs) (
 		rawTx = types.NewTransaction(nonce, to, value, gasLimit, gasPrice, input)
 	}
 
-	log.Info("build routerswap raw tx", "identifier", args.Identifier, "swapID", args.SwapID,
+	ctx := []interface{}{
+		"identifier", args.Identifier, "swapID", args.SwapID,
 		"fromChainID", args.FromChainID, "toChainID", args.ToChainID,
 		"from", args.From, "to", to.String(), "bind", args.Bind, "nonce", nonce,
 		"value", value, "originValue", args.OriginValue, "swapValue", args.SwapValue,
 		"gasLimit", gasLimit, "gasPrice", gasPrice, "replaceNum", args.ReplaceNum,
 		"gasTipCap", gasTipCap, "gasFeeCap", gasFeeCap,
-	)
+	}
+	if args.RouterSwapInfo != nil {
+		ctx = append(ctx, "tokenID", args.TokenID)
+	}
+	log.Info(fmt.Sprintf("build %s raw tx", args.SwapType.String()), ctx...)
 
 	return rawTx, nil
 }
@@ -135,7 +140,7 @@ func (b *Bridge) setDefaults(args *tokens.BuildTxArgs) (extra *tokens.EthExtraAr
 	if extra.Gas == nil {
 		esGasLimit, errf := b.EstimateGas(args.From, args.To, args.Value, *args.Input)
 		if errf != nil {
-			log.Error("build routerswap tx estimate gas failed",
+			log.Error(fmt.Sprintf("build %s tx estimate gas failed", args.SwapType.String()),
 				"swapID", args.SwapID, "from", args.From, "to", args.To,
 				"value", args.Value, "data", *args.Input, "err", errf)
 			return nil, tokens.ErrEstimateGasFailed

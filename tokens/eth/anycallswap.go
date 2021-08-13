@@ -100,7 +100,8 @@ func (b *Bridge) verifyAnyCallSwapTx(txHash string, logIndex int, allowUnstable 
 		log.Info("verify anycall swap tx stable pass", "identifier", params.GetIdentifier(),
 			"from", swapInfo.From, "to", swapInfo.To, "txid", txHash, "logIndex", logIndex,
 			"height", swapInfo.Height, "timestamp", swapInfo.Timestamp,
-			"fromChainID", swapInfo.FromChainID, "toChainID", swapInfo.ToChainID)
+			"fromChainID", swapInfo.FromChainID, "toChainID", swapInfo.ToChainID,
+			"callFrom", swapInfo.CallFrom)
 	}
 
 	return swapInfo, nil

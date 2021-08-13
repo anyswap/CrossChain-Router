@@ -140,6 +140,9 @@ func processAcceptInfo(info *mpc.SignInfoData) {
 			"swapID", args.SwapID,
 			"logIndex", args.LogIndex,
 		)
+		if args.RouterSwapInfo != nil {
+			ctx = append(ctx, "tokenID", args.TokenID)
+		}
 	}
 
 	switch {
@@ -245,6 +248,9 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 		"toChainID", args.ToChainID,
 		"swapID", args.SwapID,
 		"logIndex", args.LogIndex,
+	}
+	if args.RouterSwapInfo != nil {
+		ctx = append(ctx, "tokenID", args.TokenID)
 	}
 
 	txid := args.SwapID
