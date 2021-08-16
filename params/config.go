@@ -17,6 +17,7 @@ const (
 
 var (
 	routerConfig = &RouterConfig{}
+	locDataDir   string
 
 	chainIDBlacklistMap = make(map[string]struct{})
 	tokenIDBlacklistMap = make(map[string]struct{})
@@ -329,4 +330,25 @@ func LoadRouterConfig(configFile string, isServer bool) *RouterConfig {
 	}
 
 	return routerConfig
+}
+
+// SetDataDir set data dir
+func SetDataDir(dir string, isServer bool) {
+	if dir == "" {
+		if !isServer {
+			log.Warn("suggest specify '--datadir' to enhance accept job")
+		}
+		return
+	}
+	currDir, err := common.CurrentDir()
+	if err != nil {
+		log.Fatal("get current dir failed", "err", err)
+	}
+	locDataDir = common.AbsolutePath(currDir, dir)
+	log.Info("set data dir success", "datadir", locDataDir)
+}
+
+// GetDataDir get data dir
+func GetDataDir() string {
+	return locDataDir
 }
