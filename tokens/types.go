@@ -101,6 +101,7 @@ type SwapArgs struct {
 	LogIndex    int      `json:"logIndex"`
 	FromChainID *big.Int `json:"fromChainID"`
 	ToChainID   *big.Int `json:"toChainID"`
+	Reswapping  bool     `json:"reswapping,omitempty"`
 }
 
 // BuildTxArgs struct

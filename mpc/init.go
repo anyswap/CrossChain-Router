@@ -72,7 +72,7 @@ func Init(mpcConfig *params.MPCConfig, isServer bool) {
 	initAllEnodes()
 
 	verifyInitiators(mpcConfig.Initiators)
-	log.Info("init mpc success", "apiPrefix", mpcAPIPrefix, "signTimeout", mpcSignTimeout, "isServer", isServer)
+	log.Info("init mpc success", "apiPrefix", mpcAPIPrefix, "signTimeout", mpcSignTimeout.String(), "isServer", isServer)
 }
 
 // setDefaultMPCNodeInfo set default mpc node info

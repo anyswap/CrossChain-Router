@@ -16,6 +16,11 @@ import (
 	mapset "github.com/deckarep/golang-set"
 )
 
+const (
+	acceptAgree    = "AGREE"
+	acceptDisagree = "DISAGREE"
+)
+
 var (
 	cachedAcceptInfos    = mapset.NewSet()
 	maxCachedAcceptInfos = 500
@@ -40,6 +45,7 @@ var (
 // StartAcceptSignJob accept job
 func StartAcceptSignJob() {
 	logWorker("accept", "start accept sign job")
+	openLeveldb()
 	go startAcceptProducer()
 
 	utils.TopWaitGroup.Add(1)
@@ -79,7 +85,10 @@ func startAcceptProducer() {
 }
 
 func startAcceptConsumer() {
-	defer utils.TopWaitGroup.Done()
+	defer func() {
+		closeLeveldb()
+		utils.TopWaitGroup.Done()
+	}()
 	for {
 		select {
 		case <-utils.CleanupChan:
@@ -169,10 +178,10 @@ func processAcceptInfo(info *mpc.SignInfoData) {
 		return
 	}
 
-	agreeResult := "AGREE"
+	agreeResult := acceptAgree
 	if err != nil {
 		logWorkerError("accept", "DISAGREE sign", err, ctx...)
-		agreeResult = "DISAGREE"
+		agreeResult = acceptDisagree
 	}
 	ctx = append(ctx, "result", agreeResult)
 
@@ -215,6 +224,12 @@ func verifySignInfo(signInfo *mpc.SignInfoData) (*tokens.BuildTxArgs, error) {
 		return nil, errIdentifierMismatch
 	}
 	logWorker("accept", "verifySignInfo", "keyID", signInfo.Key, "msgHash", msgHash, "msgContext", msgContext)
+	if lvldbHandle != nil && args.GetTxNonce() > 0 { // only for eth like chain
+		err = CheckAcceptRecord(&args)
+		if err != nil {
+			return &args, err
+		}
+	}
 	err = rebuildAndVerifyMsgHash(signInfo.Key, msgHash, &args)
 	return &args, err
 }
@@ -283,5 +298,31 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 		return err
 	}
 	logWorker("accept", "verify message hash success", ctx...)
+	if lvldbHandle != nil && args.GetTxNonce() > 0 { // only for eth like chain
+		go saveAcceptRecord(dstBridge, keyID, buildTxArgs, rawTx, ctx)
+	}
 	return nil
+}
+
+func saveAcceptRecord(bridge tokens.IBridge, keyID string, args *tokens.BuildTxArgs, rawTx interface{}, ctx []interface{}) {
+	impl, ok := bridge.(interface {
+		GetSignedTxHashOfKeyID(keyID string, rawTx interface{}) (txHash string, err error)
+	})
+	if !ok {
+		return
+	}
+
+	swapTx, err := impl.GetSignedTxHashOfKeyID(keyID, rawTx)
+	if err != nil {
+		logWorkerError("accept", "get signed tx hash failed", err, ctx...)
+		return
+	}
+	ctx = append(ctx, "swaptx", swapTx)
+
+	err = AddAcceptRecord(args, swapTx)
+	if err != nil {
+		logWorkerError("accept", "save accept record to db failed", err, ctx...)
+		return
+	}
+	logWorker("accept", "save accept record to db sucess", ctx...)
 }

@@ -109,3 +109,33 @@ func (b *Bridge) signTxWithSignature(tx *types.Transaction, signature []byte, si
 
 	return nil, errors.New("wrong sender address")
 }
+
+// GetSignedTxHashOfKeyID get signed tx hash by keyID (called by oracle)
+func (b *Bridge) GetSignedTxHashOfKeyID(keyID string, rawTx interface{}) (txHash string, err error) {
+	tx, ok := rawTx.(*types.Transaction)
+	if !ok {
+		return "", errors.New("wrong raw tx of keyID " + keyID)
+	}
+	rsvs, err := mpc.GetSignStatusByKeyID(keyID)
+	if err != nil {
+		return "", err
+	}
+	if len(rsvs) != 1 {
+		return "", errors.New("wrong number of rsvs of keyID " + keyID)
+	}
+
+	rsv := rsvs[0]
+	signature := common.FromHex(rsv)
+	if len(signature) != crypto.SignatureLength {
+		return "", errors.New("wrong signature of keyID " + keyID)
+	}
+
+	mpcAddress := b.ChainConfig.GetRouterMPC()
+	signedTx, err := b.signTxWithSignature(tx, signature, common.HexToAddress(mpcAddress))
+	if err != nil {
+		return "", err
+	}
+
+	txHash = signedTx.Hash().String()
+	return txHash, nil
+}

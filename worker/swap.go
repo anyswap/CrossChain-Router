@@ -140,6 +140,7 @@ func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
 			LogIndex:    swap.LogIndex,
 			FromChainID: biFromChainID,
 			ToChainID:   biToChainID,
+			Reswapping:  res.Status == mongodb.Reswapping,
 		},
 		From:        dstBridge.GetChainConfig().GetRouterMPC(),
 		OriginValue: biValue,
