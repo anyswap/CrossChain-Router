@@ -83,6 +83,9 @@ func getGasPrice(args *admin.CallArgs, startPos int) (gasPrice *big.Int, err err
 		return
 	}
 	gasPriceStr := args.Params[startPos]
+	if gasPriceStr == "" {
+		return
+	}
 	if gasPrice, err = common.GetBigIntFromStr(gasPriceStr); err != nil {
 		err = fmt.Errorf("wrong gas price '%v'", gasPriceStr)
 	}
@@ -143,7 +146,7 @@ func routerReplaceSwap(args *admin.CallArgs, result *string) (err error) {
 	if err != nil {
 		return err
 	}
-	err = worker.ReplaceRouterSwap(res, gasPrice)
+	err = worker.ReplaceRouterSwap(res, gasPrice, true)
 	if err != nil {
 		return err
 	}

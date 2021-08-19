@@ -85,12 +85,12 @@ func processRouterSwapReplace(res *mongodb.MgoSwapResult) error {
 	if getSepTimeInFind(waitTimeToReplace) < res.Timestamp {
 		return nil
 	}
-	return ReplaceRouterSwap(res, nil)
+	return ReplaceRouterSwap(res, nil, false)
 }
 
 // ReplaceRouterSwap api
-func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int) error {
-	swap, err := verifyReplaceSwap(res)
+func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int, isManual bool) error {
+	swap, err := verifyReplaceSwap(res, isManual)
 	if err != nil {
 		return err
 	}
@@ -160,7 +160,7 @@ func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int) error {
 	return err
 }
 
-func verifyReplaceSwap(res *mongodb.MgoSwapResult) (*mongodb.MgoSwap, error) {
+func verifyReplaceSwap(res *mongodb.MgoSwapResult, isManual bool) (*mongodb.MgoSwap, error) {
 	fromChainID, txid, logIndex := res.FromChainID, res.TxID, res.LogIndex
 	swap, err := mongodb.FindRouterSwap(fromChainID, txid, logIndex)
 	if err != nil {
@@ -169,7 +169,7 @@ func verifyReplaceSwap(res *mongodb.MgoSwapResult) (*mongodb.MgoSwap, error) {
 	if res.SwapTx == "" {
 		return nil, errors.New("swap without swaptx")
 	}
-	if res.SwapNonce == 0 {
+	if res.SwapNonce == 0 && !isManual {
 		return nil, errors.New("swap nonce is zero")
 	}
 	if res.Status != mongodb.MatchTxNotStable {

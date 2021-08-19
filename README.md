@@ -142,8 +142,6 @@ sub commands:
 
 `config` is tool to process and query config data
 
-`scanswap` is tool to scan and post swap register
-
 ## 8. RPC api
 
 please ref. [server rpc api](https://github.com/anyswap/CrossChain-Router/blob/main/rpc/README.md)
