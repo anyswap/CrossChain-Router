@@ -23,7 +23,7 @@ var (
 	mpcSigner = types.MakeSigner("EIP155", big.NewInt(mpcWalletServiceID))
 	mpcToAddr = common.HexToAddress(mpcToAddress)
 
-	mpcAPIPrefix     string
+	mpcAPIPrefix     = "smpc_" // default prefix
 	mpcGroupID       string
 	mpcThreshold     string
 	mpcMode          string
@@ -50,7 +50,9 @@ type NodeInfo struct {
 
 // Init init mpc
 func Init(mpcConfig *params.MPCConfig, isServer bool) {
-	mpcAPIPrefix = mpcConfig.APIPrefix
+	if mpcConfig.APIPrefix != "" {
+		mpcAPIPrefix = mpcConfig.APIPrefix
+	}
 
 	if mpcConfig.RPCTimeout > 0 {
 		mpcRPCTimeout = int(mpcConfig.RPCTimeout)
