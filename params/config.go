@@ -166,6 +166,16 @@ func AllowCallByContract() bool {
 	return GetExtraConfig() != nil && GetExtraConfig().AllowCallByContract
 }
 
+// SetAllowCallByContract set allow call by contract flag
+func SetAllowCallByContract(allow bool) {
+	extraCfg := GetExtraConfig()
+	if extraCfg == nil {
+		extraCfg = &ExtraConfig{}
+		routerConfig.Extra = extraCfg
+	}
+	extraCfg.AllowCallByContract = allow
+}
+
 func initCallByContractWhitelist() {
 	callByContractWhitelist = make(map[string]map[string]struct{})
 	if GetExtraConfig() == nil {

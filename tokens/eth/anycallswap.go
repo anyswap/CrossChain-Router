@@ -28,7 +28,7 @@ func (b *Bridge) registerAnyCallSwapTx(txHash string, logIndex int) ([]*tokens.S
 	commonInfo.Hash = strings.ToLower(txHash)    // Hash
 	commonInfo.LogIndex = logIndex               // LogIndex
 
-	receipt, err := b.verifySwapTxReceipt(commonInfo, true)
+	receipt, err := b.getAndVerifySwapTxReceipt(commonInfo, true)
 	if err != nil {
 		return []*tokens.SwapTxInfo{commonInfo}, []error{err}
 	}
@@ -77,7 +77,7 @@ func (b *Bridge) verifyAnyCallSwapTx(txHash string, logIndex int, allowUnstable 
 	swapInfo.Hash = strings.ToLower(txHash)    // Hash
 	swapInfo.LogIndex = logIndex               // LogIndex
 
-	receipt, err := b.verifySwapTxReceipt(swapInfo, allowUnstable)
+	receipt, err := b.getAndVerifySwapTxReceipt(swapInfo, allowUnstable)
 	if err != nil {
 		return swapInfo, err
 	}

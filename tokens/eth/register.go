@@ -30,7 +30,7 @@ func (b *Bridge) registerRouterSwapTx(txHash string, logIndex int) ([]*tokens.Sw
 	commonInfo.Hash = strings.ToLower(txHash)   // Hash
 	commonInfo.LogIndex = logIndex              // LogIndex
 
-	receipt, err := b.verifySwapTxReceipt(commonInfo, true)
+	receipt, err := b.getAndVerifySwapTxReceipt(commonInfo, true)
 	if err != nil {
 		return []*tokens.SwapTxInfo{commonInfo}, []error{err}
 	}

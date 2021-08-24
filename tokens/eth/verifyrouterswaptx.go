@@ -30,7 +30,7 @@ func (b *Bridge) verifyRouterSwapTx(txHash string, logIndex int, allowUnstable b
 	swapInfo.Hash = strings.ToLower(txHash)   // Hash
 	swapInfo.LogIndex = logIndex              // LogIndex
 
-	receipt, err := b.verifySwapTxReceipt(swapInfo, allowUnstable)
+	receipt, err := b.getAndVerifySwapTxReceipt(swapInfo, allowUnstable)
 	if err != nil {
 		return swapInfo, err
 	}
@@ -97,7 +97,16 @@ func (b *Bridge) checkRouterSwapInfo(swapInfo *tokens.SwapTxInfo) error {
 	return nil
 }
 
-func (b *Bridge) verifySwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable bool) (receipt *types.RPCTxReceipt, err error) {
+func (b *Bridge) getAndVerifySwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable bool) (receipt *types.RPCTxReceipt, err error) {
+	receipt, err = b.getSwapTxReceipt(swapInfo, allowUnstable)
+	if err != nil {
+		return receipt, err
+	}
+	err = b.verifySwapTxReceipt(swapInfo, receipt)
+	return receipt, err
+}
+
+func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable bool) (receipt *types.RPCTxReceipt, err error) {
 	txStatus, err := b.GetTransactionStatus(swapInfo.Hash)
 	if err != nil {
 		return nil, err
@@ -121,8 +130,12 @@ func (b *Bridge) verifySwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable 
 		return receipt, tokens.ErrTxWithWrongReceipt
 	}
 
+	return receipt, nil
+}
+
+func (b *Bridge) verifySwapTxReceipt(swapInfo *tokens.SwapTxInfo, receipt *types.RPCTxReceipt) error {
 	if receipt.Recipient == nil {
-		return receipt, tokens.ErrTxWithWrongContract
+		return tokens.ErrTxWithWrongContract
 	}
 
 	swapInfo.TxTo = receipt.Recipient.LowerHex() // TxTo
@@ -131,9 +144,10 @@ func (b *Bridge) verifySwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable 
 	if !params.AllowCallByContract() &&
 		!common.IsEqualIgnoreCase(swapInfo.TxTo, b.ChainConfig.RouterContract) &&
 		!params.IsInCallByContractWhitelist(b.ChainConfig.ChainID, swapInfo.From) {
-		return receipt, tokens.ErrTxWithWrongContract
+		return tokens.ErrTxWithWrongContract
 	}
-	return receipt, nil
+
+	return nil
 }
 
 func (b *Bridge) verifyRouterSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
