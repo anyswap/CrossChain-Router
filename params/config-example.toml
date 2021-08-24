@@ -36,6 +36,10 @@ SwapDeadlineOffset = 36000
 4     = 90000
 256   = 90000
 46688 = 90000
+# use fixed gas price (no adjust). key is chainID.
+[Server.FixedGasPrice]
+4     = "1000000001"
+46688 = "1000000001"
 # dynamic fee tx config, the last part (3 here) is chainID
 [Server.DynamicFeeTx.3]
 PlusGasTipCapPercent = 10
