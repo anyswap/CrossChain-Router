@@ -1,3 +1,4 @@
+// Package router inits bridges and loads onchain configs.
 package router
 
 import (

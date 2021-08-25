@@ -1,3 +1,4 @@
+// Command swaprouter is main program to start swap router or its sub commands.
 package main
 
 import (

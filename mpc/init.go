@@ -1,3 +1,4 @@
+// Package mpc is a client of mpc server, doing the sign and accept tasks.
 package mpc
 
 import (

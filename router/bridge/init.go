@@ -1,3 +1,4 @@
+// Package bridge init router bridge and load / reload configs.
 package bridge
 
 import (

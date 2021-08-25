@@ -1,3 +1,4 @@
+// Package abicoder is simple tool to pack datas like solidity abi.
 package abicoder
 
 import (
