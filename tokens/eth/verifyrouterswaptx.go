@@ -143,7 +143,7 @@ func (b *Bridge) verifySwapTxReceipt(swapInfo *tokens.SwapTxInfo, receipt *types
 
 	if !params.AllowCallByContract() &&
 		!common.IsEqualIgnoreCase(swapInfo.TxTo, b.ChainConfig.RouterContract) &&
-		!params.IsInCallByContractWhitelist(b.ChainConfig.ChainID, swapInfo.From) {
+		!params.IsInCallByContractWhitelist(b.ChainConfig.ChainID, swapInfo.TxTo) {
 		return tokens.ErrTxWithWrongContract
 	}
 
