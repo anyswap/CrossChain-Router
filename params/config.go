@@ -69,6 +69,8 @@ type ExtraConfig struct {
 	IsDebugMode   bool              `toml:",omitempty" json:",omitempty"`
 	MinReserveFee map[string]uint64 `toml:",omitempty" json:",omitempty"`
 
+	GetAcceptListInterval uint64 `toml:",omitempty" json:",omitempty"`
+
 	AllowCallByContract     bool
 	CallByContractWhitelist map[string][]string // chainID -> whitelist
 
@@ -145,6 +147,14 @@ func (c *DynamicFeeTxConfig) GetMaxGasFeeCap() *big.Int {
 // GetIdentifier get identifier (to distiguish in mpc accept)
 func GetIdentifier() string {
 	return GetRouterConfig().Identifier
+}
+
+// GetAcceptListInterval get accept list interval (seconds)
+func GetAcceptListInterval() uint64 {
+	if GetExtraConfig() != nil {
+		return GetExtraConfig().GetAcceptListInterval
+	}
+	return 0
 }
 
 // GetFixedGasPrice get fixed gas price of specified chain

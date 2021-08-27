@@ -27,8 +27,8 @@ var (
 
 	maxAcceptSignTimeInterval = int64(600) // seconds
 
-	retryInterval = 1 * time.Second
-	waitInterval  = 3 * time.Second
+	retryInterval = 3 * time.Second
+	waitInterval  = 5 * time.Second
 
 	acceptInfoCh      = make(chan *mpc.SignInfoData, 10)
 	maxAcceptRoutines = int64(10)
@@ -45,7 +45,14 @@ var (
 // StartAcceptSignJob accept job
 func StartAcceptSignJob() {
 	logWorker("accept", "start accept sign job")
+
+	getAcceptListInterval := params.GetAcceptListInterval()
+	if getAcceptListInterval > 0 {
+		waitInterval = time.Duration(getAcceptListInterval) * time.Second
+	}
+
 	openLeveldb()
+
 	go startAcceptProducer()
 
 	utils.TopWaitGroup.Add(1)

@@ -64,6 +64,8 @@ AllowedOrigins = []
 
 
 [Extra]
+# getting accept list interval (seconds) in accept job
+GetAcceptListInterval = 5
 # apecify dynamic fee tx enabled chainids
 DynamicFeeTxEnabledChains = ["3"]
 # allow call into router from contract
