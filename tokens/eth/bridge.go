@@ -306,7 +306,7 @@ func (b *Bridge) checkTokenMinter(tokenAddr string, tokenVer uint64) (err error)
 	routerContract := b.ChainConfig.RouterContract
 	var minterAddr string
 	var isMinter bool
-	switch {
+	switch tokenVer {
 	default:
 		isMinter, err = b.IsMinter(tokenAddr, routerContract)
 		if err != nil {
@@ -316,10 +316,12 @@ func (b *Bridge) checkTokenMinter(tokenAddr string, tokenVer uint64) (err error)
 			return fmt.Errorf("%v is not minter", routerContract)
 		}
 		return nil
-	case tokenVer == 3:
+	case 3:
 		minterAddr, err = b.GetVaultAddress(tokenAddr)
-	case tokenVer < 3 && tokenVer > 0:
+	case 2, 1:
 		minterAddr, err = b.GetOwnerAddress(tokenAddr)
+	case 0:
+		return nil
 	}
 	if err != nil {
 		return err
