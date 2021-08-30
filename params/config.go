@@ -22,6 +22,7 @@ var (
 	chainIDBlacklistMap = make(map[string]struct{})
 	tokenIDBlacklistMap = make(map[string]struct{})
 	fixedGasPriceMap    = make(map[string]*big.Int) // key is chainID
+	maxGasPriceMap      = make(map[string]*big.Int) // key is chainID
 
 	callByContractWhitelist   map[string]map[string]struct{} // chainID -> caller
 	dynamicFeeTxEnabledChains map[string]struct{}
@@ -48,6 +49,7 @@ type RouterServerConfig struct {
 	SwapDeadlineOffset         int64             `toml:",omitempty" json:",omitempty"` // seconds
 	DefaultGasLimit            map[string]uint64 `toml:",omitempty" json:",omitempty"` // key is chain ID
 	FixedGasPrice              map[string]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+	MaxGasPrice                map[string]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 
 	DynamicFeeTx map[string]*DynamicFeeTxConfig `toml:",omitempty" json:",omitempty"` // key is chain ID
 }
@@ -161,6 +163,14 @@ func GetAcceptListInterval() uint64 {
 func GetFixedGasPrice(chainID string) *big.Int {
 	if fixedGasPrice, ok := fixedGasPriceMap[chainID]; ok {
 		return new(big.Int).Set(fixedGasPrice)
+	}
+	return nil
+}
+
+// GetMaxGasPrice get max gas price of specified chain
+func GetMaxGasPrice(chainID string) *big.Int {
+	if maxGasPrice, ok := maxGasPriceMap[chainID]; ok {
+		return new(big.Int).Set(maxGasPrice)
 	}
 	return nil
 }

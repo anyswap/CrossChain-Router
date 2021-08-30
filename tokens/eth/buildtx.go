@@ -183,7 +183,18 @@ func (b *Bridge) getGasPrice(args *tokens.BuildTxArgs) (price *big.Int, err erro
 	if err != nil {
 		return nil, err
 	}
-	return b.adjustSwapGasPrice(args, price)
+
+	price, err = b.adjustSwapGasPrice(args, price)
+	if err != nil {
+		return nil, err
+	}
+
+	maxGasPrice := params.GetMaxGasPrice(b.ChainConfig.ChainID)
+	if maxGasPrice != nil && price.Cmp(maxGasPrice) > 0 {
+		return nil, fmt.Errorf("gas price %v exceeded maximum limit", price)
+	}
+
+	return price, nil
 }
 
 // args and oldGasPrice should be read only

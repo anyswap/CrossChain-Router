@@ -110,6 +110,21 @@ func (s *RouterServerConfig) CheckConfig() error {
 		}
 		fixedGasPriceMap[key] = fixedGasPrice
 	}
+	for chainID, maxGasPriceStr := range s.MaxGasPrice {
+		biChainID, ok := new(big.Int).SetString(chainID, 0)
+		if !ok {
+			return fmt.Errorf("wrong chain id '%v' in 'MaxGasPrice'", chainID)
+		}
+		maxGasPrice, err := common.GetBigIntFromStr(maxGasPriceStr)
+		if err != nil {
+			return fmt.Errorf("wrong gas price '%v' in 'MaxGasPrice'", maxGasPriceStr)
+		}
+		key := biChainID.String()
+		if _, exist := maxGasPriceMap[key]; exist {
+			return fmt.Errorf("duplicate chain id '%v' in 'MaxGasPrice'", key)
+		}
+		maxGasPriceMap[key] = maxGasPrice
+	}
 	err := s.CheckDynamicFeeTxConfig()
 	if err != nil {
 		return err
@@ -118,7 +133,11 @@ func (s *RouterServerConfig) CheckConfig() error {
 	if err != nil {
 		return err
 	}
-	log.Info("check server config success", "defaultGasLimit", s.DefaultGasLimit, "fixedGasPriceMap", fixedGasPriceMap)
+	log.Info("check server config success",
+		"defaultGasLimit", s.DefaultGasLimit,
+		"fixedGasPriceMap", fixedGasPriceMap,
+		"maxGasPriceMap", maxGasPriceMap,
+	)
 	return nil
 }
 
