@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/didip/tollbooth/v6"
@@ -81,51 +80,16 @@ func initRouterSwapRouter(r *mux.Router) {
 
 	r.Handle("/rpc", rpcserver)
 
-	registerHandleFunc(r, "/versioninfo", restapi.VersionInfoHandler, "GET")
-	registerHandleFunc(r, "/serverinfo", restapi.ServerInfoHandler, "GET")
-	registerHandleFunc(r, "/swap/register/{chainid}/{txid}", restapi.RegisterRouterSwapHandler, "POST")
-	registerHandleFunc(r, "/swap/status/{chainid}/{txid}", restapi.GetRouterSwapHandler, "GET")
-	registerHandleFunc(r, "/swap/history/{chainid}/{address}", restapi.GetRouterSwapHistoryHandler, "GET")
+	r.HandleFunc("/versioninfo", restapi.VersionInfoHandler).Methods("GET")
+	r.HandleFunc("/serverinfo", restapi.ServerInfoHandler).Methods("GET")
+	r.HandleFunc("/swap/register/{chainid}/{txid}", restapi.RegisterRouterSwapHandler).Methods("POST")
+	r.HandleFunc("/swap/status/{chainid}/{txid}", restapi.GetRouterSwapHandler).Methods("GET")
+	r.HandleFunc("/swap/history/{chainid}/{address}", restapi.GetRouterSwapHistoryHandler).Methods("GET")
 
-	registerHandleFunc(r, "/allchainids", restapi.GetAllChainIDsHandler, "GET")
-	registerHandleFunc(r, "/alltokenids", restapi.GetAllTokenIDsHandler, "GET")
-	registerHandleFunc(r, "/allmultichaintokens/{tokenid}", restapi.GetAllMultichainTokensHandler, "GET")
-	registerHandleFunc(r, "/chainconfig/{chainid}", restapi.GetChainConfigHandler, "GET")
-	registerHandleFunc(r, "/tokenconfig/{chainid}/{address}", restapi.GetTokenConfigHandler, "GET")
-	registerHandleFunc(r, "/swapconfig/{tokenid}/{chainid}", restapi.GetSwapConfigHandler, "GET")
-}
-
-type handleFuncType = func(w http.ResponseWriter, r *http.Request)
-
-func registerHandleFunc(r *mux.Router, path string, handler handleFuncType, methods ...string) {
-	for i := 0; i < len(methods); i++ {
-		methods[i] = strings.ToUpper(methods[i])
-	}
-	isAcceptMethod := func(method string) bool {
-		for _, acceptMethod := range methods {
-			if method == acceptMethod {
-				return true
-			}
-		}
-		return false
-	}
-	allMethods := []string{"GET", "POST", "HEAD", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"}
-	excludedMethods := make([]string, 0, len(allMethods))
-	for _, method := range allMethods {
-		if !isAcceptMethod(method) {
-			excludedMethods = append(excludedMethods, method)
-		}
-	}
-	if len(methods) > 0 {
-		acceptMethods := strings.Join(methods, ",")
-		r.HandleFunc(path, handler).Methods(acceptMethods)
-	}
-	if len(excludedMethods) > 0 {
-		forbidMethods := strings.Join(excludedMethods, ",")
-		r.HandleFunc(path, warnHandler).Methods(forbidMethods)
-	}
-}
-
-func warnHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Forbid '%v' on '%v'\n", r.Method, r.RequestURI)
+	r.HandleFunc("/allchainids", restapi.GetAllChainIDsHandler).Methods("GET")
+	r.HandleFunc("/alltokenids", restapi.GetAllTokenIDsHandler).Methods("GET")
+	r.HandleFunc("/allmultichaintokens/{tokenid}", restapi.GetAllMultichainTokensHandler).Methods("GET")
+	r.HandleFunc("/chainconfig/{chainid}", restapi.GetChainConfigHandler).Methods("GET")
+	r.HandleFunc("/tokenconfig/{chainid}/{address}", restapi.GetTokenConfigHandler).Methods("GET")
+	r.HandleFunc("/swapconfig/{tokenid}/{chainid}", restapi.GetSwapConfigHandler).Methods("GET")
 }
