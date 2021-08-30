@@ -5,7 +5,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
-	"github.com/anyswap/CrossChain-Router/v3/types"
 )
 
 // StartStableJob stable job
@@ -93,15 +92,11 @@ func processRouterSwapStable(swap *mongodb.MgoSwapResult) (err error) {
 		if swap.SwapTx != oldSwapTx {
 			_ = updateSwapTx(swap.FromChainID, swap.TxID, swap.LogIndex, swap.SwapTx)
 		}
-		if txStatus.Receipt != nil {
-			receipt, ok := txStatus.Receipt.(*types.RPCTxReceipt)
-			txFailed := !ok || receipt == nil || *receipt.Status != 1 || len(receipt.Logs) == 0
-			if txFailed {
-				logWorker("[stable]", "mark swap result onchain failed",
-					"fromChainID", swap.FromChainID, "txid", swap.TxID, "logIndex", swap.LogIndex,
-					"swaptime", swap.Timestamp, "nowtime", now())
-				return markSwapResultFailed(swap.FromChainID, swap.TxID, swap.LogIndex)
-			}
+		if txStatus.IsSwapTxOnChainAndFailed() {
+			logWorker("[stable]", "mark swap result onchain failed",
+				"fromChainID", swap.FromChainID, "txid", swap.TxID, "logIndex", swap.LogIndex,
+				"swaptime", swap.Timestamp, "nowtime", now())
+			return markSwapResultFailed(swap.FromChainID, swap.TxID, swap.LogIndex)
 		}
 		return markSwapResultStable(swap.FromChainID, swap.TxID, swap.LogIndex)
 	}

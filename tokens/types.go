@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
+	"github.com/anyswap/CrossChain-Router/v3/types"
 )
 
 // SwapType type
@@ -76,6 +77,20 @@ type TxStatus struct {
 	BlockHeight   uint64      `json:"blockHeight"`
 	BlockHash     string      `json:"blockHash"`
 	BlockTime     uint64      `json:"blockTime"`
+}
+
+// IsSwapTxOnChainAndFailed to make failed of swaptx
+func (s *TxStatus) IsSwapTxOnChainAndFailed() bool {
+	if s == nil || s.BlockHeight == 0 {
+		return false // not on chain
+	}
+	if s.Receipt != nil { // for eth-like blockchain
+		receipt, ok := s.Receipt.(*types.RPCTxReceipt)
+		if !ok || receipt == nil || *receipt.Status != 1 || len(receipt.Logs) == 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // VerifyArgs struct
