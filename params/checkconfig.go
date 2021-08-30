@@ -137,6 +137,7 @@ func (s *RouterServerConfig) CheckConfig() error {
 		"defaultGasLimit", s.DefaultGasLimit,
 		"fixedGasPriceMap", fixedGasPriceMap,
 		"maxGasPriceMap", maxGasPriceMap,
+		"noncePassedConfirmInterval", s.NoncePassedConfirmInterval,
 	)
 	return nil
 }

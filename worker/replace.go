@@ -217,7 +217,11 @@ func checkIfSwapNonceHasPassed(bridge tokens.IBridge, res *mongodb.MgoSwapResult
 			iden = "[stable]"
 		}
 		fromChainID, txid, logIndex := res.FromChainID, res.TxID, res.LogIndex
-		if res.Timestamp < getSepTimeInFind(treatAsNoncePassedInterval) {
+		noncePassedInterval := params.GetNoncePassedConfirmInterval(res.FromChainID)
+		if noncePassedInterval == 0 {
+			noncePassedInterval = treatAsNoncePassedInterval
+		}
+		if res.Timestamp < getSepTimeInFind(noncePassedInterval) {
 			logWorker(iden, "mark swap result nonce passed",
 				"fromChainID", fromChainID, "txid", txid, "logIndex", logIndex,
 				"swaptime", res.Timestamp, "nowtime", now())

@@ -50,6 +50,7 @@ type RouterServerConfig struct {
 	DefaultGasLimit            map[string]uint64 `toml:",omitempty" json:",omitempty"` // key is chain ID
 	FixedGasPrice              map[string]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	MaxGasPrice                map[string]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+	NoncePassedConfirmInterval map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID
 
 	DynamicFeeTx map[string]*DynamicFeeTxConfig `toml:",omitempty" json:",omitempty"` // key is chain ID
 }
@@ -173,6 +174,18 @@ func GetMaxGasPrice(chainID string) *big.Int {
 		return new(big.Int).Set(maxGasPrice)
 	}
 	return nil
+}
+
+// GetNoncePassedConfirmInterval get nonce passed confirm interval
+func GetNoncePassedConfirmInterval(chainID string) int64 {
+	serverCfg := GetRouterServerConfig()
+	if serverCfg != nil {
+		return 0
+	}
+	if interval, exist := serverCfg.NoncePassedConfirmInterval[chainID]; exist {
+		return interval
+	}
+	return 0
 }
 
 // GetMinReserveFee get min reserve fee

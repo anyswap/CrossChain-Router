@@ -44,6 +44,10 @@ SwapDeadlineOffset = 36000
 [Server.MaxGasPrice]
 4     = "3000000000"
 46688 = "3000000000"
+# swap nonce passed confirmed interval (seconds). key is chainID.
+[Server.NoncePassedConfirmInterval]
+4     = 600
+46688 = 600
 # dynamic fee tx config, the last part (3 here) is chainID
 [Server.DynamicFeeTx.3]
 PlusGasTipCapPercent = 10
