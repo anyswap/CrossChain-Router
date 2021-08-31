@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	cmath "github.com/anyswap/CrossChain-Router/v3/common/math"
+	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 )
 
@@ -126,18 +127,22 @@ func CalcSwapValue(tokenID, toChainID string, value *big.Int, fromDecimals, toDe
 			}
 		}
 
+		var adjustBaseFee *big.Int
 		baseFeePercent := params.GetBaseFeePercent(toChainID)
 		if baseFeePercent != 0 && minSwapFee.Sign() > 0 {
-			adjustBaseFee := new(big.Int).Set(minSwapFee)
+			adjustBaseFee = new(big.Int).Set(minSwapFee)
 			adjustBaseFee.Mul(adjustBaseFee, big.NewInt(baseFeePercent))
 			adjustBaseFee.Div(adjustBaseFee, big.NewInt(100))
-			swapFee.Add(swapFee, adjustBaseFee)
+			swapFee = new(big.Int).Add(swapFee, adjustBaseFee)
 			if swapFee.Sign() < 0 {
 				swapFee = big.NewInt(0)
 			}
 		}
 
 		if value.Cmp(swapFee) <= 0 {
+			log.Warn("check swap value failed",
+				"value", value, "tokenID", tokenID, "toChainID", toChainID,
+				"minSwapFee", minSwapFee, "adjustBaseFee", adjustBaseFee, "swapFee", swapFee)
 			return big.NewInt(0)
 		}
 
