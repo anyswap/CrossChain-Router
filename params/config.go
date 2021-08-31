@@ -69,8 +69,9 @@ type RouterConfig struct {
 
 // ExtraConfig extra config
 type ExtraConfig struct {
-	IsDebugMode   bool              `toml:",omitempty" json:",omitempty"`
-	MinReserveFee map[string]uint64 `toml:",omitempty" json:",omitempty"`
+	IsDebugMode    bool              `toml:",omitempty" json:",omitempty"`
+	MinReserveFee  map[string]uint64 `toml:",omitempty" json:",omitempty"`
+	BaseFeePercent map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID
 
 	GetAcceptListInterval uint64 `toml:",omitempty" json:",omitempty"`
 
@@ -197,6 +198,18 @@ func GetMinReserveFee(chainID string) *big.Int {
 		return new(big.Int).SetUint64(minReserve)
 	}
 	return nil
+}
+
+// GetBaseFeePercent get base fee percent
+func GetBaseFeePercent(chainID string) int64 {
+	extraCfg := GetExtraConfig()
+	if extraCfg == nil {
+		return 0
+	}
+	if baseFeePercent, exist := GetExtraConfig().BaseFeePercent[chainID]; exist {
+		return baseFeePercent
+	}
+	return 0
 }
 
 // IsDebugMode is debug mode, add more debugging log infos

@@ -287,10 +287,20 @@ func (c *ExtraConfig) CheckConfig() (err error) {
 	initCallByContractWhitelist()
 	initDynamicFeeTxEnabledChains()
 
+	for chainID, baseFeePercent := range c.BaseFeePercent {
+		if _, ok := new(big.Int).SetString(chainID, 0); !ok {
+			return fmt.Errorf("wrong chain id '%v' in 'BaseFeePercent'", chainID)
+		}
+		if baseFeePercent < -90 || baseFeePercent > 500 {
+			return errors.New("'BaseFeePercent' must be in range [-90, 500]")
+		}
+	}
+
 	log.Info("check extra config success",
 		"minReserveFee", c.MinReserveFee,
 		"allowCallByContract", c.AllowCallByContract,
 		"dynamicFeeTxEnabledChains", c.DynamicFeeTxEnabledChains,
+		"baseFeePercent", c.BaseFeePercent,
 	)
 	return nil
 }

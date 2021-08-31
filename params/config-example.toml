@@ -34,7 +34,6 @@ SwapDeadlineOffset = 36000
 # default gas limit. key is chainID. if not set, use 90000 as default.
 [Server.DefaultGasLimit]
 4     = 90000
-256   = 90000
 46688 = 90000
 # use fixed gas price (no adjust). key is chainID.
 [Server.FixedGasPrice]
@@ -87,8 +86,11 @@ AllowCallByContract = false
 # min reserve fee. key is chainID. defaults to 1e16 wei
 [Extra.MinReserveFee]
 4     = 10000000000000000
-256   = 10000000000000000
 46688 = 10000000000000000
+# base fee percent, must be in range [-90, 500]. key is dest chainID
+[Extra.BaseFeePercent]
+4     = 100
+46688 = 50
 
 
 # OnChain config
@@ -103,14 +105,12 @@ APIAddress = ["http://127.0.0.1:8711", "http://127.0.0.1:8722"]
 # Gateways config. key is chainID
 [Gateways]
 4     = ["http://127.0.0.1:6711", "http://127.0.0.1:6722"]
-256   = ["http://127.0.0.1:7711", "http://127.0.0.1:7722"]
 46688 = ["http://127.0.0.1:8711", "http://127.0.0.1:8722"]
 
 
 # GatewaysExt config. key is chainID. used for broadcasting tx
 [GatewaysExt]
 4     = ["http://127.0.0.1:6000"]
-256   = ["http://127.0.0.1:7000"]
 46688 = ["http://127.0.0.1:8000"]
 
 
