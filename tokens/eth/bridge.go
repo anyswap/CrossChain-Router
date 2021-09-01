@@ -151,27 +151,30 @@ func (b *Bridge) InitTokenConfig(tokenID string, chainID *big.Int) {
 	if common.HexToAddress(tokenAddr) != common.HexToAddress(tokenCfg.ContractAddress) {
 		log.Fatal("verify token address mismach", "tokenID", tokenID, "chainID", chainID, "inconfig", tokenCfg.ContractAddress, "inmultichain", tokenAddr)
 	}
-	decimals, err := b.GetErc20Decimals(tokenAddr)
-	if err != nil {
-		log.Fatal("get token decimals failed", "tokenAddr", tokenAddr, "err", err)
-	}
-	if decimals != tokenCfg.Decimals {
-		log.Fatal("token decimals mismatch", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract", decimals)
-	}
 	if tokenID != tokenCfg.TokenID {
 		log.Fatal("verify token ID mismatch", "chainID", chainID, "inconfig", tokenCfg.TokenID, "intokenids", tokenID)
 	}
 	if err = tokenCfg.CheckConfig(); err != nil {
 		log.Fatal("check token config failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
 	}
-	if err = b.checkTokenMinter(tokenAddr, tokenCfg.ContractVersion); err != nil {
-		log.Fatal("check token minter failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
+	var underlying string
+	if tokenCfg.ContractVersion > 0 {
+		decimals, err := b.GetErc20Decimals(tokenAddr)
+		if err != nil {
+			log.Fatal("get token decimals failed", "tokenAddr", tokenAddr, "err", err)
+		}
+		if decimals != tokenCfg.Decimals {
+			log.Fatal("token decimals mismatch", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract", decimals)
+		}
+		if err = b.checkTokenMinter(tokenAddr, tokenCfg.ContractVersion); err != nil {
+			log.Fatal("check token minter failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
+		}
+		underlying, err = b.GetUnderlyingAddress(tokenAddr)
+		if err != nil {
+			log.Fatal("get underlying address failed", "err", err)
+		}
+		tokenCfg.SetUnderlying(common.HexToAddress(underlying)) // init underlying address
 	}
-	underlying, err := b.GetUnderlyingAddress(tokenAddr)
-	if err != nil {
-		log.Fatal("get underlying address failed", "err", err)
-	}
-	tokenCfg.SetUnderlying(common.HexToAddress(underlying)) // init underlying address
 	b.SetTokenConfig(tokenAddr, tokenCfg)
 	log.Info(fmt.Sprintf(">>> [%5v] init '%v' token config success", chainID, tokenID), "tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "underlying", underlying)
 
@@ -263,15 +266,6 @@ func (b *Bridge) ReloadTokenConfig(tokenID string, chainID *big.Int) {
 		log.Error("[reload] verify token address mismach", "tokenID", tokenID, "chainID", chainID, "inconfig", tokenCfg.ContractAddress, "inmultichain", tokenAddr)
 		return
 	}
-	decimals, err := b.GetErc20Decimals(tokenAddr)
-	if err != nil {
-		log.Error("[reload] get token decimals failed", "tokenAddr", tokenAddr, "err", err)
-		return
-	}
-	if decimals != tokenCfg.Decimals {
-		log.Error("[reload] token decimals mismatch", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract", decimals)
-		return
-	}
 	if tokenID != tokenCfg.TokenID {
 		log.Error("[reload] verify token ID mismatch", "chainID", chainID, "inconfig", tokenCfg.TokenID, "intokenids", tokenID)
 		return
@@ -280,16 +274,28 @@ func (b *Bridge) ReloadTokenConfig(tokenID string, chainID *big.Int) {
 		log.Error("[reload] check token config failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
 		return
 	}
-	if err = b.checkTokenMinter(tokenAddr, tokenCfg.ContractVersion); err != nil {
-		log.Error("[reload] check token minter failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
-		return
+	var underlying string
+	if tokenCfg.ContractVersion > 0 {
+		decimals, err := b.GetErc20Decimals(tokenAddr)
+		if err != nil {
+			log.Error("[reload] get token decimals failed", "tokenAddr", tokenAddr, "err", err)
+			return
+		}
+		if decimals != tokenCfg.Decimals {
+			log.Error("[reload] token decimals mismatch", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract", decimals)
+			return
+		}
+		if err = b.checkTokenMinter(tokenAddr, tokenCfg.ContractVersion); err != nil {
+			log.Error("[reload] check token minter failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
+			return
+		}
+		underlying, err = b.GetUnderlyingAddress(tokenAddr)
+		if err != nil {
+			log.Error("[reload] get underlying address failed", "err", err)
+			return
+		}
+		tokenCfg.SetUnderlying(common.HexToAddress(underlying)) // init underlying address
 	}
-	underlying, err := b.GetUnderlyingAddress(tokenAddr)
-	if err != nil {
-		log.Error("[reload] get underlying address failed", "err", err)
-		return
-	}
-	tokenCfg.SetUnderlying(common.HexToAddress(underlying)) // init underlying address
 	b.SetTokenConfig(tokenAddr, tokenCfg)
 	log.Info("reload token config success", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "underlying", underlying)
 
