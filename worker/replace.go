@@ -202,7 +202,10 @@ func checkIfSwapNonceHasPassed(bridge tokens.IBridge, res *mongodb.MgoSwapResult
 	}
 	txStat := getSwapTxStatus(bridge, res)
 	if txStat != nil && txStat.BlockHeight > 0 {
-		return errors.New("swaptx exist in chain")
+		if isReplace {
+			return errors.New("swaptx exist in chain")
+		}
+		return nil
 	}
 	mpc := bridge.GetChainConfig().GetRouterMPC()
 	nonce, err := nonceSetter.GetPoolNonce(mpc, "latest")
