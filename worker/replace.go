@@ -16,7 +16,7 @@ import (
 var (
 	serverCfg *params.RouterServerConfig
 
-	treatAsNoncePassedInterval = int64(300) // seconds
+	treatAsNoncePassedInterval = int64(600) // seconds
 	defWaitTimeToReplace       = int64(300) // seconds
 	defMaxReplaceCount         = 20
 
@@ -182,10 +182,6 @@ func verifyReplaceSwap(res *mongodb.MgoSwapResult, isManual bool) (*mongodb.MgoS
 	if resBridge == nil {
 		return nil, tokens.ErrNoBridgeForChainID
 	}
-	txStat := getSwapTxStatus(resBridge, res)
-	if txStat != nil && txStat.BlockHeight > 0 {
-		return nil, errors.New("swaptx exist in chain")
-	}
 	err = checkIfSwapNonceHasPassed(resBridge, res, true)
 	if err != nil {
 		return nil, err
@@ -203,6 +199,10 @@ func checkIfSwapNonceHasPassed(bridge tokens.IBridge, res *mongodb.MgoSwapResult
 	nonceSetter, ok := bridge.(tokens.NonceSetter)
 	if !ok {
 		return nil
+	}
+	txStat := getSwapTxStatus(bridge, res)
+	if txStat != nil && txStat.BlockHeight > 0 {
+		return errors.New("swaptx exist in chain")
 	}
 	mpc := bridge.GetChainConfig().GetRouterMPC()
 	nonce, err := nonceSetter.GetPoolNonce(mpc, "latest")
