@@ -72,13 +72,18 @@ func (b *Bridge) InitChainConfig(chainID *big.Int) {
 	if err = chainCfg.CheckConfig(); err != nil {
 		log.Fatal("check chain config failed", "chainID", chainID, "err", err)
 	}
-	routerFactory, err := b.GetFactoryAddress(chainCfg.RouterContract)
-	if err != nil {
-		log.Warn("get router factory address failed", "routerContract", chainCfg.RouterContract, "err", err)
-	}
-	routerWNative, err := b.GetWNativeAddress(chainCfg.RouterContract)
-	if err != nil {
-		log.Warn("get router wNative address failed", "routerContract", chainCfg.RouterContract, "err", err)
+	var routerFactory, routerWNative string
+	if !params.IsNFTRouter() {
+		routerFactory, err = b.GetFactoryAddress(chainCfg.RouterContract)
+		if err != nil {
+			log.Warn("get router factory address failed", "routerContract", chainCfg.RouterContract, "err", err)
+		}
+		routerWNative, err = b.GetWNativeAddress(chainCfg.RouterContract)
+		if err != nil {
+			log.Warn("get router wNative address failed", "routerContract", chainCfg.RouterContract, "err", err)
+		}
+		chainCfg.SetRouterFactory(routerFactory)
+		chainCfg.SetRouterWNative(routerWNative)
 	}
 	routerMPC, err := b.GetMPCAddress(chainCfg.RouterContract)
 	if err != nil {
@@ -91,8 +96,6 @@ func (b *Bridge) InitChainConfig(chainID *big.Int) {
 	if err = tokens.VerifyMPCPubKey(routerMPC, routerMPCPubkey); err != nil {
 		log.Fatal("verify mpc public key failed", "mpc", routerMPC, "mpcPubkey", routerMPCPubkey, "err", err)
 	}
-	chainCfg.SetRouterFactory(routerFactory)
-	chainCfg.SetRouterWNative(routerWNative)
 	chainCfg.SetRouterMPC(routerMPC)
 	chainCfg.SetRouterMPCPubkey(routerMPCPubkey)
 	b.SetChainConfig(chainCfg)
@@ -206,13 +209,18 @@ func (b *Bridge) ReloadChainConfig(chainID *big.Int) {
 		log.Error("[reload] check chain config failed", "chainID", chainID, "err", err)
 		return
 	}
-	routerFactory, err := b.GetFactoryAddress(chainCfg.RouterContract)
-	if err != nil {
-		log.Warn("[reload] get router factory address failed", "routerContract", chainCfg.RouterContract, "err", err)
-	}
-	routerWNative, err := b.GetWNativeAddress(chainCfg.RouterContract)
-	if err != nil {
-		log.Warn("get router wNative address failed", "routerContract", chainCfg.RouterContract, "err", err)
+	var routerFactory, routerWNative string
+	if !params.IsNFTRouter() {
+		routerFactory, err = b.GetFactoryAddress(chainCfg.RouterContract)
+		if err != nil {
+			log.Warn("[reload] get router factory address failed", "routerContract", chainCfg.RouterContract, "err", err)
+		}
+		routerWNative, err = b.GetWNativeAddress(chainCfg.RouterContract)
+		if err != nil {
+			log.Warn("get router wNative address failed", "routerContract", chainCfg.RouterContract, "err", err)
+		}
+		chainCfg.SetRouterFactory(routerFactory)
+		chainCfg.SetRouterWNative(routerWNative)
 	}
 	routerMPC, err := b.GetMPCAddress(chainCfg.RouterContract)
 	if err != nil {
@@ -228,8 +236,6 @@ func (b *Bridge) ReloadChainConfig(chainID *big.Int) {
 		log.Error("[reload] verify mpc public key failed", "mpc", routerMPC, "mpcPubkey", routerMPCPubkey, "err", err)
 		return
 	}
-	chainCfg.SetRouterFactory(routerFactory)
-	chainCfg.SetRouterWNative(routerWNative)
 	chainCfg.SetRouterMPC(routerMPC)
 	chainCfg.SetRouterMPCPubkey(routerMPCPubkey)
 	b.SetChainConfig(chainCfg)
