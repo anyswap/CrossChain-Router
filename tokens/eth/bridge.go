@@ -145,7 +145,7 @@ func (b *Bridge) InitTokenConfig(tokenID string, chainID *big.Int) {
 		log.Fatal("get token config failed", "chainID", chainID, "tokenID", tokenID, "err", err)
 	}
 	if tokenCfg == nil {
-		log.Warn("token config not found", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr)
+		log.Debug("token config not found", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr)
 		return
 	}
 	if common.HexToAddress(tokenAddr) != common.HexToAddress(tokenCfg.ContractAddress) {
@@ -158,7 +158,7 @@ func (b *Bridge) InitTokenConfig(tokenID string, chainID *big.Int) {
 		log.Fatal("check token config failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
 	}
 	var underlying string
-	if tokenCfg.ContractVersion > 0 {
+	if !params.IsNFTRouter() {
 		decimals, err := b.GetErc20Decimals(tokenAddr)
 		if err != nil {
 			log.Fatal("get token decimals failed", "tokenAddr", tokenAddr, "err", err)
@@ -250,7 +250,7 @@ func (b *Bridge) ReloadTokenConfig(tokenID string, chainID *big.Int) {
 		return
 	}
 	if common.HexToAddress(tokenAddr) == (common.Address{}) {
-		log.Warn("[reload] multichain token address is empty", "tokenID", tokenID, "chainID", chainID)
+		log.Debug("[reload] multichain token address is empty", "tokenID", tokenID, "chainID", chainID)
 		return
 	}
 	tokenCfg, err := router.GetTokenConfig(chainID, tokenID)
@@ -259,7 +259,7 @@ func (b *Bridge) ReloadTokenConfig(tokenID string, chainID *big.Int) {
 		return
 	}
 	if tokenCfg == nil {
-		log.Warn("[reload] token config not found", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr)
+		log.Debug("[reload] token config not found", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr)
 		return
 	}
 	if common.HexToAddress(tokenAddr) != common.HexToAddress(tokenCfg.ContractAddress) {
@@ -275,7 +275,7 @@ func (b *Bridge) ReloadTokenConfig(tokenID string, chainID *big.Int) {
 		return
 	}
 	var underlying string
-	if tokenCfg.ContractVersion > 0 {
+	if !params.IsNFTRouter() {
 		decimals, err := b.GetErc20Decimals(tokenAddr)
 		if err != nil {
 			log.Error("[reload] get token decimals failed", "tokenAddr", tokenAddr, "err", err)

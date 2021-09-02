@@ -87,6 +87,9 @@ func GetBigValueThreshold(tokenID, toChainID string, fromDecimals uint8) *big.In
 
 // CheckTokenSwapValue check swap value is in right range
 func CheckTokenSwapValue(tokenID, toChainID string, value *big.Int, fromDecimals, toDecimals uint8) bool {
+	if params.IsNFTRouter() {
+		return true
+	}
 	if value == nil || value.Sign() <= 0 {
 		return false
 	}
@@ -107,6 +110,9 @@ func CheckTokenSwapValue(tokenID, toChainID string, value *big.Int, fromDecimals
 
 // CalcSwapValue calc swap value (get rid of fee and convert by decimals)
 func CalcSwapValue(tokenID, toChainID string, value *big.Int, fromDecimals, toDecimals uint8) *big.Int {
+	if params.IsNFTRouter() {
+		return value
+	}
 	swapCfg := GetSwapConfig(tokenID, toChainID)
 	if swapCfg == nil {
 		return big.NewInt(0)

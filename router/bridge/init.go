@@ -70,13 +70,16 @@ func InitRouterBridges(isServer bool) {
 }
 
 func loadSwapConfigs() error {
+	if params.IsNFTRouter() {
+		return nil
+	}
 	swapConfigs := make(map[string]map[string]*tokens.SwapConfig)
 	for _, tokenID := range router.AllTokenIDs {
 		swapConfigs[tokenID] = make(map[string]*tokens.SwapConfig)
 		for _, chainID := range router.AllChainIDs {
 			multichainToken := router.GetCachedMultichainToken(tokenID, chainID.String())
 			if multichainToken == "" {
-				log.Warn("ignore swap config as no multichain token exist", "tokenID", tokenID, "chainID", chainID)
+				log.Debug("ignore swap config as no multichain token exist", "tokenID", tokenID, "chainID", chainID)
 				continue
 			}
 			swapCfg, err := router.GetSwapConfig(tokenID, chainID)

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tools/crypto"
 )
 
@@ -120,6 +121,11 @@ func (c *TokenConfig) CheckConfig() error {
 	}
 	if c.ContractAddress == "" {
 		return errors.New("token must config 'ContractAddress'")
+	}
+	if params.IsNFTRouter() {
+		if c.Decimals != 0 {
+			return errors.New("NFT token must config 'Decimals' to 0")
+		}
 	}
 	return nil
 }

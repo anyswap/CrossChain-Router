@@ -26,6 +26,10 @@ var (
 
 	callByContractWhitelist   map[string]map[string]struct{} // chainID -> caller
 	dynamicFeeTxEnabledChains map[string]struct{}
+
+	isDebugMode           *bool
+	isNFTRouter           *bool
+	isAllowCallByContract *bool
 )
 
 // RouterServerConfig only for server
@@ -70,6 +74,7 @@ type RouterConfig struct {
 // ExtraConfig extra config
 type ExtraConfig struct {
 	IsDebugMode    bool              `toml:",omitempty" json:",omitempty"`
+	IsNFTRouter    bool              `toml:",omitempty" json:",omitempty"`
 	MinReserveFee  map[string]uint64 `toml:",omitempty" json:",omitempty"`
 	BaseFeePercent map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID
 
@@ -214,22 +219,38 @@ func GetBaseFeePercent(chainID string) int64 {
 
 // IsDebugMode is debug mode, add more debugging log infos
 func IsDebugMode() bool {
-	return GetExtraConfig() != nil && GetExtraConfig().IsDebugMode
+	if isDebugMode == nil {
+		flag := GetExtraConfig() != nil && GetExtraConfig().IsDebugMode
+		isDebugMode = &flag
+	}
+	return *isDebugMode
+}
+
+// IsNFTRouter is NFT router
+func IsNFTRouter() bool {
+	if isNFTRouter == nil {
+		flag := GetExtraConfig() != nil && GetExtraConfig().IsNFTRouter
+		isNFTRouter = &flag
+	}
+	return *isNFTRouter
 }
 
 // AllowCallByContract allow call into router from contract
 func AllowCallByContract() bool {
-	return GetExtraConfig() != nil && GetExtraConfig().AllowCallByContract
+	if isAllowCallByContract == nil {
+		flag := GetExtraConfig() != nil && GetExtraConfig().AllowCallByContract
+		isAllowCallByContract = &flag
+	}
+	return *isAllowCallByContract
 }
 
-// SetAllowCallByContract set allow call by contract flag
+// SetAllowCallByContract set allow call by contract flag (used in testing)
 func SetAllowCallByContract(allow bool) {
-	extraCfg := GetExtraConfig()
-	if extraCfg == nil {
-		extraCfg = &ExtraConfig{}
-		routerConfig.Extra = extraCfg
+	if isAllowCallByContract == nil {
+		isAllowCallByContract = &allow
+	} else {
+		*isAllowCallByContract = allow
 	}
-	extraCfg.AllowCallByContract = allow
 }
 
 func initCallByContractWhitelist() {
