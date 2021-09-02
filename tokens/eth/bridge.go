@@ -140,7 +140,7 @@ func (b *Bridge) InitTokenConfig(tokenID string, chainID *big.Int) {
 		log.Fatal("get token address failed", "tokenID", tokenID, "chainID", chainID, "err", err)
 	}
 	if common.HexToAddress(tokenAddr) == (common.Address{}) {
-		log.Warnf(">>> [%5v] '%v' token address is empty", chainID, tokenID)
+		log.Debugf(">>> [%5v] '%v' token address is empty", chainID, tokenID)
 		return
 	}
 	tokenCfg, err := router.GetTokenConfig(chainID, tokenID)
@@ -247,7 +247,6 @@ func (b *Bridge) ReloadChainConfig(chainID *big.Int) {
 // ReloadTokenConfig reload token config
 func (b *Bridge) ReloadTokenConfig(tokenID string, chainID *big.Int) {
 	if tokenID == "" {
-		log.Warn("[reload] empty token ID")
 		return
 	}
 	tokenAddr, err := router.GetMultichainToken(tokenID, chainID)
