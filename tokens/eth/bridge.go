@@ -73,7 +73,7 @@ func (b *Bridge) InitChainConfig(chainID *big.Int) {
 		log.Fatal("check chain config failed", "chainID", chainID, "err", err)
 	}
 	var routerFactory, routerWNative string
-	if !params.IsNFTRouter() {
+	if tokens.IsERC20Router() {
 		routerFactory, err = b.GetFactoryAddress(chainCfg.RouterContract)
 		if err != nil {
 			log.Warn("get router factory address failed", "routerContract", chainCfg.RouterContract, "err", err)
@@ -161,7 +161,7 @@ func (b *Bridge) InitTokenConfig(tokenID string, chainID *big.Int) {
 		log.Fatal("check token config failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
 	}
 	var underlying string
-	if !params.IsNFTRouter() {
+	if tokens.IsERC20Router() {
 		decimals, err := b.GetErc20Decimals(tokenAddr)
 		if err != nil {
 			log.Fatal("get token decimals failed", "tokenAddr", tokenAddr, "err", err)
@@ -210,7 +210,7 @@ func (b *Bridge) ReloadChainConfig(chainID *big.Int) {
 		return
 	}
 	var routerFactory, routerWNative string
-	if !params.IsNFTRouter() {
+	if tokens.IsERC20Router() {
 		routerFactory, err = b.GetFactoryAddress(chainCfg.RouterContract)
 		if err != nil {
 			log.Warn("[reload] get router factory address failed", "routerContract", chainCfg.RouterContract, "err", err)
@@ -280,7 +280,7 @@ func (b *Bridge) ReloadTokenConfig(tokenID string, chainID *big.Int) {
 		return
 	}
 	var underlying string
-	if !params.IsNFTRouter() {
+	if tokens.IsERC20Router() {
 		decimals, err := b.GetErc20Decimals(tokenAddr)
 		if err != nil {
 			log.Error("[reload] get token decimals failed", "tokenAddr", tokenAddr, "err", err)
@@ -332,7 +332,7 @@ func (b *Bridge) checkTokenMinter(tokenAddr string, tokenVer uint64) (err error)
 	case 2, 1:
 		minterAddr, err = b.GetOwnerAddress(tokenAddr)
 	case 0:
-		return nil
+		return errors.New("token version is 0")
 	}
 	if err != nil {
 		return err

@@ -10,8 +10,29 @@ import (
 )
 
 var (
-	swapConfigMap = make(map[string]map[string]*SwapConfig) // key is tokenID,toChainID
+	routerSwapType SwapType
+	swapConfigMap  = make(map[string]map[string]*SwapConfig) // key is tokenID,toChainID
 )
+
+// InitRouterSwapType init router swap type
+func InitRouterSwapType(swapTypeStr string) {
+	switch strings.ToLower(swapTypeStr) {
+	case "erc20swap":
+		routerSwapType = ERC20SwapType
+	default:
+		log.Fatalf("invalid router swap type '%v'", swapTypeStr)
+	}
+}
+
+// GetRouterSwapType get router swap type
+func GetRouterSwapType() SwapType {
+	return routerSwapType
+}
+
+// IsERC20Router is erc20 router
+func IsERC20Router() bool {
+	return routerSwapType == ERC20SwapType
+}
 
 // CrossChainBridgeBase base bridge
 type CrossChainBridgeBase struct {
@@ -87,7 +108,7 @@ func GetBigValueThreshold(tokenID, toChainID string, fromDecimals uint8) *big.In
 
 // CheckTokenSwapValue check swap value is in right range
 func CheckTokenSwapValue(tokenID, toChainID string, value *big.Int, fromDecimals, toDecimals uint8) bool {
-	if params.IsNFTRouter() {
+	if !IsERC20Router() {
 		return true
 	}
 	if value == nil || value.Sign() <= 0 {
@@ -110,7 +131,7 @@ func CheckTokenSwapValue(tokenID, toChainID string, value *big.Int, fromDecimals
 
 // CalcSwapValue calc swap value (get rid of fee and convert by decimals)
 func CalcSwapValue(tokenID, toChainID string, value *big.Int, fromDecimals, toDecimals uint8) *big.Int {
-	if params.IsNFTRouter() {
+	if !IsERC20Router() {
 		return value
 	}
 	swapCfg := GetSwapConfig(tokenID, toChainID)

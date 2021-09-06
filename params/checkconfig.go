@@ -30,7 +30,10 @@ func (config *RouterConfig) CheckConfig(isServer bool) (err error) {
 	if !strings.HasPrefix(config.Identifier, RouterSwapPrefixID) || config.Identifier == RouterSwapPrefixID {
 		return fmt.Errorf("wrong identifier '%v', missing prefix '%v'", config.Identifier, RouterSwapPrefixID)
 	}
-	log.Info("check identifier pass", "identifier", config.Identifier, "isServer", isServer)
+	if config.SwapType == "" {
+		return errors.New("empty router swap type")
+	}
+	log.Info("check identifier pass", "identifier", config.Identifier, "swaptype", config.SwapType, "isServer", isServer)
 
 	// check and init extra firstly
 	if config.Extra != nil {

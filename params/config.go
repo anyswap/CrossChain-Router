@@ -28,7 +28,6 @@ var (
 	dynamicFeeTxEnabledChains map[string]struct{}
 
 	isDebugMode           *bool
-	isNFTRouter           *bool
 	isAllowCallByContract *bool
 )
 
@@ -64,6 +63,7 @@ type RouterConfig struct {
 	Server *RouterServerConfig `toml:",omitempty" json:",omitempty"`
 
 	Identifier  string
+	SwapType    string
 	Onchain     *OnchainConfig
 	Gateways    map[string][]string // key is chain ID
 	GatewaysExt map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
@@ -74,7 +74,6 @@ type RouterConfig struct {
 // ExtraConfig extra config
 type ExtraConfig struct {
 	IsDebugMode    bool              `toml:",omitempty" json:",omitempty"`
-	IsNFTRouter    bool              `toml:",omitempty" json:",omitempty"`
 	MinReserveFee  map[string]uint64 `toml:",omitempty" json:",omitempty"`
 	BaseFeePercent map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID
 
@@ -158,6 +157,11 @@ func GetIdentifier() string {
 	return GetRouterConfig().Identifier
 }
 
+// GetSwapType get router swap type
+func GetSwapType() string {
+	return GetRouterConfig().SwapType
+}
+
 // GetAcceptListInterval get accept list interval (seconds)
 func GetAcceptListInterval() uint64 {
 	if GetExtraConfig() != nil {
@@ -224,15 +228,6 @@ func IsDebugMode() bool {
 		isDebugMode = &flag
 	}
 	return *isDebugMode
-}
-
-// IsNFTRouter is NFT router
-func IsNFTRouter() bool {
-	if isNFTRouter == nil {
-		flag := GetExtraConfig() != nil && GetExtraConfig().IsNFTRouter
-		isNFTRouter = &flag
-	}
-	return *isNFTRouter
 }
 
 // AllowCallByContract allow call into router from contract

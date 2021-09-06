@@ -1,5 +1,7 @@
 # router swap identifier, must have prefix 'routerswap'
 Identifier = "routerswap#20210326"
+# router swap type
+SwapType = "erc20swap"
 
 # router sever config (server only)
 [Server]
@@ -71,8 +73,6 @@ AllowedOrigins = []
 
 
 [Extra]
-# NFT router flag
-IsNFTRouter = false
 # getting accept list interval (seconds) in accept job
 GetAcceptListInterval = 5
 # apecify dynamic fee tx enabled chainids

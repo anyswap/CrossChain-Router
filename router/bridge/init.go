@@ -70,7 +70,7 @@ func InitRouterBridges(isServer bool) {
 }
 
 func loadSwapConfigs() error {
-	if params.IsNFTRouter() {
+	if !tokens.IsERC20Router() {
 		return nil
 	}
 	swapConfigs := make(map[string]map[string]*tokens.SwapConfig)

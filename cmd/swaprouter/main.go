@@ -11,6 +11,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	rpcserver "github.com/anyswap/CrossChain-Router/v3/rpc/server"
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/worker"
 	"github.com/urfave/cli/v2"
 )
@@ -66,6 +67,8 @@ func swaprouter(ctx *cli.Context) error {
 	params.SetDataDir(utils.GetDataDir(ctx), isServer)
 	configFile := utils.GetConfigFilePath(ctx)
 	config := params.LoadRouterConfig(configFile, isServer)
+
+	tokens.InitRouterSwapType(config.SwapType)
 
 	if isServer {
 		dbConfig := config.Server.MongoDB
