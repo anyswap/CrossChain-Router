@@ -24,7 +24,7 @@ var (
 	LogAnySwapTradeTokensForNativeTopic = common.FromHex("0x278277e0209c347189add7bd92411973b5f6b8644f7ac62ea1be984ce993f8f4")
 )
 
-func (b *Bridge) verifyRouterSwapTx(txHash string, logIndex int, allowUnstable bool) (*tokens.SwapTxInfo, error) {
+func (b *Bridge) verifyERC20SwapTx(txHash string, logIndex int, allowUnstable bool) (*tokens.SwapTxInfo, error) {
 	swapInfo := &tokens.SwapTxInfo{SwapInfo: tokens.SwapInfo{RouterSwapInfo: &tokens.RouterSwapInfo{}}}
 	swapInfo.SwapType = tokens.ERC20SwapType // SwapType
 	swapInfo.Hash = strings.ToLower(txHash)  // Hash
@@ -39,7 +39,7 @@ func (b *Bridge) verifyRouterSwapTx(txHash string, logIndex int, allowUnstable b
 		return swapInfo, tokens.ErrLogIndexOutOfRange
 	}
 
-	err = b.verifyRouterSwapTxLog(swapInfo, receipt.Logs[logIndex])
+	err = b.verifyERC20SwapTxLog(swapInfo, receipt.Logs[logIndex])
 	if err != nil {
 		return swapInfo, err
 	}
@@ -150,7 +150,7 @@ func (b *Bridge) verifySwapTxReceipt(swapInfo *tokens.SwapTxInfo, receipt *types
 	return nil
 }
 
-func (b *Bridge) verifyRouterSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
+func (b *Bridge) verifyERC20SwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
 	swapInfo.To = rlog.Address.LowerHex() // To
 	if !common.IsEqualIgnoreCase(rlog.Address.LowerHex(), b.ChainConfig.RouterContract) {
 		return tokens.ErrTxWithWrongContract
@@ -168,7 +168,7 @@ func (b *Bridge) verifyRouterSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.
 		return tokens.ErrSwapoutLogNotFound
 	}
 	if err != nil {
-		log.Info(b.ChainConfig.BlockChain+" verifyRouterSwapTxLog fail", "tx", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "err", err)
+		log.Info(b.ChainConfig.BlockChain+" verifyERC20SwapTxLog fail", "tx", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "err", err)
 		return err
 	}
 

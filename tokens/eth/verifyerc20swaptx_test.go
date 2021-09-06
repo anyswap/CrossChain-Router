@@ -240,7 +240,7 @@ func verifyTestTx(test *verifyTxTest) (err error) {
 	if err != nil {
 		return err
 	}
-	return br.verifyRouterSwapTxLog(swapInfo, test.receipt.Logs[0])
+	return br.verifyERC20SwapTxLog(swapInfo, test.receipt.Logs[0])
 }
 
 func constructTests(t *testing.T, argsSlice []*consArgs) []*verifyTxTest {
