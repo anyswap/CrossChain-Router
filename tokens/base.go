@@ -19,9 +19,12 @@ func InitRouterSwapType(swapTypeStr string) {
 	switch strings.ToLower(swapTypeStr) {
 	case "erc20swap":
 		routerSwapType = ERC20SwapType
+	case "nftswap":
+		routerSwapType = NFTSwapType
 	default:
 		log.Fatalf("invalid router swap type '%v'", swapTypeStr)
 	}
+	log.Info("init router swap type success", "swaptype", routerSwapType.String())
 }
 
 // GetRouterSwapType get router swap type

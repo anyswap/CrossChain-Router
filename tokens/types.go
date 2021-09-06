@@ -14,6 +14,7 @@ type SwapType uint32
 const (
 	UnknownSwapType SwapType = iota
 	ERC20SwapType
+	NFTSwapType
 
 	MaxValidSwapType
 	AnyCallSwapType
@@ -23,6 +24,8 @@ func (s SwapType) String() string {
 	switch s {
 	case ERC20SwapType:
 		return "erc20swap"
+	case NFTSwapType:
+		return "nftswap"
 	case AnyCallSwapType:
 		return "anycallswap"
 	default:
@@ -45,6 +48,15 @@ type ERC20SwapInfo struct {
 	AmountOutMin  *big.Int `json:"amountOutMin,omitempty"`
 }
 
+// NFTSwapInfo struct
+type NFTSwapInfo struct {
+	Token   string     `json:"token"`
+	TokenID string     `json:"tokenID"`
+	IDs     []*big.Int `json:"ids"`
+	Amounts []*big.Int `json:"amounts"`
+	Batch   bool       `json:"batch"`
+}
+
 // AnyCallSwapInfo struct
 type AnyCallSwapInfo struct {
 	CallFrom   string          `json:"callFrom"`
@@ -56,7 +68,8 @@ type AnyCallSwapInfo struct {
 
 // SwapInfo struct
 type SwapInfo struct {
-	ERC20SwapInfo   *ERC20SwapInfo   `json:"erc20SwapInfo,omitempty"`
+	ERC20SwapInfo   *ERC20SwapInfo   `json:"routerSwapInfo,omitempty"`
+	NFTSwapInfo     *NFTSwapInfo     `json:"nftSwapInfo,omitempty"`
 	AnyCallSwapInfo *AnyCallSwapInfo `json:"anycallSwapInfo,omitempty"`
 }
 
@@ -64,6 +77,9 @@ type SwapInfo struct {
 func (s *SwapInfo) GetTokenID() string {
 	if s.ERC20SwapInfo != nil {
 		return s.ERC20SwapInfo.TokenID
+	}
+	if s.NFTSwapInfo != nil {
+		return s.NFTSwapInfo.TokenID
 	}
 	return ""
 }

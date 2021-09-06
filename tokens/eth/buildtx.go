@@ -31,6 +31,8 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	switch args.SwapType {
 	case tokens.ERC20SwapType:
 		err = b.buildERC20SwapTxInput(args)
+	case tokens.NFTSwapType:
+		err = b.buildNFTSwapTxInput(args)
 	case tokens.AnyCallSwapType:
 		err = b.buildAnyCallSwapTxInput(args)
 	default:
@@ -83,12 +85,24 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs, extra *tokens.EthExtraArgs) (
 		"identifier", args.Identifier, "swapID", args.SwapID,
 		"fromChainID", args.FromChainID, "toChainID", args.ToChainID,
 		"from", args.From, "to", to.String(), "bind", args.Bind, "nonce", nonce,
-		"value", value, "originValue", args.OriginValue, "swapValue", args.SwapValue,
 		"gasLimit", gasLimit, "gasPrice", gasPrice, "replaceNum", args.ReplaceNum,
-		"gasTipCap", gasTipCap, "gasFeeCap", gasFeeCap,
 	}
-	if args.ERC20SwapInfo != nil {
-		ctx = append(ctx, "tokenID", args.ERC20SwapInfo.TokenID)
+	if gasTipCap != nil || gasFeeCap != nil {
+		ctx = append(ctx, "gasTipCap", gasTipCap, "gasFeeCap", gasFeeCap)
+	}
+	switch {
+	case args.ERC20SwapInfo != nil:
+		ctx = append(ctx,
+			"value", value,
+			"originValue", args.OriginValue,
+			"swapValue", args.SwapValue,
+			"tokenID", args.ERC20SwapInfo.TokenID)
+	case args.NFTSwapInfo != nil:
+		ctx = append(ctx,
+			"tokenID", args.NFTSwapInfo.TokenID,
+			"ids", args.NFTSwapInfo.IDs,
+			"amounts", args.NFTSwapInfo.Amounts,
+			"batch", args.NFTSwapInfo.Batch)
 	}
 	log.Info(fmt.Sprintf("build %s raw tx", args.SwapType.String()), ctx...)
 

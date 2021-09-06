@@ -12,7 +12,8 @@ import (
 // ConvertToSwapInfo convert
 func ConvertToSwapInfo(info *tokens.SwapInfo) SwapInfo {
 	swapinfo := SwapInfo{}
-	if info.ERC20SwapInfo != nil {
+	switch {
+	case info.ERC20SwapInfo != nil:
 		erc20SwapInfo := info.ERC20SwapInfo
 		swapinfo.ERC20SwapInfo = &ERC20SwapInfo{
 			ForNative:     erc20SwapInfo.ForNative,
@@ -24,8 +25,16 @@ func ConvertToSwapInfo(info *tokens.SwapInfo) SwapInfo {
 		if erc20SwapInfo.AmountOutMin != nil {
 			swapinfo.ERC20SwapInfo.AmountOutMin = erc20SwapInfo.AmountOutMin.String()
 		}
-	}
-	if info.AnyCallSwapInfo != nil {
+	case info.NFTSwapInfo != nil:
+		nftSwapInfo := info.NFTSwapInfo
+		swapinfo.NFTSwapInfo = &NFTSwapInfo{
+			Token:   nftSwapInfo.Token,
+			TokenID: nftSwapInfo.TokenID,
+			IDs:     fromBigIntSlice(nftSwapInfo.IDs),
+			Amounts: fromBigIntSlice(nftSwapInfo.Amounts),
+			Batch:   nftSwapInfo.Batch,
+		}
+	case info.AnyCallSwapInfo != nil:
 		anycallSwapInfo := info.AnyCallSwapInfo
 		swapinfo.AnyCallSwapInfo = &AnyCallSwapInfo{
 			CallFrom:   anycallSwapInfo.CallFrom,
@@ -41,10 +50,8 @@ func ConvertToSwapInfo(info *tokens.SwapInfo) SwapInfo {
 // ConvertFromSwapInfo convert
 func ConvertFromSwapInfo(swapinfo *SwapInfo) (tokens.SwapInfo, error) {
 	info := tokens.SwapInfo{}
-	if swapinfo.RouterSwapInfo != nil && swapinfo.ERC20SwapInfo == nil {
-		swapinfo.ERC20SwapInfo = swapinfo.RouterSwapInfo
-	}
-	if swapinfo.ERC20SwapInfo != nil {
+	switch {
+	case swapinfo.ERC20SwapInfo != nil:
 		erc20SwapInfo := swapinfo.ERC20SwapInfo
 		var amountOutMin *big.Int
 		var err error
@@ -62,8 +69,24 @@ func ConvertFromSwapInfo(swapinfo *SwapInfo) (tokens.SwapInfo, error) {
 			Path:          erc20SwapInfo.Path,
 			AmountOutMin:  amountOutMin,
 		}
-	}
-	if swapinfo.AnyCallSwapInfo != nil {
+	case swapinfo.NFTSwapInfo != nil:
+		nftSwapInfo := swapinfo.NFTSwapInfo
+		ids, err := toBigIntSlice(nftSwapInfo.IDs)
+		if err != nil {
+			return info, fmt.Errorf("wrong ids %v", nftSwapInfo.IDs)
+		}
+		amounts, err := toBigIntSlice(nftSwapInfo.Amounts)
+		if err != nil {
+			return info, fmt.Errorf("wrong amounts %v", nftSwapInfo.Amounts)
+		}
+		info.NFTSwapInfo = &tokens.NFTSwapInfo{
+			Token:   nftSwapInfo.Token,
+			TokenID: nftSwapInfo.TokenID,
+			IDs:     ids,
+			Amounts: amounts,
+			Batch:   nftSwapInfo.Batch,
+		}
+	case swapinfo.AnyCallSwapInfo != nil:
 		anyCallSwapInfo := swapinfo.AnyCallSwapInfo
 		nonces, err := toBigIntSlice(anyCallSwapInfo.CallNonces)
 		if err != nil {

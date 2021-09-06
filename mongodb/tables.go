@@ -74,13 +74,10 @@ type SwapResultUpdateItems struct {
 
 // SwapInfo struct
 type SwapInfo struct {
-	RouterSwapInfo  *RouterSwapInfo  `bson:"routerSwapInfo,omitempty"  json:"routerSwapInfo,omitempty"`
-	ERC20SwapInfo   *ERC20SwapInfo   `bson:"erc20SwapInfo,omitempty"  json:"erc20SwapInfo,omitempty"`
+	ERC20SwapInfo   *ERC20SwapInfo   `bson:"routerSwapInfo,omitempty"  json:"routerSwapInfo,omitempty"`
+	NFTSwapInfo     *NFTSwapInfo     `bson:"nftSwapInfo,omitempty"     json:"nftSwapInfo,omitempty"`
 	AnyCallSwapInfo *AnyCallSwapInfo `bson:"anycallSwapInfo,omitempty" json:"anycallSwapInfo,omitempty"`
 }
-
-// RouterSwapInfo keep for old data compatibility
-type RouterSwapInfo = ERC20SwapInfo
 
 // ERC20SwapInfo struct
 type ERC20SwapInfo struct {
@@ -90,6 +87,15 @@ type ERC20SwapInfo struct {
 	TokenID       string   `bson:"tokenID"                 json:"tokenID"`
 	Path          []string `bson:"path,omitempty"          json:"path,omitempty"`
 	AmountOutMin  string   `bson:"amountOutMin,omitempty"  json:"amountOutMin,omitempty"`
+}
+
+// NFTSwapInfo struct
+type NFTSwapInfo struct {
+	Token   string   `json:"token"`
+	TokenID string   `json:"tokenID"`
+	IDs     []string `json:"ids"`
+	Amounts []string `json:"amounts"`
+	Batch   bool     `json:"batch"`
 }
 
 // AnyCallSwapInfo struct
@@ -106,6 +112,9 @@ func (s *SwapInfo) GetToken() string {
 	if s.ERC20SwapInfo != nil {
 		return s.ERC20SwapInfo.Token
 	}
+	if s.NFTSwapInfo != nil {
+		return s.NFTSwapInfo.Token
+	}
 	return ""
 }
 
@@ -113,6 +122,9 @@ func (s *SwapInfo) GetToken() string {
 func (s *SwapInfo) GetTokenID() string {
 	if s.ERC20SwapInfo != nil {
 		return s.ERC20SwapInfo.TokenID
+	}
+	if s.NFTSwapInfo != nil {
+		return s.NFTSwapInfo.TokenID
 	}
 	return ""
 }
