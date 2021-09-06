@@ -258,10 +258,10 @@ func constructTest(t *testing.T, args []string, wantErr error) *verifyTxTest {
 	if len(args) == 0 {
 		return nil
 	}
-	return constructRouterSwapTxTest(t, args, wantErr)
+	return constructERC20SwapTxTest(t, args, wantErr)
 }
 
-func constructRouterSwapTxTest(t *testing.T, args []string, wantErr error) *verifyTxTest {
+func constructERC20SwapTxTest(t *testing.T, args []string, wantErr error) *verifyTxTest {
 	test := &verifyTxTest{
 		wantErr: wantErr,
 	}

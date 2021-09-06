@@ -42,12 +42,12 @@ func (b *Bridge) buildERC20SwapTxInput(args *tokens.BuildTxArgs) (err error) {
 	}
 
 	if len(erc20SwapInfo.Path) > 0 && erc20SwapInfo.AmountOutMin != nil {
-		return b.buildRouterSwapTradeTxInput(args, multichainToken)
+		return b.buildERC20SwapTradeTxInput(args, multichainToken)
 	}
-	return b.buildRouterSwapoutTxInput(args, multichainToken)
+	return b.buildERC20SwapoutTxInput(args, multichainToken)
 }
 
-func (b *Bridge) buildRouterSwapoutTxInput(args *tokens.BuildTxArgs, multichainToken string) (err error) {
+func (b *Bridge) buildERC20SwapoutTxInput(args *tokens.BuildTxArgs, multichainToken string) (err error) {
 	receiver, amount, err := b.getReceiverAndAmount(args, multichainToken)
 	if err != nil {
 		return err
@@ -75,7 +75,7 @@ func (b *Bridge) buildRouterSwapoutTxInput(args *tokens.BuildTxArgs, multichainT
 	return nil
 }
 
-func (b *Bridge) buildRouterSwapTradeTxInput(args *tokens.BuildTxArgs, multichainToken string) (err error) {
+func (b *Bridge) buildERC20SwapTradeTxInput(args *tokens.BuildTxArgs, multichainToken string) (err error) {
 	receiver, amount, err := b.getReceiverAndAmount(args, multichainToken)
 	if err != nil {
 		return err

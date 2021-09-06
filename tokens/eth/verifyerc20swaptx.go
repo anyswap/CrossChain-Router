@@ -162,11 +162,11 @@ func (b *Bridge) verifyERC20SwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.R
 	logTopic := rlog.Topics[0].Bytes()
 	switch {
 	case bytes.Equal(logTopic, LogAnySwapOutTopic):
-		err = b.parseRouterSwapoutTxLog(swapInfo, rlog)
+		err = b.parseERC20SwapoutTxLog(swapInfo, rlog)
 	case bytes.Equal(logTopic, LogAnySwapTradeTokensForTokensTopic):
-		err = b.parseRouterSwapTradeTxLog(swapInfo, rlog, false)
+		err = b.parseERC20SwapTradeTxLog(swapInfo, rlog, false)
 	case bytes.Equal(logTopic, LogAnySwapTradeTokensForNativeTopic):
-		err = b.parseRouterSwapTradeTxLog(swapInfo, rlog, true)
+		err = b.parseERC20SwapTradeTxLog(swapInfo, rlog, true)
 	default:
 		return tokens.ErrSwapoutLogNotFound
 	}
@@ -182,7 +182,7 @@ func (b *Bridge) verifyERC20SwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.R
 	return nil
 }
 
-func (b *Bridge) parseRouterSwapoutTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) error {
+func (b *Bridge) parseERC20SwapoutTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) error {
 	logTopics := rlog.Topics
 	if len(logTopics) != 4 {
 		return tokens.ErrTxWithWrongTopics
@@ -208,7 +208,7 @@ func (b *Bridge) parseRouterSwapoutTxLog(swapInfo *tokens.SwapTxInfo, rlog *type
 	return nil
 }
 
-func (b *Bridge) parseRouterSwapTradeTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog, forNative bool) error {
+func (b *Bridge) parseERC20SwapTradeTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog, forNative bool) error {
 	logTopics := rlog.Topics
 	if len(logTopics) != 3 {
 		return tokens.ErrTxWithWrongTopics
