@@ -1,7 +1,6 @@
 package tokens
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
@@ -13,19 +12,27 @@ type SwapType uint32
 
 // SwapType constants
 const (
-	RouterSwapType SwapType = iota + 1
+	UnknownSwapType SwapType = iota
+	ERC20SwapType
+
+	MaxValidSwapType
 	AnyCallSwapType
 )
 
 func (s SwapType) String() string {
 	switch s {
-	case RouterSwapType:
-		return "routerswap"
+	case ERC20SwapType:
+		return "erc20swap"
 	case AnyCallSwapType:
 		return "anycallswap"
 	default:
-		return fmt.Sprintf("unknown swap type %d", s)
+		return "unknownswap"
 	}
+}
+
+// IsValidType is valid swap type
+func (s SwapType) IsValidType() bool {
+	return s > UnknownSwapType && s < MaxValidSwapType
 }
 
 // RouterSwapInfo struct

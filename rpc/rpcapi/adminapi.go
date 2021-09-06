@@ -102,7 +102,7 @@ func routerPassBigValue(args *admin.CallArgs, result *string) (err error) {
 		return tokens.ErrNoBridgeForChainID
 	}
 	verifyArgs := &tokens.VerifyArgs{
-		SwapType:      tokens.RouterSwapType,
+		SwapType:      tokens.ERC20SwapType,
 		LogIndex:      logIndex,
 		AllowUnstable: false,
 	}

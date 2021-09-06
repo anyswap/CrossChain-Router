@@ -35,16 +35,7 @@ func GetServerInfo() *ServerInfo {
 // RegisterRouterSwap register router swap
 // if logIndex is 0 then check all logs, otherwise only check the specified log
 func RegisterRouterSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, error) {
-	return registerSwap(fromChainID, txid, logIndexStr, tokens.RouterSwapType)
-}
-
-// RegisterAnyCallSwap register anycall swap
-// if logIndex is 0 then check all logs, otherwise only check the specified log
-func RegisterAnyCallSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, error) {
-	return registerSwap(fromChainID, txid, logIndexStr, tokens.AnyCallSwapType)
-}
-
-func registerSwap(fromChainID, txid, logIndexStr string, swapType tokens.SwapType) (*MapIntResult, error) {
+	swapType := tokens.ERC20SwapType
 	log.Info("[api] register swap", "chainid", fromChainID, "txid", txid, "logIndex", logIndexStr, "swapType", swapType.String())
 	chainID, err := common.GetBigIntFromStr(fromChainID)
 	if err != nil {

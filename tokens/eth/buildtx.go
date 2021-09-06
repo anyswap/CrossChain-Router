@@ -29,7 +29,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	}
 
 	switch args.SwapType {
-	case tokens.RouterSwapType:
+	case tokens.ERC20SwapType:
 		err = b.buildRouterSwapTxInput(args)
 	case tokens.AnyCallSwapType:
 		err = b.buildAnyCallSwapTxInput(args)

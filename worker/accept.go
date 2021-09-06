@@ -254,15 +254,12 @@ func getBridges(fromChainID, toChainID string) (srcBridge, dstBridge tokens.IBri
 }
 
 func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildTxArgs) (err error) {
-	var srcBridge, dstBridge tokens.IBridge
-	switch args.SwapType {
-	case tokens.RouterSwapType, tokens.AnyCallSwapType:
-		srcBridge, dstBridge, err = getBridges(args.FromChainID.String(), args.ToChainID.String())
-		if err != nil {
-			return err
-		}
-	default:
-		return fmt.Errorf("unknown router swap type %v", args.SwapType)
+	if !args.SwapType.IsValidType() {
+		return fmt.Errorf("unknown router swap type %d", args.SwapType)
+	}
+	srcBridge, dstBridge, err := getBridges(args.FromChainID.String(), args.ToChainID.String())
+	if err != nil {
+		return err
 	}
 
 	ctx := []interface{}{

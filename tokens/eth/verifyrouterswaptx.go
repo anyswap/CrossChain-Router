@@ -26,9 +26,9 @@ var (
 
 func (b *Bridge) verifyRouterSwapTx(txHash string, logIndex int, allowUnstable bool) (*tokens.SwapTxInfo, error) {
 	swapInfo := &tokens.SwapTxInfo{SwapInfo: tokens.SwapInfo{RouterSwapInfo: &tokens.RouterSwapInfo{}}}
-	swapInfo.SwapType = tokens.RouterSwapType // SwapType
-	swapInfo.Hash = strings.ToLower(txHash)   // Hash
-	swapInfo.LogIndex = logIndex              // LogIndex
+	swapInfo.SwapType = tokens.ERC20SwapType // SwapType
+	swapInfo.Hash = strings.ToLower(txHash)  // Hash
+	swapInfo.LogIndex = logIndex             // LogIndex
 
 	receipt, err := b.getAndVerifySwapTxReceipt(swapInfo, allowUnstable)
 	if err != nil {

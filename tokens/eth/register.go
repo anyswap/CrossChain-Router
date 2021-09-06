@@ -14,7 +14,7 @@ func (b *Bridge) RegisterSwap(txHash string, args *tokens.RegisterArgs) ([]*toke
 	logIndex := args.LogIndex
 
 	switch swapType {
-	case tokens.RouterSwapType:
+	case tokens.ERC20SwapType:
 		return b.registerRouterSwapTx(txHash, logIndex)
 	case tokens.AnyCallSwapType:
 		return b.registerAnyCallSwapTx(txHash, logIndex)
@@ -26,9 +26,9 @@ func (b *Bridge) RegisterSwap(txHash string, args *tokens.RegisterArgs) ([]*toke
 // nolint:dupl // ok
 func (b *Bridge) registerRouterSwapTx(txHash string, logIndex int) ([]*tokens.SwapTxInfo, []error) {
 	commonInfo := &tokens.SwapTxInfo{SwapInfo: tokens.SwapInfo{RouterSwapInfo: &tokens.RouterSwapInfo{}}}
-	commonInfo.SwapType = tokens.RouterSwapType // SwapType
-	commonInfo.Hash = strings.ToLower(txHash)   // Hash
-	commonInfo.LogIndex = logIndex              // LogIndex
+	commonInfo.SwapType = tokens.ERC20SwapType // SwapType
+	commonInfo.Hash = strings.ToLower(txHash)  // Hash
+	commonInfo.LogIndex = logIndex             // LogIndex
 
 	receipt, err := b.getAndVerifySwapTxReceipt(commonInfo, true)
 	if err != nil {

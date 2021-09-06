@@ -231,7 +231,7 @@ func TestVerifyTx(t *testing.T) {
 
 func verifyTestTx(test *verifyTxTest) (err error) {
 	swapInfo := &tokens.SwapTxInfo{SwapInfo: tokens.SwapInfo{RouterSwapInfo: &tokens.RouterSwapInfo{}}}
-	swapInfo.SwapType = tokens.RouterSwapType                                            // SwapType
+	swapInfo.SwapType = tokens.ERC20SwapType                                             // SwapType
 	swapInfo.Hash = "0x0000000000000000000000000000000000000000000000000000000000000000" // Hash
 
 	params.SetAllowCallByContract(test.allowCallByContract)

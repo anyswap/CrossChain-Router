@@ -209,17 +209,16 @@ func processHistory(res *mongodb.MgoSwapResult) error {
 }
 
 func dispatchSwapTask(args *tokens.BuildTxArgs) error {
-	toChainID := args.ToChainID.String()
-	switch args.SwapType {
-	case tokens.RouterSwapType, tokens.AnyCallSwapType:
-		swapChan, exist := routerSwapTaskChanMap[toChainID]
-		if !exist {
-			return fmt.Errorf("no swapout task channel for chainID '%v'", args.ToChainID)
-		}
-		swapChan <- args
-	default:
-		return fmt.Errorf("wrong swap type '%v'", args.SwapType.String())
+	if !args.SwapType.IsValidType() {
+		return fmt.Errorf("unknown router swap type %d", args.SwapType)
 	}
+	toChainID := args.ToChainID.String()
+	swapChan, exist := routerSwapTaskChanMap[toChainID]
+	if !exist {
+		return fmt.Errorf("no swapout task channel for chainID '%v'", args.ToChainID)
+	}
+	swapChan <- args
+
 	logWorker("doSwap", "dispatch router swap task", "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "value", args.OriginValue, "swapNonce", args.GetTxNonce())
 	return nil
 }
