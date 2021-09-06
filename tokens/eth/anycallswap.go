@@ -9,6 +9,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
+	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/eth/abicoder"
 	"github.com/anyswap/CrossChain-Router/v3/types"
@@ -165,6 +166,14 @@ func (b *Bridge) parseAnyCallSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.
 }
 
 func (b *Bridge) checkAnyCallSwapInfo(swapInfo *tokens.SwapTxInfo) error {
+	dstBridge := router.GetBridgeByChainID(swapInfo.ToChainID.String())
+	if dstBridge == nil {
+		return tokens.ErrNoBridgeForChainID
+	}
+	if !dstBridge.IsValidAddress(swapInfo.Bind) {
+		log.Warn("wrong bind address in anycall swap", "txid", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "bind", swapInfo.Bind)
+		return tokens.ErrWrongBindAddress
+	}
 	return nil
 }
 
