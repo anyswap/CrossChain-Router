@@ -12,8 +12,8 @@ import (
 // ConvertToSwapInfo convert
 func ConvertToSwapInfo(info *tokens.SwapInfo) SwapInfo {
 	swapinfo := SwapInfo{}
-	if info.RouterSwapInfo != nil {
-		swapinfo.RouterSwapInfo = &RouterSwapInfo{
+	if info.ERC20SwapInfo != nil {
+		swapinfo.ERC20SwapInfo = &ERC20SwapInfo{
 			ForNative:     info.ForNative,
 			ForUnderlying: info.ForUnderlying,
 			Token:         info.Token,
@@ -39,7 +39,10 @@ func ConvertToSwapInfo(info *tokens.SwapInfo) SwapInfo {
 // ConvertFromSwapInfo convert
 func ConvertFromSwapInfo(swapinfo *SwapInfo) (tokens.SwapInfo, error) {
 	info := tokens.SwapInfo{}
-	if swapinfo.RouterSwapInfo != nil {
+	if swapinfo.RouterSwapInfo != nil && swapinfo.ERC20SwapInfo == nil {
+		swapinfo.ERC20SwapInfo = swapinfo.RouterSwapInfo
+	}
+	if swapinfo.ERC20SwapInfo != nil {
 		var amountOutMin *big.Int
 		var err error
 		if len(swapinfo.Path) > 0 {
@@ -48,7 +51,7 @@ func ConvertFromSwapInfo(swapinfo *SwapInfo) (tokens.SwapInfo, error) {
 				return info, fmt.Errorf("wrong amountOutMin %v", swapinfo.AmountOutMin)
 			}
 		}
-		info.RouterSwapInfo = &tokens.RouterSwapInfo{
+		info.ERC20SwapInfo = &tokens.ERC20SwapInfo{
 			ForNative:     swapinfo.ForNative,
 			ForUnderlying: swapinfo.ForUnderlying,
 			Token:         swapinfo.Token,

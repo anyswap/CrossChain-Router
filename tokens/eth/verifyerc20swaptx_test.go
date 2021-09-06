@@ -230,7 +230,7 @@ func TestVerifyTx(t *testing.T) {
 }
 
 func verifyTestTx(test *verifyTxTest) (err error) {
-	swapInfo := &tokens.SwapTxInfo{SwapInfo: tokens.SwapInfo{RouterSwapInfo: &tokens.RouterSwapInfo{}}}
+	swapInfo := &tokens.SwapTxInfo{SwapInfo: tokens.SwapInfo{ERC20SwapInfo: &tokens.ERC20SwapInfo{}}}
 	swapInfo.SwapType = tokens.ERC20SwapType                                             // SwapType
 	swapInfo.Hash = "0x0000000000000000000000000000000000000000000000000000000000000000" // Hash
 

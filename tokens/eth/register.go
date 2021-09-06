@@ -25,7 +25,7 @@ func (b *Bridge) RegisterSwap(txHash string, args *tokens.RegisterArgs) ([]*toke
 
 // nolint:dupl // ok
 func (b *Bridge) registerRouterSwapTx(txHash string, logIndex int) ([]*tokens.SwapTxInfo, []error) {
-	commonInfo := &tokens.SwapTxInfo{SwapInfo: tokens.SwapInfo{RouterSwapInfo: &tokens.RouterSwapInfo{}}}
+	commonInfo := &tokens.SwapTxInfo{SwapInfo: tokens.SwapInfo{ERC20SwapInfo: &tokens.ERC20SwapInfo{}}}
 	commonInfo.SwapType = tokens.ERC20SwapType // SwapType
 	commonInfo.Hash = strings.ToLower(txHash)  // Hash
 	commonInfo.LogIndex = logIndex             // LogIndex
@@ -50,7 +50,7 @@ func (b *Bridge) registerRouterSwapTx(txHash string, logIndex int) ([]*tokens.Sw
 	for i := startIndex; i < endIndex; i++ {
 		swapInfo := &tokens.SwapTxInfo{}
 		*swapInfo = *commonInfo
-		swapInfo.RouterSwapInfo = &tokens.RouterSwapInfo{}
+		swapInfo.ERC20SwapInfo = &tokens.ERC20SwapInfo{}
 		swapInfo.LogIndex = i // LogIndex
 		err := b.verifyERC20SwapTxLog(swapInfo, receipt.Logs[i])
 		switch {
@@ -58,7 +58,7 @@ func (b *Bridge) registerRouterSwapTx(txHash string, logIndex int) ([]*tokens.Sw
 			errors.Is(err, tokens.ErrTxWithWrongContract):
 			continue
 		case err == nil:
-			err = b.checkRouterSwapInfo(swapInfo)
+			err = b.checkERC20SwapInfo(swapInfo)
 		default:
 			log.Debug(b.ChainConfig.BlockChain+" register router swap error", "txHash", txHash, "logIndex", swapInfo.LogIndex, "err", err)
 		}

@@ -35,8 +35,8 @@ func (s SwapType) IsValidType() bool {
 	return s > UnknownSwapType && s < MaxValidSwapType
 }
 
-// RouterSwapInfo struct
-type RouterSwapInfo struct {
+// ERC20SwapInfo struct
+type ERC20SwapInfo struct {
 	ForNative     bool     `json:"forNative,omitempty"`
 	ForUnderlying bool     `json:"forUnderlying,omitempty"`
 	Token         string   `json:"token"`
@@ -56,7 +56,7 @@ type AnyCallSwapInfo struct {
 
 // SwapInfo struct
 type SwapInfo struct {
-	*RouterSwapInfo  `json:"routerSwapInfo,omitempty"`
+	*ERC20SwapInfo   `json:"erc20SwapInfo,omitempty"`
 	*AnyCallSwapInfo `json:"anycallSwapInfo,omitempty"`
 }
 

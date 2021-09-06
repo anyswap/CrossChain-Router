@@ -87,7 +87,7 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs, extra *tokens.EthExtraArgs) (
 		"gasLimit", gasLimit, "gasPrice", gasPrice, "replaceNum", args.ReplaceNum,
 		"gasTipCap", gasTipCap, "gasFeeCap", gasFeeCap,
 	}
-	if args.RouterSwapInfo != nil {
+	if args.ERC20SwapInfo != nil {
 		ctx = append(ctx, "tokenID", args.TokenID)
 	}
 	log.Info(fmt.Sprintf("build %s raw tx", args.SwapType.String()), ctx...)

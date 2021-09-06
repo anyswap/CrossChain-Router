@@ -25,7 +25,7 @@ var (
 )
 
 func (b *Bridge) verifyERC20SwapTx(txHash string, logIndex int, allowUnstable bool) (*tokens.SwapTxInfo, error) {
-	swapInfo := &tokens.SwapTxInfo{SwapInfo: tokens.SwapInfo{RouterSwapInfo: &tokens.RouterSwapInfo{}}}
+	swapInfo := &tokens.SwapTxInfo{SwapInfo: tokens.SwapInfo{ERC20SwapInfo: &tokens.ERC20SwapInfo{}}}
 	swapInfo.SwapType = tokens.ERC20SwapType // SwapType
 	swapInfo.Hash = strings.ToLower(txHash)  // Hash
 	swapInfo.LogIndex = logIndex             // LogIndex
@@ -44,7 +44,7 @@ func (b *Bridge) verifyERC20SwapTx(txHash string, logIndex int, allowUnstable bo
 		return swapInfo, err
 	}
 
-	err = b.checkRouterSwapInfo(swapInfo)
+	err = b.checkERC20SwapInfo(swapInfo)
 	if err != nil {
 		return swapInfo, err
 	}
@@ -61,7 +61,7 @@ func (b *Bridge) verifyERC20SwapTx(txHash string, logIndex int, allowUnstable bo
 	return swapInfo, nil
 }
 
-func (b *Bridge) checkRouterSwapInfo(swapInfo *tokens.SwapTxInfo) error {
+func (b *Bridge) checkERC20SwapInfo(swapInfo *tokens.SwapTxInfo) error {
 	fromTokenCfg := b.GetTokenConfig(swapInfo.Token)
 	if fromTokenCfg == nil {
 		return tokens.ErrMissTokenConfig

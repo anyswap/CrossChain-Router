@@ -31,7 +31,7 @@ var (
 )
 
 func (b *Bridge) buildRouterSwapTxInput(args *tokens.BuildTxArgs) (err error) {
-	if args.RouterSwapInfo == nil || args.TokenID == "" {
+	if args.ERC20SwapInfo == nil || args.TokenID == "" {
 		return errors.New("build router swaptx without tokenID")
 	}
 	multichainToken := router.GetCachedMultichainToken(args.TokenID, args.ToChainID.String())

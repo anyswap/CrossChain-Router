@@ -74,12 +74,16 @@ type SwapResultUpdateItems struct {
 
 // SwapInfo struct
 type SwapInfo struct {
-	*RouterSwapInfo  `bson:"routerSwapInfo,omitempty"  json:"routerSwapInfo,omitempty"`
+	RouterSwapInfo   *RouterSwapInfo `bson:"routerSwapInfo,omitempty"  json:"routerSwapInfo,omitempty"`
+	*ERC20SwapInfo   `bson:"erc20SwapInfo,omitempty"  json:"erc20SwapInfo,omitempty"`
 	*AnyCallSwapInfo `bson:"anycallSwapInfo,omitempty" json:"anycallSwapInfo,omitempty"`
 }
 
-// RouterSwapInfo struct
-type RouterSwapInfo struct {
+// RouterSwapInfo keep for old data compatibility
+type RouterSwapInfo = ERC20SwapInfo
+
+// ERC20SwapInfo struct
+type ERC20SwapInfo struct {
 	ForNative     bool     `bson:"forNative,omitempty"     json:"forNative,omitempty"`
 	ForUnderlying bool     `bson:"forUnderlying,omitempty" json:"forUnderlying,omitempty"`
 	Token         string   `bson:"token"                   json:"token"`
@@ -99,7 +103,7 @@ type AnyCallSwapInfo struct {
 
 // GetTokenID get tokenID
 func (s *SwapInfo) GetTokenID() string {
-	if s.RouterSwapInfo == nil {
+	if s.ERC20SwapInfo == nil {
 		return ""
 	}
 	return s.TokenID

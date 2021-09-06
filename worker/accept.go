@@ -159,7 +159,7 @@ func processAcceptInfo(info *mpc.SignInfoData) {
 			"swapID", args.SwapID,
 			"logIndex", args.LogIndex,
 		)
-		if args.RouterSwapInfo != nil {
+		if args.ERC20SwapInfo != nil {
 			ctx = append(ctx, "tokenID", args.TokenID)
 		}
 	}
@@ -271,7 +271,7 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 		"swapID", args.SwapID,
 		"logIndex", args.LogIndex,
 	}
-	if args.RouterSwapInfo != nil {
+	if args.ERC20SwapInfo != nil {
 		ctx = append(ctx, "tokenID", args.TokenID)
 	}
 
