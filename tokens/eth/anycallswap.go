@@ -101,7 +101,7 @@ func (b *Bridge) verifyAnyCallSwapTx(txHash string, logIndex int, allowUnstable 
 			"from", swapInfo.From, "to", swapInfo.To, "txid", txHash, "logIndex", logIndex,
 			"height", swapInfo.Height, "timestamp", swapInfo.Timestamp,
 			"fromChainID", swapInfo.FromChainID, "toChainID", swapInfo.ToChainID,
-			"callFrom", swapInfo.CallFrom)
+			"callFrom", swapInfo.AnyCallSwapInfo.CallFrom)
 	}
 
 	return swapInfo, nil
@@ -140,20 +140,22 @@ func (b *Bridge) parseAnyCallSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.
 		return abicoder.ErrParseDataError
 	}
 
-	swapInfo.CallFrom = common.BytesToAddress(logTopics[1].Bytes()).LowerHex()
-	swapInfo.CallTo, err = abicoder.ParseAddressSliceInData(logData, 0)
+	anycallSwapInfo := swapInfo.AnyCallSwapInfo
+
+	anycallSwapInfo.CallFrom = common.BytesToAddress(logTopics[1].Bytes()).LowerHex()
+	anycallSwapInfo.CallTo, err = abicoder.ParseAddressSliceInData(logData, 0)
 	if err != nil {
 		return err
 	}
-	swapInfo.CallData, err = abicoder.ParseBytesSliceInData(logData, 32)
+	anycallSwapInfo.CallData, err = abicoder.ParseBytesSliceInData(logData, 32)
 	if err != nil {
 		return err
 	}
-	swapInfo.Callbacks, err = abicoder.ParseAddressSliceInData(logData, 64)
+	anycallSwapInfo.Callbacks, err = abicoder.ParseAddressSliceInData(logData, 64)
 	if err != nil {
 		return err
 	}
-	swapInfo.CallNonces, err = abicoder.ParseNumberSliceAsBigIntsInData(logData, 96)
+	anycallSwapInfo.CallNonces, err = abicoder.ParseNumberSliceAsBigIntsInData(logData, 96)
 	if err != nil {
 		return err
 	}
@@ -170,6 +172,7 @@ func (b *Bridge) buildAnyCallSwapTxInput(args *tokens.BuildTxArgs) (err error) {
 	if args.AnyCallSwapInfo == nil {
 		return errors.New("build anycall swaptx without swapinfo")
 	}
+	anycallSwapInfo := args.AnyCallSwapInfo
 	funcHash := AnyCallFuncHash
 
 	if b.ChainConfig.ChainID != args.ToChainID.String() {
@@ -177,11 +180,11 @@ func (b *Bridge) buildAnyCallSwapTxInput(args *tokens.BuildTxArgs) (err error) {
 	}
 
 	input := abicoder.PackDataWithFuncHash(funcHash,
-		common.HexToAddress(args.CallFrom),
-		toAddresses(args.CallTo),
-		args.CallData,
-		toAddresses(args.Callbacks),
-		args.CallNonces,
+		common.HexToAddress(anycallSwapInfo.CallFrom),
+		toAddresses(anycallSwapInfo.CallTo),
+		anycallSwapInfo.CallData,
+		toAddresses(anycallSwapInfo.Callbacks),
+		anycallSwapInfo.CallNonces,
 		args.FromChainID,
 	)
 	args.Input = (*hexutil.Bytes)(&input)  // input

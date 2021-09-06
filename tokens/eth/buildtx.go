@@ -30,7 +30,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 
 	switch args.SwapType {
 	case tokens.ERC20SwapType:
-		err = b.buildRouterSwapTxInput(args)
+		err = b.buildERC20SwapTxInput(args)
 	case tokens.AnyCallSwapType:
 		err = b.buildAnyCallSwapTxInput(args)
 	default:
@@ -88,7 +88,7 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs, extra *tokens.EthExtraArgs) (
 		"gasTipCap", gasTipCap, "gasFeeCap", gasFeeCap,
 	}
 	if args.ERC20SwapInfo != nil {
-		ctx = append(ctx, "tokenID", args.TokenID)
+		ctx = append(ctx, "tokenID", args.ERC20SwapInfo.TokenID)
 	}
 	log.Info(fmt.Sprintf("build %s raw tx", args.SwapType.String()), ctx...)
 

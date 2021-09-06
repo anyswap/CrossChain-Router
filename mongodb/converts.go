@@ -13,24 +13,26 @@ import (
 func ConvertToSwapInfo(info *tokens.SwapInfo) SwapInfo {
 	swapinfo := SwapInfo{}
 	if info.ERC20SwapInfo != nil {
+		erc20SwapInfo := info.ERC20SwapInfo
 		swapinfo.ERC20SwapInfo = &ERC20SwapInfo{
-			ForNative:     info.ForNative,
-			ForUnderlying: info.ForUnderlying,
-			Token:         info.Token,
-			TokenID:       info.TokenID,
-			Path:          info.Path,
+			ForNative:     erc20SwapInfo.ForNative,
+			ForUnderlying: erc20SwapInfo.ForUnderlying,
+			Token:         erc20SwapInfo.Token,
+			TokenID:       erc20SwapInfo.TokenID,
+			Path:          erc20SwapInfo.Path,
 		}
-		if info.AmountOutMin != nil {
-			swapinfo.AmountOutMin = info.AmountOutMin.String()
+		if erc20SwapInfo.AmountOutMin != nil {
+			swapinfo.ERC20SwapInfo.AmountOutMin = erc20SwapInfo.AmountOutMin.String()
 		}
 	}
 	if info.AnyCallSwapInfo != nil {
+		anycallSwapInfo := info.AnyCallSwapInfo
 		swapinfo.AnyCallSwapInfo = &AnyCallSwapInfo{
-			CallFrom:   info.CallFrom,
-			CallTo:     info.CallTo,
-			CallData:   fromHexBytesSlice(info.CallData),
-			Callbacks:  info.Callbacks,
-			CallNonces: fromBigIntSlice(info.CallNonces),
+			CallFrom:   anycallSwapInfo.CallFrom,
+			CallTo:     anycallSwapInfo.CallTo,
+			CallData:   fromHexBytesSlice(anycallSwapInfo.CallData),
+			Callbacks:  anycallSwapInfo.Callbacks,
+			CallNonces: fromBigIntSlice(anycallSwapInfo.CallNonces),
 		}
 	}
 	return swapinfo
@@ -43,33 +45,35 @@ func ConvertFromSwapInfo(swapinfo *SwapInfo) (tokens.SwapInfo, error) {
 		swapinfo.ERC20SwapInfo = swapinfo.RouterSwapInfo
 	}
 	if swapinfo.ERC20SwapInfo != nil {
+		erc20SwapInfo := swapinfo.ERC20SwapInfo
 		var amountOutMin *big.Int
 		var err error
-		if len(swapinfo.Path) > 0 {
-			amountOutMin, err = common.GetBigIntFromStr(swapinfo.AmountOutMin)
+		if len(erc20SwapInfo.Path) > 0 {
+			amountOutMin, err = common.GetBigIntFromStr(erc20SwapInfo.AmountOutMin)
 			if err != nil {
-				return info, fmt.Errorf("wrong amountOutMin %v", swapinfo.AmountOutMin)
+				return info, fmt.Errorf("wrong amountOutMin %v", erc20SwapInfo.AmountOutMin)
 			}
 		}
 		info.ERC20SwapInfo = &tokens.ERC20SwapInfo{
-			ForNative:     swapinfo.ForNative,
-			ForUnderlying: swapinfo.ForUnderlying,
-			Token:         swapinfo.Token,
-			TokenID:       swapinfo.TokenID,
-			Path:          swapinfo.Path,
+			ForNative:     erc20SwapInfo.ForNative,
+			ForUnderlying: erc20SwapInfo.ForUnderlying,
+			Token:         erc20SwapInfo.Token,
+			TokenID:       erc20SwapInfo.TokenID,
+			Path:          erc20SwapInfo.Path,
 			AmountOutMin:  amountOutMin,
 		}
 	}
 	if swapinfo.AnyCallSwapInfo != nil {
-		nonces, err := toBigIntSlice(swapinfo.CallNonces)
+		anyCallSwapInfo := swapinfo.AnyCallSwapInfo
+		nonces, err := toBigIntSlice(anyCallSwapInfo.CallNonces)
 		if err != nil {
-			return info, fmt.Errorf("wrong nonces %v", swapinfo.CallNonces)
+			return info, fmt.Errorf("wrong nonces %v", anyCallSwapInfo.CallNonces)
 		}
 		info.AnyCallSwapInfo = &tokens.AnyCallSwapInfo{
-			CallFrom:   swapinfo.CallFrom,
-			CallTo:     swapinfo.CallTo,
-			CallData:   toHexBytesSlice(swapinfo.CallData),
-			Callbacks:  swapinfo.Callbacks,
+			CallFrom:   anyCallSwapInfo.CallFrom,
+			CallTo:     anyCallSwapInfo.CallTo,
+			CallData:   toHexBytesSlice(anyCallSwapInfo.CallData),
+			Callbacks:  anyCallSwapInfo.Callbacks,
 			CallNonces: nonces,
 		}
 	}

@@ -54,21 +54,24 @@ func (b *Bridge) verifyERC20SwapTx(txHash string, logIndex int, allowUnstable bo
 			"from", swapInfo.From, "to", swapInfo.To, "bind", swapInfo.Bind, "value", swapInfo.Value,
 			"txid", txHash, "logIndex", logIndex, "height", swapInfo.Height, "timestamp", swapInfo.Timestamp,
 			"fromChainID", swapInfo.FromChainID, "toChainID", swapInfo.ToChainID,
-			"token", swapInfo.Token, "tokenID", swapInfo.TokenID,
-			"forNative", swapInfo.ForNative, "forUnderlying", swapInfo.ForUnderlying)
+			"token", swapInfo.ERC20SwapInfo.Token,
+			"tokenID", swapInfo.ERC20SwapInfo.TokenID,
+			"forNative", swapInfo.ERC20SwapInfo.ForNative,
+			"forUnderlying", swapInfo.ERC20SwapInfo.ForUnderlying)
 	}
 
 	return swapInfo, nil
 }
 
 func (b *Bridge) checkERC20SwapInfo(swapInfo *tokens.SwapTxInfo) error {
-	fromTokenCfg := b.GetTokenConfig(swapInfo.Token)
+	erc20SwapInfo := swapInfo.ERC20SwapInfo
+	fromTokenCfg := b.GetTokenConfig(erc20SwapInfo.Token)
 	if fromTokenCfg == nil {
 		return tokens.ErrMissTokenConfig
 	}
-	multichainToken := router.GetCachedMultichainToken(swapInfo.TokenID, swapInfo.ToChainID.String())
+	multichainToken := router.GetCachedMultichainToken(erc20SwapInfo.TokenID, swapInfo.ToChainID.String())
 	if multichainToken == "" {
-		log.Warn("get multichain token failed", "tokenID", swapInfo.TokenID, "chainID", swapInfo.ToChainID)
+		log.Warn("get multichain token failed", "tokenID", erc20SwapInfo.TokenID, "chainID", swapInfo.ToChainID)
 		return tokens.ErrMissTokenConfig
 	}
 	toBridge := router.GetBridgeByChainID(swapInfo.ToChainID.String())
@@ -80,10 +83,10 @@ func (b *Bridge) checkERC20SwapInfo(swapInfo *tokens.SwapTxInfo) error {
 		log.Warn("get token config failed", "chainID", swapInfo.ToChainID, "token", multichainToken)
 		return tokens.ErrMissTokenConfig
 	}
-	if swapInfo.ForUnderlying && toTokenCfg.GetUnderlying() == (common.Address{}) {
+	if erc20SwapInfo.ForUnderlying && toTokenCfg.GetUnderlying() == (common.Address{}) {
 		return tokens.ErrNoUnderlyingToken
 	}
-	if !tokens.CheckTokenSwapValue(swapInfo.TokenID, swapInfo.ToChainID.String(), swapInfo.Value, fromTokenCfg.Decimals, toTokenCfg.Decimals) {
+	if !tokens.CheckTokenSwapValue(erc20SwapInfo.TokenID, swapInfo.ToChainID.String(), swapInfo.Value, fromTokenCfg.Decimals, toTokenCfg.Decimals) {
 		return tokens.ErrTxWithWrongValue
 	}
 	dstBridge := router.GetBridgeByChainID(swapInfo.ToChainID.String())
@@ -188,18 +191,19 @@ func (b *Bridge) parseRouterSwapoutTxLog(swapInfo *tokens.SwapTxInfo, rlog *type
 	if len(logData) != 96 {
 		return abicoder.ErrParseDataError
 	}
-	swapInfo.Token = common.BytesToAddress(logTopics[1].Bytes()).LowerHex()
+	erc20SwapInfo := swapInfo.ERC20SwapInfo
+	erc20SwapInfo.Token = common.BytesToAddress(logTopics[1].Bytes()).LowerHex()
 	swapInfo.From = common.BytesToAddress(logTopics[2].Bytes()).LowerHex()
 	swapInfo.Bind = common.BytesToAddress(logTopics[3].Bytes()).LowerHex()
 	swapInfo.Value = common.GetBigInt(logData, 0, 32)
 	swapInfo.FromChainID = common.GetBigInt(logData, 32, 32)
 	swapInfo.ToChainID = common.GetBigInt(logData, 64, 32)
 
-	tokenCfg := b.GetTokenConfig(swapInfo.Token)
+	tokenCfg := b.GetTokenConfig(erc20SwapInfo.Token)
 	if tokenCfg == nil {
 		return tokens.ErrMissTokenConfig
 	}
-	swapInfo.TokenID = tokenCfg.TokenID
+	erc20SwapInfo.TokenID = tokenCfg.TokenID
 
 	return nil
 }
@@ -213,7 +217,8 @@ func (b *Bridge) parseRouterSwapTradeTxLog(swapInfo *tokens.SwapTxInfo, rlog *ty
 	if len(logData) < 192 {
 		return abicoder.ErrParseDataError
 	}
-	swapInfo.ForNative = forNative
+	erc20SwapInfo := swapInfo.ERC20SwapInfo
+	erc20SwapInfo.ForNative = forNative
 	swapInfo.From = common.BytesToAddress(logTopics[1].Bytes()).LowerHex()
 	swapInfo.Bind = common.BytesToAddress(logTopics[2].Bytes()).LowerHex()
 	path, err := abicoder.ParseAddressSliceInData(logData, 0)
@@ -224,18 +229,18 @@ func (b *Bridge) parseRouterSwapTradeTxLog(swapInfo *tokens.SwapTxInfo, rlog *ty
 		return tokens.ErrTxWithWrongPath
 	}
 	swapInfo.Value = common.GetBigInt(logData, 32, 32)
-	swapInfo.AmountOutMin = common.GetBigInt(logData, 64, 32)
+	erc20SwapInfo.AmountOutMin = common.GetBigInt(logData, 64, 32)
 	swapInfo.FromChainID = common.GetBigInt(logData, 96, 32)
 	swapInfo.ToChainID = common.GetBigInt(logData, 128, 32)
 
-	swapInfo.Token = path[0]
-	swapInfo.Path = path[1:]
+	erc20SwapInfo.Token = path[0]
+	erc20SwapInfo.Path = path[1:]
 
-	tokenCfg := b.GetTokenConfig(swapInfo.Token)
+	tokenCfg := b.GetTokenConfig(erc20SwapInfo.Token)
 	if tokenCfg == nil {
 		return tokens.ErrMissTokenConfig
 	}
-	swapInfo.TokenID = tokenCfg.TokenID
+	erc20SwapInfo.TokenID = tokenCfg.TokenID
 
 	return checkSwapTradePath(swapInfo)
 }
@@ -248,7 +253,8 @@ func checkSwapTradePath(swapInfo *tokens.SwapTxInfo) error {
 	if dstBridge == nil {
 		return tokens.ErrNoBridgeForChainID
 	}
-	multichainToken := router.GetCachedMultichainToken(swapInfo.TokenID, dstChainID)
+	erc20SwapInfo := swapInfo.ERC20SwapInfo
+	multichainToken := router.GetCachedMultichainToken(erc20SwapInfo.TokenID, dstChainID)
 	if multichainToken == "" {
 		return tokens.ErrMissTokenConfig
 	}
@@ -256,7 +262,7 @@ func checkSwapTradePath(swapInfo *tokens.SwapTxInfo) error {
 	if tokenCfg == nil {
 		return tokens.ErrMissTokenConfig
 	}
-	path := swapInfo.Path
+	path := erc20SwapInfo.Path
 	if len(path) < 2 {
 		return tokens.ErrTxWithWrongPath
 	}
@@ -265,7 +271,7 @@ func checkSwapTradePath(swapInfo *tokens.SwapTxInfo) error {
 		log.Warn("check swap trade path first element failed", "token", path[0])
 		return tokens.ErrTxWithWrongPath
 	}
-	if swapInfo.ForNative {
+	if erc20SwapInfo.ForNative {
 		wNative := dstBridge.GetChainConfig().GetRouterWNative()
 		wNativeAddr := common.HexToAddress(wNative)
 		if wNativeAddr == (common.Address{}) {

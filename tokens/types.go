@@ -56,8 +56,16 @@ type AnyCallSwapInfo struct {
 
 // SwapInfo struct
 type SwapInfo struct {
-	*ERC20SwapInfo   `json:"erc20SwapInfo,omitempty"`
-	*AnyCallSwapInfo `json:"anycallSwapInfo,omitempty"`
+	ERC20SwapInfo   *ERC20SwapInfo   `json:"erc20SwapInfo,omitempty"`
+	AnyCallSwapInfo *AnyCallSwapInfo `json:"anycallSwapInfo,omitempty"`
+}
+
+// GetTokenID get tokenID
+func (s *SwapInfo) GetTokenID() string {
+	if s.ERC20SwapInfo != nil {
+		return s.ERC20SwapInfo.TokenID
+	}
+	return ""
 }
 
 // SwapTxInfo struct

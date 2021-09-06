@@ -79,7 +79,10 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 	switch {
 	case err == nil:
 		if verifyArgs.SwapType == tokens.ERC20SwapType &&
-			swapInfo.Value.Cmp(tokens.GetBigValueThreshold(swapInfo.TokenID, swap.ToChainID, bridge.GetTokenConfig(swapInfo.Token).Decimals)) > 0 {
+			swapInfo.Value.Cmp(tokens.GetBigValueThreshold(
+				swapInfo.ERC20SwapInfo.TokenID,
+				swap.ToChainID,
+				bridge.GetTokenConfig(swapInfo.ERC20SwapInfo.Token).Decimals)) > 0 {
 			dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxWithBigValue, now(), "")
 		} else {
 			dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxNotSwapped, now(), "")
