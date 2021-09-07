@@ -26,6 +26,10 @@ func StartPassBigValueJob() {
 		logWorker("passbigval", "stop pass big value job as disabled")
 		return
 	}
+	if !tokens.IsERC20Router() {
+		logWorker("passbigval", "stop pass big value job as non erc20 swap")
+		return
+	}
 
 	mongodb.MgoWaitGroup.Add(1)
 	go doPassBigValueJob()
