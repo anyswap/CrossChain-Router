@@ -69,15 +69,16 @@ func RegisterRouterSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, e
 		}
 		result[logIndex] = "success"
 		newStatus := mongodb.GetRouterSwapStatusByVerifyError(verifyErr)
+		var memo string
+		if verifyErr != nil {
+			memo = verifyErr.Error()
+		}
 		if oldSwap == nil {
-			var memo string
-			if verifyErr != nil {
-				memo = verifyErr.Error()
-			}
 			err = addMgoSwap(swapInfo, newStatus, memo)
 		} else if newStatus != oldSwap.Status {
-			log.Info("update swap status", "chainid", fromChainID, "txid", txid, "logIndex", logIndexStr, "oldStatus", oldSwap.Status, "newStatus", newStatus)
-			err = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, newStatus, time.Now().Unix(), "")
+			mgoSwapInfo := mongodb.ConvertToSwapInfo(&swapInfo.SwapInfo)
+			log.Info("[register] update swap info and status", "chainid", fromChainID, "txid", txid, "logIndex", logIndexStr, "oldStatus", oldSwap.Status, "newStatus", newStatus, "swapinfo", mgoSwapInfo)
+			err = mongodb.UpdateRouterSwapInfoAndStatus(fromChainID, txid, logIndex, &mgoSwapInfo, newStatus, time.Now().Unix(), memo)
 		}
 		if err != nil {
 			log.Info("register swap db error", "chainid", fromChainID, "txid", txid, "logIndex", logIndexStr, "err", err)

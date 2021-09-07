@@ -46,37 +46,54 @@ func AddRouterSwap(ms *MgoSwap) error {
 
 // UpdateRouterSwapStatus update router swap status
 func UpdateRouterSwapStatus(fromChainID, txid string, logindex int, status SwapStatus, timestamp int64, memo string) error {
+	if status == TxNotStable {
+		return errors.New("forbid update swap status to TxNotStable")
+	}
 	key := getRouterSwapKey(fromChainID, txid, logindex)
 	updates := bson.M{"status": status, "timestamp": timestamp}
 	if memo != "" {
 		updates["memo"] = memo
-	} else if status == TxNotSwapped || status == TxNotStable {
+	} else if status == TxNotSwapped {
 		updates["memo"] = ""
-	}
-	if status == TxNotStable {
-		retryLock.Lock()
-		defer retryLock.Unlock()
-		swap, _ := FindRouterSwap(fromChainID, txid, logindex)
-		if swap.Status.IsRegisteredOk() {
-			return fmt.Errorf("forbid update swap status to TxNotStable from %v", swap.Status.String())
-		}
-		result := &MgoSwapResult{}
-		err := collRouterSwapResult.FindId(key).One(result)
-		if err == nil {
-			return fmt.Errorf("forbid update swap status to TxNotStable as swap result exist")
-		}
 	}
 	err := collRouterSwap.UpdateId(key, bson.M{"$set": updates})
 	if err == nil {
-		printLog := log.Info
-		switch status {
-		case TxVerifyFailed, TxSwapFailed:
-			printLog = log.Warn
-		default:
-		}
-		printLog("mongodb update router swap status success", "chainid", fromChainID, "txid", txid, "logindex", logindex, "status", status)
+		logFunc := log.GetPrintFuncOr(func() bool { return status == TxVerifyFailed }, log.Warn, log.Info)
+		logFunc("mongodb update router swap status success", "chainid", fromChainID, "txid", txid, "logindex", logindex, "status", status)
 	} else {
 		log.Debug("mongodb update router swap status failed", "chainid", fromChainID, "txid", txid, "logindex", logindex, "status", status, "err", err)
+	}
+	return mgoError(err)
+}
+
+// UpdateRouterSwapInfoAndStatus update router swap info and status
+func UpdateRouterSwapInfoAndStatus(fromChainID, txid string, logindex int, swapInfo *SwapInfo, status SwapStatus, timestamp int64, memo string) error {
+	retryLock.Lock()
+	defer retryLock.Unlock()
+
+	key := getRouterSwapKey(fromChainID, txid, logindex)
+
+	swap, err := FindRouterSwap(fromChainID, txid, logindex)
+	if err != nil {
+		return fmt.Errorf("forbid update swap info if swap is not exist")
+	}
+	if swap.Status.IsRegisteredOk() {
+		return fmt.Errorf("forbid update swap info from registered status %v", swap.Status.String())
+	}
+
+	result := &MgoSwapResult{}
+	err = collRouterSwapResult.FindId(key).One(result)
+	if err == nil {
+		return fmt.Errorf("forbid update swap info if swap result exists")
+	}
+
+	updates := bson.M{"swapinfo": *swapInfo, "status": status, "timestamp": timestamp, "memo": memo}
+
+	err = collRouterSwap.UpdateId(key, bson.M{"$set": updates})
+	if err == nil {
+		log.Info("mongodb update router swap info and status success", "chainid", fromChainID, "txid", txid, "logindex", logindex, "status", status, "swapinfo", swapInfo)
+	} else {
+		log.Debug("mongodb update router swap info and status failed", "chainid", fromChainID, "txid", txid, "logindex", logindex, "status", status, "swapinfo", swapInfo, "err", err)
 	}
 	return mgoError(err)
 }
