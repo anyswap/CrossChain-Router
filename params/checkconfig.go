@@ -288,6 +288,7 @@ func (c *MPCNodeConfig) CheckConfig(isServer bool) (err error) {
 // CheckConfig check extra config
 func (c *ExtraConfig) CheckConfig() (err error) {
 	initCallByContractWhitelist()
+	initBigValueWhitelist()
 	initDynamicFeeTxEnabledChains()
 
 	for chainID, baseFeePercent := range c.BaseFeePercent {
@@ -302,6 +303,8 @@ func (c *ExtraConfig) CheckConfig() (err error) {
 	log.Info("check extra config success",
 		"minReserveFee", c.MinReserveFee,
 		"allowCallByContract", c.AllowCallByContract,
+		"callByContractWhitelist", c.CallByContractWhitelist,
+		"bigValueWhitelist", c.BigValueWhitelist,
 		"dynamicFeeTxEnabledChains", c.DynamicFeeTxEnabledChains,
 		"baseFeePercent", c.BaseFeePercent,
 	)

@@ -25,6 +25,7 @@ var (
 	maxGasPriceMap      = make(map[string]*big.Int) // key is chainID
 
 	callByContractWhitelist   map[string]map[string]struct{} // chainID -> caller
+	bigValueWhitelist         map[string]map[string]struct{} // tokenID -> caller
 	dynamicFeeTxEnabledChains map[string]struct{}
 
 	isDebugMode           *bool
@@ -81,6 +82,7 @@ type ExtraConfig struct {
 
 	AllowCallByContract     bool
 	CallByContractWhitelist map[string][]string // chainID -> whitelist
+	BigValueWhitelist       map[string][]string // tokenID -> whitelist
 
 	DynamicFeeTxEnabledChains []string
 }
@@ -250,7 +252,7 @@ func SetAllowCallByContract(allow bool) {
 
 func initCallByContractWhitelist() {
 	callByContractWhitelist = make(map[string]map[string]struct{})
-	if GetExtraConfig() == nil {
+	if GetExtraConfig() == nil || len(GetExtraConfig().CallByContractWhitelist) == 0 {
 		return
 	}
 	for cid, whitelist := range GetExtraConfig().CallByContractWhitelist {
@@ -266,12 +268,40 @@ func initCallByContractWhitelist() {
 		}
 		callByContractWhitelist[cid] = whitelistMap
 	}
-	log.Info("initCallByContractWhitelist success", "callByContractWhitelist", callByContractWhitelist)
+	log.Info("initCallByContractWhitelist success")
 }
 
 // IsInCallByContractWhitelist is in call by contract whitelist
 func IsInCallByContractWhitelist(chainID, caller string) bool {
 	whitelist, exist := callByContractWhitelist[chainID]
+	if !exist {
+		return false
+	}
+	_, exist = whitelist[strings.ToLower(caller)]
+	return exist
+}
+
+func initBigValueWhitelist() {
+	bigValueWhitelist = make(map[string]map[string]struct{})
+	if GetExtraConfig() == nil || len(GetExtraConfig().BigValueWhitelist) == 0 {
+		return
+	}
+	for tid, whitelist := range GetExtraConfig().BigValueWhitelist {
+		whitelistMap := make(map[string]struct{}, len(whitelist))
+		for _, address := range whitelist {
+			if !common.IsHexAddress(address) {
+				log.Fatal("initBigValueWhitelist wrong address", "tokenID", tid, "address", address)
+			}
+			whitelistMap[strings.ToLower(address)] = struct{}{}
+		}
+		bigValueWhitelist[tid] = whitelistMap
+	}
+	log.Info("initBigValueWhitelist success")
+}
+
+// IsInBigValueWhitelist is in call by contract whitelist
+func IsInBigValueWhitelist(tokenID, caller string) bool {
+	whitelist, exist := bigValueWhitelist[tokenID]
 	if !exist {
 		return false
 	}
@@ -346,7 +376,7 @@ func IsSwapInBlacklist(fromChainID, toChainID, tokenID string) bool {
 
 func initDynamicFeeTxEnabledChains() {
 	dynamicFeeTxEnabledChains = make(map[string]struct{})
-	if GetExtraConfig() == nil {
+	if GetExtraConfig() == nil || len(GetExtraConfig().DynamicFeeTxEnabledChains) == 0 {
 		return
 	}
 	for _, cid := range GetExtraConfig().DynamicFeeTxEnabledChains {
@@ -355,7 +385,7 @@ func initDynamicFeeTxEnabledChains() {
 		}
 		dynamicFeeTxEnabledChains[cid] = struct{}{}
 	}
-	log.Info("initDynamicFeeTxEnabledChains success", "dynamicFeeTxEnabledChains", dynamicFeeTxEnabledChains)
+	log.Info("initDynamicFeeTxEnabledChains success")
 }
 
 // IsDynamicFeeTxEnabled is dynamic fee tx enabled (EIP-1559)

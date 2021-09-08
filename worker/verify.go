@@ -78,17 +78,19 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 	swapInfo, err := bridge.VerifyTransaction(txid, verifyArgs)
 	switch {
 	case err == nil:
-		if verifyArgs.SwapType == tokens.ERC20SwapType &&
-			swapInfo.Value.Cmp(tokens.GetBigValueThreshold(
-				swapInfo.ERC20SwapInfo.TokenID,
-				swap.ToChainID,
-				bridge.GetTokenConfig(swapInfo.ERC20SwapInfo.Token).Decimals)) > 0 {
-			dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxWithBigValue, now(), "")
-		} else {
-			dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxNotSwapped, now(), "")
-			if dbErr == nil {
-				dbErr = AddInitialSwapResult(swapInfo, mongodb.MatchTxEmpty)
+		swapStatus := mongodb.TxNotSwapped
+		if verifyArgs.SwapType == tokens.ERC20SwapType {
+			tokenID := swapInfo.GetTokenID()
+			fromDecimals := bridge.GetTokenConfig(swapInfo.ERC20SwapInfo.Token).Decimals
+			bigValueThreshold := tokens.GetBigValueThreshold(tokenID, swapInfo.ToChainID.String(), fromDecimals)
+			if swapInfo.Value.Cmp(bigValueThreshold) > 0 &&
+				!params.IsInBigValueWhitelist(tokenID, swapInfo.TxTo) {
+				swapStatus = mongodb.TxWithBigValue
 			}
+		}
+		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, swapStatus, now(), "")
+		if swapStatus == mongodb.TxNotSwapped && dbErr == nil {
+			dbErr = AddInitialSwapResult(swapInfo, mongodb.MatchTxEmpty)
 		}
 	case errors.Is(err, tokens.ErrTxNotStable),
 		errors.Is(err, tokens.ErrTxNotFound),

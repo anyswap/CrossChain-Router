@@ -110,13 +110,16 @@ func GetBigValueThreshold(tokenID, toChainID string, fromDecimals uint8) *big.In
 }
 
 // CheckTokenSwapValue check swap value is in right range
-func CheckTokenSwapValue(tokenID, toChainID string, value *big.Int, fromDecimals, toDecimals uint8) bool {
+func CheckTokenSwapValue(swapInfo *SwapTxInfo, fromDecimals, toDecimals uint8) bool {
 	if !IsERC20Router() {
 		return true
 	}
+	value := swapInfo.Value
 	if value == nil || value.Sign() <= 0 {
 		return false
 	}
+	tokenID := swapInfo.GetTokenID()
+	toChainID := swapInfo.ToChainID.String()
 	swapCfg := GetSwapConfig(tokenID, toChainID)
 	if swapCfg == nil {
 		return false
@@ -126,7 +129,8 @@ func CheckTokenSwapValue(tokenID, toChainID string, value *big.Int, fromDecimals
 		return false
 	}
 	maxSwapValue := ConvertTokenValue(swapCfg.MaximumSwap, 18, fromDecimals)
-	if value.Cmp(maxSwapValue) > 0 {
+	if value.Cmp(maxSwapValue) > 0 &&
+		!params.IsInBigValueWhitelist(tokenID, swapInfo.TxTo) {
 		return false
 	}
 	return CalcSwapValue(tokenID, toChainID, value, fromDecimals, toDecimals).Sign() > 0
