@@ -85,15 +85,16 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs, extra *tokens.EthExtraArgs) (
 		"identifier", args.Identifier, "swapID", args.SwapID,
 		"fromChainID", args.FromChainID, "toChainID", args.ToChainID,
 		"from", args.From, "to", to.String(), "bind", args.Bind, "nonce", nonce,
-		"gasLimit", gasLimit, "gasPrice", gasPrice, "replaceNum", args.ReplaceNum,
+		"gasLimit", gasLimit, "replaceNum", args.ReplaceNum,
 	}
 	if gasTipCap != nil || gasFeeCap != nil {
 		ctx = append(ctx, "gasTipCap", gasTipCap, "gasFeeCap", gasFeeCap)
+	} else {
+		ctx = append(ctx, "gasPrice", gasPrice)
 	}
 	switch {
 	case args.ERC20SwapInfo != nil:
 		ctx = append(ctx,
-			"value", value,
 			"originValue", args.OriginValue,
 			"swapValue", args.SwapValue,
 			"tokenID", args.ERC20SwapInfo.TokenID)
