@@ -39,7 +39,7 @@ const (
 )
 
 var consArgsSlice = []*consArgs{
-	&consArgs{ // 0
+	{ // 0
 		args: []string{
 			"0x1111111111111111111111111111111111111111", // from
 			tRouterAddress, // to
@@ -55,7 +55,7 @@ var consArgsSlice = []*consArgs{
 		},
 		wantErr: nil,
 	},
-	&consArgs{ // 1
+	{ // 1
 		args: []string{
 			"0x1111111111111111111111111111111111111111", // from
 			"0x2222222222222222222222222222222222222222", // to
@@ -71,7 +71,7 @@ var consArgsSlice = []*consArgs{
 		},
 		wantErr: nil,
 	},
-	&consArgs{ // 2
+	{ // 2
 		args: []string{
 			"0x1111111111111111111111111111111111111111", // from
 			"0x2222222222222222222222222222222222222222", // to
@@ -87,7 +87,7 @@ var consArgsSlice = []*consArgs{
 		},
 		wantErr: tokens.ErrTxWithWrongContract,
 	},
-	&consArgs{ // 3
+	{ // 3
 		args: []string{
 			"0x1111111111111111111111111111111111111111", // from
 			tWrongContract, // to
@@ -103,7 +103,7 @@ var consArgsSlice = []*consArgs{
 		},
 		wantErr: tokens.ErrTxWithWrongContract,
 	},
-	&consArgs{ // 4
+	{ // 4
 		args: []string{
 			"0x1111111111111111111111111111111111111111", // from
 			tRouterAddress, // to
@@ -119,7 +119,7 @@ var consArgsSlice = []*consArgs{
 		},
 		wantErr: tokens.ErrTxWithWrongContract,
 	},
-	&consArgs{ // 5
+	{ // 5
 		args: []string{
 			"0x1111111111111111111111111111111111111111", // from
 			tRouterAddress, // to
@@ -135,7 +135,7 @@ var consArgsSlice = []*consArgs{
 		},
 		wantErr: tokens.ErrMissTokenConfig,
 	},
-	&consArgs{ // 6
+	{ // 6
 		args: []string{
 			"0x1111111111111111111111111111111111111111", // from
 			tRouterAddress, // to
@@ -151,7 +151,7 @@ var consArgsSlice = []*consArgs{
 		},
 		wantErr: tokens.ErrTxWithRemovedLog,
 	},
-	&consArgs{ // 7
+	{ // 7
 		args: []string{
 			"0x1111111111111111111111111111111111111111", // from
 			tRouterAddress, // to
@@ -166,7 +166,7 @@ var consArgsSlice = []*consArgs{
 		},
 		wantErr: tokens.ErrSwapoutLogNotFound,
 	},
-	&consArgs{ // 8
+	{ // 8
 		args: []string{
 			"0x1111111111111111111111111111111111111111", // from
 			tRouterAddress, // to
@@ -181,7 +181,7 @@ var consArgsSlice = []*consArgs{
 		},
 		wantErr: tokens.ErrTxWithWrongTopics,
 	},
-	&consArgs{ // 9
+	{ // 9
 		args: []string{
 			"0x1111111111111111111111111111111111111111", // from
 			tRouterAddress, // to
