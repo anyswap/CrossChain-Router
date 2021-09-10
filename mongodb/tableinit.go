@@ -1,34 +1,49 @@
 package mongodb
 
 import (
-	"gopkg.in/mgo.v2"
+	"github.com/anyswap/CrossChain-Router/v3/log"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+)
+
+const (
+	tbRouterSwaps       string = "RouterSwaps"
+	tbRouterSwapResults string = "RouterSwapResults"
+	tbUsedRValues       string = "UsedRValues"
 )
 
 var (
-	collRouterSwap       *mgo.Collection
-	collRouterSwapResult *mgo.Collection
-	collUsedRValue       *mgo.Collection
+	collRouterSwap       *mongo.Collection
+	collRouterSwapResult *mongo.Collection
+	collUsedRValue       *mongo.Collection
 )
 
-// do this when reconnect to the database
-func deinintCollections() {
-	collRouterSwap = database.C(tbRouterSwaps)
-	collRouterSwapResult = database.C(tbRouterSwapResults)
-	collUsedRValue = database.C(tbUsedRValues)
-}
-
 func initCollections() {
-	initCollection(tbRouterSwaps, &collRouterSwap, "inittime", "status", "fromChainID")
-	initCollection(tbRouterSwapResults, &collRouterSwapResult, "inittime", "status", "fromChainID")
-	initCollection(tbUsedRValues, &collUsedRValue)
-	_ = collRouterSwap.EnsureIndexKey("txid")                      // speed find swap
-	_ = collRouterSwapResult.EnsureIndexKey("txid")                // speed find swap result
-	_ = collRouterSwapResult.EnsureIndexKey("from", "fromChainID") // speed find history
+	database := client.Database(databaseName)
+
+	collRouterSwap = database.Collection(tbRouterSwaps)
+	collRouterSwapResult = database.Collection(tbRouterSwapResults)
+	collUsedRValue = database.Collection(tbUsedRValues)
+
+	createOneIndex(collRouterSwap, "inittime", "status", "fromChainID")
+	createOneIndex(collRouterSwap, "txid")
+
+	createOneIndex(collRouterSwapResult, "inittime", "status", "fromChainID")
+	createOneIndex(collRouterSwapResult, "txid")
+	createOneIndex(collRouterSwapResult, "from", "fromChainID")
+
+	log.Info("[mongodb] create indexes finished")
 }
 
-func initCollection(table string, collection **mgo.Collection, indexKey ...string) {
-	*collection = database.C(table)
-	if len(indexKey) != 0 && indexKey[0] != "" {
-		_ = (*collection).EnsureIndexKey(indexKey...)
+func createOneIndex(coll *mongo.Collection, indexes ...string) {
+	keys := make([]bson.E, len(indexes))
+	for i, index := range indexes {
+		keys[i] = bson.E{Key: index, Value: 1}
+	}
+	model := mongo.IndexModel{Keys: keys}
+	_, err := coll.Indexes().CreateOne(clientCtx, model)
+	if err != nil {
+		log.Error("[mongodb] create indexes failed", "collection", coll.Name(), "indexes", indexes, "err", err)
 	}
 }

@@ -1,11 +1,5 @@
 package mongodb
 
-const (
-	tbRouterSwaps       string = "RouterSwaps"
-	tbRouterSwapResults string = "RouterSwapResults"
-	tbUsedRValues       string = "UsedRValues"
-)
-
 // MgoSwap registered swap
 type MgoSwap struct {
 	Key         string `bson:"_id"` // fromChainID + txid + logindex

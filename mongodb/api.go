@@ -11,13 +11,13 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
-	maxCountOfResults = 5000
-
 	allChainIDs  = "all"
 	allAddresses = "all"
 )
@@ -25,6 +25,8 @@ const (
 var (
 	retryLock        sync.Mutex
 	updateResultLock sync.Mutex
+
+	maxCountOfResults = int64(1000)
 )
 
 func getRouterSwapKey(fromChainID, txid string, logindex int) string {
@@ -35,7 +37,7 @@ func getRouterSwapKey(fromChainID, txid string, logindex int) string {
 func AddRouterSwap(ms *MgoSwap) error {
 	ms.Key = getRouterSwapKey(ms.FromChainID, ms.TxID, ms.LogIndex)
 	ms.InitTime = common.NowMilli()
-	err := collRouterSwap.Insert(ms)
+	_, err := collRouterSwap.InsertOne(clientCtx, ms)
 	if err == nil {
 		log.Info("mongodb add router swap success", "chainid", ms.FromChainID, "txid", ms.TxID, "logindex", ms.LogIndex)
 	} else {
@@ -56,7 +58,7 @@ func UpdateRouterSwapStatus(fromChainID, txid string, logindex int, status SwapS
 	} else if status == TxNotSwapped {
 		updates["memo"] = ""
 	}
-	err := collRouterSwap.UpdateId(key, bson.M{"$set": updates})
+	_, err := collRouterSwap.UpdateByID(clientCtx, key, bson.M{"$set": updates})
 	if err == nil {
 		logFunc := log.GetPrintFuncOr(func() bool { return status == TxVerifyFailed }, log.Warn, log.Info)
 		logFunc("mongodb update router swap status success", "chainid", fromChainID, "txid", txid, "logindex", logindex, "status", status)
@@ -82,14 +84,14 @@ func UpdateRouterSwapInfoAndStatus(fromChainID, txid string, logindex int, swapI
 	}
 
 	result := &MgoSwapResult{}
-	err = collRouterSwapResult.FindId(key).One(result)
+	err = collRouterSwapResult.FindOne(clientCtx, bson.M{"_id": key}).Decode(result)
 	if err == nil {
 		return fmt.Errorf("forbid update swap info if swap result exists")
 	}
 
 	updates := bson.M{"swapinfo": *swapInfo, "status": status, "timestamp": timestamp, "memo": memo}
 
-	err = collRouterSwap.UpdateId(key, bson.M{"$set": updates})
+	_, err = collRouterSwap.UpdateByID(clientCtx, key, bson.M{"$set": updates})
 	if err == nil {
 		log.Info("mongodb update router swap info and status success", "chainid", fromChainID, "txid", txid, "logindex", logindex, "status", status, "swapinfo", swapInfo)
 	} else {
@@ -105,7 +107,7 @@ func FindRouterSwap(fromChainID, txid string, logindex int) (*MgoSwap, error) {
 	}
 	key := getRouterSwapKey(fromChainID, txid, logindex)
 	result := &MgoSwap{}
-	err := collRouterSwap.FindId(key).One(result)
+	err := collRouterSwap.FindOne(clientCtx, bson.M{"_id": key}).Decode(result)
 	if err != nil {
 		return nil, mgoError(err)
 	}
@@ -115,7 +117,7 @@ func FindRouterSwap(fromChainID, txid string, logindex int) (*MgoSwap, error) {
 func findFirstRouterSwap(fromChainID, txid string) (*MgoSwap, error) {
 	result := &MgoSwap{}
 	query := getChainAndTxIDQuery(fromChainID, txid)
-	err := collRouterSwap.Find(query).One(result)
+	err := collRouterSwap.FindOne(clientCtx, query).Decode(result)
 	if err != nil {
 		return nil, mgoError(err)
 	}
@@ -146,9 +148,16 @@ func getStatusQueryWithChainID(fromChainID string, status SwapStatus, septime in
 // FindRouterSwapsWithStatus find router swap with status
 func FindRouterSwapsWithStatus(status SwapStatus, septime int64) ([]*MgoSwap, error) {
 	query := getStatusQuery(status, septime)
-	q := collRouterSwap.Find(query).Sort("inittime").Limit(maxCountOfResults)
+	opts := &options.FindOptions{
+		Sort:  bson.D{{Key: "inittime", Value: 1}},
+		Limit: &maxCountOfResults,
+	}
+	cur, err := collRouterSwap.Find(clientCtx, query, opts)
+	if err != nil {
+		return nil, mgoError(err)
+	}
 	result := make([]*MgoSwap, 0, 20)
-	err := q.All(&result)
+	err = cur.All(clientCtx, &result)
 	if err != nil {
 		return nil, mgoError(err)
 	}
@@ -158,9 +167,16 @@ func FindRouterSwapsWithStatus(status SwapStatus, septime int64) ([]*MgoSwap, er
 // FindRouterSwapsWithChainIDAndStatus find router swap with chainid and status in the past septime
 func FindRouterSwapsWithChainIDAndStatus(fromChainID string, status SwapStatus, septime int64) ([]*MgoSwap, error) {
 	query := getStatusQueryWithChainID(fromChainID, status, septime)
-	q := collRouterSwap.Find(query).Sort("inittime").Limit(maxCountOfResults)
+	opts := &options.FindOptions{
+		Sort:  bson.D{{Key: "inittime", Value: 1}},
+		Limit: &maxCountOfResults,
+	}
+	cur, err := collRouterSwap.Find(clientCtx, query, opts)
+	if err != nil {
+		return nil, mgoError(err)
+	}
 	result := make([]*MgoSwap, 0, 20)
-	err := q.All(&result)
+	err = cur.All(clientCtx, &result)
 	if err != nil {
 		return nil, mgoError(err)
 	}
@@ -171,7 +187,7 @@ func FindRouterSwapsWithChainIDAndStatus(fromChainID string, status SwapStatus, 
 func AddRouterSwapResult(mr *MgoSwapResult) error {
 	mr.Key = getRouterSwapKey(mr.FromChainID, mr.TxID, mr.LogIndex)
 	mr.InitTime = common.NowMilli()
-	err := collRouterSwapResult.Insert(mr)
+	_, err := collRouterSwapResult.InsertOne(clientCtx, mr)
 	if err == nil {
 		log.Info("mongodb add router swap result success", "chainid", mr.FromChainID, "txid", mr.TxID, "logindex", mr.LogIndex)
 	} else {
@@ -195,7 +211,7 @@ func UpdateRouterSwapResultStatus(fromChainID, txid string, logindex int, status
 		updates["swaptime"] = 0
 		updates["swapnonce"] = 0
 	}
-	err := collRouterSwapResult.UpdateId(key, bson.M{"$set": updates})
+	_, err := collRouterSwapResult.UpdateByID(clientCtx, key, bson.M{"$set": updates})
 	if err == nil {
 		log.Info("mongodb update swap result status success", "chainid", fromChainID, "txid", txid, "logindex", logindex, "status", status)
 	} else {
@@ -211,7 +227,7 @@ func FindRouterSwapResult(fromChainID, txid string, logindex int) (*MgoSwapResul
 	}
 	key := getRouterSwapKey(fromChainID, txid, logindex)
 	result := &MgoSwapResult{}
-	err := collRouterSwapResult.FindId(key).One(result)
+	err := collRouterSwapResult.FindOne(clientCtx, bson.M{"_id": key}).Decode(result)
 	if err != nil {
 		return nil, mgoError(err)
 	}
@@ -221,7 +237,7 @@ func FindRouterSwapResult(fromChainID, txid string, logindex int) (*MgoSwapResul
 func findFirstRouterSwapResult(fromChainID, txid string) (*MgoSwapResult, error) {
 	result := &MgoSwapResult{}
 	query := getChainAndTxIDQuery(fromChainID, txid)
-	err := collRouterSwapResult.Find(query).One(result)
+	err := collRouterSwapResult.FindOne(clientCtx, query).Decode(result)
 	if err != nil {
 		return nil, mgoError(err)
 	}
@@ -231,9 +247,16 @@ func findFirstRouterSwapResult(fromChainID, txid string) (*MgoSwapResult, error)
 // FindRouterSwapResultsWithStatus find router swap result with status
 func FindRouterSwapResultsWithStatus(status SwapStatus, septime int64) ([]*MgoSwapResult, error) {
 	query := getStatusQuery(status, septime)
-	q := collRouterSwapResult.Find(query).Sort("inittime").Limit(maxCountOfResults)
+	opts := &options.FindOptions{
+		Sort:  bson.D{{Key: "inittime", Value: 1}},
+		Limit: &maxCountOfResults,
+	}
+	cur, err := collRouterSwapResult.Find(clientCtx, query, opts)
+	if err != nil {
+		return nil, mgoError(err)
+	}
 	result := make([]*MgoSwapResult, 0, 20)
-	err := q.All(&result)
+	err = cur.All(clientCtx, &result)
 	if err != nil {
 		return nil, mgoError(err)
 	}
@@ -243,9 +266,16 @@ func FindRouterSwapResultsWithStatus(status SwapStatus, septime int64) ([]*MgoSw
 // FindRouterSwapResultsWithChainIDAndStatus find router swap result with chainid and status in the past septime
 func FindRouterSwapResultsWithChainIDAndStatus(fromChainID string, status SwapStatus, septime int64) ([]*MgoSwapResult, error) {
 	query := getStatusQueryWithChainID(fromChainID, status, septime)
-	q := collRouterSwapResult.Find(query).Sort("inittime").Limit(maxCountOfResults)
+	opts := &options.FindOptions{
+		Sort:  bson.D{{Key: "inittime", Value: 1}},
+		Limit: &maxCountOfResults,
+	}
+	cur, err := collRouterSwapResult.Find(clientCtx, query, opts)
+	if err != nil {
+		return nil, mgoError(err)
+	}
 	result := make([]*MgoSwapResult, 0, 20)
-	err := q.All(&result)
+	err = cur.All(clientCtx, &result)
 	if err != nil {
 		return nil, mgoError(err)
 	}
@@ -257,8 +287,11 @@ func FindNextSwapNonce(chainID, mpc string) (uint64, error) {
 	qchainid := bson.M{"toChainID": chainID}
 	qmpc := bson.M{"mpc": strings.ToLower(mpc)}
 	queries := []bson.M{qchainid, qmpc}
+	opts := &options.FindOneOptions{
+		Sort: bson.D{{Key: "inittime", Value: -1}},
+	}
 	result := &MgoSwapResult{}
-	err := collRouterSwapResult.Find(bson.M{"$and": queries}).Sort("-swapnonce").One(result)
+	err := collRouterSwapResult.FindOne(clientCtx, bson.M{"$and": queries}, opts).Decode(result)
 	if err != nil {
 		return 0, mgoError(err)
 	}
@@ -268,10 +301,17 @@ func FindNextSwapNonce(chainID, mpc string) (uint64, error) {
 // FindRouterSwapResultsToReplace find router swap result with status
 func FindRouterSwapResultsToReplace(septime int64) ([]*MgoSwapResult, error) {
 	query := getStatusQuery(MatchTxNotStable, septime)
-	limit := 3
-	q := collRouterSwapResult.Find(query).Sort("inittime").Limit(limit)
+	limit := int64(3)
+	opts := &options.FindOptions{
+		Sort:  bson.D{{Key: "inittime", Value: 1}},
+		Limit: &limit,
+	}
+	cur, err := collRouterSwapResult.Find(clientCtx, query, opts)
+	if err != nil {
+		return nil, mgoError(err)
+	}
 	result := make([]*MgoSwapResult, 0, limit)
-	err := q.All(&result)
+	err = cur.All(clientCtx, &result)
 	if err != nil {
 		return nil, mgoError(err)
 	}
@@ -318,22 +358,30 @@ func FindRouterSwapResults(fromChainID, address string, offset, limit int, statu
 		}
 	}
 
-	var q *mgo.Query
+	opts := &options.FindOptions{}
+	if limit >= 0 {
+		opts = opts.SetSort(bson.D{{Key: "inittime", Value: 1}}).
+			SetSkip(int64(offset)).SetLimit(int64(limit))
+	} else {
+		opts = opts.SetSort(bson.D{{Key: "inittime", Value: -1}}).
+			SetSkip(int64(offset)).SetLimit(int64(-limit))
+	}
+
+	var cur *mongo.Cursor
+	var err error
 	switch len(queries) {
 	case 0:
-		q = collRouterSwapResult.Find(nil)
+		cur, err = collRouterSwapResult.Find(clientCtx, bson.M{}, opts)
 	case 1:
-		q = collRouterSwapResult.Find(queries[0])
+		cur, err = collRouterSwapResult.Find(clientCtx, queries[0], opts)
 	default:
-		q = collRouterSwapResult.Find(bson.M{"$and": queries})
+		cur, err = collRouterSwapResult.Find(clientCtx, bson.M{"$and": queries}, opts)
 	}
-	if limit >= 0 {
-		q = q.Skip(offset).Limit(limit)
-	} else {
-		q = q.Sort("-inittime").Skip(offset).Limit(-limit)
+	if err != nil {
+		return nil, mgoError(err)
 	}
 	result := make([]*MgoSwapResult, 0, 20)
-	err := q.All(&result)
+	err = cur.All(clientCtx, &result)
 	if err != nil {
 		return nil, mgoError(err)
 	}
@@ -391,7 +439,7 @@ func UpdateRouterSwapResult(fromChainID, txid string, logindex int, items *SwapR
 			updates["swapnonce"] = items.SwapNonce
 		}
 	}
-	err := collRouterSwapResult.UpdateId(key, bson.M{"$set": updates})
+	_, err := collRouterSwapResult.UpdateByID(clientCtx, key, bson.M{"$set": updates})
 	if err == nil {
 		log.Info("mongodb update router swap result success", "chainid", fromChainID, "txid", txid, "logindex", logindex, "updates", updates)
 	} else {
@@ -407,22 +455,22 @@ func AddUsedRValue(pubkey, r string) error {
 		Key:       key,
 		Timestamp: common.NowMilli(),
 	}
-	err := collUsedRValue.Insert(mr)
+	_, err := collUsedRValue.InsertOne(clientCtx, mr)
 	switch {
 	case err == nil:
 		log.Info("mongodb add used r success", "pubkey", pubkey, "r", r)
 		return nil
-	case mgo.IsDup(err):
+	case mongo.IsDuplicateKeyError(err):
 		log.Warn("mongodb add used r failed", "pubkey", pubkey, "r", r, "err", err)
 		return ErrItemIsDup
 	default:
-		old := &MgoUsedRValue{}
-		if collUsedRValue.FindId(key).One(old) == nil {
+		result := &MgoUsedRValue{}
+		if collUsedRValue.FindOne(clientCtx, bson.M{"_id": key}).Decode(result) == nil {
 			log.Warn("mongodb add used r failed", "pubkey", pubkey, "r", r, "err", ErrItemIsDup)
 			return ErrItemIsDup
 		}
 
-		err = collUsedRValue.Insert(mr) // retry once
+		_, err = collUsedRValue.InsertOne(clientCtx, mr) // retry once
 		if err != nil {
 			log.Warn("mongodb add used r failed in retry", "pubkey", pubkey, "r", r, "err", err)
 		}

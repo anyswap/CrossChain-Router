@@ -59,7 +59,7 @@ MaxGasFeeCap         = "10000000000"
 
 # modgodb database connection config
 [Server.MongoDB]
-DBURL = "localhost:27017"
+DBURLs = ["localhost:27017"]
 DBName = "databasename"
 UserName = "username"
 Password = "password"

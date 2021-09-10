@@ -105,7 +105,7 @@ func (b *Bridge) InitChainConfig(chainID *big.Int) {
 		"routerFactory", routerFactory, "routerWNative", routerWNative)
 	log.Infof(">>> [%5v] init chain config success. router contract is %v, mpc address is %v", chainID, chainCfg.RouterContract, routerMPC)
 
-	if mongodb.HasSession() {
+	if mongodb.HasClient() {
 		nextSwapNonce, err := mongodb.FindNextSwapNonce(chainID.String(), strings.ToLower(routerMPC))
 		if err == nil {
 			log.Info("init next swap nonce from db", "chainID", chainID, "mpc", routerMPC, "nonce", nextSwapNonce)
