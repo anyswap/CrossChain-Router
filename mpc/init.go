@@ -59,7 +59,7 @@ func Init(mpcConfig *params.MPCConfig, isServer bool) {
 		mpcRPCTimeout = int(mpcConfig.RPCTimeout)
 	}
 	if mpcConfig.SignTimeout > 0 {
-		mpcSignTimeout = time.Duration(mpcConfig.SignTimeout) * time.Second
+		mpcSignTimeout = time.Duration(mpcConfig.SignTimeout * uint64(time.Second))
 	}
 
 	setMPCGroup(*mpcConfig.GroupID, mpcConfig.Mode, *mpcConfig.NeededOracles, *mpcConfig.TotalOracles)
