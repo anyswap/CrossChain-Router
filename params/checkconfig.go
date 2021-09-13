@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"regexp"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -11,6 +12,12 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 )
+
+var blankOrCommaSepRegexp = regexp.MustCompile(`[\s,]+`) // blank or comma separated
+
+func splitStringByBlankOrComma(str string) []string {
+	return blankOrCommaSepRegexp.Split(strings.TrimSpace(str), -1)
+}
 
 // CallContractWithGateway call eth_call
 func CallContractWithGateway(gateway, contract string, data hexutil.Bytes, blockNumber string) (result string, err error) {
@@ -71,11 +78,14 @@ func (config *RouterConfig) CheckConfig(isServer bool) (err error) {
 
 // CheckConfig of router server
 func (s *RouterServerConfig) CheckConfig() error {
+	if s.APIServer == nil {
+		return errors.New("server must config 'APIServer'")
+	}
 	if s.MongoDB == nil {
 		return errors.New("server must config 'MongoDB'")
 	}
-	if s.APIServer == nil {
-		return errors.New("server must config 'APIServer'")
+	if err := s.MongoDB.CheckConfig(); err != nil {
+		return err
 	}
 	for _, chainID := range s.ChainIDBlackList {
 		biChainID, ok := new(big.Int).SetString(chainID, 0)
@@ -201,6 +211,23 @@ func (s *RouterServerConfig) CheckExtra() error {
 	}
 	if s.MaxGasPriceFluctPercent > 100 {
 		return errors.New("too large 'MaxGasPriceFluctPercent' value")
+	}
+	return nil
+}
+
+// CheckConfig check mongodb config
+func (c *MongoDBConfig) CheckConfig() error {
+	if c.DBName == "" {
+		return errors.New("mongodb must config 'DBName'")
+	}
+	if c.DBURL == "" && len(c.DBURLs) == 0 {
+		return errors.New("mongodb must config 'DBURL' or 'DBURLs'")
+	}
+	if c.DBURL != "" {
+		if len(c.DBURLs) != 0 {
+			return errors.New("mongodb can not config both 'DBURL' and 'DBURLs'")
+		}
+		c.DBURLs = splitStringByBlankOrComma(c.DBURL)
 	}
 	return nil
 }

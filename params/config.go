@@ -125,7 +125,8 @@ type APIServerConfig struct {
 
 // MongoDBConfig mongodb config
 type MongoDBConfig struct {
-	DBURLs   []string
+	DBURL    string   `toml:",omitempty" json:",omitempty"`
+	DBURLs   []string `toml:",omitempty" json:",omitempty"`
 	DBName   string
 	UserName string `json:"-"`
 	Password string `json:"-"`
