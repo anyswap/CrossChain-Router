@@ -40,6 +40,7 @@ generate ChainConfig json marshal data
 				Usage:  "generate setTokenConfig input data",
 				Action: genSetTokenConfigData,
 				Flags: []cli.Flag{
+					swapTypeFlag,
 					cChainIDFlag,
 					cTokenIDFlag,
 					cDecimalsFlag,
@@ -199,6 +200,11 @@ generate SwapConfig json marshal data
 		Usage: "gateway URL to connect",
 	}
 
+	swapTypeFlag = &cli.StringFlag{
+		Name:  "swaptype",
+		Usage: "swap type (eg. erc20swap, nftswap, etc.)",
+	}
+
 	// --------- chain config -------------------
 
 	cChainIDFlag = &cli.StringFlag{
@@ -329,6 +335,8 @@ func genSetTokenConfigData(ctx *cli.Context) error {
 	if decimalsVal < 0 || decimalsVal > 256 {
 		return fmt.Errorf("wrong decimals '%v'", decimalsVal)
 	}
+	swapType := ctx.String(swapTypeFlag.Name)
+	tokens.InitRouterSwapType(swapType)
 	tokenID := ctx.String(cTokenIDFlag.Name)
 	decimals := uint8(decimalsVal)
 	tokenCfg := &tokens.TokenConfig{
