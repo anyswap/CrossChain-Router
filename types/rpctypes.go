@@ -40,6 +40,9 @@ type RPCBlock struct {
 type RPCTransaction struct {
 	Type         hexutil.Uint64  `json:"type"`
 	Hash         *common.Hash    `json:"hash"`
+	TxIndex      *hexutil.Uint   `json:"transactionIndex"`
+	BlockNumber  *hexutil.Big    `json:"blockNumber"`
+	BlockHash    *common.Hash    `json:"blockHash"`
 	From         *common.Address `json:"from"`
 	AccountNonce string          `json:"nonce"` // unexpect RSK has leading zero (eg. 0x01)
 	Price        *hexutil.Big    `json:"gasPrice"`

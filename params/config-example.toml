@@ -79,6 +79,8 @@ AllowedOrigins = []
 GetAcceptListInterval = 5
 # apecify dynamic fee tx enabled chainids
 DynamicFeeTxEnabledChains = ["3"]
+# enable check tx block hash for security reason
+EnableCheckTxBlockHashChains = ["1285"]
 # allow call into router from contract
 AllowCallByContract = false
 # min reserve fee. key is chainID. defaults to 1e16 wei

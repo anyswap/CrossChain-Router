@@ -24,9 +24,11 @@ var (
 	fixedGasPriceMap    = make(map[string]*big.Int) // key is chainID
 	maxGasPriceMap      = make(map[string]*big.Int) // key is chainID
 
-	callByContractWhitelist   map[string]map[string]struct{} // chainID -> caller
-	bigValueWhitelist         map[string]map[string]struct{} // tokenID -> caller
-	dynamicFeeTxEnabledChains map[string]struct{}
+	callByContractWhitelist map[string]map[string]struct{} // chainID -> caller
+	bigValueWhitelist       map[string]map[string]struct{} // tokenID -> caller
+
+	dynamicFeeTxEnabledChains    map[string]struct{}
+	enableCheckTxBlockHashChains map[string]struct{}
 
 	isDebugMode           *bool
 	isAllowCallByContract *bool
@@ -84,7 +86,8 @@ type ExtraConfig struct {
 	CallByContractWhitelist map[string][]string // chainID -> whitelist
 	BigValueWhitelist       map[string][]string // tokenID -> whitelist
 
-	DynamicFeeTxEnabledChains []string
+	DynamicFeeTxEnabledChains    []string
+	EnableCheckTxBlockHashChains []string
 }
 
 // OnchainConfig struct
@@ -392,6 +395,26 @@ func initDynamicFeeTxEnabledChains() {
 // IsDynamicFeeTxEnabled is dynamic fee tx enabled (EIP-1559)
 func IsDynamicFeeTxEnabled(chainID string) bool {
 	_, exist := dynamicFeeTxEnabledChains[chainID]
+	return exist
+}
+
+func initEnableCheckTxBlockHashChains() {
+	enableCheckTxBlockHashChains = make(map[string]struct{})
+	if GetExtraConfig() == nil || len(GetExtraConfig().EnableCheckTxBlockHashChains) == 0 {
+		return
+	}
+	for _, cid := range GetExtraConfig().EnableCheckTxBlockHashChains {
+		if _, err := common.GetBigIntFromStr(cid); err != nil {
+			log.Fatal("initEnableCheckTxBlockHashChains wrong chainID", "chainID", cid, "err", err)
+		}
+		enableCheckTxBlockHashChains[cid] = struct{}{}
+	}
+	log.Info("initEnableCheckTxBlockHashChains success")
+}
+
+// IsCheckTxBlockHashEnabled check tx block hash
+func IsCheckTxBlockHashEnabled(chainID string) bool {
+	_, exist := enableCheckTxBlockHashChains[chainID]
 	return exist
 }
 

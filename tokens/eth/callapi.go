@@ -16,8 +16,11 @@ import (
 )
 
 var (
-	errEmptyURLs      = errors.New("empty URLs")
-	errTxHashMismatch = errors.New("tx hash mismatch with rpc result")
+	errEmptyURLs           = errors.New("empty URLs")
+	errTxHashMismatch      = errors.New("tx hash mismatch with rpc result")
+	errTxBlockHashMismatch = errors.New("tx block hash mismatch with rpc result")
+	errTxReceiptNotFound   = errors.New("tx receipt not found")
+	errBlockNotFound       = errors.New("block not found")
 )
 
 // GetLatestBlockNumberOf call eth_blockNumber
@@ -105,14 +108,14 @@ func (b *Bridge) GetTransaction(txHash string) (interface{}, error) {
 // GetTransactionByHash call eth_getTransactionByHash
 func (b *Bridge) GetTransactionByHash(txHash string) (tx *types.RPCTransaction, err error) {
 	gateway := b.GatewayConfig
-	tx, err = getTransactionByHash(txHash, gateway.APIAddress)
+	tx, err = b.getTransactionByHash(txHash, gateway.APIAddress)
 	if err != nil && !errors.Is(err, errTxHashMismatch) && len(gateway.APIAddressExt) > 0 {
-		tx, err = getTransactionByHash(txHash, gateway.APIAddressExt)
+		tx, err = b.getTransactionByHash(txHash, gateway.APIAddressExt)
 	}
 	return tx, err
 }
 
-func getTransactionByHash(txHash string, urls []string) (result *types.RPCTransaction, err error) {
+func (b *Bridge) getTransactionByHash(txHash string, urls []string) (result *types.RPCTransaction, err error) {
 	if len(urls) == 0 {
 		return nil, errEmptyURLs
 	}
@@ -147,22 +150,30 @@ func (b *Bridge) GetPendingTransactions() (result []*types.RPCTransaction, err e
 // GetTransactionReceipt call eth_getTransactionReceipt
 func (b *Bridge) GetTransactionReceipt(txHash string) (receipt *types.RPCTxReceipt, url string, err error) {
 	gateway := b.GatewayConfig
-	receipt, url, err = getTransactionReceipt(txHash, gateway.APIAddress)
+	receipt, url, err = b.getTransactionReceipt(txHash, gateway.APIAddress)
 	if err != nil && !errors.Is(err, errTxHashMismatch) && len(gateway.APIAddressExt) > 0 {
-		return getTransactionReceipt(txHash, gateway.APIAddressExt)
+		return b.getTransactionReceipt(txHash, gateway.APIAddressExt)
 	}
 	return receipt, url, err
 }
 
-func getTransactionReceipt(txHash string, urls []string) (result *types.RPCTxReceipt, rpcURL string, err error) {
+func (b *Bridge) getTransactionReceipt(txHash string, urls []string) (result *types.RPCTxReceipt, rpcURL string, err error) {
 	if len(urls) == 0 {
 		return nil, "", errEmptyURLs
 	}
 	for _, url := range urls {
 		err = client.RPCPost(&result, url, "eth_getTransactionReceipt", txHash)
 		if err == nil && result != nil {
+			if result.BlockNumber == nil || result.BlockHash == nil || result.TxIndex == nil {
+				return nil, "", errTxReceiptNotFound
+			}
 			if !common.IsEqualIgnoreCase(result.TxHash.Hex(), txHash) {
 				return nil, "", errTxHashMismatch
+			}
+			if params.IsCheckTxBlockHashEnabled(b.ChainConfig.ChainID) {
+				if err = b.checkTxBlockHash(result.BlockNumber, result.BlockHash); err != nil {
+					return nil, "", err
+				}
 			}
 			return result, url, nil
 		}
@@ -171,6 +182,19 @@ func getTransactionReceipt(txHash string, urls []string) (result *types.RPCTxRec
 		return nil, "", tokens.ErrRPCQueryError
 	}
 	return nil, "", errors.New("tx receipt not found")
+}
+
+func (b *Bridge) checkTxBlockHash(blockNumber *hexutil.Big, blockHash *common.Hash) error {
+	block, err := b.GetBlockByNumber(blockNumber.ToInt())
+	if err != nil {
+		log.Warn("get block by number failed", "number", blockNumber.String(), "err", err)
+		return errBlockNotFound
+	}
+	if *block.Hash != *blockHash {
+		log.Warn("tx block hash mismatch", "number", blockNumber.String(), "have", blockHash.String(), "want", block.Hash.String())
+		return errTxBlockHashMismatch
+	}
+	return nil
 }
 
 // GetContractLogs get contract logs

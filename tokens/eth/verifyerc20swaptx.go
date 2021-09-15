@@ -111,14 +111,15 @@ func (b *Bridge) getAndVerifySwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUns
 
 func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable bool) (receipt *types.RPCTxReceipt, err error) {
 	txStatus, err := b.GetTransactionStatus(swapInfo.Hash)
-	if err != nil {
-		return nil, err
-	}
-	if txStatus.BlockHeight == 0 {
+	if txStatus == nil || txStatus.BlockHeight == 0 || errors.Is(err, errTxReceiptNotFound) {
 		return nil, tokens.ErrTxNotFound
 	}
 	if txStatus.BlockHeight < b.ChainConfig.InitialHeight {
 		return nil, tokens.ErrTxBeforeInitialHeight
+	}
+	if err != nil {
+		log.Error("get tx receipt failed", "hash", swapInfo.Hash, "err", err)
+		return nil, tokens.ErrTxWithWrongReceipt
 	}
 
 	swapInfo.Height = txStatus.BlockHeight  // Height
