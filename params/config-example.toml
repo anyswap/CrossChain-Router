@@ -85,8 +85,8 @@ EnableCheckTxBlockHashChains = ["1285"]
 AllowCallByContract = false
 # min reserve fee. key is chainID. defaults to 1e16 wei
 [Extra.MinReserveFee]
-4     = 10000000000000000
-46688 = 10000000000000000
+4     = 100000000000000000
+46688 = 100000000000000000
 # base fee percent, must be in range [-90, 500]. key is dest chainID
 [Extra.BaseFeePercent]
 4     = 100
