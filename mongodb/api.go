@@ -503,7 +503,7 @@ func RouterAdminReswap(fromChainID, txid string, logIndex int) error {
 	if err != nil {
 		return err
 	}
-	if !swap.Status.CanReswap() {
+	if swap.Status != TxProcessed {
 		return fmt.Errorf("swap status is %v, can not reswap", swap.Status.String())
 	}
 
@@ -511,9 +511,10 @@ func RouterAdminReswap(fromChainID, txid string, logIndex int) error {
 	if err != nil {
 		return err
 	}
-	if !res.Status.CanReswap() {
+	if res.Status != MatchTxFailed {
 		return fmt.Errorf("swap result status is %v, can not reswap", res.Status.String())
 	}
+
 	if res.SwapTx == "" {
 		return errors.New("swap without swaptx")
 	}
@@ -522,17 +523,11 @@ func RouterAdminReswap(fromChainID, txid string, logIndex int) error {
 	if resBridge == nil {
 		return tokens.ErrNoBridgeForChainID
 	}
-	_, err = resBridge.GetTransaction(res.SwapTx)
-	if err == nil {
-		if res.Status != MatchTxFailed {
-			return errors.New("swaptx exist in chain or pool")
-		}
-		txStatus, errt := resBridge.GetTransactionStatus(res.SwapTx)
-		if errt == nil && txStatus != nil && txStatus.BlockHeight > 0 {
-			if !txStatus.IsSwapTxOnChainAndFailed() {
-				return fmt.Errorf("swap succeed with swaptx %v", res.SwapTx)
-			}
-		}
+
+	txStatus, txHash := getSwapResultsTxStatus(resBridge, res)
+	if txStatus != nil && txStatus.BlockHeight > 0 && !txStatus.IsSwapTxOnChainAndFailed() {
+		_ = UpdateRouterSwapResultStatus(fromChainID, txid, logIndex, MatchTxNotStable, time.Now().Unix(), "")
+		return fmt.Errorf("swap succeed with swaptx %v", txHash)
 	}
 
 	nonceSetter, ok := resBridge.(tokens.NonceSetter)
@@ -556,4 +551,17 @@ func RouterAdminReswap(fromChainID, txid string, logIndex int) error {
 	}
 
 	return UpdateRouterSwapStatus(fromChainID, txid, logIndex, TxNotSwapped, time.Now().Unix(), "")
+}
+
+func getSwapResultsTxStatus(bridge tokens.IBridge, res *MgoSwapResult) (status *tokens.TxStatus, txHash string) {
+	var err error
+	if status, err = bridge.GetTransactionStatus(res.SwapTx); err == nil {
+		return status, res.SwapTx
+	}
+	for _, tx := range res.OldSwapTxs {
+		if status, err = bridge.GetTransactionStatus(tx); err == nil {
+			return status, tx
+		}
+	}
+	return nil, ""
 }

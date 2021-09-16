@@ -61,16 +61,6 @@ func (status SwapStatus) IsRegisteredOk() bool {
 	}
 }
 
-// CanReswap can reswap
-func (status SwapStatus) CanReswap() bool {
-	switch status {
-	case TxProcessed, MatchTxFailed:
-		return true
-	default:
-		return false
-	}
-}
-
 // nolint:gocyclo // allow big simple switch
 func (status SwapStatus) String() string {
 	switch status {

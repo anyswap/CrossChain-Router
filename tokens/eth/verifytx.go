@@ -10,13 +10,17 @@ import (
 
 // GetTransactionStatus impl
 func (b *Bridge) GetTransactionStatus(txHash string) (*tokens.TxStatus, error) {
-	var txStatus tokens.TxStatus
 	txr, url, err := b.GetTransactionReceipt(txHash)
 	if err != nil {
-		return &txStatus, err
+		return nil, err
 	}
+
+	var txStatus tokens.TxStatus
+
+	txStatus.Receipt = txr
 	txStatus.BlockHeight = txr.BlockNumber.ToInt().Uint64()
 	txStatus.BlockHash = txr.BlockHash.String()
+
 	if txStatus.BlockHeight != 0 {
 		for i := 0; i < 3; i++ {
 			latest, errt := b.GetLatestBlockNumberOf(url)
@@ -29,7 +33,7 @@ func (b *Bridge) GetTransactionStatus(txHash string) (*tokens.TxStatus, error) {
 			time.Sleep(1 * time.Second)
 		}
 	}
-	txStatus.Receipt = txr
+
 	return &txStatus, nil
 }
 
