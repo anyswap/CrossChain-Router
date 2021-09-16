@@ -1,6 +1,6 @@
 # router swap identifier, must have prefix 'routerswap'
 Identifier = "routerswap#20210326"
-# router swap type
+# router swap type (eg. erc20swap, nftswap)
 SwapType = "erc20swap"
 
 # router sever config (server only)

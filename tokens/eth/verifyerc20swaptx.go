@@ -66,7 +66,7 @@ func (b *Bridge) verifyERC20SwapTx(txHash string, logIndex int, allowUnstable bo
 func (b *Bridge) checkERC20SwapInfo(swapInfo *tokens.SwapTxInfo) error {
 	erc20SwapInfo := swapInfo.ERC20SwapInfo
 	fromTokenCfg := b.GetTokenConfig(erc20SwapInfo.Token)
-	if fromTokenCfg == nil {
+	if fromTokenCfg == nil || erc20SwapInfo.TokenID == "" {
 		return tokens.ErrMissTokenConfig
 	}
 	multichainToken := router.GetCachedMultichainToken(erc20SwapInfo.TokenID, swapInfo.ToChainID.String())

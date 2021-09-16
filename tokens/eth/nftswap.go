@@ -250,6 +250,10 @@ func (b *Bridge) checkNFTSwapInfo(swapInfo *tokens.SwapTxInfo) error {
 		return tokens.ErrWrongBindAddress
 	}
 
+	fromTokenCfg := b.GetTokenConfig(nftSwapInfo.Token)
+	if fromTokenCfg == nil || nftSwapInfo.TokenID == "" {
+		return tokens.ErrMissTokenConfig
+	}
 	multichainToken := router.GetCachedMultichainToken(nftSwapInfo.TokenID, swapInfo.ToChainID.String())
 	if multichainToken == "" {
 		log.Warn("get multichain token failed", "tokenID", nftSwapInfo.TokenID, "chainID", swapInfo.ToChainID)
