@@ -195,7 +195,7 @@ func sendSignedTransaction(bridge tokens.IBridge, signedTx interface{}, args *to
 			}
 			time.Sleep(5 * time.Second)
 		}
-		if txStatus.BlockHeight > 0 {
+		if errt == nil && txStatus.BlockHeight > 0 {
 			matchTx := &MatchTx{
 				SwapTx:     txHash,
 				SwapHeight: txStatus.BlockHeight,
