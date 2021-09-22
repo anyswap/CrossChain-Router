@@ -27,8 +27,9 @@ var (
 	callByContractWhitelist map[string]map[string]struct{} // chainID -> caller
 	bigValueWhitelist       map[string]map[string]struct{} // tokenID -> caller
 
-	dynamicFeeTxEnabledChains    map[string]struct{}
-	enableCheckTxBlockHashChains map[string]struct{}
+	dynamicFeeTxEnabledChains     map[string]struct{}
+	enableCheckTxBlockHashChains  map[string]struct{}
+	enableCheckTxBlockIndexChains map[string]struct{}
 
 	isDebugMode           *bool
 	isAllowCallByContract *bool
@@ -86,8 +87,9 @@ type ExtraConfig struct {
 	CallByContractWhitelist map[string][]string // chainID -> whitelist
 	BigValueWhitelist       map[string][]string // tokenID -> whitelist
 
-	DynamicFeeTxEnabledChains    []string
-	EnableCheckTxBlockHashChains []string
+	DynamicFeeTxEnabledChains     []string
+	EnableCheckTxBlockHashChains  []string
+	EnableCheckTxBlockIndexChains []string
 }
 
 // OnchainConfig struct
@@ -415,6 +417,26 @@ func initEnableCheckTxBlockHashChains() {
 // IsCheckTxBlockHashEnabled check tx block hash
 func IsCheckTxBlockHashEnabled(chainID string) bool {
 	_, exist := enableCheckTxBlockHashChains[chainID]
+	return exist
+}
+
+func initEnableCheckTxBlockIndexChains() {
+	enableCheckTxBlockIndexChains = make(map[string]struct{})
+	if GetExtraConfig() == nil || len(GetExtraConfig().EnableCheckTxBlockIndexChains) == 0 {
+		return
+	}
+	for _, cid := range GetExtraConfig().EnableCheckTxBlockIndexChains {
+		if _, err := common.GetBigIntFromStr(cid); err != nil {
+			log.Fatal("initEnableCheckTxBlockIndexChains wrong chainID", "chainID", cid, "err", err)
+		}
+		enableCheckTxBlockIndexChains[cid] = struct{}{}
+	}
+	log.Info("initEnableCheckTxBlockIndexChains success")
+}
+
+// IsCheckTxBlockIndexEnabled check tx block and index
+func IsCheckTxBlockIndexEnabled(chainID string) bool {
+	_, exist := enableCheckTxBlockIndexChains[chainID]
 	return exist
 }
 

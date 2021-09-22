@@ -81,6 +81,8 @@ GetAcceptListInterval = 5
 DynamicFeeTxEnabledChains = ["3"]
 # enable check tx block hash for security reason
 EnableCheckTxBlockHashChains = ["1285"]
+# enable check tx block index for security reason
+EnableCheckTxBlockIndexChains = ["1", "56"]
 # allow call into router from contract
 AllowCallByContract = false
 # min reserve fee. key is chainID. defaults to 1e16 wei
