@@ -173,7 +173,7 @@ func initSelfEnode() {
 			return
 		}
 		log.Error("can't get enode info", "rpcAddr", defaultMPCNode.mpcRPCAddress, "err", err)
-		time.Sleep(3 * time.Second)
+		time.Sleep(10 * time.Second)
 	}
 }
 
@@ -204,7 +204,7 @@ func verifySignGroupInfo(rpcAddr, groupID string, isSignGroup, includeSelf bool)
 		groupInfo, err := GetGroupByID(groupID, rpcAddr)
 		if err != nil {
 			log.Error("get group info failed", "groupID", groupID, "err", err)
-			time.Sleep(3 * time.Second)
+			time.Sleep(10 * time.Second)
 			continue
 		}
 		log.Info("get mpc group info success", "groupInfo", groupInfo)
@@ -212,9 +212,7 @@ func verifySignGroupInfo(rpcAddr, groupID string, isSignGroup, includeSelf bool)
 			log.Fatal("mpc group member count mismatch", "groupID", mpcGroupID, "have", groupInfo.Count, "want", memberCount)
 		}
 		if uint32(len(groupInfo.Enodes)) != memberCount {
-			log.Error("get group info enodes count mismatch", "groupID", groupID, "have", len(groupInfo.Enodes), "want", memberCount)
-			time.Sleep(3 * time.Second)
-			continue
+			log.Fatal("get group info enodes count mismatch", "groupID", groupID, "have", len(groupInfo.Enodes), "want", memberCount)
 		}
 		exist := isEnodeExistIn(selfEnode, groupInfo.Enodes)
 		if exist != includeSelf {
