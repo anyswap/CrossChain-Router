@@ -15,6 +15,13 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/types"
 )
 
+var (
+	// ensure Bridge impl tokens.CrossChainBridge
+	_ tokens.IBridge = &Bridge{}
+	// ensure Bridge impl tokens.NonceSetter
+	_ tokens.NonceSetter = &Bridge{}
+)
+
 // Bridge eth bridge
 type Bridge struct {
 	*tokens.CrossChainBridgeBase
