@@ -12,6 +12,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/eth/callapi"
 	"github.com/anyswap/CrossChain-Router/v3/types"
 )
 
@@ -41,6 +42,12 @@ func RPCCall(result interface{}, url, method string, params ...interface{}) erro
 
 // GetLatestBlockNumberOf call eth_blockNumber
 func (b *Bridge) GetLatestBlockNumberOf(url string) (latest uint64, err error) {
+	if b.ChainConfig != nil { // after init
+		switch b.ChainConfig.ChainID {
+		case "1285": // kusama ecosystem
+			return callapi.KsmGetLatestBlockNumberOf(url, b.GatewayConfig)
+		}
+	}
 	var result string
 	err = client.RPCPost(&result, url, "eth_blockNumber")
 	if err == nil {
