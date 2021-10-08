@@ -9,6 +9,14 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
+func convertToSwapResults(swaps []*MgoSwap) []*MgoSwapResult {
+	result := make([]*MgoSwapResult, len(swaps))
+	for i, swap := range swaps {
+		result[i] = swap.ToSwapResult()
+	}
+	return result
+}
+
 // ConvertToSwapInfo convert
 func ConvertToSwapInfo(info *tokens.SwapInfo) SwapInfo {
 	swapinfo := SwapInfo{}

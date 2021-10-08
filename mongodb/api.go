@@ -318,9 +318,9 @@ func FindRouterSwapResultsToReplace(septime int64) ([]*MgoSwapResult, error) {
 	return result, nil
 }
 
-func getStatusesFromStr(status string) []SwapStatus {
+func getStatusesFromStr(status string) (result []SwapStatus, isInResultColl bool) {
 	parts := strings.Split(status, ",")
-	result := make([]SwapStatus, 0, len(parts))
+	result = make([]SwapStatus, 0, len(parts))
 	for _, part := range parts {
 		if part == "" {
 			continue
@@ -328,9 +328,12 @@ func getStatusesFromStr(status string) []SwapStatus {
 		num, err := common.GetUint64FromStr(part)
 		if err == nil {
 			result = append(result, SwapStatus(num))
+			if SwapStatus(num).IsResultStatus() {
+				isInResultColl = true
+			}
 		}
 	}
-	return result
+	return result, isInResultColl
 }
 
 // FindRouterSwapResults find router swap results with chainid and address
@@ -348,7 +351,7 @@ func FindRouterSwapResults(fromChainID, address string, offset, limit int, statu
 		queries = append(queries, bson.M{"fromChainID": fromChainID})
 	}
 
-	filterStatuses := getStatusesFromStr(status)
+	filterStatuses, isInResultColl := getStatusesFromStr(status)
 	if len(filterStatuses) > 0 {
 		if len(filterStatuses) == 1 {
 			queries = append(queries, bson.M{"status": filterStatuses[0]})
@@ -367,21 +370,36 @@ func FindRouterSwapResults(fromChainID, address string, offset, limit int, statu
 			SetSkip(int64(offset)).SetLimit(int64(-limit))
 	}
 
+	var coll *mongo.Collection
+	if isInResultColl {
+		coll = collRouterSwapResult
+	} else {
+		coll = collRouterSwap
+	}
+
 	var cur *mongo.Cursor
 	var err error
 	switch len(queries) {
 	case 0:
-		cur, err = collRouterSwapResult.Find(clientCtx, bson.M{}, opts)
+		cur, err = coll.Find(clientCtx, bson.M{}, opts)
 	case 1:
-		cur, err = collRouterSwapResult.Find(clientCtx, queries[0], opts)
+		cur, err = coll.Find(clientCtx, queries[0], opts)
 	default:
-		cur, err = collRouterSwapResult.Find(clientCtx, bson.M{"$and": queries}, opts)
+		cur, err = coll.Find(clientCtx, bson.M{"$and": queries}, opts)
 	}
 	if err != nil {
 		return nil, mgoError(err)
 	}
 	result := make([]*MgoSwapResult, 0, 20)
-	err = cur.All(clientCtx, &result)
+	if isInResultColl {
+		err = cur.All(clientCtx, &result)
+	} else {
+		swaps := make([]*MgoSwap, 0, 20)
+		err = cur.All(clientCtx, &swaps)
+		if err == nil {
+			result = convertToSwapResults(swaps)
+		}
+	}
 	if err != nil {
 		return nil, mgoError(err)
 	}

@@ -51,6 +51,16 @@ const (
 	Reswapping SwapStatus = 256
 )
 
+// IsResultStatus is swap result status
+func (status SwapStatus) IsResultStatus() bool {
+	switch status {
+	case MatchTxEmpty, MatchTxNotStable, MatchTxStable, MatchTxFailed, Reswapping:
+		return true
+	default:
+		return false
+	}
+}
+
 // IsRegisteredOk is successfully registered
 func (status SwapStatus) IsRegisteredOk() bool {
 	switch status {

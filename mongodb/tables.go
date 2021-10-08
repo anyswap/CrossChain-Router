@@ -17,6 +17,25 @@ type MgoSwap struct {
 	Memo        string     `bson:"memo"`
 }
 
+// ToSwapResult converts
+func (swap *MgoSwap) ToSwapResult() *MgoSwapResult {
+	return &MgoSwapResult{
+		Key:         swap.Key,
+		SwapType:    swap.SwapType,
+		TxID:        swap.TxID,
+		TxTo:        swap.TxTo,
+		Bind:        swap.Bind,
+		LogIndex:    swap.LogIndex,
+		FromChainID: swap.FromChainID,
+		ToChainID:   swap.ToChainID,
+		SwapInfo:    swap.SwapInfo,
+		Status:      swap.Status,
+		InitTime:    swap.InitTime,
+		Timestamp:   swap.Timestamp,
+		Memo:        swap.Memo,
+	}
+}
+
 // MgoSwapResult swap result (verified swap)
 type MgoSwapResult struct {
 	Key         string `bson:"_id"` // fromChainID + txid + logindex
@@ -34,7 +53,7 @@ type MgoSwapResult struct {
 	ToChainID   string `bson:"toChainID"`
 	SwapInfo    `bson:"swapinfo"`
 	SwapTx      string     `bson:"swaptx"`
-	OldSwapTxs  []string   `bson:"oldswaptxs"`
+	OldSwapTxs  []string   `bson:"oldswaptxs,omitempty" json:"oldswaptxs,omitempty"`
 	SwapHeight  uint64     `bson:"swapheight"`
 	SwapTime    uint64     `bson:"swaptime"`
 	SwapValue   string     `bson:"swapvalue"`
