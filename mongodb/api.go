@@ -301,9 +301,9 @@ func FindNextSwapNonce(chainID, mpc string) (uint64, error) {
 // FindRouterSwapResultsToReplace find router swap result with status
 func FindRouterSwapResultsToReplace(septime int64) ([]*MgoSwapResult, error) {
 	query := getStatusQuery(MatchTxNotStable, septime)
-	limit := int64(3)
+	limit := int64(20)
 	opts := &options.FindOptions{
-		Sort:  bson.D{{Key: "inittime", Value: 1}},
+		Sort:  bson.D{{Key: "swapnonce", Value: 1}},
 		Limit: &limit,
 	}
 	cur, err := collRouterSwapResult.Find(clientCtx, query, opts)
