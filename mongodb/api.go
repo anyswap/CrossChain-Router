@@ -3,6 +3,7 @@ package mongodb
 import (
 	"errors"
 	"fmt"
+	"math/big"
 	"strings"
 	"sync"
 	"time"
@@ -288,7 +289,7 @@ func FindNextSwapNonce(chainID, mpc string) (uint64, error) {
 	qmpc := bson.M{"mpc": strings.ToLower(mpc)}
 	queries := []bson.M{qchainid, qmpc}
 	opts := &options.FindOneOptions{
-		Sort: bson.D{{Key: "inittime", Value: -1}},
+		Sort: bson.D{{Key: "swapnonce", Value: -1}},
 	}
 	result := &MgoSwapResult{}
 	err := collRouterSwapResult.FindOne(clientCtx, bson.M{"$and": queries}, opts).Decode(result)
@@ -299,14 +300,19 @@ func FindNextSwapNonce(chainID, mpc string) (uint64, error) {
 }
 
 // FindRouterSwapResultsToReplace find router swap result with status
-func FindRouterSwapResultsToReplace(septime int64) ([]*MgoSwapResult, error) {
-	query := getStatusQuery(MatchTxNotStable, septime)
+func FindRouterSwapResultsToReplace(chainID *big.Int, septime int64, mpc string) ([]*MgoSwapResult, error) {
+	qtime := bson.M{"inittime": bson.M{"$gte": septime}}
+	qstatus := bson.M{"status": MatchTxNotStable}
+	qchainid := bson.M{"toChainID": chainID.String()}
+	qmpc := bson.M{"mpc": strings.ToLower(mpc)}
+	queries := []bson.M{qtime, qstatus, qchainid, qmpc}
+
 	limit := int64(20)
 	opts := &options.FindOptions{
 		Sort:  bson.D{{Key: "swapnonce", Value: 1}},
 		Limit: &limit,
 	}
-	cur, err := collRouterSwapResult.Find(clientCtx, query, opts)
+	cur, err := collRouterSwapResult.Find(clientCtx, bson.M{"$and": queries}, opts)
 	if err != nil {
 		return nil, mgoError(err)
 	}

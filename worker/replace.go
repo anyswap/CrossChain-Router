@@ -36,38 +36,44 @@ func StartReplaceJob() {
 		return
 	}
 
-	mongodb.MgoWaitGroup.Add(1)
-	go doReplaceJob()
+	allChainIDs := router.AllChainIDs
+	mongodb.MgoWaitGroup.Add(len(allChainIDs))
+	for _, toChainID := range allChainIDs {
+		go doReplaceJob(toChainID)
+	}
 }
 
-func doReplaceJob() {
+func doReplaceJob(toChainID *big.Int) {
 	defer mongodb.MgoWaitGroup.Done()
+	logWorker("replace", "start router swap replace job", "toChainID", toChainID)
 	for {
-		res, err := findRouterSwapResultToReplace()
+		res, err := findRouterSwapResultToReplace(toChainID)
 		if err != nil {
-			logWorkerError("replace", "find router swap result error", err)
+			logWorkerError("replace", "find router swap result error", err, "toChainID", toChainID)
 		}
 		for _, swap := range res {
 			if utils.IsCleanuping() {
-				logWorker("replace", "stop router swap replace job")
+				logWorker("replace", "stop router swap replace job", "toChainID", toChainID)
 				return
 			}
 			err = processRouterSwapReplace(swap)
 			if err != nil {
-				logWorkerError("replace", "process router swap replace error", err, "chainID", swap.FromChainID, "txid", swap.TxID, "logIndex", swap.LogIndex)
+				logWorkerError("replace", "process router swap replace error", err, "fromChainID", swap.FromChainID, "toChainID", toChainID, "txid", swap.TxID, "logIndex", swap.LogIndex)
 			}
 		}
 		if utils.IsCleanuping() {
-			logWorker("replace", "stop router swap replace job")
+			logWorker("replace", "stop router swap replace job", "toChainID", toChainID)
 			return
 		}
 		restInJob(restIntervalInReplaceSwapJob)
 	}
 }
 
-func findRouterSwapResultToReplace() ([]*mongodb.MgoSwapResult, error) {
+func findRouterSwapResultToReplace(toChainID *big.Int) ([]*mongodb.MgoSwapResult, error) {
 	septime := getSepTimeInFind(maxReplaceSwapLifetime)
-	return mongodb.FindRouterSwapResultsToReplace(septime)
+	resBridge := router.GetBridgeByChainID(toChainID.String())
+	mpcAddress := resBridge.GetChainConfig().GetRouterMPC()
+	return mongodb.FindRouterSwapResultsToReplace(toChainID, septime, mpcAddress)
 }
 
 func processRouterSwapReplace(res *mongodb.MgoSwapResult) error {
