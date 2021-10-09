@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
@@ -52,9 +53,11 @@ func (config *RouterConfig) CheckConfig(isServer bool) (err error) {
 
 	if isServer {
 		err = config.Server.CheckConfig()
-		if err != nil {
-			return err
-		}
+	} else {
+		err = config.Oracle.CheckConfig()
+	}
+	if err != nil {
+		return err
 	}
 
 	if config.MPC == nil {
@@ -76,8 +79,34 @@ func (config *RouterConfig) CheckConfig(isServer bool) (err error) {
 	return nil
 }
 
+// CheckConfig of router oracle
+func (c *RouterOracleConfig) CheckConfig() (err error) {
+	if c == nil {
+		return errors.New("router oracle must config 'Oracle'")
+	}
+	if c.ServerAPIAddress == "" {
+		return errors.New("oracle must config 'ServerAPIAddress'")
+	}
+	var version string
+	for i := 0; i < 3; i++ {
+		err = client.RPCPostWithTimeout(60, &version, c.ServerAPIAddress, "swap.GetVersionInfo")
+		if err == nil {
+			log.Info("oracle get server version info succeed", "version", version)
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+	if err != nil {
+		log.Warn("oracle connect ServerAPIAddress failed", "ServerAPIAddress", c.ServerAPIAddress, "err", err)
+	}
+	return err
+}
+
 // CheckConfig of router server
 func (s *RouterServerConfig) CheckConfig() error {
+	if s == nil {
+		return errors.New("router server must config 'Server'")
+	}
 	if s.APIServer == nil {
 		return errors.New("server must config 'APIServer'")
 	}

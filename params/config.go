@@ -62,9 +62,15 @@ type RouterServerConfig struct {
 	DynamicFeeTx map[string]*DynamicFeeTxConfig `toml:",omitempty" json:",omitempty"` // key is chain ID
 }
 
+// RouterOracleConfig only for oracle
+type RouterOracleConfig struct {
+	ServerAPIAddress string
+}
+
 // RouterConfig config
 type RouterConfig struct {
 	Server *RouterServerConfig `toml:",omitempty" json:",omitempty"`
+	Oracle *RouterOracleConfig `toml:",omitempty" json:",omitempty"`
 
 	Identifier  string
 	SwapType    string
@@ -336,6 +342,11 @@ func GetRouterServerConfig() *RouterServerConfig {
 	return routerConfig.Server
 }
 
+// GetRouterOracleConfig get router oracle config
+func GetRouterOracleConfig() *RouterOracleConfig {
+	return routerConfig.Oracle
+}
+
 // GetOnchainContract get onchain config contract address
 func GetOnchainContract() string {
 	return routerConfig.Onchain.Contract
@@ -471,6 +482,8 @@ func LoadRouterConfig(configFile string, isServer bool) *RouterConfig {
 
 	if !isServer {
 		config.Server = nil
+	} else {
+		config.Oracle = nil
 	}
 
 	routerConfig = config

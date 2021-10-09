@@ -14,6 +14,12 @@ type ServerInfo struct {
 	ConfigContract string
 }
 
+// OracleInfo oracle info
+type OracleInfo struct {
+	Heartbeat          string
+	HeartbeatTimestamp int64
+}
+
 // SwapInfo swap info
 type SwapInfo struct {
 	SwapType      uint32             `json:"swaptype"`

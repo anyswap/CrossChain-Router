@@ -128,6 +128,16 @@ func GetGroupID() string {
 	return mpcGroupID
 }
 
+// GetSelfEnode get self enode
+func GetSelfEnode() string {
+	return selfEnode
+}
+
+// GetAllEnodes get all enodes
+func GetAllEnodes() []string {
+	return allEnodes
+}
+
 // setMPCRPCAddress set mpc node rpc address
 func (ni *NodeInfo) setMPCRPCAddress(url string) {
 	ni.mpcRPCAddress = url

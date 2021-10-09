@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/internal/swapapi"
 	"github.com/anyswap/CrossChain-Router/v3/params"
@@ -36,6 +37,36 @@ func (s *RouterSwapAPI) GetVersionInfo(r *http.Request, args *RPCNullArgs, resul
 func (s *RouterSwapAPI) GetServerInfo(r *http.Request, args *RPCNullArgs, result *swapapi.ServerInfo) error {
 	serverInfo := swapapi.GetServerInfo()
 	*result = *serverInfo
+	return nil
+}
+
+// GetOracleInfo api
+func (s *RouterSwapAPI) GetOracleInfo(r *http.Request, args *RPCNullArgs, result *map[string]*swapapi.OracleInfo) error {
+	oracleInfo := swapapi.GetOracleInfo()
+	*result = oracleInfo
+	return nil
+}
+
+// OracleInfoArgs args
+type OracleInfoArgs struct {
+	Enode     string `json:"enode"`
+	Timestamp int64  `json:"timestamp"`
+}
+
+func (args *OracleInfoArgs) toOracleInfo() *swapapi.OracleInfo {
+	return &swapapi.OracleInfo{
+		Heartbeat:          time.Unix(args.Timestamp, 0).Format(time.RFC3339),
+		HeartbeatTimestamp: args.Timestamp,
+	}
+}
+
+// ReportOracleInfo api
+func (s *RouterSwapAPI) ReportOracleInfo(r *http.Request, args *OracleInfoArgs, result *string) error {
+	err := swapapi.ReportOracleInfo(args.Enode, args.toOracleInfo())
+	if err != nil {
+		return err
+	}
+	*result = "Success"
 	return nil
 }
 

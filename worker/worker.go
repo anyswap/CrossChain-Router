@@ -21,6 +21,8 @@ func StartRouterSwapWork(isServer bool) {
 
 	if !isServer {
 		StartAcceptSignJob()
+		time.Sleep(interval)
+		StartReportStatJob()
 		return
 	}
 

@@ -1,15 +1,21 @@
 package swapapi
 
 import (
+	"strings"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
+	"github.com/anyswap/CrossChain-Router/v3/mpc"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	rpcjson "github.com/gorilla/rpc/v2/json2"
+)
+
+var (
+	oraclesInfo = make(map[string]*OracleInfo) // key is enode
 )
 
 func newRPCError(ec rpcjson.ErrorCode, message string) error {
@@ -30,6 +36,49 @@ func GetServerInfo() *ServerInfo {
 		Version:        params.VersionWithMeta,
 		ConfigContract: params.GetOnchainContract(),
 	}
+}
+
+// GetOracleInfo get oracle info
+func GetOracleInfo() map[string]*OracleInfo {
+	result := make(map[string]*OracleInfo, len(oraclesInfo))
+	for enode, info := range oraclesInfo {
+		startIndex := strings.Index(enode, "enode://")
+		endIndex := strings.Index(enode, "@")
+		if startIndex == -1 || endIndex == -1 {
+			continue
+		}
+		enodeID := enode[startIndex+8 : endIndex]
+		result[strings.ToLower(enodeID)] = info
+	}
+	return result
+}
+
+// ReportOracleInfo report oracle info
+func ReportOracleInfo(oracle string, info *OracleInfo) error {
+	var exist bool
+	for _, enode := range mpc.GetAllEnodes() {
+		if strings.EqualFold(oracle, enode) {
+			if !strings.EqualFold(oracle, mpc.GetSelfEnode()) {
+				exist = true
+			}
+			break
+		}
+	}
+	if !exist {
+		return newRPCError(-32000, "wrong oracle info")
+	}
+
+	key := strings.ToLower(oracle)
+	if oldInfo, exist := oraclesInfo[key]; exist {
+		oldTime := oldInfo.HeartbeatTimestamp
+		if info.HeartbeatTimestamp > oldTime &&
+			info.HeartbeatTimestamp < time.Now().Unix()+60 {
+			oraclesInfo[key] = info
+		}
+	} else {
+		oraclesInfo[key] = info
+	}
+	return nil
 }
 
 // RegisterRouterSwap register router swap

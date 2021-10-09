@@ -73,6 +73,10 @@ Port = 11556
 # CORS config
 AllowedOrigins = []
 
+# oracle config (oracle only)
+[Oracle]
+# report oracle status to this server
+ServerAPIAddress = "http://127.0.0.1:11556/rpc"
 
 [Extra]
 # getting accept list interval (seconds) in accept job
