@@ -107,19 +107,28 @@ func initRouter() {
 	tokensMap := make(map[string]string)
 	router.MultichainTokens[strings.ToLower(testCfg.Token.TokenID)] = tokensMap
 
-	swapConfigs := make(map[string]map[string]*tokens.SwapConfig)
-	swapConfigs[testCfg.Token.TokenID] = make(map[string]*tokens.SwapConfig)
+	swapConfigs := make(map[string]map[string]map[string]*tokens.SwapConfig)
+	swapConfigs[testCfg.Token.TokenID] = make(map[string]map[string]*tokens.SwapConfig)
+	swapConfigs[testCfg.Token.TokenID]["0"] = make(map[string]*tokens.SwapConfig)
+
+	feeConfigs := make(map[string]map[string]map[string]*tokens.FeeConfig)
+	feeConfigs[testCfg.Token.TokenID] = make(map[string]map[string]*tokens.FeeConfig)
+	feeConfigs[testCfg.Token.TokenID]["0"] = make(map[string]*tokens.FeeConfig)
+
 	swapCfg := testCfg.GetSwapConfig()
+	feeCfg := testCfg.GetFeeConfig()
 
 	for _, chainID := range router.AllChainIDs {
 		router.RouterBridges[chainID.String()] = bridge
 		tokensMap[chainID.String()] = testCfg.Token.ContractAddress
-		swapConfigs[testCfg.Token.TokenID][chainID.String()] = swapCfg
+		swapConfigs[testCfg.Token.TokenID]["0"][chainID.String()] = swapCfg
+		feeConfigs[testCfg.Token.TokenID]["0"][chainID.String()] = feeCfg
 		params.SetSignerPrivateKey(chainID.String(), testCfg.SignWithPrivateKey)
 	}
 	router.PrintMultichainTokens()
 
 	tokens.SetSwapConfigs(swapConfigs)
+	tokens.SetFeeConfigs(feeConfigs)
 }
 
 func startWork() {

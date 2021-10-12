@@ -124,9 +124,9 @@ func ReloadRouterConfig() bool {
 		}
 	}
 
-	err = loadSwapConfigs()
+	err = loadSwapAndFeeConfigs()
 	if err != nil {
-		log.Error("[reload] load swap configs failed", "err", err)
+		log.Error("[reload] load swap and fee configs failed", "err", err)
 		return false
 	}
 

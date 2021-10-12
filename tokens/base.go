@@ -13,7 +13,9 @@ import (
 
 var (
 	routerSwapType SwapType
-	swapConfigMap  = make(map[string]map[string]*SwapConfig) // key is tokenID,toChainID
+
+	swapConfigMap map[string]map[string]map[string]*SwapConfig // key is tokenID,fromChainID,toChainID
+	feeConfigMap  map[string]map[string]map[string]*FeeConfig  // key is tokenID,fromChainID,toChainID
 )
 
 // IsNativeCoin is native coin
@@ -131,23 +133,53 @@ func (b *CrossChainBridgeBase) GetRouterContract(token string) string {
 	return b.ChainConfig.RouterContract
 }
 
-// SetSwapConfigs set swap configs
-func SetSwapConfigs(swapCfgs map[string]map[string]*SwapConfig) {
+// SetSwapConfigs set common swap configs
+func SetSwapConfigs(swapCfgs map[string]map[string]map[string]*SwapConfig) {
 	swapConfigMap = swapCfgs
 }
 
 // GetSwapConfig get swap config
-func GetSwapConfig(tokenID, toChainID string) *SwapConfig {
-	cfgs := swapConfigMap[tokenID]
-	if cfgs == nil {
+func GetSwapConfig(tokenID, fromChainID, toChainID string) *SwapConfig {
+	m, exist := swapConfigMap[tokenID]
+	if !exist {
 		return nil
 	}
-	return cfgs[toChainID]
+	mm, exist := m[fromChainID]
+	if !exist {
+		return nil
+	}
+	mmm, exist := mm[toChainID]
+	if !exist {
+		return nil
+	}
+	return mmm
+}
+
+// SetFeeConfigs set fee configs
+func SetFeeConfigs(feeCfgs map[string]map[string]map[string]*FeeConfig) {
+	feeConfigMap = feeCfgs
+}
+
+// GetFeeConfig get fee config
+func GetFeeConfig(tokenID, fromChainID, toChainID string) *FeeConfig {
+	m, exist := feeConfigMap[tokenID]
+	if !exist {
+		return nil
+	}
+	mm, exist := m[fromChainID]
+	if !exist {
+		return nil
+	}
+	mmm, exist := mm[toChainID]
+	if !exist {
+		return nil
+	}
+	return mmm
 }
 
 // GetBigValueThreshold get big value threshold
-func GetBigValueThreshold(tokenID, toChainID string, fromDecimals uint8) *big.Int {
-	swapCfg := GetSwapConfig(tokenID, toChainID)
+func GetBigValueThreshold(tokenID, fromChainID, toChainID string, fromDecimals uint8) *big.Int {
+	swapCfg := GetSwapConfig(tokenID, fromChainID, toChainID)
 	if swapCfg == nil {
 		return big.NewInt(0)
 	}
@@ -164,8 +196,9 @@ func CheckTokenSwapValue(swapInfo *SwapTxInfo, fromDecimals, toDecimals uint8) b
 		return false
 	}
 	tokenID := swapInfo.GetTokenID()
+	fromChainID := swapInfo.FromChainID.String()
 	toChainID := swapInfo.ToChainID.String()
-	swapCfg := GetSwapConfig(tokenID, toChainID)
+	swapCfg := GetSwapConfig(tokenID, fromChainID, toChainID)
 	if swapCfg == nil {
 		return false
 	}
@@ -179,34 +212,34 @@ func CheckTokenSwapValue(swapInfo *SwapTxInfo, fromDecimals, toDecimals uint8) b
 		!params.IsInBigValueWhitelist(tokenID, swapInfo.TxTo) {
 		return false
 	}
-	return CalcSwapValue(tokenID, toChainID, value, fromDecimals, toDecimals, swapInfo.From, swapInfo.TxTo).Sign() > 0
+	return CalcSwapValue(tokenID, fromChainID, toChainID, value, fromDecimals, toDecimals, swapInfo.From, swapInfo.TxTo).Sign() > 0
 }
 
 // CalcSwapValue calc swap value (get rid of fee and convert by decimals)
-func CalcSwapValue(tokenID, toChainID string, value *big.Int, fromDecimals, toDecimals uint8, originFrom, originTxTo string) *big.Int {
+func CalcSwapValue(tokenID, fromChainID, toChainID string, value *big.Int, fromDecimals, toDecimals uint8, originFrom, originTxTo string) *big.Int {
 	if !IsERC20Router() {
 		return value
 	}
-	swapCfg := GetSwapConfig(tokenID, toChainID)
-	if swapCfg == nil {
+	feeCfg := GetFeeConfig(tokenID, fromChainID, toChainID)
+	if feeCfg == nil {
 		return big.NewInt(0)
 	}
 
 	valueLeft := value
-	if swapCfg.SwapFeeRatePerMillion > 0 {
+	if feeCfg.SwapFeeRatePerMillion > 0 {
 		var swapFee, adjustBaseFee *big.Int
-		minSwapFee := ConvertTokenValue(swapCfg.MinimumSwapFee, 18, fromDecimals)
+		minSwapFee := ConvertTokenValue(feeCfg.MinimumSwapFee, 18, fromDecimals)
 		if params.IsInBigValueWhitelist(tokenID, originFrom) ||
 			params.IsInBigValueWhitelist(tokenID, originTxTo) {
 			swapFee = minSwapFee
 		} else {
-			swapFee = new(big.Int).Mul(value, new(big.Int).SetUint64(swapCfg.SwapFeeRatePerMillion))
+			swapFee = new(big.Int).Mul(value, new(big.Int).SetUint64(feeCfg.SwapFeeRatePerMillion))
 			swapFee.Div(swapFee, big.NewInt(1000000))
 
 			if swapFee.Cmp(minSwapFee) < 0 {
 				swapFee = minSwapFee
 			} else {
-				maxSwapFee := ConvertTokenValue(swapCfg.MaximumSwapFee, 18, fromDecimals)
+				maxSwapFee := ConvertTokenValue(feeCfg.MaximumSwapFee, 18, fromDecimals)
 				if swapFee.Cmp(maxSwapFee) > 0 {
 					swapFee = maxSwapFee
 				}

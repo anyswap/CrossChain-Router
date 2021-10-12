@@ -177,18 +177,27 @@ func (s *RouterSwapAPI) GetTokenConfig(r *http.Request, args *GetTokenConfigArgs
 
 // GetSwapConfigArgs args
 type GetSwapConfigArgs struct {
-	TokenID string `json:"tokenid"`
-	ChainID string `json:"chainid"`
+	TokenID     string `json:"tokenid"`
+	FromChainID string `json:"fromchainid"`
+	ToChainID   string `json:"tochainid"`
 }
 
 // GetSwapConfig api
 func (s *RouterSwapAPI) GetSwapConfig(r *http.Request, args *GetSwapConfigArgs, result *swapapi.SwapConfig) error {
-	tokenID := args.TokenID
-	chainID := args.ChainID
-	swapConfig := swapapi.ConvertSwapConfig(tokens.GetSwapConfig(tokenID, chainID))
+	swapConfig := swapapi.ConvertSwapConfig(tokens.GetSwapConfig(args.TokenID, args.FromChainID, args.ToChainID))
 	if swapConfig != nil {
 		*result = *swapConfig
 		return nil
 	}
 	return fmt.Errorf("swap config not found")
+}
+
+// GetFeeConfig api
+func (s *RouterSwapAPI) GetFeeConfig(r *http.Request, args *GetSwapConfigArgs, result *swapapi.FeeConfig) error {
+	feeConfig := swapapi.ConvertFeeConfig(tokens.GetFeeConfig(args.TokenID, args.FromChainID, args.ToChainID))
+	if feeConfig != nil {
+		*result = *feeConfig
+		return nil
+	}
+	return fmt.Errorf("fee config not found")
 }

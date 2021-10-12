@@ -72,6 +72,11 @@ func (c *Config) GetSwapConfig() *tokens.SwapConfig {
 	return c.Swap.swapConfig
 }
 
+// GetFeeConfig get fee config
+func (c *Config) GetFeeConfig() *tokens.FeeConfig {
+	return c.Swap.feeConfig
+}
+
 // SwapConfig swap config
 type SwapConfig struct {
 	SwapFeeRatePerMillion uint64
@@ -83,19 +88,30 @@ type SwapConfig struct {
 
 	// calc and cached values
 	swapConfig *tokens.SwapConfig
+	feeConfig  *tokens.FeeConfig
 }
 
 // CheckConfig check swap config
 func (c *SwapConfig) CheckConfig() error {
+	feeConfig := &tokens.FeeConfig{}
+	feeConfig.SwapFeeRatePerMillion = c.SwapFeeRatePerMillion
+	feeConfig.MaximumSwapFee, _ = common.GetBigIntFromStr(c.MaximumSwapFee)
+	feeConfig.MinimumSwapFee, _ = common.GetBigIntFromStr(c.MinimumSwapFee)
+	if err := feeConfig.CheckConfig(); err != nil {
+		return err
+	}
+
 	swapConfig := &tokens.SwapConfig{}
-	swapConfig.SwapFeeRatePerMillion = c.SwapFeeRatePerMillion
-	swapConfig.MaximumSwapFee, _ = common.GetBigIntFromStr(c.MaximumSwapFee)
-	swapConfig.MinimumSwapFee, _ = common.GetBigIntFromStr(c.MinimumSwapFee)
 	swapConfig.MaximumSwap, _ = common.GetBigIntFromStr(c.MaximumSwap)
 	swapConfig.BigValueThreshold, _ = common.GetBigIntFromStr(c.BigValueThreshold)
 	swapConfig.MinimumSwap, _ = common.GetBigIntFromStr(c.MinimumSwap)
+	if err := swapConfig.CheckConfig(); err != nil {
+		return err
+	}
+
 	c.swapConfig = swapConfig
-	return swapConfig.CheckConfig()
+	c.feeConfig = feeConfig
+	return nil
 }
 
 // LoadTestConfig load test router config
