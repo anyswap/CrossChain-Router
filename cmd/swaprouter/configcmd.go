@@ -8,7 +8,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
-	"github.com/anyswap/CrossChain-Router/v3/tokens/eth/abicoder"
 	"github.com/urfave/cli/v2"
 )
 
@@ -20,55 +19,6 @@ var (
 config router swap
 `,
 		Subcommands: []*cli.Command{
-			{
-				Name:   "genSetChainConfigData",
-				Usage:  "generate setChainConfig input data",
-				Action: genSetChainConfigData,
-				Flags: []cli.Flag{
-					cChainIDFlag,
-					cBlockChainFlag,
-					cRouterContractFlag,
-					cConfirmationsFlag,
-					cInitialHeightFlag,
-				},
-				Description: `
-generate ChainConfig json marshal data
-`,
-			},
-			{
-				Name:   "genSetTokenConfigData",
-				Usage:  "generate setTokenConfig input data",
-				Action: genSetTokenConfigData,
-				Flags: []cli.Flag{
-					swapTypeFlag,
-					cChainIDFlag,
-					cTokenIDFlag,
-					cDecimalsFlag,
-					cContractAddressFlag,
-					cContractVersionFlag,
-				},
-				Description: `
-generate TokenConfig json marshal data
-`,
-			},
-			{
-				Name:   "genSetSwapConfigData",
-				Usage:  "generate setSwapConfig input data",
-				Action: genSetSwapConfigData,
-				Flags: []cli.Flag{
-					cToChainIDFlag,
-					cTokenIDFlag,
-					cMaximumSwapFlag,
-					cMinimumSwapFlag,
-					cBigValueThresholdFlag,
-					cSwapFeeRateFlag,
-					cMaximumSwapFeeFlag,
-					cMinimumSwapFeeFlag,
-				},
-				Description: `
-generate SwapConfig json marshal data
-`,
-			},
 			{
 				Name:   "getAllChainIDs",
 				Usage:  "get all chainIDs",
@@ -139,9 +89,19 @@ generate SwapConfig json marshal data
 			},
 			{
 				Name:      "getSwapConfig",
-				Usage:     "get swap config by tokenID and dest chainID",
+				Usage:     "get swap config by tokenID and source and dest chainID",
 				Action:    getSwapConfig,
-				ArgsUsage: "<tokenID> <toChainID>",
+				ArgsUsage: "<tokenID> <fromChainID> <toChainID>",
+				Flags: []cli.Flag{
+					onchainContractFlag,
+					gatewaysFlag,
+				},
+			},
+			{
+				Name:      "getFeeConfig",
+				Usage:     "get fee config by tokenID and source and dest chainID",
+				Action:    getFeeConfig,
+				ArgsUsage: "<tokenID> <fromChainID> <toChainID>",
 				Flags: []cli.Flag{
 					onchainContractFlag,
 					gatewaysFlag,
@@ -199,216 +159,7 @@ generate SwapConfig json marshal data
 		Name:  "gateway",
 		Usage: "gateway URL to connect",
 	}
-
-	swapTypeFlag = &cli.StringFlag{
-		Name:  "swaptype",
-		Usage: "swap type (eg. erc20swap, nftswap, etc.)",
-	}
-
-	// --------- chain config -------------------
-
-	cChainIDFlag = &cli.StringFlag{
-		Name:  "c.ChainID",
-		Usage: "block chain ID (require)",
-	}
-
-	cBlockChainFlag = &cli.StringFlag{
-		Name:  "c.BlockChain",
-		Usage: "block chain name (require)",
-	}
-
-	cRouterContractFlag = &cli.StringFlag{
-		Name:  "c.RouterContract",
-		Usage: "swap router contract address (require)",
-	}
-
-	cConfirmationsFlag = &cli.Uint64Flag{
-		Name:  "c.Confirmations",
-		Usage: "chain stable confirmations (require)",
-	}
-
-	cInitialHeightFlag = &cli.Uint64Flag{
-		Name:  "c.InitialHeight",
-		Usage: "initial swap height",
-	}
-
-	// --------- token config -------------------
-
-	cTokenIDFlag = &cli.StringFlag{
-		Name:  "c.TokenID",
-		Usage: "token identifier (require)",
-	}
-
-	cDecimalsFlag = &cli.IntFlag{
-		Name:  "c.Decimals",
-		Usage: "token decimals (require)",
-		Value: 18,
-	}
-
-	cContractAddressFlag = &cli.StringFlag{
-		Name:  "c.ContractAddress",
-		Usage: "token contract address (require)",
-	}
-
-	cContractVersionFlag = &cli.Uint64Flag{
-		Name:  "c.ContractVersion",
-		Usage: "token version number (require)",
-	}
-
-	// --------- swap config -------------------
-
-	cToChainIDFlag = &cli.StringFlag{
-		Name:  "c.ToChainID",
-		Usage: "dest chain ID (require)",
-	}
-
-	cMaximumSwapFlag = &cli.StringFlag{
-		Name:  "c.MaximumSwap",
-		Usage: "maximum swap value (require)",
-	}
-
-	cMinimumSwapFlag = &cli.StringFlag{
-		Name:  "c.MinimumSwap",
-		Usage: "minimum swap value (require)",
-	}
-
-	cBigValueThresholdFlag = &cli.StringFlag{
-		Name:  "c.BigValueThreshold",
-		Usage: "big swap value threshold (require)",
-	}
-
-	cSwapFeeRateFlag = &cli.Float64Flag{
-		Name:  "c.SwapFeeRate",
-		Usage: "swap fee rate (eg. 0.001)",
-	}
-
-	cMaximumSwapFeeFlag = &cli.StringFlag{
-		Name:  "c.MaximumSwapFee",
-		Usage: "maximum swap fee",
-	}
-
-	cMinimumSwapFeeFlag = &cli.StringFlag{
-		Name:  "c.MinimumSwapFee",
-		Usage: "minimum swap fee",
-	}
 )
-
-func genSetChainConfigData(ctx *cli.Context) error {
-	chainCfg := &tokens.ChainConfig{
-		ChainID:        ctx.String(cChainIDFlag.Name),
-		BlockChain:     ctx.String(cBlockChainFlag.Name),
-		RouterContract: ctx.String(cRouterContractFlag.Name),
-		Confirmations:  ctx.Uint64(cConfirmationsFlag.Name),
-		InitialHeight:  ctx.Uint64(cInitialHeightFlag.Name),
-	}
-	err := chainCfg.CheckConfig()
-	if err != nil {
-		return err
-	}
-	jsdata, err := json.MarshalIndent(chainCfg, "", "  ")
-	if err != nil {
-		return err
-	}
-	fmt.Println("chain config struct is", string(jsdata))
-	funcHash := common.FromHex("0x46bd32f5")
-	configData := abicoder.PackData(
-		chainCfg.BlockChain,
-		common.HexToAddress(chainCfg.RouterContract),
-		chainCfg.Confirmations,
-		chainCfg.InitialHeight,
-	)
-	chainID, _ := new(big.Int).SetString(chainCfg.ChainID, 0)
-	inputData := abicoder.PackDataWithFuncHash(funcHash, chainID)
-	inputData = append(inputData, common.LeftPadBytes([]byte{0x40}, 32)...)
-	inputData = append(inputData, configData...)
-	fmt.Println("set chain config input data is", common.ToHex(inputData))
-	return nil
-}
-
-func genSetTokenConfigData(ctx *cli.Context) error {
-	chainIDStr := ctx.String(cChainIDFlag.Name)
-	chainID, err := common.GetBigIntFromStr(chainIDStr)
-	if err != nil {
-		return fmt.Errorf("wrong chainID '%v'", chainIDStr)
-	}
-	decimalsVal := ctx.Int(cDecimalsFlag.Name)
-	if decimalsVal < 0 || decimalsVal > 256 {
-		return fmt.Errorf("wrong decimals '%v'", decimalsVal)
-	}
-	swapType := ctx.String(swapTypeFlag.Name)
-	tokens.InitRouterSwapType(swapType)
-	tokenID := ctx.String(cTokenIDFlag.Name)
-	decimals := uint8(decimalsVal)
-	tokenCfg := &tokens.TokenConfig{
-		TokenID:         tokenID,
-		Decimals:        decimals,
-		ContractAddress: ctx.String(cContractAddressFlag.Name),
-		ContractVersion: ctx.Uint64(cContractVersionFlag.Name),
-	}
-	err = tokenCfg.CheckConfig()
-	if err != nil {
-		return err
-	}
-	jsdata, err := json.MarshalIndent(tokenCfg, "", "  ")
-	if err != nil {
-		return err
-	}
-	fmt.Println("tokenID is", tokenID)
-	fmt.Println("chainID is", chainID)
-	fmt.Println("token config struct is", string(jsdata))
-	funcHash := common.FromHex("0xba6e0d0f")
-	inputData := abicoder.PackDataWithFuncHash(funcHash,
-		tokenID,
-		chainID,
-		decimals,
-		common.HexToAddress(tokenCfg.ContractAddress),
-		tokenCfg.ContractVersion,
-	)
-	fmt.Println("set token config input data is", common.ToHex(inputData))
-	return nil
-}
-
-func genSetSwapConfigData(ctx *cli.Context) error {
-	chainIDStr := ctx.String(cToChainIDFlag.Name)
-	chainID, err := common.GetBigIntFromStr(chainIDStr)
-	if err != nil {
-		return fmt.Errorf("wrong chainID '%v'", chainIDStr)
-	}
-	tokenID := ctx.String(cTokenIDFlag.Name)
-	decimals := uint8(18)
-	tokenCfg := &tokens.SwapConfig{
-		MaximumSwap:           tokens.ToBits(ctx.String(cMaximumSwapFlag.Name), decimals),
-		MinimumSwap:           tokens.ToBits(ctx.String(cMinimumSwapFlag.Name), decimals),
-		BigValueThreshold:     tokens.ToBits(ctx.String(cBigValueThresholdFlag.Name), decimals),
-		SwapFeeRatePerMillion: uint64(ctx.Float64(cSwapFeeRateFlag.Name) * 1000000),
-		MaximumSwapFee:        tokens.ToBits(ctx.String(cMaximumSwapFeeFlag.Name), decimals),
-		MinimumSwapFee:        tokens.ToBits(ctx.String(cMinimumSwapFeeFlag.Name), decimals),
-	}
-	err = tokenCfg.CheckConfig()
-	if err != nil {
-		return err
-	}
-	jsdata, err := json.MarshalIndent(tokenCfg, "", "  ")
-	if err != nil {
-		return err
-	}
-	fmt.Println("tokenID is", tokenID)
-	fmt.Println("toChainID is", chainID)
-	fmt.Println("swap config struct is", string(jsdata))
-	funcHash := common.FromHex("0xca29ee96")
-	inputData := abicoder.PackDataWithFuncHash(funcHash,
-		tokenID,
-		chainID,
-		tokenCfg.MaximumSwap,
-		tokenCfg.MinimumSwap,
-		tokenCfg.BigValueThreshold,
-		tokenCfg.SwapFeeRatePerMillion,
-		tokenCfg.MaximumSwapFee,
-		tokenCfg.MinimumSwapFee,
-	)
-	fmt.Println("set swap config input data is", common.ToHex(inputData))
-	return nil
-}
 
 func getChainIDArgument(ctx *cli.Context, pos int) (chainID *big.Int, err error) {
 	chainIDStr := ctx.Args().Get(pos)
@@ -482,11 +233,15 @@ func getUserTokenConfig(ctx *cli.Context) error {
 }
 
 func getSwapConfig(ctx *cli.Context) error {
-	if ctx.NArg() < 2 {
+	if ctx.NArg() < 3 {
 		return fmt.Errorf("miss required position argument")
 	}
 	tokenID := ctx.Args().Get(0)
-	toChainID, err := getChainIDArgument(ctx, 1)
+	fromChainID, err := getChainIDArgument(ctx, 1)
+	if err != nil {
+		return err
+	}
+	toChainID, err := getChainIDArgument(ctx, 2)
 	if err != nil {
 		return err
 	}
@@ -494,7 +249,7 @@ func getSwapConfig(ctx *cli.Context) error {
 		ctx.String(onchainContractFlag.Name),
 		ctx.StringSlice(gatewaysFlag.Name),
 	)
-	swapCfg, err := router.GetSwapConfig(tokenID, toChainID)
+	swapCfg, err := router.GetActualSwapConfig(tokenID, fromChainID, toChainID)
 	if err != nil {
 		return err
 	}
@@ -502,7 +257,37 @@ func getSwapConfig(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("swap config is", string(jsdata))
+	fmt.Println("actual swap config is", string(jsdata))
+
+	return nil
+}
+
+func getFeeConfig(ctx *cli.Context) error {
+	if ctx.NArg() < 3 {
+		return fmt.Errorf("miss required position argument")
+	}
+	tokenID := ctx.Args().Get(0)
+	fromChainID, err := getChainIDArgument(ctx, 1)
+	if err != nil {
+		return err
+	}
+	toChainID, err := getChainIDArgument(ctx, 2)
+	if err != nil {
+		return err
+	}
+	router.InitRouterConfigClientsWithArgs(
+		ctx.String(onchainContractFlag.Name),
+		ctx.StringSlice(gatewaysFlag.Name),
+	)
+	feeCfg, err := router.GetActualFeeConfig(tokenID, fromChainID, toChainID)
+	if err != nil {
+		return err
+	}
+	jsdata, err := json.MarshalIndent(feeCfg, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Println("actual fee config is", string(jsdata))
 	return nil
 }
 

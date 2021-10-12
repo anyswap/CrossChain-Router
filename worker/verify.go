@@ -134,7 +134,7 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 		if verifyArgs.SwapType == tokens.ERC20SwapType {
 			tokenID := swapInfo.GetTokenID()
 			fromDecimals := bridge.GetTokenConfig(swapInfo.ERC20SwapInfo.Token).Decimals
-			bigValueThreshold := tokens.GetBigValueThreshold(tokenID, swapInfo.ToChainID.String(), fromDecimals)
+			bigValueThreshold := tokens.GetBigValueThreshold(tokenID, swapInfo.FromChainID.String(), swapInfo.ToChainID.String(), fromDecimals)
 			if swapInfo.Value.Cmp(bigValueThreshold) > 0 &&
 				!params.IsInBigValueWhitelist(tokenID, swapInfo.From) &&
 				!params.IsInBigValueWhitelist(tokenID, swapInfo.TxTo) {

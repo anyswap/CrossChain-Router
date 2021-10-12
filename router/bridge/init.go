@@ -56,9 +56,9 @@ func InitRouterBridges(isServer bool) {
 	}
 	router.PrintMultichainTokens()
 
-	err = loadSwapConfigs()
+	err = loadSwapAndFeeConfigs()
 	if err != nil {
-		log.Fatal("load swap configs failed", "err", err)
+		log.Fatal("load swap and fee configs failed", "err", err)
 	}
 
 	cfg := params.GetRouterConfig()
@@ -69,34 +69,92 @@ func InitRouterBridges(isServer bool) {
 	log.Info(">>> init router bridges success", "isServer", isServer)
 }
 
-func loadSwapConfigs() error {
+func loadSwapAndFeeConfigs() (err error) {
 	if !tokens.IsERC20Router() {
 		return nil
 	}
-	swapConfigs := make(map[string]map[string]*tokens.SwapConfig)
 	for _, tokenID := range router.AllTokenIDs {
-		swapConfigs[tokenID] = make(map[string]*tokens.SwapConfig)
+		supportChainIDs := make([]*big.Int, 0, len(router.AllChainIDs))
 		for _, chainID := range router.AllChainIDs {
 			multichainToken := router.GetCachedMultichainToken(tokenID, chainID.String())
-			if multichainToken == "" {
-				log.Debug("ignore swap config as no multichain token exist", "tokenID", tokenID, "chainID", chainID)
-				continue
+			if multichainToken != "" {
+				supportChainIDs = append(supportChainIDs, chainID)
 			}
-			swapCfg, err := router.GetSwapConfig(tokenID, chainID)
-			if err != nil {
-				log.Warn("get swap config failed", "tokenID", tokenID, "chainID", chainID, "err", err)
-				return err
-			}
-			err = swapCfg.CheckConfig()
-			if err != nil {
-				log.Warn("check swap config failed", "tokenID", tokenID, "chainID", chainID, "err", err)
-				return err
-			}
-			swapConfigs[tokenID][chainID.String()] = swapCfg
-			log.Info("load swap config success", "tokenID", tokenID, "chainID", chainID, "multichainToken", multichainToken)
+		}
+		if err = loadSwapConfigs(supportChainIDs); err != nil {
+			return err
+		}
+		if err = loadFeeConfigs(supportChainIDs); err != nil {
+			return err
 		}
 	}
+	return nil
+}
+
+func loadSwapConfigs(supportChainIDs []*big.Int) error {
+	swapConfigs := make(map[string]map[string]map[string]*tokens.SwapConfig)
+
+	for _, tokenID := range router.AllTokenIDs {
+		tmap := make(map[string]map[string]*tokens.SwapConfig)
+		swapConfigs[tokenID] = tmap
+		for i, fromChainID := range supportChainIDs {
+			fmap := make(map[string]*tokens.SwapConfig)
+			tmap[fromChainID.String()] = fmap
+			for j, toChainID := range supportChainIDs {
+				if i == j {
+					continue
+				}
+				swapCfg, err := router.GetActualSwapConfig(tokenID, fromChainID, toChainID)
+				if err != nil {
+					log.Warn("get swap config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "err", err)
+					return err
+				}
+				err = swapCfg.CheckConfig()
+				if err != nil {
+					log.Warn("check swap config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "err", err)
+					return err
+				}
+				fmap[toChainID.String()] = swapCfg
+				log.Info("load swap config success", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID)
+			}
+		}
+	}
+
 	tokens.SetSwapConfigs(swapConfigs)
 	log.Info("load all swap config success")
+	return nil
+}
+
+func loadFeeConfigs(supportChainIDs []*big.Int) error {
+	feeConfigs := make(map[string]map[string]map[string]*tokens.FeeConfig)
+
+	for _, tokenID := range router.AllTokenIDs {
+		tmap := make(map[string]map[string]*tokens.FeeConfig)
+		feeConfigs[tokenID] = tmap
+		for i, fromChainID := range supportChainIDs {
+			fmap := make(map[string]*tokens.FeeConfig)
+			tmap[fromChainID.String()] = fmap
+			for j, toChainID := range supportChainIDs {
+				if i == j {
+					continue
+				}
+				feeCfg, err := router.GetActualFeeConfig(tokenID, fromChainID, toChainID)
+				if err != nil {
+					log.Warn("get fee config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "err", err)
+					return err
+				}
+				err = feeCfg.CheckConfig()
+				if err != nil {
+					log.Warn("check fee config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "err", err)
+					return err
+				}
+				fmap[toChainID.String()] = feeCfg
+				log.Info("load fee config success", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID)
+			}
+		}
+	}
+
+	tokens.SetFeeConfigs(feeConfigs)
+	log.Info("load all fee config success")
 	return nil
 }

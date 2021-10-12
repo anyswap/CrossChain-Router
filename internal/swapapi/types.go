@@ -75,9 +75,13 @@ type TokenConfig struct {
 
 // SwapConfig rpc type
 type SwapConfig struct {
-	MaximumSwap           string
-	MinimumSwap           string
-	BigValueThreshold     string
+	MaximumSwap       string
+	MinimumSwap       string
+	BigValueThreshold string
+}
+
+// FeeConfig rpc type
+type FeeConfig struct {
 	SwapFeeRatePerMillion uint64
 	MaximumSwapFee        string
 	MinimumSwapFee        string

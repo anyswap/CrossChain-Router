@@ -214,30 +214,21 @@ func GetUserTokenConfig(chainID *big.Int, token string) (tokenCfg *tokens.TokenC
 }
 
 func parseSwapConfig(data []byte) (config *tokens.SwapConfig, err error) {
-	if uint64(len(data)) < 6*32 {
+	if uint64(len(data)) < 3*32 {
 		return nil, abicoder.ErrParseDataError
 	}
 	maximumSwap := common.GetBigInt(data, 0, 32)
 	minimumSwap := common.GetBigInt(data, 32, 32)
 	bigValueThreshold := common.GetBigInt(data, 64, 32)
-	swapFeeRatePerMillion := common.GetBigInt(data, 96, 32).Uint64()
-	maximumSwapFee := common.GetBigInt(data, 128, 32)
-	minimumSwapFee := common.GetBigInt(data, 164, 32)
 	config = &tokens.SwapConfig{
-		MaximumSwap:           maximumSwap,
-		MinimumSwap:           minimumSwap,
-		BigValueThreshold:     bigValueThreshold,
-		SwapFeeRatePerMillion: swapFeeRatePerMillion,
-		MaximumSwapFee:        maximumSwapFee,
-		MinimumSwapFee:        minimumSwapFee,
+		MaximumSwap:       maximumSwap,
+		MinimumSwap:       minimumSwap,
+		BigValueThreshold: bigValueThreshold,
 	}
 	return config, err
 }
 
-// GetSwapConfig abi
-func GetSwapConfig(tokenID string, toChainID *big.Int) (*tokens.SwapConfig, error) {
-	funcHash := common.FromHex("0x9af93e7a")
-	data := abicoder.PackDataWithFuncHash(funcHash, tokenID, toChainID)
+func callAndParseSwapConfigResult(data []byte) (*tokens.SwapConfig, error) {
 	res, err := CallOnchainContract(data, "latest")
 	if err != nil {
 		return nil, err
@@ -247,6 +238,61 @@ func GetSwapConfig(tokenID string, toChainID *big.Int) (*tokens.SwapConfig, erro
 		return nil, err
 	}
 	return config, nil
+}
+
+// GetSwapConfig abi
+func GetSwapConfig(tokenID string, fromChainID, toChainID *big.Int) (*tokens.SwapConfig, error) {
+	funcHash := common.FromHex("0x4da7163c")
+	data := abicoder.PackDataWithFuncHash(funcHash, tokenID, fromChainID, toChainID)
+	return callAndParseSwapConfigResult(data)
+}
+
+// GetActualSwapConfig abi
+func GetActualSwapConfig(tokenID string, fromChainID, toChainID *big.Int) (*tokens.SwapConfig, error) {
+	funcHash := common.FromHex("0xd5637235")
+	data := abicoder.PackDataWithFuncHash(funcHash, tokenID, fromChainID, toChainID)
+	return callAndParseSwapConfigResult(data)
+}
+
+func parseFeeConfig(data []byte) (config *tokens.FeeConfig, err error) {
+	if uint64(len(data)) < 3*32 {
+		return nil, abicoder.ErrParseDataError
+	}
+	maximumSwapFee := common.GetBigInt(data, 0, 32)
+	minimumSwapFee := common.GetBigInt(data, 32, 32)
+	swapFeeRatePerMillion := common.GetBigInt(data, 64, 32).Uint64()
+	config = &tokens.FeeConfig{
+		MaximumSwapFee:        maximumSwapFee,
+		MinimumSwapFee:        minimumSwapFee,
+		SwapFeeRatePerMillion: swapFeeRatePerMillion,
+	}
+	return config, err
+}
+
+func callAndParseFeeConfigResult(data []byte) (*tokens.FeeConfig, error) {
+	res, err := CallOnchainContract(data, "latest")
+	if err != nil {
+		return nil, err
+	}
+	config, err := parseFeeConfig(res)
+	if err != nil {
+		return nil, err
+	}
+	return config, nil
+}
+
+// GetFeeConfig abi
+func GetFeeConfig(tokenID string, fromChainID, toChainID *big.Int) (*tokens.FeeConfig, error) {
+	funcHash := common.FromHex("0x1aed1c97")
+	data := abicoder.PackDataWithFuncHash(funcHash, tokenID, fromChainID, toChainID)
+	return callAndParseFeeConfigResult(data)
+}
+
+// GetActualFeeConfig abi
+func GetActualFeeConfig(tokenID string, fromChainID, toChainID *big.Int) (*tokens.FeeConfig, error) {
+	funcHash := common.FromHex("0xae409e9a")
+	data := abicoder.PackDataWithFuncHash(funcHash, tokenID, fromChainID, toChainID)
+	return callAndParseFeeConfigResult(data)
 }
 
 // GetCustomConfig abi

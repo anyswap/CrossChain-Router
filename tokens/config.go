@@ -40,9 +40,13 @@ type TokenConfig struct {
 
 // SwapConfig struct
 type SwapConfig struct {
-	MaximumSwap           *big.Int
-	MinimumSwap           *big.Int
-	BigValueThreshold     *big.Int
+	MaximumSwap       *big.Int
+	MinimumSwap       *big.Int
+	BigValueThreshold *big.Int
+}
+
+// FeeConfig struct
+type FeeConfig struct {
 	SwapFeeRatePerMillion uint64
 	MaximumSwapFee        *big.Int
 	MinimumSwapFee        *big.Int
@@ -156,12 +160,20 @@ func (c *SwapConfig) CheckConfig() error {
 	if c.MinimumSwap == nil || c.MinimumSwap.Sign() <= 0 {
 		return errors.New("token must config 'MinimumSwap' (positive)")
 	}
-	if c.MinimumSwap.Cmp(c.MaximumSwap) > 0 {
-		return errors.New("wrong token config, MinimumSwap > MaximumSwap")
-	}
 	if c.BigValueThreshold == nil || c.BigValueThreshold.Sign() <= 0 {
 		return errors.New("token must config 'BigValueThreshold' (positive)")
 	}
+	if c.BigValueThreshold.Cmp(c.MaximumSwap) > 0 {
+		return errors.New("wrong token config, BigValueThreshold > MaximumSwap")
+	}
+	if c.MinimumSwap.Cmp(c.BigValueThreshold) > 0 {
+		return errors.New("wrong token config, MinimumSwap > BigValueThreshold")
+	}
+	return nil
+}
+
+// CheckConfig check fee config
+func (c *FeeConfig) CheckConfig() error {
 	if c.SwapFeeRatePerMillion >= 1000000 {
 		return errors.New("token must config 'SwapFeeRatePerMillion' (< 1000000)")
 	}
@@ -173,9 +185,6 @@ func (c *SwapConfig) CheckConfig() error {
 	}
 	if c.MinimumSwapFee.Cmp(c.MaximumSwapFee) > 0 {
 		return errors.New("wrong token config, MinimumSwapFee > MaximumSwapFee")
-	}
-	if c.MinimumSwap.Cmp(c.MinimumSwapFee) < 0 {
-		return errors.New("wrong token config, MinimumSwap < MinimumSwapFee")
 	}
 	if c.SwapFeeRatePerMillion == 0 && c.MinimumSwapFee.Sign() > 0.0 {
 		return errors.New("wrong token config, MinimumSwapFee should be 0 if SwapFeeRatePerMillion is 0")
