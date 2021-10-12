@@ -2,6 +2,7 @@ package swapapi
 
 import (
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -15,7 +16,7 @@ import (
 )
 
 var (
-	oraclesInfo = make(map[string]*OracleInfo) // key is enode
+	oraclesInfo sync.Map // string -> *OracleInfo // key is enode
 )
 
 func newRPCError(ec rpcjson.ErrorCode, message string) error {
@@ -40,16 +41,18 @@ func GetServerInfo() *ServerInfo {
 
 // GetOracleInfo get oracle info
 func GetOracleInfo() map[string]*OracleInfo {
-	result := make(map[string]*OracleInfo, len(oraclesInfo))
-	for enode, info := range oraclesInfo {
+	result := make(map[string]*OracleInfo, 4)
+	oraclesInfo.Range(func(k, v interface{}) bool {
+		enode := k.(string)
 		startIndex := strings.Index(enode, "enode://")
 		endIndex := strings.Index(enode, "@")
-		if startIndex == -1 || endIndex == -1 {
-			continue
+		if startIndex != -1 && endIndex != -1 {
+			info := v.(*OracleInfo)
+			enodeID := enode[startIndex+8 : endIndex]
+			result[strings.ToLower(enodeID)] = info
 		}
-		enodeID := enode[startIndex+8 : endIndex]
-		result[strings.ToLower(enodeID)] = info
-	}
+		return true
+	})
 	return result
 }
 
@@ -69,14 +72,15 @@ func ReportOracleInfo(oracle string, info *OracleInfo) error {
 	}
 
 	key := strings.ToLower(oracle)
-	if oldInfo, exist := oraclesInfo[key]; exist {
+	if val, exist := oraclesInfo.Load(key); exist {
+		oldInfo := val.(*OracleInfo)
 		oldTime := oldInfo.HeartbeatTimestamp
 		if info.HeartbeatTimestamp > oldTime &&
 			info.HeartbeatTimestamp < time.Now().Unix()+60 {
-			oraclesInfo[key] = info
+			oraclesInfo.Store(key, info)
 		}
 	} else {
-		oraclesInfo[key] = info
+		oraclesInfo.Store(key, info)
 	}
 	return nil
 }
