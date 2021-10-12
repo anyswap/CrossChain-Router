@@ -155,9 +155,11 @@ type BuildTxArgs struct {
 	SwapArgs    `json:"swapArgs,omitempty"`
 	From        string         `json:"from,omitempty"`
 	To          string         `json:"to,omitempty"`
-	Value       *big.Int       `json:"value,omitempty"`
+	OriginFrom  string         `json:"originFrom,omitempty"`
+	OriginTxTo  string         `json:"originTxTo,omitempty"`
 	OriginValue *big.Int       `json:"originValue,omitempty"`
 	SwapValue   *big.Int       `json:"swapValue,omitempty"`
+	Value       *big.Int       `json:"value,omitempty"`
 	Memo        string         `json:"memo,omitempty"`
 	Input       *hexutil.Bytes `json:"input,omitempty"`
 	Extra       *AllExtras     `json:"extra,omitempty"`

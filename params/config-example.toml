@@ -103,6 +103,10 @@ AllowCallByContract = false
 [Extra.BigValueWhitelist]
 USDC = ["0x1111111111111111111111111111111111111111"]
 MIM  = ["0x2222222222222222222222222222222222222222"]
+# exclude fee whitelist, key is tokenID
+[Extra.ExclueFeeWhitelist]
+USDC = ["0x1111111111111111111111111111111111111111"]
+MIM  = ["0x2222222222222222222222222222222222222222"]
 # call by contract whitelist, key is chainID
 [Extra.CallByContractWhitelist]
 4 = [

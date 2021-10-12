@@ -273,6 +273,8 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 	buildTxArgs := &tokens.BuildTxArgs{
 		SwapArgs:    args.SwapArgs,
 		From:        dstBridge.GetChainConfig().GetRouterMPC(),
+		OriginFrom:  swapInfo.From,
+		OriginTxTo:  swapInfo.TxTo,
 		OriginValue: swapInfo.Value,
 		Extra:       args.Extra,
 	}

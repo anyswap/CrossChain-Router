@@ -160,6 +160,7 @@ func addMgoSwap(swapInfo *tokens.SwapTxInfo, status mongodb.SwapStatus, memo str
 		SwapType:    uint32(swapInfo.SwapType),
 		TxID:        swapInfo.Hash,
 		TxTo:        swapInfo.TxTo,
+		From:        swapInfo.From,
 		Bind:        swapInfo.Bind,
 		LogIndex:    swapInfo.LogIndex,
 		FromChainID: swapInfo.FromChainID.String(),

@@ -131,6 +131,8 @@ func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int, isManual b
 			ToChainID:   biToChainID,
 		},
 		From:        resBridge.GetChainConfig().GetRouterMPC(),
+		OriginFrom:  swap.From,
+		OriginTxTo:  swap.TxTo,
 		OriginValue: biValue,
 		ReplaceNum:  replaceNum,
 		Extra: &tokens.AllExtras{

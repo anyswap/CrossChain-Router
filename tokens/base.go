@@ -134,12 +134,16 @@ func CheckTokenSwapValue(swapInfo *SwapTxInfo, fromDecimals, toDecimals uint8) b
 		!params.IsInBigValueWhitelist(tokenID, swapInfo.TxTo) {
 		return false
 	}
-	return CalcSwapValue(tokenID, toChainID, value, fromDecimals, toDecimals).Sign() > 0
+	return CalcSwapValue(tokenID, toChainID, value, fromDecimals, toDecimals, swapInfo.From, swapInfo.TxTo).Sign() > 0
 }
 
 // CalcSwapValue calc swap value (get rid of fee and convert by decimals)
-func CalcSwapValue(tokenID, toChainID string, value *big.Int, fromDecimals, toDecimals uint8) *big.Int {
+func CalcSwapValue(tokenID, toChainID string, value *big.Int, fromDecimals, toDecimals uint8, originFrom, originTxTo string) *big.Int {
 	if !IsERC20Router() {
+		return value
+	}
+	if params.IsInExclueFeeWhitelist(tokenID, originFrom) ||
+		params.IsInExclueFeeWhitelist(tokenID, originTxTo) {
 		return value
 	}
 	swapCfg := GetSwapConfig(tokenID, toChainID)

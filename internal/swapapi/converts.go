@@ -12,6 +12,7 @@ func ConvertMgoSwapToSwapInfo(ms *mongodb.MgoSwap) *SwapInfo {
 		SwapType:    ms.SwapType,
 		TxID:        ms.TxID,
 		TxTo:        ms.TxTo,
+		From:        ms.From,
 		Bind:        ms.Bind,
 		LogIndex:    ms.LogIndex,
 		FromChainID: ms.FromChainID,

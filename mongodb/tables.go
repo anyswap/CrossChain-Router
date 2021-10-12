@@ -6,6 +6,7 @@ type MgoSwap struct {
 	SwapType    uint32 `bson:"swaptype"`
 	TxID        string `bson:"txid"`
 	TxTo        string `bson:"txto"`
+	From        string `bson:"from"`
 	Bind        string `bson:"bind"`
 	LogIndex    int    `bson:"logIndex"`
 	FromChainID string `bson:"fromChainID"`
