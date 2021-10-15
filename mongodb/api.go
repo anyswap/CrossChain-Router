@@ -365,6 +365,8 @@ func FindRouterSwapResults(fromChainID, address string, offset, limit int, statu
 			qstatus := bson.M{"status": bson.M{"$in": filterStatuses}}
 			queries = append(queries, qstatus)
 		}
+	} else {
+		isInResultColl = true
 	}
 
 	opts := &options.FindOptions{}
