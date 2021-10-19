@@ -130,8 +130,9 @@ type MPCNodeConfig struct {
 
 // APIServerConfig api service config
 type APIServerConfig struct {
-	Port           int
-	AllowedOrigins []string
+	Port             int
+	AllowedOrigins   []string
+	MaxRequestsLimit int
 }
 
 // MongoDBConfig mongodb config
