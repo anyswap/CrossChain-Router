@@ -149,21 +149,27 @@ func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int, isManual b
 		logWorkerError("replaceSwap", "build tx failed", err, "chainID", res.ToChainID, "txid", txid, "logIndex", res.LogIndex)
 		return err
 	}
+	go signAndSendReplaceTx(resBridge, rawTx, args, res)
+	return nil
+}
+
+func signAndSendReplaceTx(resBridge tokens.IBridge, rawTx interface{}, args *tokens.BuildTxArgs, res *mongodb.MgoSwapResult) {
 	signedTx, txHash, err := resBridge.MPCSignTransaction(rawTx, args.GetExtraArgs())
 	if err != nil {
-		return err
+		logWorkerError("replaceSwap", "mpc sign tx failed", err, "fromChainID", res.FromChainID, "toChainID", res.ToChainID, "txid", res.TxID, "nonce", res.SwapNonce, "logIndex", res.LogIndex)
+		return
 	}
 
 	err = replaceSwapResult(res, txHash)
 	if err != nil {
-		return err
+		return
 	}
+
 	sentTxHash, err := sendSignedTransaction(resBridge, signedTx, args)
 	if err == nil && txHash != sentTxHash {
-		logWorkerError("replaceSwap", "send tx success but with different hash", errSendTxWithDiffHash, "fromChainID", res.FromChainID, "toChainID", res.ToChainID, "txid", txid, "logIndex", res.LogIndex, "txHash", txHash, "sentTxHash", sentTxHash)
+		logWorkerError("replaceSwap", "send tx success but with different hash", errSendTxWithDiffHash, "fromChainID", res.FromChainID, "toChainID", res.ToChainID, "txid", res.TxID, "nonce", res.SwapNonce, "logIndex", res.LogIndex, "txHash", txHash, "sentTxHash", sentTxHash)
 		_ = replaceSwapResult(res, sentTxHash)
 	}
-	return err
 }
 
 func verifyReplaceSwap(res *mongodb.MgoSwapResult, isManual bool) (*mongodb.MgoSwap, error) {
