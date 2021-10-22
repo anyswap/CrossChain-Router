@@ -129,8 +129,8 @@ func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable boo
 		return nil, tokens.ErrTxNotStable
 	}
 
-	receipt, _ = txStatus.Receipt.(*types.RPCTxReceipt)
-	if receipt == nil || *receipt.Status != 1 {
+	receipt, ok := txStatus.Receipt.(*types.RPCTxReceipt)
+	if !ok || !receipt.IsStatusOk() {
 		return receipt, tokens.ErrTxWithWrongReceipt
 	}
 
