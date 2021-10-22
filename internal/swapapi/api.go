@@ -117,7 +117,7 @@ func RegisterRouterSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, e
 		}
 		oldSwap, registeredOk := getRegisteredRouterSwap(fromChainID, txid, logIndex)
 		if registeredOk {
-			result[logIndex] = "alreday registered"
+			result[logIndex] = "already registered"
 			continue
 		}
 		result[logIndex] = "success"
