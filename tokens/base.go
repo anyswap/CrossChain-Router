@@ -130,6 +130,7 @@ func CheckTokenSwapValue(swapInfo *SwapTxInfo, fromDecimals, toDecimals uint8) b
 	}
 	maxSwapValue := ConvertTokenValue(swapCfg.MaximumSwap, 18, fromDecimals)
 	if value.Cmp(maxSwapValue) > 0 &&
+		!params.IsInBigValueWhitelist(tokenID, swapInfo.From) &&
 		!params.IsInBigValueWhitelist(tokenID, swapInfo.TxTo) {
 		return false
 	}

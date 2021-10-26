@@ -84,6 +84,7 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 			fromDecimals := bridge.GetTokenConfig(swapInfo.ERC20SwapInfo.Token).Decimals
 			bigValueThreshold := tokens.GetBigValueThreshold(tokenID, swapInfo.ToChainID.String(), fromDecimals)
 			if swapInfo.Value.Cmp(bigValueThreshold) > 0 &&
+				!params.IsInBigValueWhitelist(tokenID, swapInfo.From) &&
 				!params.IsInBigValueWhitelist(tokenID, swapInfo.TxTo) {
 				swapStatus = mongodb.TxWithBigValue
 			}
