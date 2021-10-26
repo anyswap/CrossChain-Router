@@ -304,8 +304,9 @@ func FindRouterSwapResultsToReplace(chainID *big.Int, septime int64, mpc string)
 	qtime := bson.M{"inittime": bson.M{"$gte": septime}}
 	qstatus := bson.M{"status": MatchTxNotStable}
 	qchainid := bson.M{"toChainID": chainID.String()}
+	qheight := bson.M{"swapheight": 0}
 	qmpc := bson.M{"mpc": strings.ToLower(mpc)}
-	queries := []bson.M{qtime, qstatus, qchainid, qmpc}
+	queries := []bson.M{qtime, qstatus, qchainid, qheight, qmpc}
 
 	limit := int64(20)
 	opts := &options.FindOptions{
