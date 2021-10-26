@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
-	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/mpc"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
@@ -38,8 +37,6 @@ var (
 	errIdentifierMismatch = errors.New("cross chain bridge identifier mismatch")
 	errInitiatorMismatch  = errors.New("initiator mismatch")
 	errWrongMsgContext    = errors.New("wrong msg context")
-	errInvalidSignInfo    = errors.New("invalid sign info")
-	errExpiredSignInfo    = errors.New("expired sign info")
 )
 
 // StartAcceptSignJob accept job
@@ -65,7 +62,7 @@ func startAcceptProducer() {
 		if utils.IsCleanuping() {
 			return
 		}
-		signInfo, err := mpc.GetCurNodeSignInfo()
+		signInfo, err := mpc.GetCurNodeSignInfo(maxAcceptSignTimeInterval)
 		if err != nil {
 			logWorkerError("accept", "getCurNodeSignInfo failed", err)
 			time.Sleep(retryInterval)
@@ -176,8 +173,6 @@ func processAcceptInfo(info *mpc.SignInfoData) {
 		return
 	case errors.Is(err, errInitiatorMismatch),
 		errors.Is(err, errWrongMsgContext),
-		errors.Is(err, errExpiredSignInfo),
-		errors.Is(err, errInvalidSignInfo),
 		errors.Is(err, tokens.ErrTxWithWrongContract),
 		errors.Is(err, tokens.ErrNoBridgeForChainID):
 		ctx = append(ctx, "err", err)
@@ -204,15 +199,6 @@ func processAcceptInfo(info *mpc.SignInfoData) {
 }
 
 func verifySignInfo(signInfo *mpc.SignInfoData) (*tokens.BuildTxArgs, error) {
-	timestamp, err := common.GetUint64FromStr(signInfo.TimeStamp)
-	if err != nil || int64(timestamp/1000)+maxAcceptSignTimeInterval < time.Now().Unix() {
-		logWorkerTrace("accept", "expired accept sign info", "signInfo", signInfo)
-		return nil, errExpiredSignInfo
-	}
-	if signInfo.Key == "" || signInfo.Account == "" || signInfo.GroupID == "" {
-		logWorkerWarn("accept", "invalid accept sign info", "signInfo", signInfo)
-		return nil, errInvalidSignInfo
-	}
 	if !params.IsMPCInitiator(signInfo.Account) {
 		return nil, errInitiatorMismatch
 	}
@@ -222,7 +208,7 @@ func verifySignInfo(signInfo *mpc.SignInfoData) (*tokens.BuildTxArgs, error) {
 		return nil, errWrongMsgContext
 	}
 	var args tokens.BuildTxArgs
-	err = json.Unmarshal([]byte(msgContext[0]), &args)
+	err := json.Unmarshal([]byte(msgContext[0]), &args)
 	if err != nil {
 		return nil, errWrongMsgContext
 	}
