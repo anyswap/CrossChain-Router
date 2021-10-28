@@ -50,11 +50,12 @@ type ERC20SwapInfo struct {
 
 // NFTSwapInfo struct
 type NFTSwapInfo struct {
-	Token   string     `json:"token"`
-	TokenID string     `json:"tokenID"`
-	IDs     []*big.Int `json:"ids"`
-	Amounts []*big.Int `json:"amounts"`
-	Batch   bool       `json:"batch"`
+	Token   string        `json:"token"`
+	TokenID string        `json:"tokenID"`
+	IDs     []*big.Int    `json:"ids"`
+	Amounts []*big.Int    `json:"amounts"`
+	Batch   bool          `json:"batch"`
+	Data    hexutil.Bytes `json:"data,omitempty"`
 }
 
 // AnyCallSwapInfo struct

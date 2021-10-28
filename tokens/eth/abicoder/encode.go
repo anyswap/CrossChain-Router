@@ -42,6 +42,10 @@ func PackData(args ...interface{}) []byte {
 			offset := big.NewInt(int64(len(bs)))
 			copy(bs[i*32:], packBigInt(offset))
 			bs = append(bs, packBytes(v)...)
+		case hexutil.Bytes:
+			offset := big.NewInt(int64(len(bs)))
+			copy(bs[i*32:], packBigInt(offset))
+			bs = append(bs, packBytes(v)...)
 		case uint64:
 			copy(bs[i*32:], packBigInt(new(big.Int).SetUint64(v)))
 		case int64:

@@ -34,6 +34,7 @@ var (
 	disableUseFromChainIDInReceiptChains map[string]struct{}
 
 	isDebugMode           *bool
+	isNFTSwapWithData     *bool
 	isAllowCallByContract *bool
 )
 
@@ -89,6 +90,7 @@ type ExtraConfig struct {
 	IsDebugMode        bool `toml:",omitempty" json:",omitempty"`
 	EnableSwapTrade    bool `toml:",omitempty" json:",omitempty"`
 	ForceAnySwapInAuto bool `toml:",omitempty" json:",omitempty"`
+	IsNFTSwapWithData  bool `toml:",omitempty" json:",omitempty"`
 
 	MinReserveFee  map[string]uint64 `toml:",omitempty" json:",omitempty"`
 	BaseFeePercent map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID
@@ -272,6 +274,15 @@ func IsDebugMode() bool {
 		isDebugMode = &flag
 	}
 	return *isDebugMode
+}
+
+// IsNFTSwapWithData is nft swap with data, add data in swapout log and swapin argument
+func IsNFTSwapWithData() bool {
+	if isNFTSwapWithData == nil {
+		flag := GetExtraConfig() != nil && GetExtraConfig().IsNFTSwapWithData
+		isNFTSwapWithData = &flag
+	}
+	return *isNFTSwapWithData
 }
 
 // AllowCallByContract allow call into router from contract

@@ -41,6 +41,7 @@ func ConvertToSwapInfo(info *tokens.SwapInfo) SwapInfo {
 			IDs:     fromBigIntSlice(nftSwapInfo.IDs),
 			Amounts: fromBigIntSlice(nftSwapInfo.Amounts),
 			Batch:   nftSwapInfo.Batch,
+			Data:    nftSwapInfo.Data.String(),
 		}
 	case info.AnyCallSwapInfo != nil:
 		anycallSwapInfo := info.AnyCallSwapInfo
@@ -93,6 +94,7 @@ func ConvertFromSwapInfo(swapinfo *SwapInfo) (tokens.SwapInfo, error) {
 			IDs:     ids,
 			Amounts: amounts,
 			Batch:   nftSwapInfo.Batch,
+			Data:    hexutil.Bytes(nftSwapInfo.Data),
 		}
 	case swapinfo.AnyCallSwapInfo != nil:
 		anyCallSwapInfo := swapinfo.AnyCallSwapInfo

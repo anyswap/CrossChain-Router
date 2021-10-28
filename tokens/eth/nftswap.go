@@ -18,8 +18,11 @@ import (
 
 // nft swap log topics and func hashes
 var (
-	LogNFT721SwapOutTopic       = common.FromHex("0x0d45b0b9f5add3e1bb841982f1fa9303628b0b619b000cb1f9f1c3903329a4c7")
-	LogNFT1155SwapOutTopic      = common.FromHex("0x5058b8684cf36ffd9f66bc623fbc617a44dd65cf2273306d03d3104af0995cb0")
+	// LogNFT721SwapOut(address,address,address,uint256,uint256,uint256);
+	LogNFT721SwapOutTopic = common.FromHex("0x0d45b0b9f5add3e1bb841982f1fa9303628b0b619b000cb1f9f1c3903329a4c7")
+	// LogNFT1155SwapOut(addressindexedtoken,address,address,uint256,uint256,uint256,uint256)
+	LogNFT1155SwapOutTopic = common.FromHex("0x5058b8684cf36ffd9f66bc623fbc617a44dd65cf2273306d03d3104af0995cb0")
+	//LogNFT1155SwapOutBatch(address,address,address,uint256[],uint256[],uint256,uint256)
 	LogNFT1155SwapOutBatchTopic = common.FromHex("0xaa428a5ab688b49b415401782c170d216b33b15711d30cf69482f570eca8db38")
 
 	// nft721SwapIn(bytes32,address,address,uint256,uint256)
@@ -30,6 +33,15 @@ var (
 	nft1155BatchSwapInFuncHash = common.FromHex("88b150f7")
 
 	errWrongIDsOrAmounts = errors.New("wrong ids or amounts")
+)
+
+// nft swap with data log topics and func hashes
+var (
+	// LogNFT721SwapOut(address,address,address,uint256,uint256,uint256,bytes);
+	LogNFT721SwapOutWithDataTopic = common.FromHex("0x8ef0d7d8b96825500b3d692d995a543110f8a93f16b7be5d23b5960fd4363bdc")
+
+	// nft721SwapIn(bytes32,address,address,uint256,uint256,bytes)
+	nft721SwapInWithDataFuncHash = common.FromHex("2cbba1a4")
 )
 
 // nolint:dupl // ok
@@ -127,15 +139,24 @@ func (b *Bridge) verifyNFTSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPC
 	}
 
 	logTopic := rlog.Topics[0].Bytes()
-	switch {
-	case bytes.Equal(logTopic, LogNFT721SwapOutTopic):
-		err = b.parseNFT721SwapoutTxLog(swapInfo, rlog)
-	case bytes.Equal(logTopic, LogNFT1155SwapOutTopic):
-		err = b.parseNFT1155SwapOutTxLog(swapInfo, rlog)
-	case bytes.Equal(logTopic, LogNFT1155SwapOutBatchTopic):
-		err = b.parseNFT1155SwapOutBatchTxLog(swapInfo, rlog)
-	default:
-		return tokens.ErrSwapoutLogNotFound
+	if params.IsNFTSwapWithData() {
+		switch {
+		case bytes.Equal(logTopic, LogNFT721SwapOutWithDataTopic):
+			err = b.parseNFT721SwapoutWithDataTxLog(swapInfo, rlog)
+		default:
+			return tokens.ErrSwapoutLogNotFound
+		}
+	} else {
+		switch {
+		case bytes.Equal(logTopic, LogNFT721SwapOutTopic):
+			err = b.parseNFT721SwapoutTxLog(swapInfo, rlog)
+		case bytes.Equal(logTopic, LogNFT1155SwapOutTopic):
+			err = b.parseNFT1155SwapOutTxLog(swapInfo, rlog)
+		case bytes.Equal(logTopic, LogNFT1155SwapOutBatchTopic):
+			err = b.parseNFT1155SwapOutBatchTxLog(swapInfo, rlog)
+		default:
+			return tokens.ErrSwapoutLogNotFound
+		}
 	}
 
 	if err != nil {
@@ -170,6 +191,37 @@ func (b *Bridge) parseNFT721SwapoutTxLog(swapInfo *tokens.SwapTxInfo, rlog *type
 		swapInfo.FromChainID = common.GetBigInt(logData, 32, 32)
 	}
 	swapInfo.ToChainID = common.GetBigInt(logData, 64, 32)
+
+	tokenCfg := b.GetTokenConfig(nftSwapInfo.Token)
+	if tokenCfg == nil {
+		return tokens.ErrMissTokenConfig
+	}
+	nftSwapInfo.TokenID = tokenCfg.TokenID
+
+	return nil
+}
+
+func (b *Bridge) parseNFT721SwapoutWithDataTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
+	logTopics := rlog.Topics
+	if len(logTopics) != 4 {
+		return tokens.ErrTxWithWrongTopics
+	}
+	logData := *rlog.Data
+	if len(logData) < 160 {
+		return abicoder.ErrParseDataError
+	}
+	nftSwapInfo := swapInfo.NFTSwapInfo
+	nftSwapInfo.Token = common.BytesToAddress(logTopics[1].Bytes()).LowerHex()
+	swapInfo.From = common.BytesToAddress(logTopics[2].Bytes()).LowerHex()
+	swapInfo.Bind = common.BytesToAddress(logTopics[3].Bytes()).LowerHex()
+	swapInfo.Value = big.NewInt(0)
+	nftSwapInfo.IDs = []*big.Int{common.GetBigInt(logData, 0, 32)}
+	swapInfo.FromChainID = common.GetBigInt(logData, 32, 32)
+	swapInfo.ToChainID = common.GetBigInt(logData, 64, 32)
+	nftSwapInfo.Data, err = abicoder.ParseBytesInData(logData, 96)
+	if err != nil {
+		return err
+	}
 
 	tokenCfg := b.GetTokenConfig(nftSwapInfo.Token)
 	if tokenCfg == nil {
@@ -346,13 +398,24 @@ func (b *Bridge) buildNFTSwapTxInput(args *tokens.BuildTxArgs) (err error) {
 		if len(nftSwapInfo.IDs) != 1 || len(nftSwapInfo.Amounts) != 0 {
 			return errWrongIDsOrAmounts
 		}
-		input = abicoder.PackDataWithFuncHash(nft721SwapInFuncHash,
-			common.HexToHash(args.SwapID),
-			common.HexToAddress(multichainToken),
-			receiver,
-			nftSwapInfo.IDs[0],
-			args.FromChainID,
-		)
+		if params.IsNFTSwapWithData() {
+			input = abicoder.PackDataWithFuncHash(nft721SwapInWithDataFuncHash,
+				common.HexToHash(args.SwapID),
+				common.HexToAddress(multichainToken),
+				receiver,
+				nftSwapInfo.IDs[0],
+				args.FromChainID,
+				nftSwapInfo.Data,
+			)
+		} else {
+			input = abicoder.PackDataWithFuncHash(nft721SwapInFuncHash,
+				common.HexToHash(args.SwapID),
+				common.HexToAddress(multichainToken),
+				receiver,
+				nftSwapInfo.IDs[0],
+				args.FromChainID,
+			)
+		}
 	}
 
 	args.Input = (*hexutil.Bytes)(&input)  // input

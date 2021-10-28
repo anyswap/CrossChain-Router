@@ -87,6 +87,8 @@ ServerAPIAddress = "http://127.0.0.1:11556/rpc"
 EnableSwapTrade = false
 # force call anySwapInAuto
 ForceAnySwapInAuto = false
+# for nft swap, add data in swapout log and swapin argument
+IsNFTSwapWithData = false
 # getting accept list interval (seconds) in accept job
 GetAcceptListInterval = 5
 # apecify dynamic fee tx enabled chainids
