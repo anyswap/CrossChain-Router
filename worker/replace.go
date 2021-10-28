@@ -212,17 +212,17 @@ func checkIfSwapNonceHasPassed(bridge tokens.IBridge, res *mongodb.MgoSwapResult
 	if !ok {
 		return nil
 	}
+	mpc := bridge.GetChainConfig().GetRouterMPC()
+	nonce, err := nonceSetter.GetPoolNonce(mpc, "latest")
+	if err != nil {
+		return fmt.Errorf("get router mpc nonce failed, %w", err)
+	}
 	txStat := getSwapTxStatus(bridge, res)
 	if txStat != nil && txStat.BlockHeight > 0 {
 		if isReplace {
 			return errors.New("swaptx exist in chain")
 		}
 		return nil
-	}
-	mpc := bridge.GetChainConfig().GetRouterMPC()
-	nonce, err := nonceSetter.GetPoolNonce(mpc, "latest")
-	if err != nil {
-		return fmt.Errorf("get router mpc nonce failed, %w", err)
 	}
 	if nonce > res.SwapNonce && res.SwapNonce > 0 {
 		var iden string
@@ -237,6 +237,15 @@ func checkIfSwapNonceHasPassed(bridge tokens.IBridge, res *mongodb.MgoSwapResult
 			noncePassedInterval = treatAsNoncePassedInterval
 		}
 		if res.Timestamp < getSepTimeInFind(noncePassedInterval) {
+			if txStat == nil { // retry to get swap status
+				txStat = getSwapTxStatus(bridge, res)
+				if txStat != nil && txStat.BlockHeight > 0 {
+					if isReplace {
+						return errors.New("swaptx exist in chain")
+					}
+					return nil
+				}
+			}
 			logWorker(iden, "mark swap result nonce passed",
 				"fromChainID", fromChainID, "txid", txid, "logIndex", logIndex,
 				"swaptime", res.Timestamp, "nowtime", now())

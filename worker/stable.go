@@ -93,7 +93,7 @@ func processRouterSwapStable(swap *mongodb.MgoSwapResult) (err error) {
 			_ = updateSwapTx(swap.FromChainID, swap.TxID, swap.LogIndex, swap.SwapTx)
 		}
 		if txStatus.IsSwapTxOnChainAndFailed() {
-			logWorker("[stable]", "mark swap result onchain failed",
+			logWorker("stable", "mark swap result onchain failed",
 				"fromChainID", swap.FromChainID, "txid", swap.TxID, "logIndex", swap.LogIndex,
 				"swaptime", swap.Timestamp, "nowtime", now())
 			return markSwapResultFailed(swap.FromChainID, swap.TxID, swap.LogIndex)
