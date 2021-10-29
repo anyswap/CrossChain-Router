@@ -210,6 +210,9 @@ func (b *Bridge) parseERC20SwapoutTxLog(swapInfo *tokens.SwapTxInfo, rlog *types
 }
 
 func (b *Bridge) parseERC20SwapTradeTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog, forNative bool) error {
+	if !params.IsSwapTradeEnabled() {
+		return tokens.ErrSwapTradeNotSupport
+	}
 	logTopics := rlog.Topics
 	if len(logTopics) != 3 {
 		return tokens.ErrTxWithWrongTopics

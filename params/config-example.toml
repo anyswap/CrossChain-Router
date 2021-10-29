@@ -81,6 +81,8 @@ MaxRequestsLimit = 10
 ServerAPIAddress = "http://127.0.0.1:11556/rpc"
 
 [Extra]
+# is swap trade enabled
+EnableSwapTrade = false
 # getting accept list interval (seconds) in accept job
 GetAcceptListInterval = 5
 # apecify dynamic fee tx enabled chainids

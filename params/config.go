@@ -84,7 +84,9 @@ type RouterConfig struct {
 
 // ExtraConfig extra config
 type ExtraConfig struct {
-	IsDebugMode    bool              `toml:",omitempty" json:",omitempty"`
+	IsDebugMode     bool `toml:",omitempty" json:",omitempty"`
+	EnableSwapTrade bool `toml:",omitempty" json:",omitempty"`
+
 	MinReserveFee  map[string]uint64 `toml:",omitempty" json:",omitempty"`
 	BaseFeePercent map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID
 
@@ -177,6 +179,11 @@ func GetIdentifier() string {
 // GetSwapType get router swap type
 func GetSwapType() string {
 	return GetRouterConfig().SwapType
+}
+
+// IsSwapTradeEnabled is swap trade enabled
+func IsSwapTradeEnabled() bool {
+	return GetExtraConfig() != nil && GetExtraConfig().EnableSwapTrade
 }
 
 // GetAcceptListInterval get accept list interval (seconds)
