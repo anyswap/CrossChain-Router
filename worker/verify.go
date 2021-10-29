@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
@@ -146,10 +147,19 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 			}
 		}
 	case errors.Is(err, tokens.ErrTxNotStable),
-		errors.Is(err, tokens.ErrTxNotFound),
 		errors.Is(err, tokens.ErrRPCQueryError):
 		isProcessed = false
 		return err
+	case errors.Is(err, tokens.ErrTxNotFound):
+		nowMilli := common.NowMilli()
+		if swap.InitTime+1000*maxTxNotFoundTime < nowMilli {
+			duration := time.Duration((nowMilli - swap.InitTime) / 1000 * int64(time.Second))
+			logWorker("verify", "set longer not found swap to verify failed", "fromChainID", fromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex, "inittime", swap.InitTime, "duration", duration.String())
+			dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxVerifyFailed, now(), err.Error())
+		} else {
+			isProcessed = false
+			return err
+		}
 	case errors.Is(err, tokens.ErrTxWithWrongValue):
 		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxWithWrongValue, now(), err.Error())
 	case errors.Is(err, tokens.ErrTxWithWrongPath):
