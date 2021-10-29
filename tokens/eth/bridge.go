@@ -96,6 +96,10 @@ func (b *Bridge) InitChainConfig(chainID *big.Int) {
 	if err != nil {
 		log.Fatal("get router mpc address failed", "routerContract", chainCfg.RouterContract, "err", err)
 	}
+	if common.HexToAddress(routerMPC) == (common.Address{}) {
+		log.Fatal("get router mpc address return an empty address", "routerContract", chainCfg.RouterContract)
+	}
+	log.Info("get router mpc address success", "routerContract", chainCfg.RouterContract, "routerMPC", routerMPC)
 	routerMPCPubkey, err := router.GetMPCPubkey(routerMPC)
 	if err != nil {
 		log.Fatal("get mpc public key failed", "mpc", routerMPC, "err", err)
