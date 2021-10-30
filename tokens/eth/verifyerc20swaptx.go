@@ -64,6 +64,10 @@ func (b *Bridge) verifyERC20SwapTx(txHash string, logIndex int, allowUnstable bo
 }
 
 func (b *Bridge) checkERC20SwapInfo(swapInfo *tokens.SwapTxInfo) error {
+	if swapInfo.FromChainID.String() != b.ChainConfig.ChainID {
+		log.Error("router swap tx with mismatched fromChainID in receipt", "txid", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "fromChainID", swapInfo.FromChainID, "toChainID", swapInfo.ToChainID, "chainID", b.ChainConfig.ChainID)
+		return tokens.ErrFromChainIDMismatch
+	}
 	erc20SwapInfo := swapInfo.ERC20SwapInfo
 	fromTokenCfg := b.GetTokenConfig(erc20SwapInfo.Token)
 	if fromTokenCfg == nil || erc20SwapInfo.TokenID == "" {
