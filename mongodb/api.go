@@ -25,6 +25,7 @@ const (
 
 var (
 	retryLock        sync.Mutex
+	verifyLock       sync.Mutex
 	updateResultLock sync.Mutex
 
 	maxCountOfResults = int64(1000)
@@ -43,6 +44,30 @@ func AddRouterSwap(ms *MgoSwap) error {
 		log.Info("mongodb add router swap success", "chainid", ms.FromChainID, "txid", ms.TxID, "logindex", ms.LogIndex)
 	} else {
 		log.Debug("mongodb add router swap failed", "chainid", ms.FromChainID, "txid", ms.TxID, "logindex", ms.LogIndex, "err", err)
+	}
+	return mgoError(err)
+}
+
+// PassRouterSwapVerify pass router swap verify
+func PassRouterSwapVerify(fromChainID, txid string, logindex int, timestamp int64) error {
+	verifyLock.Lock()
+	defer verifyLock.Unlock()
+
+	swap, err := FindRouterSwap(fromChainID, txid, logindex)
+	if err != nil {
+		return fmt.Errorf("forbid pass verify as swap is not exist")
+	}
+	if swap.Status != TxNotStable {
+		return fmt.Errorf("forbid pass verify as swap status is '%v'", swap.Status)
+	}
+
+	key := getRouterSwapKey(fromChainID, txid, logindex)
+	updates := bson.M{"status": TxNotSwapped, "timestamp": timestamp}
+	_, err = collRouterSwap.UpdateByID(clientCtx, key, bson.M{"$set": updates})
+	if err == nil {
+		log.Info("mongodb pass verify success", "chainid", fromChainID, "txid", txid, "logindex", logindex)
+	} else {
+		log.Debug("mongodb pass verify failed", "chainid", fromChainID, "txid", txid, "logindex", logindex, "err", err)
 	}
 	return mgoError(err)
 }
