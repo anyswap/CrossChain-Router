@@ -89,7 +89,7 @@ func ReportOracleInfo(oracle string, info *OracleInfo) error {
 // if logIndex is 0 then check all logs, otherwise only check the specified log
 func RegisterRouterSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, error) {
 	swapType := tokens.GetRouterSwapType()
-	log.Info("[api] register swap", "chainid", fromChainID, "txid", txid, "logIndex", logIndexStr, "swapType", swapType.String())
+	log.Debug("[api] register swap", "chainid", fromChainID, "txid", txid, "logIndex", logIndexStr, "swapType", swapType.String())
 	chainID, err := common.GetBigIntFromStr(fromChainID)
 	if err != nil {
 		return nil, newRPCInternalError(err)
