@@ -201,7 +201,11 @@ func (b *Bridge) parseERC20SwapoutTxLog(swapInfo *tokens.SwapTxInfo, rlog *types
 	swapInfo.From = common.BytesToAddress(logTopics[2].Bytes()).LowerHex()
 	swapInfo.Bind = common.BytesToAddress(logTopics[3].Bytes()).LowerHex()
 	swapInfo.Value = common.GetBigInt(logData, 0, 32)
-	swapInfo.FromChainID = common.GetBigInt(logData, 32, 32)
+	if params.IsUseFromChainIDInReceiptDisabled(b.ChainConfig.ChainID) {
+		swapInfo.FromChainID = b.ChainConfig.GetChainID()
+	} else {
+		swapInfo.FromChainID = common.GetBigInt(logData, 32, 32)
+	}
 	swapInfo.ToChainID = common.GetBigInt(logData, 64, 32)
 
 	tokenCfg := b.GetTokenConfig(erc20SwapInfo.Token)
@@ -238,7 +242,11 @@ func (b *Bridge) parseERC20SwapTradeTxLog(swapInfo *tokens.SwapTxInfo, rlog *typ
 	}
 	swapInfo.Value = common.GetBigInt(logData, 32, 32)
 	erc20SwapInfo.AmountOutMin = common.GetBigInt(logData, 64, 32)
-	swapInfo.FromChainID = common.GetBigInt(logData, 96, 32)
+	if params.IsUseFromChainIDInReceiptDisabled(b.ChainConfig.ChainID) {
+		swapInfo.FromChainID = b.ChainConfig.GetChainID()
+	} else {
+		swapInfo.FromChainID = common.GetBigInt(logData, 96, 32)
+	}
 	swapInfo.ToChainID = common.GetBigInt(logData, 128, 32)
 
 	erc20SwapInfo.Token = path[0]

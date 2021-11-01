@@ -28,9 +28,10 @@ var (
 	exclueFeeWhitelist      map[string]map[string]struct{} // tokenID -> caller
 	bigValueWhitelist       map[string]map[string]struct{} // tokenID -> caller
 
-	dynamicFeeTxEnabledChains     map[string]struct{}
-	enableCheckTxBlockHashChains  map[string]struct{}
-	enableCheckTxBlockIndexChains map[string]struct{}
+	dynamicFeeTxEnabledChains            map[string]struct{}
+	enableCheckTxBlockHashChains         map[string]struct{}
+	enableCheckTxBlockIndexChains        map[string]struct{}
+	disableUseFromChainIDInReceiptChains map[string]struct{}
 
 	isDebugMode           *bool
 	isAllowCallByContract *bool
@@ -97,9 +98,10 @@ type ExtraConfig struct {
 	ExclueFeeWhitelist      map[string][]string // tokenID -> whitelist
 	BigValueWhitelist       map[string][]string // tokenID -> whitelist
 
-	DynamicFeeTxEnabledChains     []string
-	EnableCheckTxBlockHashChains  []string
-	EnableCheckTxBlockIndexChains []string
+	DynamicFeeTxEnabledChains            []string
+	EnableCheckTxBlockHashChains         []string
+	EnableCheckTxBlockIndexChains        []string
+	DisableUseFromChainIDInReceiptChains []string
 }
 
 // OnchainConfig struct
@@ -486,6 +488,26 @@ func initEnableCheckTxBlockIndexChains() {
 // IsCheckTxBlockIndexEnabled check tx block and index
 func IsCheckTxBlockIndexEnabled(chainID string) bool {
 	_, exist := enableCheckTxBlockIndexChains[chainID]
+	return exist
+}
+
+func initDisableUseFromChainIDInReceiptChains() {
+	disableUseFromChainIDInReceiptChains = make(map[string]struct{})
+	if GetExtraConfig() == nil || len(GetExtraConfig().DisableUseFromChainIDInReceiptChains) == 0 {
+		return
+	}
+	for _, cid := range GetExtraConfig().DisableUseFromChainIDInReceiptChains {
+		if _, err := common.GetBigIntFromStr(cid); err != nil {
+			log.Fatal("initDisableUseFromChainIDInReceiptChains wrong chainID", "chainID", cid, "err", err)
+		}
+		disableUseFromChainIDInReceiptChains[cid] = struct{}{}
+	}
+	log.Info("initDisableUseFromChainIDInReceiptChains success")
+}
+
+// IsUseFromChainIDInReceiptDisabled if use fromChainID from receipt log
+func IsUseFromChainIDInReceiptDisabled(chainID string) bool {
+	_, exist := disableUseFromChainIDInReceiptChains[chainID]
 	return exist
 }
 

@@ -164,7 +164,11 @@ func (b *Bridge) parseNFT721SwapoutTxLog(swapInfo *tokens.SwapTxInfo, rlog *type
 	swapInfo.Bind = common.BytesToAddress(logTopics[3].Bytes()).LowerHex()
 	swapInfo.Value = big.NewInt(0)
 	nftSwapInfo.IDs = []*big.Int{common.GetBigInt(logData, 0, 32)}
-	swapInfo.FromChainID = common.GetBigInt(logData, 32, 32)
+	if params.IsUseFromChainIDInReceiptDisabled(b.ChainConfig.ChainID) {
+		swapInfo.FromChainID = b.ChainConfig.GetChainID()
+	} else {
+		swapInfo.FromChainID = common.GetBigInt(logData, 32, 32)
+	}
 	swapInfo.ToChainID = common.GetBigInt(logData, 64, 32)
 
 	tokenCfg := b.GetTokenConfig(nftSwapInfo.Token)
@@ -192,7 +196,11 @@ func (b *Bridge) parseNFT1155SwapOutTxLog(swapInfo *tokens.SwapTxInfo, rlog *typ
 	swapInfo.Value = big.NewInt(0)
 	nftSwapInfo.IDs = []*big.Int{common.GetBigInt(logData, 0, 32)}
 	nftSwapInfo.Amounts = []*big.Int{common.GetBigInt(logData, 32, 32)}
-	swapInfo.FromChainID = common.GetBigInt(logData, 64, 32)
+	if params.IsUseFromChainIDInReceiptDisabled(b.ChainConfig.ChainID) {
+		swapInfo.FromChainID = b.ChainConfig.GetChainID()
+	} else {
+		swapInfo.FromChainID = common.GetBigInt(logData, 64, 32)
+	}
 	swapInfo.ToChainID = common.GetBigInt(logData, 96, 32)
 
 	tokenCfg := b.GetTokenConfig(nftSwapInfo.Token)
@@ -227,7 +235,11 @@ func (b *Bridge) parseNFT1155SwapOutBatchTxLog(swapInfo *tokens.SwapTxInfo, rlog
 	if err != nil {
 		return err
 	}
-	swapInfo.FromChainID = common.GetBigInt(logData, 64, 32)
+	if params.IsUseFromChainIDInReceiptDisabled(b.ChainConfig.ChainID) {
+		swapInfo.FromChainID = b.ChainConfig.GetChainID()
+	} else {
+		swapInfo.FromChainID = common.GetBigInt(logData, 64, 32)
+	}
 	swapInfo.ToChainID = common.GetBigInt(logData, 96, 32)
 
 	tokenCfg := b.GetTokenConfig(nftSwapInfo.Token)

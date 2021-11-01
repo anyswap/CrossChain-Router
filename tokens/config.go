@@ -20,6 +20,7 @@ type ChainConfig struct {
 	InitialHeight  uint64
 
 	// cached value
+	chainID         *big.Int
 	routerMPC       string
 	routerMPCPubkey string
 	routerFactory   string
@@ -54,15 +55,16 @@ type GatewayConfig struct {
 }
 
 // CheckConfig check chain config
-func (c *ChainConfig) CheckConfig() error {
+func (c *ChainConfig) CheckConfig() (err error) {
 	if c.BlockChain == "" {
 		return errors.New("chain must config 'BlockChain'")
 	}
 	if c.ChainID == "" {
 		return errors.New("chain must config 'ChainID'")
 	}
-	if _, ok := new(big.Int).SetString(c.ChainID, 0); !ok {
-		return errors.New("chain with wrong 'ChainID'")
+	c.chainID, err = common.GetBigIntFromStr(c.ChainID)
+	if err != nil {
+		return fmt.Errorf("chain with wrong 'ChainID'. %w", err)
 	}
 	if c.Confirmations == 0 {
 		return errors.New("chain must config nonzero 'Confirmations'")
@@ -71,6 +73,11 @@ func (c *ChainConfig) CheckConfig() error {
 		return errors.New("chain must config 'RouterContract'")
 	}
 	return nil
+}
+
+// GetChainID get chainID of number
+func (c *ChainConfig) GetChainID() *big.Int {
+	return c.chainID
 }
 
 // SetRouterMPC set router mpc

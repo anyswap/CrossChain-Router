@@ -349,6 +349,7 @@ func (c *ExtraConfig) CheckConfig() (err error) {
 	initDynamicFeeTxEnabledChains()
 	initEnableCheckTxBlockHashChains()
 	initEnableCheckTxBlockIndexChains()
+	initDisableUseFromChainIDInReceiptChains()
 
 	for chainID, baseFeePercent := range c.BaseFeePercent {
 		if _, ok := new(big.Int).SetString(chainID, 0); !ok {
@@ -368,6 +369,7 @@ func (c *ExtraConfig) CheckConfig() (err error) {
 		"dynamicFeeTxEnabledChains", c.DynamicFeeTxEnabledChains,
 		"enableCheckTxBlockHashChains", c.EnableCheckTxBlockHashChains,
 		"enableCheckTxBlockIndexChains", c.EnableCheckTxBlockIndexChains,
+		"initDisableUseFromChainIDInReceiptChains", c.DisableUseFromChainIDInReceiptChains,
 		"baseFeePercent", c.BaseFeePercent,
 	)
 	return nil

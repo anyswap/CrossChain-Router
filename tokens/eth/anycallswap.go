@@ -160,7 +160,11 @@ func (b *Bridge) parseAnyCallSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.
 	if err != nil {
 		return err
 	}
-	swapInfo.FromChainID = common.GetBigInt(logData, 128, 32)
+	if params.IsUseFromChainIDInReceiptDisabled(b.ChainConfig.ChainID) {
+		swapInfo.FromChainID = b.ChainConfig.GetChainID()
+	} else {
+		swapInfo.FromChainID = common.GetBigInt(logData, 128, 32)
+	}
 	swapInfo.ToChainID = common.GetBigInt(logData, 160, 32)
 	return nil
 }
