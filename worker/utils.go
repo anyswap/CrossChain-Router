@@ -7,8 +7,6 @@ import (
 )
 
 var (
-	maxTxNotFoundTime = int64(2 * 24 * 3600)
-
 	maxVerifyLifetime       = int64(7 * 24 * 3600)
 	restIntervalInVerifyJob = 3 * time.Second
 
