@@ -166,6 +166,10 @@ func (b *Bridge) parseAnyCallSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.
 }
 
 func (b *Bridge) checkAnyCallSwapInfo(swapInfo *tokens.SwapTxInfo) error {
+	if swapInfo.FromChainID.String() != b.ChainConfig.ChainID {
+		log.Error("anycall swap tx with mismatched fromChainID in receipt", "txid", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "fromChainID", swapInfo.FromChainID, "toChainID", swapInfo.ToChainID, "chainID", b.ChainConfig.ChainID)
+		return tokens.ErrFromChainIDMismatch
+	}
 	dstBridge := router.GetBridgeByChainID(swapInfo.ToChainID.String())
 	if dstBridge == nil {
 		return tokens.ErrNoBridgeForChainID
