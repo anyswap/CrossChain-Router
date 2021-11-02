@@ -179,17 +179,18 @@ func sendSignedTransaction(bridge tokens.IBridge, signedTx interface{}, args *to
 		retrySendTxCount    = 3
 		retrySendTxInterval = 1 * time.Second
 		swapTxNonce         = args.GetTxNonce()
+		replaceNum          = args.GetReplaceNum()
 	)
 	for i := 0; i < retrySendTxCount; i++ {
 		txHash, err = bridge.SendTransaction(signedTx)
 		if err == nil {
-			logWorker("sendtx", "send tx success", "txHash", txHash, "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "swapNonce", swapTxNonce, "replaceNum", args.ReplaceNum)
+			logWorker("sendtx", "send tx success", "txHash", txHash, "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "swapNonce", swapTxNonce, "replaceNum", replaceNum)
 			break
 		}
 		time.Sleep(retrySendTxInterval)
 	}
 	if err != nil {
-		logWorkerError("sendtx", "send tx failed", err, "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "swapNonce", swapTxNonce, "replaceNum", args.ReplaceNum)
+		logWorkerError("sendtx", "send tx failed", err, "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "swapNonce", swapTxNonce, "replaceNum", replaceNum)
 		return txHash, err
 	}
 

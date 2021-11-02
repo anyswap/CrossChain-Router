@@ -134,12 +134,12 @@ func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int, isManual b
 		OriginFrom:  swap.From,
 		OriginTxTo:  swap.TxTo,
 		OriginValue: biValue,
-		ReplaceNum:  replaceNum,
 		Extra: &tokens.AllExtras{
 			EthExtra: &tokens.EthExtraArgs{
 				GasPrice: gasPrice,
 				Nonce:    &nonce,
 			},
+			ReplaceNum: replaceNum,
 		},
 	}
 	args.SwapInfo, err = mongodb.ConvertFromSwapInfo(&swap.SwapInfo)

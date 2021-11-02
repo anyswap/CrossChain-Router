@@ -85,7 +85,7 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs, extra *tokens.EthExtraArgs) (
 		"identifier", args.Identifier, "swapID", args.SwapID,
 		"fromChainID", args.FromChainID, "toChainID", args.ToChainID,
 		"from", args.From, "to", to.String(), "bind", args.Bind, "nonce", nonce,
-		"gasLimit", gasLimit, "replaceNum", args.ReplaceNum,
+		"gasLimit", gasLimit, "replaceNum", args.GetReplaceNum(),
 	}
 	if gasTipCap != nil || gasFeeCap != nil {
 		ctx = append(ctx, "gasTipCap", gasTipCap, "gasFeeCap", gasFeeCap)
@@ -220,8 +220,9 @@ func (b *Bridge) adjustSwapGasPrice(args *tokens.BuildTxArgs, oldGasPrice *big.I
 	}
 	newGasPrice = new(big.Int).Set(oldGasPrice) // clone from old
 	addPercent := serverCfg.PlusGasPricePercentage
-	if args.ReplaceNum > 0 {
-		addPercent += args.ReplaceNum * serverCfg.ReplacePlusGasPricePercent
+	replaceNum := args.GetReplaceNum()
+	if replaceNum > 0 {
+		addPercent += replaceNum * serverCfg.ReplacePlusGasPricePercent
 	}
 	if addPercent > serverCfg.MaxPlusGasPricePercentage {
 		addPercent = serverCfg.MaxPlusGasPricePercentage
@@ -241,7 +242,7 @@ func (b *Bridge) adjustSwapGasPrice(args *tokens.BuildTxArgs, oldGasPrice *big.I
 				newGasPrice = minGasPrice
 			}
 		}
-		if args.ReplaceNum == 0 { // exclude replace situation
+		if replaceNum == 0 { // exclude replace situation
 			latestGasPrice = newGasPrice
 		}
 	}
@@ -313,8 +314,9 @@ func (b *Bridge) getGasTipCap(args *tokens.BuildTxArgs) (gasTipCap *big.Int, err
 	}
 
 	addPercent := dfConfig.PlusGasTipCapPercent
-	if args.ReplaceNum > 0 {
-		addPercent += args.ReplaceNum * serverCfg.ReplacePlusGasPricePercent
+	replaceNum := args.GetReplaceNum()
+	if replaceNum > 0 {
+		addPercent += replaceNum * serverCfg.ReplacePlusGasPricePercent
 	}
 	if addPercent > serverCfg.MaxPlusGasPricePercentage {
 		addPercent = serverCfg.MaxPlusGasPricePercentage

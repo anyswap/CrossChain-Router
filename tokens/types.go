@@ -163,12 +163,12 @@ type BuildTxArgs struct {
 	Memo        string         `json:"memo,omitempty"`
 	Input       *hexutil.Bytes `json:"input,omitempty"`
 	Extra       *AllExtras     `json:"extra,omitempty"`
-	ReplaceNum  uint64         `json:"replaceNum,omitempty"`
 }
 
 // AllExtras struct
 type AllExtras struct {
-	EthExtra *EthExtraArgs `json:"ethExtra,omitempty"`
+	EthExtra   *EthExtraArgs `json:"ethExtra,omitempty"`
+	ReplaceNum uint64        `json:"replaceNum,omitempty"`
 }
 
 // EthExtraArgs struct
@@ -179,6 +179,14 @@ type EthExtraArgs struct {
 	GasFeeCap *big.Int `json:"gasFeeCap,omitempty"`
 	Nonce     *uint64  `json:"nonce,omitempty"`
 	Deadline  int64    `json:"deadline,omitempty"`
+}
+
+// GetReplaceNum get rplace swap count
+func (args *BuildTxArgs) GetReplaceNum() uint64 {
+	if args.Extra != nil {
+		return args.Extra.ReplaceNum
+	}
+	return 0
 }
 
 // GetExtraArgs get extra args
