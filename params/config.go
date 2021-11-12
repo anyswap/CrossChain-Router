@@ -114,9 +114,12 @@ type OnchainConfig struct {
 
 // MPCConfig mpc related config
 type MPCConfig struct {
-	APIPrefix     string
-	RPCTimeout    uint64
-	SignTimeout   uint64
+	APIPrefix                 string
+	RPCTimeout                uint64
+	SignTimeout               uint64
+	MaxSignGroupFailures      int
+	MinIntervalToAddSignGroup int64
+
 	GroupID       *string
 	NeededOracles *uint32
 	TotalOracles  *uint32

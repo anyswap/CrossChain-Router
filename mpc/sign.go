@@ -28,7 +28,17 @@ var (
 	errGetSignResultFailed  = errors.New("get sign result failed")
 	errRValueIsUsed         = errors.New("r value is already used")
 	errWrongSignatureLength = errors.New("wrong signature length")
+	errNoUsableSignGroups   = errors.New("no usable sign groups")
+
+	signGroupFailuresMap      = make(map[string]signFailures) // key is groupID
+	maxSignGroupFailures      = 5                             // delete if fail too many times consecutively
+	minIntervalToAddSignGroup = int64(3600)                   // seconds
 )
+
+type signFailures struct {
+	count    int
+	lastTime int64
+}
 
 func pingMPCNode(nodeInfo *NodeInfo) (err error) {
 	rpcAddr := nodeInfo.mpcRPCAddress
@@ -59,13 +69,18 @@ func DoSign(signPubkey string, msgHash, msgContext []string) (keyID string, rsvs
 			if err = pingMPCNode(mpcNode); err != nil {
 				continue
 			}
-			signGroupsCount := int64(len(mpcNode.signGroups))
+			signGroupIndexes := mpcNode.getUsableSignGroupIndexes()
+			signGroupsCount := int64(len(signGroupIndexes))
+			if signGroupsCount == 0 {
+				err = errNoUsableSignGroups
+				continue
+			}
 			// randomly pick first subgroup to sign
 			randIndex, _ := rand.Int(rand.Reader, big.NewInt(signGroupsCount))
 			startIndex := randIndex.Int64()
 			i := startIndex
 			for {
-				keyID, rsvs, err = doSignImpl(mpcNode, i, signPubkey, msgHash, msgContext)
+				keyID, rsvs, err = doSignImpl(mpcNode, signGroupIndexes[i], signPubkey, msgHash, msgContext)
 				if err == nil {
 					return keyID, rsvs, nil
 				}
@@ -81,18 +96,19 @@ func DoSign(signPubkey string, msgHash, msgContext []string) (keyID string, rsvs
 	return "", nil, errDoSignFailed
 }
 
-func doSignImpl(mpcNode *NodeInfo, signGroupIndex int64, signPubkey string, msgHash, msgContext []string) (keyID string, rsvs []string, err error) {
+func doSignImpl(mpcNode *NodeInfo, signGroupIndex int, signPubkey string, msgHash, msgContext []string) (keyID string, rsvs []string, err error) {
 	nonce, err := GetSignNonce(mpcNode.mpcUser.String(), mpcNode.mpcRPCAddress)
 	if err != nil {
 		return "", nil, err
 	}
+	signGroup := mpcNode.originSignGroups[signGroupIndex]
 	txdata := SignData{
 		TxType:     "SIGN",
 		PubKey:     signPubkey,
 		MsgHash:    msgHash,
 		MsgContext: msgContext,
 		Keytype:    "ECDSA",
-		GroupID:    mpcNode.signGroups[signGroupIndex],
+		GroupID:    signGroup,
 		ThresHold:  mpcThreshold,
 		Mode:       mpcMode,
 		TimeStamp:  common.NowMilliStr(),
@@ -111,7 +127,21 @@ func doSignImpl(mpcNode *NodeInfo, signGroupIndex int64, signPubkey string, msgH
 
 	rsvs, err = getSignResult(keyID, rpcAddr)
 	if err != nil {
+		old := signGroupFailuresMap[signGroup]
+		signGroupFailuresMap[signGroup] = signFailures{
+			count:    old.count + 1,
+			lastTime: time.Now().Unix(),
+		}
+		if old.count+1 >= maxSignGroupFailures {
+			log.Error("delete sign group as consecutive failures", "signGroup", signGroup)
+			mpcNode.deleteSignGroup(signGroupIndex)
+		}
 		return "", nil, err
+	}
+	// reset when succeed
+	signGroupFailuresMap[signGroup] = signFailures{
+		count:    0,
+		lastTime: time.Now().Unix(),
 	}
 	for _, rsv := range rsvs {
 		signature := common.FromHex(rsv)

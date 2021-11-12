@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -43,10 +44,13 @@ var (
 
 // NodeInfo mpc node info
 type NodeInfo struct {
-	keyWrapper    *keystore.Key
-	mpcUser       common.Address
-	mpcRPCAddress string
-	signGroups    []string // sub groups for sign
+	keyWrapper             *keystore.Key
+	mpcUser                common.Address
+	mpcRPCAddress          string
+	originSignGroups       []string // origin sub groups for sign
+	usableSignGroupIndexes []int    // usable sign groups indexes
+
+	signGroupsLock sync.RWMutex
 }
 
 // Init init mpc
@@ -60,6 +64,12 @@ func Init(mpcConfig *params.MPCConfig, isServer bool) {
 	}
 	if mpcConfig.SignTimeout > 0 {
 		mpcSignTimeout = time.Duration(mpcConfig.SignTimeout * uint64(time.Second))
+	}
+	if mpcConfig.MaxSignGroupFailures > 0 {
+		maxSignGroupFailures = mpcConfig.MaxSignGroupFailures
+	}
+	if mpcConfig.MinIntervalToAddSignGroup > 0 {
+		minIntervalToAddSignGroup = mpcConfig.MinIntervalToAddSignGroup
 	}
 
 	setMPCGroup(*mpcConfig.GroupID, mpcConfig.Mode, *mpcConfig.NeededOracles, *mpcConfig.TotalOracles)
@@ -75,7 +85,11 @@ func Init(mpcConfig *params.MPCConfig, isServer bool) {
 	initAllEnodes()
 
 	verifyInitiators(mpcConfig.Initiators)
-	log.Info("init mpc success", "apiPrefix", mpcAPIPrefix, "signTimeout", mpcSignTimeout.String(), "isServer", isServer)
+	log.Info("init mpc success", "apiPrefix", mpcAPIPrefix, "isServer", isServer,
+		"rpcTimeout", mpcRPCTimeout, "signTimeout", mpcSignTimeout.String(),
+		"maxSignGroupFailures", maxSignGroupFailures,
+		"minIntervalToAddSignGroup", minIntervalToAddSignGroup,
+	)
 }
 
 // setDefaultMPCNodeInfo set default mpc node info
@@ -96,7 +110,7 @@ func addInitiatorNode(nodeInfo *NodeInfo) {
 	if nodeInfo.mpcUser == (common.Address{}) {
 		log.Fatal("initiator: empty mpc user")
 	}
-	if len(nodeInfo.signGroups) == 0 {
+	if len(nodeInfo.originSignGroups) == 0 {
 		log.Fatal("initiator: empty sign groups")
 	}
 	for _, oldNode := range allInitiatorNodes {
@@ -148,14 +162,73 @@ func (ni *NodeInfo) GetMPCRPCAddress() string {
 	return ni.mpcRPCAddress
 }
 
-// setSignGroups set sign subgroups
-func (ni *NodeInfo) setSignGroups(groups []string) {
-	ni.signGroups = groups
+// setOriginSignGroups set origin sign subgroups
+func (ni *NodeInfo) setOriginSignGroups(groups []string) {
+	ni.originSignGroups = groups
+	ni.usableSignGroupIndexes = make([]int, len(groups))
+	for i := range groups {
+		ni.usableSignGroupIndexes[i] = i
+	}
+
+	go ni.checkAndAddSignGroups()
 }
 
-// GetSignGroups get sign subgroups
-func (ni *NodeInfo) GetSignGroups() []string {
-	return ni.signGroups
+// getUsableSignGroupIndexes get usable sign group indexes (by copy in case of parallel)
+func (ni *NodeInfo) getUsableSignGroupIndexes() []int {
+	ni.signGroupsLock.RLock()
+	defer ni.signGroupsLock.RUnlock()
+
+	groupIndexes := make([]int, len(ni.usableSignGroupIndexes))
+	for i, groupInd := range ni.usableSignGroupIndexes {
+		groupIndexes[i] = groupInd
+	}
+
+	return groupIndexes
+}
+
+// deleteSignGroup delete sign group
+func (ni *NodeInfo) deleteSignGroup(groupIndex int) {
+	ni.signGroupsLock.Lock()
+	defer ni.signGroupsLock.Unlock()
+
+	for i, groupInd := range ni.usableSignGroupIndexes {
+		if groupInd == groupIndex {
+			ni.usableSignGroupIndexes = append(ni.usableSignGroupIndexes[:i], ni.usableSignGroupIndexes[i+1:]...)
+			return
+		}
+	}
+}
+
+// checkAndAddSignGroups add sign group
+func (ni *NodeInfo) checkAndAddSignGroups() {
+	for {
+		usableGroupIndexes := ni.getUsableSignGroupIndexes()
+		for i := range ni.originSignGroups {
+			usable := false
+			for _, groupInd := range usableGroupIndexes {
+				if groupInd == i {
+					usable = true
+					break
+				}
+			}
+			if usable {
+				continue
+			}
+			signGroup := ni.originSignGroups[i]
+			signFailure := signGroupFailuresMap[signGroup]
+			if signFailure.lastTime+minIntervalToAddSignGroup > time.Now().Unix() {
+				continue
+			}
+			log.Info("check and add sign group", "signGroup", signGroup)
+			ni.usableSignGroupIndexes = append(ni.usableSignGroupIndexes, i)
+			// reset when readd
+			signGroupFailuresMap[signGroup] = signFailures{
+				count:    0,
+				lastTime: time.Now().Unix(),
+			}
+		}
+		time.Sleep(60 * time.Second)
+	}
 }
 
 // GetMPCUser returns the mpc user of specified keystore
@@ -259,7 +332,7 @@ func verifyInitiators(initiators []string) {
 		if !exist {
 			log.Fatal("initiator misatch", "user", mpcUser)
 		}
-		for _, signGroupID := range mpcNodeInfo.GetSignGroups() {
+		for _, signGroupID := range mpcNodeInfo.originSignGroups {
 			verifySignGroupInfo(mpcNodeInfo.mpcRPCAddress, signGroupID, true, isInGroup)
 		}
 		isInGroup = false
@@ -284,7 +357,7 @@ func initMPCNodeInfo(mpcNodeCfg *params.MPCNodeConfig, isServer bool) *NodeInfo 
 
 		signGroups := mpcNodeCfg.SignGroups
 		log.Info("Init mpc sign groups", "signGroups", signGroups)
-		mpcNodeInfo.setSignGroups(signGroups)
+		mpcNodeInfo.setOriginSignGroups(signGroups)
 		addInitiatorNode(mpcNodeInfo)
 	}
 
