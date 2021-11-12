@@ -180,12 +180,14 @@ func (b *Bridge) InitTokenConfig(tokenID string, chainID *big.Int) {
 		if decimals != tokenCfg.Decimals {
 			log.Fatal("token decimals mismatch", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract", decimals)
 		}
-		if err = b.checkTokenMinter(tokenAddr, tokenCfg.ContractVersion); err != nil {
-			log.Fatal("check token minter failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
-		}
-		underlying, err = b.GetUnderlyingAddress(tokenAddr)
-		if err != nil {
-			log.Fatal("get underlying address failed", "err", err)
+		if tokenCfg.ContractVersion > 0 {
+			if err = b.checkTokenMinter(tokenAddr, tokenCfg.ContractVersion); err != nil {
+				log.Fatal("check token minter failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
+			}
+			underlying, err = b.GetUnderlyingAddress(tokenAddr)
+			if err != nil {
+				log.Fatal("get underlying address failed", "err", err)
+			}
 		}
 		tokenCfg.SetUnderlying(common.HexToAddress(underlying)) // init underlying address
 	}
@@ -301,14 +303,16 @@ func (b *Bridge) ReloadTokenConfig(tokenID string, chainID *big.Int) {
 			log.Error("[reload] token decimals mismatch", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract", decimals)
 			return
 		}
-		if err = b.checkTokenMinter(tokenAddr, tokenCfg.ContractVersion); err != nil {
-			log.Error("[reload] check token minter failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
-			return
-		}
-		underlying, err = b.GetUnderlyingAddress(tokenAddr)
-		if err != nil {
-			log.Error("[reload] get underlying address failed", "err", err)
-			return
+		if tokenCfg.ContractVersion > 0 {
+			if err = b.checkTokenMinter(tokenAddr, tokenCfg.ContractVersion); err != nil {
+				log.Error("[reload] check token minter failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
+				return
+			}
+			underlying, err = b.GetUnderlyingAddress(tokenAddr)
+			if err != nil {
+				log.Error("[reload] get underlying address failed", "err", err)
+				return
+			}
 		}
 		tokenCfg.SetUnderlying(common.HexToAddress(underlying)) // init underlying address
 	}
@@ -343,7 +347,7 @@ func (b *Bridge) checkTokenMinter(tokenAddr string, tokenVer uint64) (err error)
 	case 2, 1:
 		minterAddr, err = b.GetOwnerAddress(tokenAddr)
 	case 0:
-		return errors.New("token version is 0")
+		return nil
 	}
 	if err != nil {
 		return err
