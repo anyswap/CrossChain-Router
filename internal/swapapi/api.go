@@ -36,6 +36,8 @@ func GetServerInfo() *ServerInfo {
 		Identifier:     params.GetIdentifier(),
 		Version:        params.VersionWithMeta,
 		ConfigContract: params.GetOnchainContract(),
+		ExtraConfig:    params.GetExtraConfig(),
+		AllChainIDs:    router.AllChainIDs,
 	}
 }
 

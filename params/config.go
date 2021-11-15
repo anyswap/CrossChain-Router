@@ -94,15 +94,15 @@ type ExtraConfig struct {
 
 	GetAcceptListInterval uint64 `toml:",omitempty" json:",omitempty"`
 
-	AllowCallByContract     bool
-	CallByContractWhitelist map[string][]string // chainID -> whitelist
-	ExclueFeeWhitelist      map[string][]string // tokenID -> whitelist
-	BigValueWhitelist       map[string][]string // tokenID -> whitelist
+	AllowCallByContract     bool                `toml:",omitempty" json:",omitempty"`
+	CallByContractWhitelist map[string][]string `toml:",omitempty" json:",omitempty"` // chainID -> whitelist
+	ExclueFeeWhitelist      map[string][]string `toml:",omitempty" json:",omitempty"` // tokenID -> whitelist
+	BigValueWhitelist       map[string][]string `toml:",omitempty" json:",omitempty"` // tokenID -> whitelist
 
-	DynamicFeeTxEnabledChains            []string
-	EnableCheckTxBlockHashChains         []string
-	EnableCheckTxBlockIndexChains        []string
-	DisableUseFromChainIDInReceiptChains []string
+	DynamicFeeTxEnabledChains            []string `toml:",omitempty" json:",omitempty"`
+	EnableCheckTxBlockHashChains         []string `toml:",omitempty" json:",omitempty"`
+	EnableCheckTxBlockIndexChains        []string `toml:",omitempty" json:",omitempty"`
+	DisableUseFromChainIDInReceiptChains []string `toml:",omitempty" json:",omitempty"`
 }
 
 // OnchainConfig struct

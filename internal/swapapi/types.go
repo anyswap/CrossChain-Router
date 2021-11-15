@@ -1,7 +1,10 @@
 package swapapi
 
 import (
+	"math/big"
+
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 )
 
 // MapIntResult type
@@ -12,6 +15,8 @@ type ServerInfo struct {
 	Identifier     string
 	Version        string
 	ConfigContract string
+	ExtraConfig    *params.ExtraConfig
+	AllChainIDs    []*big.Int
 }
 
 // OracleInfo oracle info
