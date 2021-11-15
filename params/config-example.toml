@@ -89,6 +89,8 @@ EnableSwapTrade = false
 ForceAnySwapInAuto = false
 # for nft swap, add data in swapout log and swapin argument
 IsNFTSwapWithData = false
+# enalbe parallel swap
+EnableParallelSwap = false
 # getting accept list interval (seconds) in accept job
 GetAcceptListInterval = 5
 # apecify dynamic fee tx enabled chainids

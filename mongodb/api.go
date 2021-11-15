@@ -31,13 +31,14 @@ var (
 	maxCountOfResults = int64(1000)
 )
 
-func getRouterSwapKey(fromChainID, txid string, logindex int) string {
+// GetRouterSwapKey get router swap key
+func GetRouterSwapKey(fromChainID, txid string, logindex int) string {
 	return strings.ToLower(fmt.Sprintf("%v:%v:%v", fromChainID, txid, logindex))
 }
 
 // AddRouterSwap add router swap
 func AddRouterSwap(ms *MgoSwap) error {
-	ms.Key = getRouterSwapKey(ms.FromChainID, ms.TxID, ms.LogIndex)
+	ms.Key = GetRouterSwapKey(ms.FromChainID, ms.TxID, ms.LogIndex)
 	ms.InitTime = common.NowMilli()
 	_, err := collRouterSwap.InsertOne(clientCtx, ms)
 	if err == nil {
@@ -61,7 +62,7 @@ func PassRouterSwapVerify(fromChainID, txid string, logindex int, timestamp int6
 		return fmt.Errorf("forbid pass verify as swap status is '%v'", swap.Status)
 	}
 
-	key := getRouterSwapKey(fromChainID, txid, logindex)
+	key := GetRouterSwapKey(fromChainID, txid, logindex)
 	updates := bson.M{"status": TxNotSwapped, "timestamp": timestamp}
 	_, err = collRouterSwap.UpdateByID(clientCtx, key, bson.M{"$set": updates})
 	if err == nil {
@@ -77,7 +78,7 @@ func UpdateRouterSwapStatus(fromChainID, txid string, logindex int, status SwapS
 	if status == TxNotStable {
 		return errors.New("forbid update swap status to TxNotStable")
 	}
-	key := getRouterSwapKey(fromChainID, txid, logindex)
+	key := GetRouterSwapKey(fromChainID, txid, logindex)
 	updates := bson.M{"status": status, "timestamp": timestamp}
 	if memo != "" {
 		updates["memo"] = memo
@@ -99,7 +100,7 @@ func UpdateRouterSwapInfoAndStatus(fromChainID, txid string, logindex int, swapI
 	retryLock.Lock()
 	defer retryLock.Unlock()
 
-	key := getRouterSwapKey(fromChainID, txid, logindex)
+	key := GetRouterSwapKey(fromChainID, txid, logindex)
 
 	swap, err := FindRouterSwap(fromChainID, txid, logindex)
 	if err != nil {
@@ -131,7 +132,7 @@ func FindRouterSwap(fromChainID, txid string, logindex int) (*MgoSwap, error) {
 	if logindex == 0 {
 		return findFirstRouterSwap(fromChainID, txid)
 	}
-	key := getRouterSwapKey(fromChainID, txid, logindex)
+	key := GetRouterSwapKey(fromChainID, txid, logindex)
 	result := &MgoSwap{}
 	err := collRouterSwap.FindOne(clientCtx, bson.M{"_id": key}).Decode(result)
 	if err != nil {
@@ -211,7 +212,7 @@ func FindRouterSwapsWithChainIDAndStatus(fromChainID string, status SwapStatus, 
 
 // AddRouterSwapResult add router swap result
 func AddRouterSwapResult(mr *MgoSwapResult) error {
-	mr.Key = getRouterSwapKey(mr.FromChainID, mr.TxID, mr.LogIndex)
+	mr.Key = GetRouterSwapKey(mr.FromChainID, mr.TxID, mr.LogIndex)
 	mr.InitTime = common.NowMilli()
 	_, err := collRouterSwapResult.InsertOne(clientCtx, mr)
 	if err == nil {
@@ -222,9 +223,60 @@ func AddRouterSwapResult(mr *MgoSwapResult) error {
 	return mgoError(err)
 }
 
+// AllocateRouterSwapNonce allocate swap nonce (for parallel signing)
+func AllocateRouterSwapNonce(args *tokens.BuildTxArgs, nonceptr *uint64, isRecycleNonce bool) (swapnonce uint64, err error) {
+	updateResultLock.Lock()
+	defer updateResultLock.Unlock()
+
+	fromChainID := args.FromChainID.String()
+	txid := args.SwapID
+	logindex := args.LogIndex
+
+	swapnonce = *nonceptr
+	if isRecycleNonce && swapnonce == 0 {
+		return 0, errors.New("swap nonce is alreay recycled")
+	}
+
+	err = checkRouterSwapResultUpdate(fromChainID, txid, logindex, swapnonce)
+	if err != nil {
+		return 0, err
+	}
+
+	key := GetRouterSwapKey(fromChainID, txid, logindex)
+	nowTime := time.Now().Unix()
+
+	resUpdates := bson.M{
+		"mpc":       args.From,
+		"status":    MatchTxNotStable,
+		"swapvalue": args.SwapValue.String(),
+		"swapnonce": swapnonce,
+		"timestamp": nowTime,
+	}
+	_, err = collRouterSwapResult.UpdateByID(clientCtx, key, bson.M{"$set": resUpdates})
+	if err != nil {
+		log.Warn("mongodb allocate swap nonce failed", "chainid", fromChainID, "txid", txid, "logindex", logindex, "swapnonce", swapnonce, "err", err)
+		return 0, mgoError(err)
+	}
+
+	log.Info("mongodb allocate swap nonce success", "chainid", fromChainID, "txid", txid, "logindex", logindex, "swapnonce", swapnonce)
+
+	statusUpdates := bson.M{"status": TxProcessed, "timestamp": nowTime}
+	_, errf := collRouterSwap.UpdateByID(clientCtx, key, bson.M{"$set": statusUpdates})
+	if errf != nil {
+		log.Warn("mongodb update swap status to TxProcessed failed", "chainid", fromChainID, "txid", txid, "logindex", logindex, "swapnonce", swapnonce, "err", errf)
+	}
+
+	if isRecycleNonce {
+		*nonceptr = 0
+	} else {
+		*nonceptr++
+	}
+	return swapnonce, nil
+}
+
 // UpdateRouterSwapResultStatus update router swap result status
 func UpdateRouterSwapResultStatus(fromChainID, txid string, logindex int, status SwapStatus, timestamp int64, memo string) error {
-	key := getRouterSwapKey(fromChainID, txid, logindex)
+	key := GetRouterSwapKey(fromChainID, txid, logindex)
 	updates := bson.M{"status": status, "timestamp": timestamp}
 	if memo != "" {
 		updates["memo"] = memo
@@ -251,7 +303,7 @@ func FindRouterSwapResult(fromChainID, txid string, logindex int) (*MgoSwapResul
 	if logindex == 0 {
 		return findFirstRouterSwapResult(fromChainID, txid)
 	}
-	key := getRouterSwapKey(fromChainID, txid, logindex)
+	key := GetRouterSwapKey(fromChainID, txid, logindex)
 	result := &MgoSwapResult{}
 	err := collRouterSwapResult.FindOne(clientCtx, bson.M{"_id": key}).Decode(result)
 	if err != nil {
@@ -442,7 +494,7 @@ func FindRouterSwapResults(fromChainID, address string, offset, limit int, statu
 
 // UpdateRouterSwapResult update router swap result
 func UpdateRouterSwapResult(fromChainID, txid string, logindex int, items *SwapResultUpdateItems) error {
-	key := getRouterSwapKey(fromChainID, txid, logindex)
+	key := GetRouterSwapKey(fromChainID, txid, logindex)
 	updates := bson.M{
 		"timestamp": items.Timestamp,
 	}
@@ -475,17 +527,10 @@ func UpdateRouterSwapResult(fromChainID, txid string, logindex int, items *SwapR
 	if items.SwapNonce != 0 || items.Status == MatchTxNotStable {
 		updateResultLock.Lock()
 		defer updateResultLock.Unlock()
-		swapRes, err := FindRouterSwapResult(fromChainID, txid, logindex)
+
+		err := checkRouterSwapResultUpdate(fromChainID, txid, logindex, items.SwapNonce)
 		if err != nil {
 			return err
-		}
-		if swapRes.SwapNonce != 0 {
-			log.Error("forbid update swap nonce again", "old", swapRes.SwapNonce, "new", items.SwapNonce)
-			return ErrForbidUpdateNonce
-		}
-		if swapRes.SwapTx != "" {
-			log.Error("forbid update swap tx again", "old", swapRes.SwapTx, "new", items.SwapTx)
-			return ErrForbidUpdateSwapTx
 		}
 		if items.SwapNonce != 0 {
 			updates["swapnonce"] = items.SwapNonce
@@ -498,6 +543,24 @@ func UpdateRouterSwapResult(fromChainID, txid string, logindex int, items *SwapR
 		log.Debug("mongodb update router swap result failed", "chainid", fromChainID, "txid", txid, "logindex", logindex, "updates", updates, "err", err)
 	}
 	return mgoError(err)
+}
+
+func checkRouterSwapResultUpdate(fromChainID, txid string, logindex int, swapnonce uint64) error {
+	swapRes, err := FindRouterSwapResult(fromChainID, txid, logindex)
+	if err != nil {
+		return err
+	}
+
+	if swapRes.SwapNonce != 0 {
+		log.Error("forbid update swap nonce again", "old", swapRes.SwapNonce, "new", swapnonce)
+		return ErrForbidUpdateNonce
+	}
+
+	if swapRes.SwapTx != "" {
+		log.Error("forbid update swap tx again", "old", swapRes.SwapTx)
+		return ErrForbidUpdateSwapTx
+	}
+	return nil
 }
 
 // AddUsedRValue add used r, if error mean already exist

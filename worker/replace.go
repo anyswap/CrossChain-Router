@@ -86,12 +86,36 @@ func processRouterSwapReplace(res *mongodb.MgoSwapResult) error {
 		maxReplaceCount = defMaxReplaceCount
 	}
 	if len(res.OldSwapTxs) > maxReplaceCount {
+		checkAndRecycleSwapNonce(res)
 		return nil
 	}
-	if getSepTimeInFind(waitTimeToReplace) < res.Timestamp {
+	if res.SwapTx != "" && getSepTimeInFind(waitTimeToReplace) < res.Timestamp {
 		return nil
 	}
 	return ReplaceRouterSwap(res, nil, false)
+}
+
+func checkAndRecycleSwapNonce(res *mongodb.MgoSwapResult) {
+	if !params.IsParallelSwapEnabled() {
+		return
+	}
+	_, err := verifyReplaceSwap(res, false)
+	if err != nil {
+		return
+	}
+	resBridge := router.GetBridgeByChainID(res.ToChainID)
+	if resBridge == nil {
+		return
+	}
+	nonceSetter, ok := resBridge.(tokens.NonceSetter)
+	if !ok {
+		return
+	}
+	if res.SwapNonce == 0 || res.MPC == "" {
+		return
+	}
+	logWorker("recycle swap nonce", "swap", res)
+	nonceSetter.RecycleSwapNonce(res.MPC, res.SwapNonce)
 }
 
 // ReplaceRouterSwap api
@@ -180,7 +204,7 @@ func verifyReplaceSwap(res *mongodb.MgoSwapResult, isManual bool) (*mongodb.MgoS
 	if err != nil {
 		return nil, err
 	}
-	if res.SwapTx == "" {
+	if res.SwapTx == "" && !params.IsParallelSwapEnabled() {
 		return nil, errors.New("swap without swaptx")
 	}
 	if res.SwapNonce == 0 && !isManual {

@@ -91,6 +91,7 @@ type ExtraConfig struct {
 	EnableSwapTrade    bool `toml:",omitempty" json:",omitempty"`
 	ForceAnySwapInAuto bool `toml:",omitempty" json:",omitempty"`
 	IsNFTSwapWithData  bool `toml:",omitempty" json:",omitempty"`
+	EnableParallelSwap bool `toml:",omitempty" json:",omitempty"`
 
 	MinReserveFee  map[string]uint64 `toml:",omitempty" json:",omitempty"`
 	BaseFeePercent map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID
@@ -206,6 +207,11 @@ func IsSwapTradeEnabled() bool {
 // IsForceAnySwapInAuto is forcely call anySwapinAuto
 func IsForceAnySwapInAuto() bool {
 	return GetExtraConfig() != nil && GetExtraConfig().ForceAnySwapInAuto
+}
+
+// IsParallelSwapEnabled is parallel swap enabled
+func IsParallelSwapEnabled() bool {
+	return GetExtraConfig() != nil && GetExtraConfig().EnableParallelSwap
 }
 
 // GetAcceptListInterval get accept list interval (seconds)

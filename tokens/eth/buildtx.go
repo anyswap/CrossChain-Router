@@ -43,20 +43,20 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, err
 	}
 
-	extra, err := b.setDefaults(args)
+	err = b.setDefaults(args)
 	if err != nil {
 		return nil, err
 	}
 
-	return b.buildTx(args, extra)
+	return b.buildTx(args)
 }
 
-func (b *Bridge) buildTx(args *tokens.BuildTxArgs, extra *tokens.EthExtraArgs) (rawTx interface{}, err error) {
+func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error) {
 	var (
 		to        = common.HexToAddress(args.To)
 		value     = args.Value
 		input     = *args.Input
-		nonce     = *extra.Nonce
+		extra     = args.Extra.EthExtra
 		gasLimit  = *extra.Gas
 		gasPrice  = extra.GasPrice
 		gasTipCap = extra.GasTipCap
@@ -74,6 +74,16 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs, extra *tokens.EthExtraArgs) (
 	if err != nil {
 		return nil, err
 	}
+
+	// assign nonce immediately before construct tx
+	// esp. for parallel signing, this can prevent nonce hole
+	if extra.Nonce == nil {
+		extra.Nonce, err = b.getAccountNonce(args)
+		if err != nil {
+			return nil, err
+		}
+	}
+	nonce := *extra.Nonce
 
 	if isDynamicFeeTx {
 		rawTx = types.NewDynamicFeeTx(b.SignerChainID, nonce, &to, value, gasLimit, gasTipCap, gasFeeCap, input, nil)
@@ -119,38 +129,32 @@ func getOrInitEthExtra(args *tokens.BuildTxArgs) *tokens.EthExtraArgs {
 	return args.Extra.EthExtra
 }
 
-func (b *Bridge) setDefaults(args *tokens.BuildTxArgs) (extra *tokens.EthExtraArgs, err error) {
+func (b *Bridge) setDefaults(args *tokens.BuildTxArgs) (err error) {
 	if args.Value == nil {
 		args.Value = new(big.Int)
 	}
-	extra = getOrInitEthExtra(args)
+	extra := getOrInitEthExtra(args)
 	if params.IsDynamicFeeTxEnabled(b.ChainConfig.ChainID) {
 		if extra.GasTipCap == nil {
 			extra.GasTipCap, err = b.getGasTipCap(args)
 			if err != nil {
-				return nil, err
+				return err
 			}
 		}
 		if extra.GasFeeCap == nil {
 			extra.GasFeeCap, err = b.getGasFeeCap(args, extra.GasTipCap)
 			if err != nil {
-				return nil, err
+				return err
 			}
 		}
 		extra.GasPrice = nil
 	} else if extra.GasPrice == nil {
 		extra.GasPrice, err = b.getGasPrice(args)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		extra.GasTipCap = nil
 		extra.GasFeeCap = nil
-	}
-	if extra.Nonce == nil {
-		extra.Nonce, err = b.getAccountNonce(args.From)
-		if err != nil {
-			return nil, err
-		}
 	}
 	if extra.Gas == nil {
 		esGasLimit, errf := b.EstimateGas(args.From, args.To, args.Value, *args.Input)
@@ -158,7 +162,7 @@ func (b *Bridge) setDefaults(args *tokens.BuildTxArgs) (extra *tokens.EthExtraAr
 			log.Error(fmt.Sprintf("build %s tx estimate gas failed", args.SwapType.String()),
 				"swapID", args.SwapID, "from", args.From, "to", args.To,
 				"value", args.Value, "data", *args.Input, "err", errf)
-			return nil, tokens.ErrEstimateGasFailed
+			return tokens.ErrEstimateGasFailed
 		}
 		esGasLimit += esGasLimit * 30 / 100
 		defGasLimit := b.getDefaultGasLimit()
@@ -168,7 +172,7 @@ func (b *Bridge) setDefaults(args *tokens.BuildTxArgs) (extra *tokens.EthExtraAr
 		extra.Gas = new(uint64)
 		*extra.Gas = esGasLimit
 	}
-	return extra, nil
+	return nil
 }
 
 func (b *Bridge) getDefaultGasLimit() uint64 {
@@ -249,15 +253,22 @@ func (b *Bridge) adjustSwapGasPrice(args *tokens.BuildTxArgs, oldGasPrice *big.I
 	return newGasPrice, nil
 }
 
-func (b *Bridge) getAccountNonce(from string) (nonceptr *uint64, err error) {
+func (b *Bridge) getAccountNonce(args *tokens.BuildTxArgs) (nonceptr *uint64, err error) {
 	var nonce uint64
+
+	if params.IsParallelSwapEnabled() {
+		nonce, err = b.AllocateNonce(args)
+		return &nonce, err
+	}
+
 	if params.IsAutoSwapNonceEnabled() { // increase automatically
-		nonce = b.GetSwapNonce(from)
+		nonce = b.GetSwapNonce(args.From)
 		return &nonce, nil
 
 	}
+
 	for i := 0; i < retryRPCCount; i++ {
-		nonce, err = b.GetPoolNonce(from, "pending")
+		nonce, err = b.GetPoolNonce(args.From, "pending")
 		if err == nil {
 			break
 		}
@@ -266,7 +277,7 @@ func (b *Bridge) getAccountNonce(from string) (nonceptr *uint64, err error) {
 	if err != nil {
 		return nil, err
 	}
-	nonce = b.AdjustNonce(from, nonce)
+	nonce = b.AdjustNonce(args.From, nonce)
 	return &nonce, nil
 }
 

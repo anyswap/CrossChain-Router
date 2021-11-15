@@ -205,10 +205,6 @@ SENDTX_LOOP:
 		return txHash, err
 	}
 
-	if nonceSetter, ok := bridge.(tokens.NonceSetter); ok {
-		nonceSetter.SetNonce(args.From, swapTxNonce+1)
-	}
-
 	// update swap result tx height in goroutine
 	go func() {
 		var txStatus *tokens.TxStatus
