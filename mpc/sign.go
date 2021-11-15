@@ -30,9 +30,10 @@ var (
 	errWrongSignatureLength = errors.New("wrong signature length")
 	errNoUsableSignGroups   = errors.New("no usable sign groups")
 
-	signGroupFailuresMap      = make(map[string]signFailures) // key is groupID
-	maxSignGroupFailures      = 5                             // delete if fail too many times consecutively
+	// delete if fail too many times consecutively, 0 means disable checking
+	maxSignGroupFailures      = 0
 	minIntervalToAddSignGroup = int64(3600)                   // seconds
+	signGroupFailuresMap      = make(map[string]signFailures) // key is groupID
 )
 
 type signFailures struct {
@@ -127,21 +128,25 @@ func doSignImpl(mpcNode *NodeInfo, signGroupIndex int, signPubkey string, msgHas
 
 	rsvs, err = getSignResult(keyID, rpcAddr)
 	if err != nil {
-		old := signGroupFailuresMap[signGroup]
-		signGroupFailuresMap[signGroup] = signFailures{
-			count:    old.count + 1,
-			lastTime: time.Now().Unix(),
-		}
-		if old.count+1 >= maxSignGroupFailures {
-			log.Error("delete sign group as consecutive failures", "signGroup", signGroup)
-			mpcNode.deleteSignGroup(signGroupIndex)
+		if maxSignGroupFailures > 0 {
+			old := signGroupFailuresMap[signGroup]
+			signGroupFailuresMap[signGroup] = signFailures{
+				count:    old.count + 1,
+				lastTime: time.Now().Unix(),
+			}
+			if old.count+1 >= maxSignGroupFailures {
+				log.Error("delete sign group as consecutive failures", "signGroup", signGroup)
+				mpcNode.deleteSignGroup(signGroupIndex)
+			}
 		}
 		return "", nil, err
 	}
-	// reset when succeed
-	signGroupFailuresMap[signGroup] = signFailures{
-		count:    0,
-		lastTime: time.Now().Unix(),
+	if maxSignGroupFailures > 0 {
+		// reset when succeed
+		signGroupFailuresMap[signGroup] = signFailures{
+			count:    0,
+			lastTime: time.Now().Unix(),
+		}
 	}
 	for _, rsv := range rsvs {
 		signature := common.FromHex(rsv)

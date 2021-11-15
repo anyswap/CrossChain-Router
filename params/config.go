@@ -116,10 +116,10 @@ type OnchainConfig struct {
 // MPCConfig mpc related config
 type MPCConfig struct {
 	APIPrefix                 string
-	RPCTimeout                uint64
-	SignTimeout               uint64
-	MaxSignGroupFailures      int
-	MinIntervalToAddSignGroup int64
+	RPCTimeout                uint64 `toml:",omitempty" json:",omitempty"`
+	SignTimeout               uint64 `toml:",omitempty" json:",omitempty"`
+	MaxSignGroupFailures      int    `toml:",omitempty" json:",omitempty"`
+	MinIntervalToAddSignGroup int64  `toml:",omitempty" json:",omitempty"`
 
 	GroupID       *string
 	NeededOracles *uint32

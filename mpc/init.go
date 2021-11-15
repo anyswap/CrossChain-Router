@@ -65,9 +65,7 @@ func Init(mpcConfig *params.MPCConfig, isServer bool) {
 	if mpcConfig.SignTimeout > 0 {
 		mpcSignTimeout = time.Duration(mpcConfig.SignTimeout * uint64(time.Second))
 	}
-	if mpcConfig.MaxSignGroupFailures > 0 {
-		maxSignGroupFailures = mpcConfig.MaxSignGroupFailures
-	}
+	maxSignGroupFailures = mpcConfig.MaxSignGroupFailures
 	if mpcConfig.MinIntervalToAddSignGroup > 0 {
 		minIntervalToAddSignGroup = mpcConfig.MinIntervalToAddSignGroup
 	}
@@ -170,7 +168,9 @@ func (ni *NodeInfo) setOriginSignGroups(groups []string) {
 		ni.usableSignGroupIndexes[i] = i
 	}
 
-	go ni.checkAndAddSignGroups()
+	if maxSignGroupFailures > 0 {
+		go ni.checkAndAddSignGroups()
+	}
 }
 
 // getUsableSignGroupIndexes get usable sign group indexes (by copy in case of parallel)
