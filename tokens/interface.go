@@ -52,6 +52,5 @@ type ISwapTrade interface {
 // NonceSetter interface (for eth-like)
 type NonceSetter interface {
 	GetPoolNonce(address, height string) (uint64, error)
-	SetNonce(pairID string, value uint64)
-	AdjustNonce(pairID string, value uint64) (nonce uint64)
+	RecycleSwapNonce(sender string, nonce uint64)
 }
