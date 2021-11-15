@@ -251,6 +251,11 @@ func (b *Bridge) adjustSwapGasPrice(args *tokens.BuildTxArgs, oldGasPrice *big.I
 
 func (b *Bridge) getAccountNonce(from string) (nonceptr *uint64, err error) {
 	var nonce uint64
+	if params.IsAutoSwapNonceEnabled() { // increase automatically
+		nonce = b.GetSwapNonce(from)
+		return &nonce, nil
+
+	}
 	for i := 0; i < retryRPCCount; i++ {
 		nonce, err = b.GetPoolNonce(from, "pending")
 		if err == nil {

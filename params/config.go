@@ -49,6 +49,7 @@ type RouterServerConfig struct {
 	// extras
 	EnableReplaceSwap          bool
 	EnablePassBigValueSwap     bool
+	EnableAutoSwapNonce        bool
 	ReplacePlusGasPricePercent uint64            `toml:",omitempty" json:",omitempty"`
 	WaitTimeToReplace          int64             `toml:",omitempty" json:",omitempty"` // seconds
 	MaxReplaceCount            int               `toml:",omitempty" json:",omitempty"`
@@ -184,6 +185,14 @@ func GetIdentifier() string {
 // GetSwapType get router swap type
 func GetSwapType() string {
 	return GetRouterConfig().SwapType
+}
+
+// IsAutoSwapNonceEnabled is auto swap nonce enabled
+func IsAutoSwapNonceEnabled() bool {
+	if routerConfig.Server != nil {
+		return routerConfig.Server.EnableAutoSwapNonce
+	}
+	return false
 }
 
 // IsSwapTradeEnabled is swap trade enabled

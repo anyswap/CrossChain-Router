@@ -16,6 +16,12 @@ func NewNonceSetterBase() *NonceSetterBase {
 	}
 }
 
+// GetSwapNonce get current swap nonce
+func (b *Bridge) GetSwapNonce(address string) uint64 {
+	account := strings.ToLower(address)
+	return b.SwapNonce[account]
+}
+
 // AdjustNonce adjust account nonce (eth like chain)
 func (b *Bridge) AdjustNonce(address string, value uint64) (nonce uint64) {
 	account := strings.ToLower(address)

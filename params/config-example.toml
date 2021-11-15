@@ -19,6 +19,8 @@ TokenIDBlackList = []
 EnableReplaceSwap = true
 # enable pass big value swap job
 EnablePassBigValueSwap = true
+# enable auto increase swap nonce, do not query from onchain
+EnableAutoSwapNonce = false
 # replace plus gas price percentage
 ReplacePlusGasPricePercent = 1
 # wait time to replace swap
