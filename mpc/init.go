@@ -175,6 +175,10 @@ func (ni *NodeInfo) setOriginSignGroups(groups []string) {
 
 // getUsableSignGroupIndexes get usable sign group indexes (by copy in case of parallel)
 func (ni *NodeInfo) getUsableSignGroupIndexes() []int {
+	if maxSignGroupFailures == 0 {
+		return ni.usableSignGroupIndexes
+	}
+
 	ni.signGroupsLock.RLock()
 	defer ni.signGroupsLock.RUnlock()
 

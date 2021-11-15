@@ -85,6 +85,8 @@ ServerAPIAddress = "http://127.0.0.1:11556/rpc"
 [Extra]
 # is swap trade enabled
 EnableSwapTrade = false
+# force call anySwapInAuto
+ForceAnySwapInAuto = false
 # getting accept list interval (seconds) in accept job
 GetAcceptListInterval = 5
 # apecify dynamic fee tx enabled chainids

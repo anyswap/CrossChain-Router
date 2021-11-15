@@ -62,7 +62,8 @@ func (b *Bridge) buildERC20SwapoutTxInput(args *tokens.BuildTxArgs, multichainTo
 	var funcHash []byte
 	if erc20SwapInfo.ForUnderlying {
 		funcHash = AnySwapInUnderlyingFuncHash
-	} else if toTokenCfg.GetUnderlying() == (common.Address{}) {
+	} else if !params.IsForceAnySwapInAuto() &&
+		toTokenCfg.GetUnderlying() == (common.Address{}) {
 		funcHash = AnySwapInFuncHash
 	} else {
 		funcHash = AnySwapInAutoFuncHash
