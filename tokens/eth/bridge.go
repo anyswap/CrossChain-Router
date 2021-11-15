@@ -120,7 +120,7 @@ func (b *Bridge) InitChainConfig(chainID *big.Int) {
 		nextSwapNonce, err := mongodb.FindNextSwapNonce(chainID.String(), strings.ToLower(routerMPC))
 		if err == nil {
 			log.Info("init next swap nonce from db", "chainID", chainID, "mpc", routerMPC, "nonce", nextSwapNonce)
-			b.SwapNonce[routerMPC] = nextSwapNonce
+			b.InitSwapNonce(routerMPC, nextSwapNonce)
 		}
 	}
 }
