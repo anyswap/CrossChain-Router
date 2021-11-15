@@ -315,5 +315,5 @@ func saveAcceptRecord(bridge tokens.IBridge, keyID string, args *tokens.BuildTxA
 		logWorkerError("accept", "save accept record to db failed", err, ctx...)
 		return
 	}
-	logWorker("accept", "save accept record to db sucess", ctx...)
+	logWorker("accept", "save accept record to db success", ctx...)
 }

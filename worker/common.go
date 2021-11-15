@@ -1,7 +1,7 @@
 package worker
 
 import (
-	"time"
+	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
@@ -176,19 +176,30 @@ func markSwapResultFailed(fromChainID, txid string, logIndex int) (err error) {
 
 func sendSignedTransaction(bridge tokens.IBridge, signedTx interface{}, args *tokens.BuildTxArgs) (txHash string, err error) {
 	var (
-		retrySendTxCount    = 3
-		retrySendTxInterval = 1 * time.Second
-		swapTxNonce         = args.GetTxNonce()
-		replaceNum          = args.GetReplaceNum()
+		retrySendTxCount = 3
+		swapTxNonce      = args.GetTxNonce()
+		replaceNum       = args.GetReplaceNum()
 	)
-	for i := 0; i < retrySendTxCount; i++ {
-		txHash, err = bridge.SendTransaction(signedTx)
-		if err == nil {
-			logWorker("sendtx", "send tx success", "txHash", txHash, "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "swapNonce", swapTxNonce, "replaceNum", replaceNum)
+
+SENDTX_LOOP:
+	for {
+		for i := 0; i < retrySendTxCount; i++ {
+			txHash, err = bridge.SendTransaction(signedTx)
+			if err == nil {
+				logWorker("sendtx", "send tx success", "txHash", txHash, "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "swapNonce", swapTxNonce, "replaceNum", replaceNum)
+				break SENDTX_LOOP
+			}
+			sleepSeconds(1)
+		}
+
+		// prevent sendtx failed cause many same swap nonce allocation
+		if err == nil || !needRetrySendTx(err) {
 			break
 		}
-		time.Sleep(retrySendTxInterval)
+		logWorkerWarn("sendtx", "send tx failed and will retry", "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "swapNonce", swapTxNonce, "replaceNum", replaceNum, "err", err)
+		sleepSeconds(10)
 	}
+
 	if err != nil {
 		logWorkerError("sendtx", "send tx failed", err, "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "swapNonce", swapTxNonce, "replaceNum", replaceNum)
 		return txHash, err
@@ -207,7 +218,7 @@ func sendSignedTransaction(bridge tokens.IBridge, signedTx interface{}, args *to
 			if errt == nil && txStatus.BlockHeight > 0 {
 				break
 			}
-			time.Sleep(5 * time.Second)
+			sleepSeconds(5)
 		}
 		if errt == nil && txStatus.BlockHeight > 0 {
 			matchTx := &MatchTx{
@@ -220,4 +231,15 @@ func sendSignedTransaction(bridge tokens.IBridge, signedTx interface{}, args *to
 	}()
 
 	return txHash, err
+}
+
+func needRetrySendTx(err error) bool {
+	errMsg := err.Error()
+	switch {
+	case strings.Contains(errMsg, "Client.Timeout exceeded while awaiting headers"): // timeout
+	case strings.Contains(errMsg, "json-rpc error -32000, internal"): // cronos specific
+	default:
+		return false
+	}
+	return true
 }

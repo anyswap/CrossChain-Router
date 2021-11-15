@@ -67,7 +67,7 @@ func checkFailedRouterSwap(swap *mongodb.MgoSwapResult) error {
 	}
 
 	if txStatus != nil && txStatus.BlockHeight > 0 {
-		logWorker("checkfailedswap", "do checking with height", "swap", swap, "swapheight", txStatus.BlockHeight, "confirmations", txStatus.Confirmations)
+		logWorker("checkfailedswap", "do checking with height", "fromChainID", swap.FromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex, "swaptx", swap.SwapTx, "swapnonce", swap.SwapNonce, "swapheight", txStatus.BlockHeight, "confirmations", txStatus.Confirmations)
 		if txStatus.Confirmations < resBridge.GetChainConfig().Confirmations {
 			return markSwapResultUnstable(swap.FromChainID, swap.TxID, swap.LogIndex)
 		}
@@ -80,8 +80,8 @@ func checkFailedRouterSwap(swap *mongodb.MgoSwapResult) error {
 		return fmt.Errorf("get router mpc nonce failed, %w", err)
 	}
 
-	logWorker("checkfailedswap", "do checking without height", "swap", swap, "swapnonce", swap.SwapNonce, "latestnonce", nonce)
 	if nonce <= swap.SwapNonce {
+		logWorker("checkfailedswap", "do checking without height", "fromChainID", swap.FromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex, "swaptx", swap.SwapTx, "swapnonce", swap.SwapNonce, "latestnonce", nonce)
 		return markSwapResultUnstable(swap.FromChainID, swap.TxID, swap.LogIndex)
 	}
 	return nil

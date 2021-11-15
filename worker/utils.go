@@ -62,3 +62,7 @@ func getSepTimeInFind(dist int64) int64 {
 func restInJob(duration time.Duration) {
 	time.Sleep(duration)
 }
+
+func sleepSeconds(secs int) {
+	time.Sleep(time.Duration(secs) * time.Second)
+}
