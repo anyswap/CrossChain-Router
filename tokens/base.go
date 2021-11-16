@@ -21,6 +21,8 @@ func InitRouterSwapType(swapTypeStr string) {
 		routerSwapType = ERC20SwapType
 	case "nftswap":
 		routerSwapType = NFTSwapType
+	case "anycallswap":
+		routerSwapType = AnyCallSwapType
 	default:
 		log.Fatalf("invalid router swap type '%v'", swapTypeStr)
 	}
