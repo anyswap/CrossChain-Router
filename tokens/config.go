@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tools/crypto"
 )
 
@@ -130,7 +131,7 @@ func (c *TokenConfig) CheckConfig() error {
 	}
 	if IsERC20Router() {
 		if c.ContractVersion == 0 {
-			return errors.New("token must config positive 'ContractVersion'")
+			log.Warn("token 'ContractVersion' is 0", "tokenID", c.TokenID, "address", c.ContractAddress)
 		}
 	} else if c.Decimals != 0 {
 		return errors.New("non ERC20 token must config 'Decimals' to 0")
