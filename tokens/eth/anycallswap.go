@@ -36,7 +36,7 @@ func (b *Bridge) registerAnyCallSwapTx(txHash string, logIndex int) ([]*tokens.S
 
 	swapInfos := make([]*tokens.SwapTxInfo, 0)
 	errs := make([]error, 0)
-	startIndex, endIndex := 1, len(receipt.Logs)
+	startIndex, endIndex := 0, len(receipt.Logs)
 
 	if logIndex != 0 {
 		if logIndex >= endIndex || logIndex < 0 {
