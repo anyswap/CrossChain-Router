@@ -26,7 +26,7 @@ func CallContractWithGateway(gateway, contract string, data hexutil.Bytes, block
 		"to":   contract,
 		"data": data,
 	}
-	err = client.RPCPost(&result, gateway, "eth_call", reqArgs, blockNumber)
+	err = client.RPCPostWithTimeout(60, &result, gateway, "eth_call", reqArgs, blockNumber)
 	if err == nil {
 		return result, nil
 	}

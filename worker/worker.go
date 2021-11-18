@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/router/bridge"
-	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 )
 
 const interval = 10 * time.Millisecond
@@ -13,7 +12,6 @@ const interval = 10 * time.Millisecond
 func StartRouterSwapWork(isServer bool) {
 	logWorker("worker", "start router swap worker")
 
-	client.InitHTTPClient()
 	bridge.InitRouterBridges(isServer)
 
 	bridge.StartAdjustGatewayOrderJob()

@@ -8,6 +8,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/mpc"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
+	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/eth"
 )
@@ -21,6 +22,7 @@ func NewCrossChainBridge(*big.Int) tokens.IBridge {
 func InitRouterBridges(isServer bool) {
 	log.Info("start init router bridges")
 
+	client.InitHTTPClient()
 	router.InitRouterConfigClients()
 
 	chainIDs, err := router.GetAllChainIDs()
