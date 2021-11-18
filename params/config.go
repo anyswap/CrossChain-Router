@@ -222,6 +222,12 @@ func GetAcceptListInterval() uint64 {
 	return 0
 }
 
+// IsFixedGasPrice is fixed gas price of specified chain
+func IsFixedGasPrice(chainID string) bool {
+	_, exist := fixedGasPriceMap[chainID]
+	return exist
+}
+
 // GetFixedGasPrice get fixed gas price of specified chain
 func GetFixedGasPrice(chainID string) *big.Int {
 	if fixedGasPrice, ok := fixedGasPriceMap[chainID]; ok {

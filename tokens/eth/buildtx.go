@@ -189,18 +189,21 @@ func (b *Bridge) getDefaultGasLimit() uint64 {
 func (b *Bridge) getGasPrice(args *tokens.BuildTxArgs) (price *big.Int, err error) {
 	fixedGasPrice := params.GetFixedGasPrice(b.ChainConfig.ChainID)
 	if fixedGasPrice != nil {
-		return fixedGasPrice, nil
-	}
-
-	for i := 0; i < retryRPCCount; i++ {
-		price, err = b.SuggestPrice()
-		if err == nil {
-			break
+		price = fixedGasPrice
+		if args.GetReplaceNum() == 0 {
+			return price, nil
 		}
-		time.Sleep(retryRPCInterval)
-	}
-	if err != nil {
-		return nil, err
+	} else {
+		for i := 0; i < retryRPCCount; i++ {
+			price, err = b.SuggestPrice()
+			if err == nil {
+				break
+			}
+			time.Sleep(retryRPCInterval)
+		}
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	price, err = b.adjustSwapGasPrice(args, price)
@@ -223,7 +226,10 @@ func (b *Bridge) adjustSwapGasPrice(args *tokens.BuildTxArgs, oldGasPrice *big.I
 		return nil, fmt.Errorf("no router server config")
 	}
 	newGasPrice = new(big.Int).Set(oldGasPrice) // clone from old
-	addPercent := serverCfg.PlusGasPricePercentage
+	addPercent := uint64(0)
+	if !params.IsFixedGasPrice(b.ChainConfig.ChainID) {
+		addPercent = serverCfg.PlusGasPricePercentage
+	}
 	replaceNum := args.GetReplaceNum()
 	if replaceNum > 0 {
 		addPercent += replaceNum * serverCfg.ReplacePlusGasPricePercent
