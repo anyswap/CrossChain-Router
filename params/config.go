@@ -25,7 +25,6 @@ var (
 	maxGasPriceMap      = make(map[string]*big.Int) // key is chainID
 
 	callByContractWhitelist map[string]map[string]struct{} // chainID -> caller
-	exclueFeeWhitelist      map[string]map[string]struct{} // tokenID -> caller
 	bigValueWhitelist       map[string]map[string]struct{} // tokenID -> caller
 
 	dynamicFeeTxEnabledChains            map[string]struct{}
@@ -100,7 +99,6 @@ type ExtraConfig struct {
 
 	AllowCallByContract     bool                `toml:",omitempty" json:",omitempty"`
 	CallByContractWhitelist map[string][]string `toml:",omitempty" json:",omitempty"` // chainID -> whitelist
-	ExclueFeeWhitelist      map[string][]string `toml:",omitempty" json:",omitempty"` // tokenID -> whitelist
 	BigValueWhitelist       map[string][]string `toml:",omitempty" json:",omitempty"` // tokenID -> whitelist
 
 	DynamicFeeTxEnabledChains            []string `toml:",omitempty" json:",omitempty"`
@@ -339,34 +337,6 @@ func initCallByContractWhitelist() {
 // IsInCallByContractWhitelist is in call by contract whitelist
 func IsInCallByContractWhitelist(chainID, caller string) bool {
 	whitelist, exist := callByContractWhitelist[chainID]
-	if !exist {
-		return false
-	}
-	_, exist = whitelist[strings.ToLower(caller)]
-	return exist
-}
-
-func initExclueFeeWhitelist() {
-	exclueFeeWhitelist = make(map[string]map[string]struct{})
-	if GetExtraConfig() == nil || len(GetExtraConfig().ExclueFeeWhitelist) == 0 {
-		return
-	}
-	for tid, whitelist := range GetExtraConfig().ExclueFeeWhitelist {
-		whitelistMap := make(map[string]struct{}, len(whitelist))
-		for _, address := range whitelist {
-			if !common.IsHexAddress(address) {
-				log.Fatal("initExclueFeeWhitelist wrong address", "tokenID", tid, "address", address)
-			}
-			whitelistMap[strings.ToLower(address)] = struct{}{}
-		}
-		exclueFeeWhitelist[tid] = whitelistMap
-	}
-	log.Info("initExclueFeeWhitelist success")
-}
-
-// IsInExclueFeeWhitelist is in call by contract whitelist
-func IsInExclueFeeWhitelist(tokenID, caller string) bool {
-	whitelist, exist := exclueFeeWhitelist[tokenID]
 	if !exist {
 		return false
 	}

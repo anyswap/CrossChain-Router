@@ -144,10 +144,6 @@ func CalcSwapValue(tokenID, toChainID string, value *big.Int, fromDecimals, toDe
 	if !IsERC20Router() {
 		return value
 	}
-	if params.IsInExclueFeeWhitelist(tokenID, originFrom) ||
-		params.IsInExclueFeeWhitelist(tokenID, originTxTo) {
-		return value
-	}
 	swapCfg := GetSwapConfig(tokenID, toChainID)
 	if swapCfg == nil {
 		return big.NewInt(0)
@@ -155,28 +151,33 @@ func CalcSwapValue(tokenID, toChainID string, value *big.Int, fromDecimals, toDe
 
 	valueLeft := value
 	if swapCfg.SwapFeeRatePerMillion > 0 {
-		swapFee := new(big.Int).Mul(value, new(big.Int).SetUint64(swapCfg.SwapFeeRatePerMillion))
-		swapFee.Div(swapFee, big.NewInt(1000000))
-
+		var swapFee, adjustBaseFee *big.Int
 		minSwapFee := ConvertTokenValue(swapCfg.MinimumSwapFee, 18, fromDecimals)
-		if swapFee.Cmp(minSwapFee) < 0 {
+		if params.IsInBigValueWhitelist(tokenID, originFrom) ||
+			params.IsInBigValueWhitelist(tokenID, originTxTo) {
 			swapFee = minSwapFee
 		} else {
-			maxSwapFee := ConvertTokenValue(swapCfg.MaximumSwapFee, 18, fromDecimals)
-			if swapFee.Cmp(maxSwapFee) > 0 {
-				swapFee = maxSwapFee
-			}
-		}
+			swapFee = new(big.Int).Mul(value, new(big.Int).SetUint64(swapCfg.SwapFeeRatePerMillion))
+			swapFee.Div(swapFee, big.NewInt(1000000))
 
-		var adjustBaseFee *big.Int
-		baseFeePercent := params.GetBaseFeePercent(toChainID)
-		if baseFeePercent != 0 && minSwapFee.Sign() > 0 {
-			adjustBaseFee = new(big.Int).Set(minSwapFee)
-			adjustBaseFee.Mul(adjustBaseFee, big.NewInt(baseFeePercent))
-			adjustBaseFee.Div(adjustBaseFee, big.NewInt(100))
-			swapFee = new(big.Int).Add(swapFee, adjustBaseFee)
-			if swapFee.Sign() < 0 {
-				swapFee = big.NewInt(0)
+			if swapFee.Cmp(minSwapFee) < 0 {
+				swapFee = minSwapFee
+			} else {
+				maxSwapFee := ConvertTokenValue(swapCfg.MaximumSwapFee, 18, fromDecimals)
+				if swapFee.Cmp(maxSwapFee) > 0 {
+					swapFee = maxSwapFee
+				}
+			}
+
+			baseFeePercent := params.GetBaseFeePercent(toChainID)
+			if baseFeePercent != 0 && minSwapFee.Sign() > 0 {
+				adjustBaseFee = new(big.Int).Set(minSwapFee)
+				adjustBaseFee.Mul(adjustBaseFee, big.NewInt(baseFeePercent))
+				adjustBaseFee.Div(adjustBaseFee, big.NewInt(100))
+				swapFee = new(big.Int).Add(swapFee, adjustBaseFee)
+				if swapFee.Sign() < 0 {
+					swapFee = big.NewInt(0)
+				}
 			}
 		}
 
