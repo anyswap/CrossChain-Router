@@ -178,10 +178,6 @@ func (b *Bridge) checkAnyCallSwapInfo(swapInfo *tokens.SwapTxInfo) error {
 	if dstBridge == nil {
 		return tokens.ErrNoBridgeForChainID
 	}
-	if !dstBridge.IsValidAddress(swapInfo.Bind) {
-		log.Warn("wrong bind address in anycall swap", "txid", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "bind", swapInfo.Bind)
-		return tokens.ErrWrongBindAddress
-	}
 	return nil
 }
 
