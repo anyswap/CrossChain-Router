@@ -180,7 +180,7 @@ func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int, isManual b
 }
 
 func signAndSendReplaceTx(resBridge tokens.IBridge, rawTx interface{}, args *tokens.BuildTxArgs, res *mongodb.MgoSwapResult) {
-	signedTx, txHash, err := resBridge.MPCSignTransaction(rawTx, args.GetExtraArgs())
+	signedTx, txHash, err := resBridge.MPCSignTransaction(rawTx, args)
 	if err != nil {
 		logWorkerError("replaceSwap", "mpc sign tx failed", err, "fromChainID", res.FromChainID, "toChainID", res.ToChainID, "txid", res.TxID, "nonce", res.SwapNonce, "logIndex", res.LogIndex)
 		return

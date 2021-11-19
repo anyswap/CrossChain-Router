@@ -51,7 +51,7 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 
 	signer := b.Signer
 	msgHash := signer.Hash(tx)
-	jsondata, _ := json.Marshal(args)
+	jsondata, _ := json.Marshal(args.GetExtraArgs())
 	msgContext := string(jsondata)
 
 	txid := args.SwapID

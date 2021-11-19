@@ -293,7 +293,7 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 		return err
 	}
 
-	signedTx, txHash, err := resBridge.MPCSignTransaction(rawTx, args.GetExtraArgs())
+	signedTx, txHash, err := resBridge.MPCSignTransaction(rawTx, args)
 	if err != nil {
 		logWorkerError("doSwap", "sign tx failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex)
 		return err
@@ -391,7 +391,7 @@ func signAndSendTx(rawTx interface{}, args *tokens.BuildTxArgs) error {
 	swapTxNonce := args.GetTxNonce()
 	resBridge := router.GetBridgeByChainID(toChainID)
 
-	signedTx, txHash, err := resBridge.MPCSignTransaction(rawTx, args.GetExtraArgs())
+	signedTx, txHash, err := resBridge.MPCSignTransaction(rawTx, args)
 	if err != nil {
 		logWorkerError("doSwap", "sign tx failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "swapNonce", swapTxNonce)
 		return err
