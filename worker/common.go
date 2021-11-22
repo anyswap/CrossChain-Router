@@ -19,6 +19,10 @@ type MatchTx struct {
 
 // AddInitialSwapResult add initial result
 func AddInitialSwapResult(swapInfo *tokens.SwapTxInfo, status mongodb.SwapStatus) (err error) {
+	valueStr := "0"
+	if swapInfo.Value != nil {
+		valueStr = swapInfo.Value.String()
+	}
 	swapResult := &mongodb.MgoSwapResult{
 		SwapType:    uint32(swapInfo.SwapType),
 		TxID:        swapInfo.Hash,
@@ -28,7 +32,7 @@ func AddInitialSwapResult(swapInfo *tokens.SwapTxInfo, status mongodb.SwapStatus
 		From:        swapInfo.From,
 		To:          swapInfo.To,
 		Bind:        swapInfo.Bind,
-		Value:       swapInfo.Value.String(),
+		Value:       valueStr,
 		LogIndex:    swapInfo.LogIndex,
 		FromChainID: swapInfo.FromChainID.String(),
 		ToChainID:   swapInfo.ToChainID.String(),
