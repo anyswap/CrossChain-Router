@@ -116,7 +116,7 @@ func packBytes(data []byte) []byte {
 	bs := make([]byte, 32+paddedLen)
 
 	copy(bs[:32], packBigInt(big.NewInt(int64(bsLen))))
-	copy(bs[32:], bs)
+	copy(bs[32:], data)
 
 	return bs
 }
