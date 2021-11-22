@@ -116,7 +116,13 @@ func UpdateRouterSwapInfoAndStatus(fromChainID, txid string, logindex int, swapI
 		return fmt.Errorf("forbid update swap info if swap result exists")
 	}
 
-	updates := bson.M{"swapinfo": *swapInfo, "status": status, "timestamp": timestamp, "memo": memo}
+	updates := bson.M{
+		"swapinfo":  *swapInfo,
+		"status":    status,
+		"timestamp": timestamp,
+		"inittime":  timestamp * 1000,
+		"memo":      memo,
+	}
 
 	_, err = collRouterSwap.UpdateByID(clientCtx, key, bson.M{"$set": updates})
 	if err == nil {

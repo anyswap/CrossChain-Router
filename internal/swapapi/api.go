@@ -127,6 +127,7 @@ func RegisterRouterSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, e
 		var memo string
 		if verifyErr != nil {
 			memo = verifyErr.Error()
+			result[-1-logIndex] = "verify error is " + memo
 		}
 		if oldSwap == nil {
 			err = addMgoSwap(swapInfo, newStatus, memo)
