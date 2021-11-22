@@ -158,7 +158,7 @@ func findFirstRouterSwap(fromChainID, txid string) (*MgoSwap, error) {
 }
 
 func getChainAndTxIDQuery(fromChainID, txid string) bson.M {
-	qtxid := bson.M{"txid": txid}
+	qtxid := bson.M{"txid": strings.ToLower(txid)}
 	qchainid := bson.M{"fromChainID": fromChainID}
 	return bson.M{"$and": []bson.M{qtxid, qchainid}}
 }
