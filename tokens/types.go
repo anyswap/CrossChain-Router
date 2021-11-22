@@ -15,9 +15,9 @@ const (
 	UnknownSwapType SwapType = iota
 	ERC20SwapType
 	NFTSwapType
+	AnyCallSwapType
 
 	MaxValidSwapType
-	AnyCallSwapType
 )
 
 func (s SwapType) String() string {
