@@ -38,6 +38,11 @@ var (
 	isAllowCallByContract *bool
 )
 
+// exported variables
+var (
+	GetBalanceBlockNumberOpt = "latest" // latest or pending
+)
+
 // RouterServerConfig only for server
 type RouterServerConfig struct {
 	Admins    []string
@@ -93,6 +98,7 @@ type ExtraConfig struct {
 	ForceAnySwapInAuto bool `toml:",omitempty" json:",omitempty"`
 	IsNFTSwapWithData  bool `toml:",omitempty" json:",omitempty"`
 	EnableParallelSwap bool `toml:",omitempty" json:",omitempty"`
+	UsePendingBalance  bool `toml:",omitempty" json:",omitempty"`
 
 	MinReserveFee  map[string]uint64 `toml:",omitempty" json:",omitempty"`
 	BaseFeePercent map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID

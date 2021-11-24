@@ -93,6 +93,8 @@ ForceAnySwapInAuto = false
 IsNFTSwapWithData = false
 # enalbe parallel swap
 EnableParallelSwap = false
+# use pending balace to prevent sending tx under not enough balance situation
+UsePendingBalance = false
 # getting accept list interval (seconds) in accept job
 GetAcceptListInterval = 5
 # apecify dynamic fee tx enabled chainids

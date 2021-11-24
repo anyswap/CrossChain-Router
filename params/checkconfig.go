@@ -360,6 +360,10 @@ func (c *ExtraConfig) CheckConfig() (err error) {
 	initEnableCheckTxBlockIndexChains()
 	initDisableUseFromChainIDInReceiptChains()
 
+	if c.UsePendingBalance {
+		GetBalanceBlockNumberOpt = "pending"
+	}
+
 	for chainID, baseFeePercent := range c.BaseFeePercent {
 		if _, ok := new(big.Int).SetString(chainID, 0); !ok {
 			return fmt.Errorf("wrong chain id '%v' in 'BaseFeePercent'", chainID)
@@ -379,6 +383,7 @@ func (c *ExtraConfig) CheckConfig() (err error) {
 		"enableCheckTxBlockIndexChains", c.EnableCheckTxBlockIndexChains,
 		"initDisableUseFromChainIDInReceiptChains", c.DisableUseFromChainIDInReceiptChains,
 		"baseFeePercent", c.BaseFeePercent,
+		"usePendingBalance", c.UsePendingBalance,
 	)
 	return nil
 }
