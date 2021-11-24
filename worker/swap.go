@@ -96,7 +96,7 @@ func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
 		return errAlreadySwapped
 	}
 
-	if params.IsSwapInBlacklist(fromChainID, toChainID, swap.GetTokenID()) {
+	if isBlacked(swap) {
 		logWorkerTrace("swap", "swap is in black list", "txid", txid, "logIndex", logIndex,
 			"fromChainID", fromChainID, "toChainID", toChainID, "token", swap.GetToken(), "tokenID", swap.GetTokenID())
 		err = tokens.ErrSwapInBlacklist

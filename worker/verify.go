@@ -83,6 +83,15 @@ func startVerifyConsumer() {
 	}
 }
 
+func isBlacked(swap *mongodb.MgoSwap) bool {
+	return params.IsChainIDInBlackList(swap.FromChainID) ||
+		params.IsChainIDInBlackList(swap.ToChainID) ||
+		params.IsTokenIDInBlackList(swap.GetTokenID()) ||
+		params.IsAccountInBlackList(swap.From) ||
+		params.IsAccountInBlackList(swap.Bind) ||
+		params.IsAccountInBlackList(swap.TxTo)
+}
+
 func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 	defer atomic.AddInt64(&curVerifyRoutines, -1)
 
@@ -106,7 +115,7 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 	}()
 
 	var dbErr error
-	if params.IsSwapInBlacklist(fromChainID, swap.ToChainID, swap.GetTokenID()) {
+	if isBlacked(swap) {
 		err = tokens.ErrSwapInBlacklist
 		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.SwapInBlacklist, now(), err.Error())
 		if dbErr != nil {

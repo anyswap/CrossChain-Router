@@ -137,6 +137,16 @@ func (s *RouterServerConfig) CheckConfig() error {
 		}
 		tokenIDBlacklistMap[key] = struct{}{}
 	}
+	for _, account := range s.AccountBlackList {
+		if account == "" {
+			return errors.New("empty account in black list")
+		}
+		key := strings.ToLower(account)
+		if _, exist := accountBlacklistMap[key]; exist {
+			return fmt.Errorf("duplicate account '%v' in black list", key)
+		}
+		accountBlacklistMap[key] = struct{}{}
+	}
 	for chainID, fixedGasPriceStr := range s.FixedGasPrice {
 		biChainID, ok := new(big.Int).SetString(chainID, 0)
 		if !ok {

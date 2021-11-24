@@ -21,6 +21,7 @@ var (
 
 	chainIDBlacklistMap = make(map[string]struct{})
 	tokenIDBlacklistMap = make(map[string]struct{})
+	accountBlacklistMap = make(map[string]struct{})
 	fixedGasPriceMap    = make(map[string]*big.Int) // key is chainID
 	maxGasPriceMap      = make(map[string]*big.Int) // key is chainID
 
@@ -45,6 +46,7 @@ type RouterServerConfig struct {
 
 	ChainIDBlackList []string `toml:",omitempty" json:",omitempty"`
 	TokenIDBlackList []string `toml:",omitempty" json:",omitempty"`
+	AccountBlackList []string `toml:",omitempty" json:",omitempty"`
 
 	// extras
 	EnableReplaceSwap          bool
@@ -435,11 +437,10 @@ func IsTokenIDInBlackList(tokenID string) bool {
 	return exist
 }
 
-// IsSwapInBlacklist is chain or token blacklisted
-func IsSwapInBlacklist(fromChainID, toChainID, tokenID string) bool {
-	return IsChainIDInBlackList(fromChainID) ||
-		IsChainIDInBlackList(toChainID) ||
-		IsTokenIDInBlackList(tokenID)
+// IsAccountInBlackList is account in black list
+func IsAccountInBlackList(account string) bool {
+	_, exist := accountBlacklistMap[strings.ToLower(account)]
+	return exist
 }
 
 func initDynamicFeeTxEnabledChains() {
