@@ -47,7 +47,7 @@ func doCheckFailedSwapJob() {
 }
 
 func checkFailedRouterSwap(swap *mongodb.MgoSwapResult) error {
-	if swap.SwapNonce == 0 || swap.SwapTx == "" {
+	if (swap.SwapNonce == 0 && swap.SwapHeight == 0) || swap.SwapTx == "" {
 		return nil
 	}
 
