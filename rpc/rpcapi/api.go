@@ -47,6 +47,15 @@ func (s *RouterSwapAPI) GetOracleInfo(r *http.Request, args *RPCNullArgs, result
 	return nil
 }
 
+// GetStatusInfo api
+func (s *RouterSwapAPI) GetStatusInfo(r *http.Request, statuses *string, result *map[string]interface{}) error {
+	res, err := swapapi.GetStatusInfo(*statuses)
+	if err == nil && res != nil {
+		*result = res
+	}
+	return err
+}
+
 // OracleInfoArgs args
 type OracleInfoArgs struct {
 	Enode     string `json:"enode"`

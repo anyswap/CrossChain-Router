@@ -63,6 +63,18 @@ func OracleInfoHandler(w http.ResponseWriter, r *http.Request) {
 	writeResponse(w, oracleInfo, nil)
 }
 
+// StatusInfoHandler handler
+func StatusInfoHandler(w http.ResponseWriter, r *http.Request) {
+	var status string
+	vals := r.URL.Query()
+	statusVals, exist := vals["status"]
+	if exist {
+		status = statusVals[0]
+	}
+	res, err := swapapi.GetStatusInfo(status)
+	writeResponse(w, res, err)
+}
+
 func getRouterSwapKeys(r *http.Request) (chainID, txid, logIndex string) {
 	vars := mux.Vars(r)
 	chainID = vars["chainid"]

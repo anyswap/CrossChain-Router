@@ -58,6 +58,11 @@ func GetOracleInfo() map[string]*OracleInfo {
 	return result
 }
 
+// GetStatusInfo api
+func GetStatusInfo(status string) (map[string]interface{}, error) {
+	return mongodb.GetStatusInfo(status)
+}
+
 // ReportOracleInfo report oracle info
 func ReportOracleInfo(oracle string, info *OracleInfo) error {
 	var exist bool

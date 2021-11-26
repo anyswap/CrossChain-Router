@@ -1,6 +1,7 @@
 package mongodb
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/big"
@@ -685,4 +686,44 @@ func getSwapResultsTxStatus(bridge tokens.IBridge, res *MgoSwapResult) (status *
 		}
 	}
 	return nil, ""
+}
+
+var defaultGetStatusInfoFilter = []SwapStatus{
+	TxNotStable,      // 0
+	MatchTxEmpty,     // 8
+	MatchTxNotStable, // 9
+	TxWithBigValue,   // 12
+	MatchTxFailed,    // 14
+}
+
+// GetStatusInfo get status info
+func GetStatusInfo(statuses string) (map[string]interface{}, error) {
+	filterStatuses, _ := getStatusesFromStr(statuses)
+	if len(filterStatuses) == 0 {
+		filterStatuses = defaultGetStatusInfoFilter
+	}
+	pipeOption := []bson.M{
+		{"$match": bson.M{"status": bson.M{"$in": filterStatuses}}},
+		{"$group": bson.M{"_id": "$status", "count": bson.M{"$sum": 1}}},
+	}
+
+	ctx, cancel := context.WithDeadline(clientCtx, time.Now().Add(3*time.Second))
+	defer cancel()
+
+	cur, err := collRouterSwapResult.Aggregate(ctx, pipeOption)
+	if err != nil {
+		return nil, mgoError(err)
+	}
+
+	result := make([]bson.M, 0, 10)
+	err = cur.All(ctx, &result)
+	if err != nil {
+		return nil, mgoError(err)
+	}
+
+	statusInfo := make(map[string]interface{}, len(result))
+	for _, m := range result {
+		statusInfo[fmt.Sprint(m["_id"])] = m["count"]
+	}
+	return statusInfo, nil
 }

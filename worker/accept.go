@@ -46,6 +46,9 @@ func StartAcceptSignJob() {
 	getAcceptListInterval := params.GetAcceptListInterval()
 	if getAcceptListInterval > 0 {
 		waitInterval = time.Duration(getAcceptListInterval) * time.Second
+		if retryInterval > waitInterval {
+			retryInterval = waitInterval
+		}
 	}
 
 	openLeveldb()

@@ -95,6 +95,7 @@ func initRouterSwapRouter(r *mux.Router) {
 	r.HandleFunc("/versioninfo", restapi.VersionInfoHandler).Methods("GET")
 	r.HandleFunc("/serverinfo", restapi.ServerInfoHandler).Methods("GET")
 	r.HandleFunc("/oracleinfo", restapi.OracleInfoHandler).Methods("GET")
+	r.HandleFunc("/statusinfo", restapi.StatusInfoHandler).Methods("GET")
 	r.HandleFunc("/swap/register/{chainid}/{txid}", restapi.RegisterRouterSwapHandler).Methods("POST")
 	r.HandleFunc("/swap/status/{chainid}/{txid}", restapi.GetRouterSwapHandler).Methods("GET")
 	r.HandleFunc("/swap/history/{chainid}/{address}", restapi.GetRouterSwapHistoryHandler).Methods("GET")
