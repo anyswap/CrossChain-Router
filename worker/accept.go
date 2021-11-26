@@ -181,14 +181,21 @@ func processAcceptInfo(info *mpc.SignInfoData) {
 		return
 	}
 
+	var aggreeMsgContext []string
 	agreeResult := acceptAgree
 	if err != nil {
 		logWorkerError("accept", "DISAGREE sign", err, ctx...)
 		agreeResult = acceptDisagree
+
+		disagreeReson := err.Error()
+		if len(disagreeReson) > 100 {
+			disagreeReson = disagreeReson[:100]
+		}
+		aggreeMsgContext = append(aggreeMsgContext, disagreeReson)
 	}
 	ctx = append(ctx, "result", agreeResult)
 
-	res, err := mpc.DoAcceptSign(keyID, agreeResult, info.MsgHash, info.MsgContext)
+	res, err := mpc.DoAcceptSign(keyID, agreeResult, info.MsgHash, aggreeMsgContext)
 	if err != nil {
 		ctx = append(ctx, "rpcResult", res)
 		logWorkerError("accept", "accept sign job failed", err, ctx...)
