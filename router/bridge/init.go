@@ -29,12 +29,24 @@ func InitRouterBridges(isServer bool) {
 	if err != nil {
 		log.Fatal("call GetAllChainIDs failed", "err", err)
 	}
+	// get rid of blacked chainIDs
+	for i, chainID := range chainIDs {
+		if params.IsChainIDInBlackList(chainID.String()) {
+			chainIDs = append(chainIDs[:i], chainIDs[i+1:]...)
+		}
+	}
 	router.AllChainIDs = chainIDs
 	log.Info("get all chain ids success", "chainIDs", chainIDs)
 
 	tokenIDs, err := router.GetAllTokenIDs()
 	if err != nil {
 		log.Fatal("call GetAllTokenIDs failed", "err", err)
+	}
+	// get rid of blacked tokenIDs
+	for i, tokenID := range tokenIDs {
+		if params.IsTokenIDInBlackList(tokenID) {
+			tokenIDs = append(tokenIDs[:i], tokenIDs[i+1:]...)
+		}
 	}
 	router.AllTokenIDs = tokenIDs
 	log.Info("get all token ids success", "tokenIDs", tokenIDs)

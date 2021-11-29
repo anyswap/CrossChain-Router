@@ -75,6 +75,12 @@ func ReloadRouterConfig() bool {
 	if len(removedTokenIDs) > 0 {
 		log.Info("[reload] remove token ids", "removedTokenIDs", removedTokenIDs)
 	}
+	// get rid of blacked tokenIDs
+	for i, tokenID := range tokenIDs {
+		if params.IsTokenIDInBlackList(tokenID) {
+			tokenIDs = append(tokenIDs[:i], tokenIDs[i+1:]...)
+		}
+	}
 	router.AllTokenIDs = tokenIDs
 
 	for _, chainID := range chainIDs {
