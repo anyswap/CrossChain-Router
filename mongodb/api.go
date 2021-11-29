@@ -409,22 +409,25 @@ func FindRouterSwapResultsToReplace(chainID *big.Int, septime int64, mpc string)
 	return result, nil
 }
 
-func getStatusesFromStr(status string) (result []SwapStatus, isInResultColl bool) {
+func getStatusesFromStr(status string) (registerStatuses, resultStatuses []SwapStatus) {
 	parts := strings.Split(status, ",")
-	result = make([]SwapStatus, 0, len(parts))
+	registerStatuses = make([]SwapStatus, 0, 5)
+	resultStatuses = make([]SwapStatus, 0, 5)
 	for _, part := range parts {
 		if part == "" {
 			continue
 		}
 		num, err := common.GetUint64FromStr(part)
 		if err == nil {
-			result = append(result, SwapStatus(num))
-			if SwapStatus(num).IsResultStatus() {
-				isInResultColl = true
+			swapStatus := SwapStatus(num)
+			if swapStatus.IsResultStatus() {
+				resultStatuses = append(resultStatuses, swapStatus)
+			} else {
+				registerStatuses = append(registerStatuses, swapStatus)
 			}
 		}
 	}
-	return result, isInResultColl
+	return registerStatuses, resultStatuses
 }
 
 // FindRouterSwapResults find router swap results with chainid and address
@@ -442,7 +445,12 @@ func FindRouterSwapResults(fromChainID, address string, offset, limit int, statu
 		queries = append(queries, bson.M{"fromChainID": fromChainID})
 	}
 
-	filterStatuses, isInResultColl := getStatusesFromStr(status)
+	registerStatuses, resultStatuses := getStatusesFromStr(status)
+	filterStatuses, isInResultColl := resultStatuses, true
+	if len(resultStatuses) == 0 && len(registerStatuses) > 0 {
+		filterStatuses = registerStatuses
+		isInResultColl = false
+	}
 	if len(filterStatuses) > 0 {
 		if len(filterStatuses) == 1 {
 			queries = append(queries, bson.M{"status": filterStatuses[0]})
@@ -450,8 +458,6 @@ func FindRouterSwapResults(fromChainID, address string, offset, limit int, statu
 			qstatus := bson.M{"status": bson.M{"$in": filterStatuses}}
 			queries = append(queries, qstatus)
 		}
-	} else {
-		isInResultColl = true
 	}
 
 	opts := &options.FindOptions{}
@@ -688,20 +694,52 @@ func getSwapResultsTxStatus(bridge tokens.IBridge, res *MgoSwapResult) (status *
 	return nil, ""
 }
 
-var defaultGetStatusInfoFilter = []SwapStatus{
-	TxNotStable,      // 0
+var defaultGetStatusInfoRegisterFilter = []SwapStatus{
+	TxNotStable,    // 0
+	TxWithBigValue, // 12
+}
+
+var defaultGetStatusInfoResultFilter = []SwapStatus{
 	MatchTxEmpty,     // 8
 	MatchTxNotStable, // 9
-	TxWithBigValue,   // 12
 	MatchTxFailed,    // 14
 }
 
 // GetStatusInfo get status info
-func GetStatusInfo(statuses string) (map[string]interface{}, error) {
-	filterStatuses, _ := getStatusesFromStr(statuses)
-	if len(filterStatuses) == 0 {
-		filterStatuses = defaultGetStatusInfoFilter
+func GetStatusInfo(statuses string) (statusInfo map[string]interface{}, err error) {
+	registerStatuses, resultStatuses := getStatusesFromStr(statuses)
+	if len(registerStatuses) == 0 && len(resultStatuses) == 0 {
+		registerStatuses = defaultGetStatusInfoRegisterFilter
+		resultStatuses = defaultGetStatusInfoResultFilter
 	}
+
+	var registerInfo, resusltInfo []bson.M
+
+	if len(registerStatuses) > 0 {
+		registerInfo, err = getStatusInfo(collRouterSwap, registerStatuses)
+		if err != nil {
+			return nil, mgoError(err)
+		}
+	}
+
+	if len(resultStatuses) == 0 {
+		resusltInfo, err = getStatusInfo(collRouterSwapResult, resultStatuses)
+		if err != nil {
+			return nil, mgoError(err)
+		}
+	}
+
+	statusInfo = make(map[string]interface{}, len(registerInfo)+len(resusltInfo))
+	for _, m := range registerInfo {
+		statusInfo[fmt.Sprint(m["_id"])] = m["count"]
+	}
+	for _, m := range resusltInfo {
+		statusInfo[fmt.Sprint(m["_id"])] = m["count"]
+	}
+	return statusInfo, nil
+}
+
+func getStatusInfo(coll *mongo.Collection, filterStatuses []SwapStatus) (result []bson.M, err error) {
 	pipeOption := []bson.M{
 		{"$match": bson.M{"status": bson.M{"$in": filterStatuses}}},
 		{"$group": bson.M{"_id": "$status", "count": bson.M{"$sum": 1}}},
@@ -710,20 +748,16 @@ func GetStatusInfo(statuses string) (map[string]interface{}, error) {
 	ctx, cancel := context.WithDeadline(clientCtx, time.Now().Add(3*time.Second))
 	defer cancel()
 
-	cur, err := collRouterSwapResult.Aggregate(ctx, pipeOption)
+	cur, err := coll.Aggregate(ctx, pipeOption)
 	if err != nil {
-		return nil, mgoError(err)
+		return nil, err
 	}
 
-	result := make([]bson.M, 0, 10)
+	result = make([]bson.M, 0, 5)
 	err = cur.All(ctx, &result)
 	if err != nil {
-		return nil, mgoError(err)
+		return nil, err
 	}
 
-	statusInfo := make(map[string]interface{}, len(result))
-	for _, m := range result {
-		statusInfo[fmt.Sprint(m["_id"])] = m["count"]
-	}
-	return statusInfo, nil
+	return result, nil
 }
