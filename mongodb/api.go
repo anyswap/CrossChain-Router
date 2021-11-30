@@ -44,8 +44,8 @@ func AddRouterSwap(ms *MgoSwap) error {
 	_, err := collRouterSwap.InsertOne(clientCtx, ms)
 	if err == nil {
 		log.Info("mongodb add router swap success", "chainid", ms.FromChainID, "txid", ms.TxID, "logindex", ms.LogIndex)
-	} else {
-		log.Debug("mongodb add router swap failed", "chainid", ms.FromChainID, "txid", ms.TxID, "logindex", ms.LogIndex, "err", err)
+	} else if !mongo.IsDuplicateKeyError(err) {
+		log.Error("mongodb add router swap failed", "chainid", ms.FromChainID, "txid", ms.TxID, "logindex", ms.LogIndex, "err", err)
 	}
 	return mgoError(err)
 }
@@ -224,8 +224,8 @@ func AddRouterSwapResult(mr *MgoSwapResult) error {
 	_, err := collRouterSwapResult.InsertOne(clientCtx, mr)
 	if err == nil {
 		log.Info("mongodb add router swap result success", "chainid", mr.FromChainID, "txid", mr.TxID, "logindex", mr.LogIndex)
-	} else {
-		log.Debug("mongodb add router swap result failed", "chainid", mr.FromChainID, "txid", mr.TxID, "logindex", mr.LogIndex, "err", err)
+	} else if !mongo.IsDuplicateKeyError(err) {
+		log.Error("mongodb add router swap result failed", "chainid", mr.FromChainID, "txid", mr.TxID, "logindex", mr.LogIndex, "err", err)
 	}
 	return mgoError(err)
 }
