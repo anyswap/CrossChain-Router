@@ -82,6 +82,9 @@ func ReloadRouterConfig() bool {
 		}
 	}
 	router.AllTokenIDs = tokenIDs
+	if len(router.AllTokenIDs) == 0 {
+		log.Error("[reload] empty token IDs")
+	}
 
 	for _, chainID := range chainIDs {
 		chainIDStr := chainID.String()

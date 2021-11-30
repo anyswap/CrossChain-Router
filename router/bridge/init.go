@@ -37,6 +37,9 @@ func InitRouterBridges(isServer bool) {
 	}
 	router.AllChainIDs = chainIDs
 	log.Info("get all chain ids success", "chainIDs", chainIDs)
+	if len(router.AllChainIDs) == 0 {
+		log.Fatal("empty chain IDs")
+	}
 
 	tokenIDs, err := router.GetAllTokenIDs()
 	if err != nil {
@@ -50,6 +53,9 @@ func InitRouterBridges(isServer bool) {
 	}
 	router.AllTokenIDs = tokenIDs
 	log.Info("get all token ids success", "tokenIDs", tokenIDs)
+	if len(router.AllTokenIDs) == 0 {
+		log.Fatal("empty token IDs")
+	}
 
 	for _, chainID := range chainIDs {
 		if params.IsChainIDInBlackList(chainID.String()) {
