@@ -8,6 +8,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
 var reloadRouterConfigLock sync.Mutex
@@ -82,7 +83,7 @@ func ReloadRouterConfig() bool {
 		}
 	}
 	router.AllTokenIDs = tokenIDs
-	if len(router.AllTokenIDs) == 0 {
+	if len(router.AllTokenIDs) == 0 && !tokens.IsAnyCallRouter() {
 		log.Error("[reload] empty token IDs")
 	}
 

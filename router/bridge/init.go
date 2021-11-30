@@ -53,7 +53,7 @@ func InitRouterBridges(isServer bool) {
 	}
 	router.AllTokenIDs = tokenIDs
 	log.Info("get all token ids success", "tokenIDs", tokenIDs)
-	if len(router.AllTokenIDs) == 0 {
+	if len(router.AllTokenIDs) == 0 && !tokens.IsAnyCallRouter() {
 		log.Fatal("empty token IDs")
 	}
 

@@ -39,6 +39,16 @@ func IsERC20Router() bool {
 	return routerSwapType == ERC20SwapType
 }
 
+// IsNFTRouter is nft router
+func IsNFTRouter() bool {
+	return routerSwapType == NFTSwapType
+}
+
+// IsAnyCallRouter is anycall router
+func IsAnyCallRouter() bool {
+	return routerSwapType == AnyCallSwapType
+}
+
 // CrossChainBridgeBase base bridge
 type CrossChainBridgeBase struct {
 	ChainConfig    *ChainConfig
