@@ -722,7 +722,7 @@ func GetStatusInfo(statuses string) (statusInfo map[string]interface{}, err erro
 		}
 	}
 
-	if len(resultStatuses) == 0 {
+	if len(resultStatuses) > 0 {
 		resusltInfo, err = getStatusInfo(collRouterSwapResult, resultStatuses)
 		if err != nil {
 			return nil, mgoError(err)
