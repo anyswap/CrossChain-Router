@@ -416,6 +416,15 @@ func GetExtraConfig() *ExtraConfig {
 	return routerConfig.Extra
 }
 
+// SetExtraConfig set extra config (used by testing)
+func SetExtraConfig(extra *ExtraConfig) error {
+	if err := extra.CheckConfig(); err != nil {
+		return err
+	}
+	routerConfig.Extra = extra
+	return nil
+}
+
 // HasRouterAdmin has admin
 func HasRouterAdmin() bool {
 	return len(routerConfig.Server.Admins) != 0

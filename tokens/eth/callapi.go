@@ -197,6 +197,7 @@ func (b *Bridge) getTransactionReceipt(txHash string, urls []string) (result *ty
 					return nil, "", errt
 				}
 				if !common.IsEqualIgnoreCase(tx.Hash.Hex(), txHash) {
+					log.Error("check tx with block and index failed", "txHash", txHash, "tx.Hash", tx.Hash.Hex(), "blockNumber", result.BlockNumber, "txIndex", result.TxIndex, "url", url)
 					return nil, "", errTxInOrphanBlock
 				}
 			}
