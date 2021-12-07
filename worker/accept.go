@@ -199,11 +199,12 @@ func processAcceptInfo(info *mpc.SignInfoData) {
 		logWorkerError("accept", "DISAGREE sign", err, ctx...)
 		agreeResult = acceptDisagree
 
-		disagreeReson := err.Error()
-		if len(disagreeReson) > 100 {
-			disagreeReson = disagreeReson[:100]
+		disgreeReason := err.Error()
+		if len(disgreeReason) > 100 {
+			disgreeReason = disgreeReason[:100]
 		}
-		aggreeMsgContext = append(aggreeMsgContext, disagreeReson)
+		aggreeMsgContext = append(aggreeMsgContext, disgreeReason)
+		ctx = append(ctx, "disgreeReason", disgreeReason)
 	}
 	ctx = append(ctx, "result", agreeResult)
 
