@@ -97,6 +97,8 @@ EnableParallelSwap = false
 UsePendingBalance = false
 # getting accept list interval (seconds) in accept job
 GetAcceptListInterval = 5
+# when meet invalid accept, ignore it instead of disagree it immediately
+PendingInvalidAccept = false
 # apecify dynamic fee tx enabled chainids
 DynamicFeeTxEnabledChains = ["3"]
 # enable check tx block hash for security reason

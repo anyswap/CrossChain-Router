@@ -24,6 +24,7 @@ var (
 	cachedAcceptInfos    = mapset.NewSet()
 	maxCachedAcceptInfos = 500
 
+	isPendingInvalidAccept    bool
 	maxAcceptSignTimeInterval = int64(600) // seconds
 
 	retryInterval = 3 * time.Second
@@ -43,6 +44,7 @@ var (
 func StartAcceptSignJob() {
 	logWorker("accept", "start accept sign job")
 
+	isPendingInvalidAccept = params.IsPendingInvalidAccept()
 	getAcceptListInterval := params.GetAcceptListInterval()
 	if getAcceptListInterval > 0 {
 		waitInterval = time.Duration(getAcceptListInterval) * time.Second
@@ -163,25 +165,32 @@ func processAcceptInfo(info *mpc.SignInfoData) {
 	}
 
 	switch {
-	case errors.Is(err, tokens.ErrTxNotStable),
-		errors.Is(err, tokens.ErrTxNotFound),
-		errors.Is(err, tokens.ErrRPCQueryError):
-		ctx = append(ctx, "err", err)
-		logWorkerTrace("accept", "ignore sign", ctx...)
-		return
-	case errors.Is(err, errIdentifierMismatch):
+	case // these maybe accepts of other bridges or routers, always discard them
+		errors.Is(err, errWrongMsgContext),
+		errors.Is(err, errIdentifierMismatch):
 		ctx = append(ctx, "err", err)
 		logWorkerTrace("accept", "discard sign", ctx...)
 		isProcessed = true
 		return
-	case errors.Is(err, errInitiatorMismatch),
-		errors.Is(err, errWrongMsgContext),
+	case // these are situations we can not judge, ignore them or disagree immediately
+		errors.Is(err, tokens.ErrTxNotStable),
+		errors.Is(err, tokens.ErrTxNotFound),
+		errors.Is(err, tokens.ErrRPCQueryError):
+		if isPendingInvalidAccept {
+			ctx = append(ctx, "err", err)
+			logWorkerTrace("accept", "ignore sign", ctx...)
+			return
+		}
+	case // these we are sure are config problem, discard them or disagree immediately
+		errors.Is(err, errInitiatorMismatch),
 		errors.Is(err, tokens.ErrTxWithWrongContract),
 		errors.Is(err, tokens.ErrNoBridgeForChainID):
-		ctx = append(ctx, "err", err)
-		logWorker("accept", "discard sign", ctx...)
-		isProcessed = true
-		return
+		if isPendingInvalidAccept {
+			ctx = append(ctx, "err", err)
+			logWorker("accept", "discard sign", ctx...)
+			isProcessed = true
+			return
+		}
 	}
 
 	var aggreeMsgContext []string
@@ -209,9 +218,6 @@ func processAcceptInfo(info *mpc.SignInfoData) {
 }
 
 func verifySignInfo(signInfo *mpc.SignInfoData) (*tokens.BuildTxArgs, error) {
-	if !params.IsMPCInitiator(signInfo.Account) {
-		return nil, errInitiatorMismatch
-	}
 	msgHash := signInfo.MsgHash
 	msgContext := signInfo.MsgContext
 	if len(msgContext) != 1 {
@@ -226,6 +232,9 @@ func verifySignInfo(signInfo *mpc.SignInfoData) (*tokens.BuildTxArgs, error) {
 	case params.GetIdentifier():
 	default:
 		return nil, errIdentifierMismatch
+	}
+	if !params.IsMPCInitiator(signInfo.Account) {
+		return nil, errInitiatorMismatch
 	}
 	logWorker("accept", "verifySignInfo", "keyID", signInfo.Key, "msgHash", msgHash, "msgContext", msgContext)
 	if lvldbHandle != nil && args.GetTxNonce() > 0 { // only for eth like chain

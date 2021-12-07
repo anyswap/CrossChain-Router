@@ -104,6 +104,7 @@ type ExtraConfig struct {
 	BaseFeePercent map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID
 
 	GetAcceptListInterval uint64 `toml:",omitempty" json:",omitempty"`
+	PendingInvalidAccept  bool   `toml:",omitempty" json:",omitempty"`
 
 	AllowCallByContract     bool                `toml:",omitempty" json:",omitempty"`
 	CallByContractWhitelist map[string][]string `toml:",omitempty" json:",omitempty"` // chainID -> whitelist
@@ -218,6 +219,11 @@ func IsForceAnySwapInAuto() bool {
 // IsParallelSwapEnabled is parallel swap enabled
 func IsParallelSwapEnabled() bool {
 	return GetExtraConfig() != nil && GetExtraConfig().EnableParallelSwap
+}
+
+// IsPendingInvalidAccept ignore invalid accept instead of disagree it immediately
+func IsPendingInvalidAccept() bool {
+	return GetExtraConfig() != nil && GetExtraConfig().PendingInvalidAccept
 }
 
 // GetAcceptListInterval get accept list interval (seconds)
