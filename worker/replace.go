@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"sync"
 
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
@@ -19,8 +18,6 @@ var (
 	treatAsNoncePassedInterval = int64(600) // seconds
 	defWaitTimeToReplace       = int64(300) // seconds
 	defMaxReplaceCount         = 20
-
-	updateOldSwapTxsLock sync.Mutex
 )
 
 // StartReplaceJob replace job
@@ -186,15 +183,19 @@ func signAndSendReplaceTx(resBridge tokens.IBridge, rawTx interface{}, args *tok
 		return
 	}
 
-	err = replaceSwapResult(res, txHash)
+	fromChainID := res.FromChainID
+	txid := res.TxID
+	logIndex := res.LogIndex
+
+	err = mongodb.UpdateRouterOldSwapTxs(fromChainID, txid, logIndex, txHash)
 	if err != nil {
 		return
 	}
 
 	sentTxHash, err := sendSignedTransaction(resBridge, signedTx, args)
 	if err == nil && txHash != sentTxHash {
-		logWorkerError("replaceSwap", "send tx success but with different hash", errSendTxWithDiffHash, "fromChainID", res.FromChainID, "toChainID", res.ToChainID, "txid", res.TxID, "nonce", res.SwapNonce, "logIndex", res.LogIndex, "txHash", txHash, "sentTxHash", sentTxHash)
-		_ = replaceSwapResult(res, sentTxHash)
+		logWorkerError("replaceSwap", "send tx success but with different hash", errSendTxWithDiffHash, "fromChainID", fromChainID, "toChainID", res.ToChainID, "txid", txid, "nonce", res.SwapNonce, "logIndex", logIndex, "txHash", txHash, "sentTxHash", sentTxHash)
+		_ = mongodb.UpdateRouterOldSwapTxs(fromChainID, txid, logIndex, sentTxHash)
 	}
 }
 
@@ -282,39 +283,4 @@ func checkIfSwapNonceHasPassed(bridge tokens.IBridge, res *mongodb.MgoSwapResult
 		}
 	}
 	return nil
-}
-
-func replaceSwapResult(swapResult *mongodb.MgoSwapResult, txHash string) (err error) {
-	updateOldSwapTxsLock.Lock()
-	defer updateOldSwapTxsLock.Unlock()
-
-	fromChainID := swapResult.FromChainID
-	txid := swapResult.TxID
-	logIndex := swapResult.LogIndex
-	var oldSwapTxs []string
-	if len(swapResult.OldSwapTxs) > 0 {
-		for _, oldSwapTx := range swapResult.OldSwapTxs {
-			if oldSwapTx == txHash {
-				return nil
-			}
-		}
-		oldSwapTxs = swapResult.OldSwapTxs
-		oldSwapTxs = append(oldSwapTxs, txHash)
-	} else {
-		if txHash == swapResult.SwapTx {
-			return nil
-		}
-		if swapResult.SwapTx == "" {
-			oldSwapTxs = []string{txHash}
-		} else {
-			oldSwapTxs = []string{swapResult.SwapTx, txHash}
-		}
-	}
-	err = updateOldSwapTxs(fromChainID, txid, logIndex, oldSwapTxs)
-	if err != nil {
-		logWorkerError("replace", "replaceSwapResult failed", err, "fromChainID", fromChainID, "txid", txid, "logIndex", logIndex, "swaptx", txHash, "nonce", swapResult.SwapNonce)
-	} else {
-		logWorker("replace", "replaceSwapResult success", "fromChainID", fromChainID, "txid", txid, "logIndex", logIndex, "swaptx", txHash, "nonce", swapResult.SwapNonce)
-	}
-	return err
 }

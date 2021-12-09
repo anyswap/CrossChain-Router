@@ -207,11 +207,11 @@ func GetRouterSwap(fromChainID, txid, logindexStr string) (*SwapInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	result, err := mongodb.FindRouterSwapResult(fromChainID, txid, logindex)
+	result, err := mongodb.FindRouterSwapResultAuto(fromChainID, txid, logindex)
 	if err == nil {
 		return ConvertMgoSwapResultToSwapInfo(result), nil
 	}
-	register, err := mongodb.FindRouterSwap(fromChainID, txid, logindex)
+	register, err := mongodb.FindRouterSwapAuto(fromChainID, txid, logindex)
 	if err == nil {
 		return ConvertMgoSwapToSwapInfo(register), nil
 	}

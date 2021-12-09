@@ -76,7 +76,6 @@ type MgoUsedRValue struct {
 type SwapResultUpdateItems struct {
 	MPC        string
 	SwapTx     string
-	OldSwapTxs []string
 	SwapHeight uint64
 	SwapTime   uint64
 	SwapValue  string

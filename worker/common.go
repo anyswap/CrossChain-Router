@@ -124,21 +124,6 @@ func updateSwapTx(fromChainID, txid string, logIndex int, swapTx string) (err er
 	return err
 }
 
-func updateOldSwapTxs(fromChainID, txid string, logIndex int, oldSwapTxs []string) (err error) {
-	updates := &mongodb.SwapResultUpdateItems{
-		Status:     mongodb.KeepStatus,
-		OldSwapTxs: oldSwapTxs,
-		Timestamp:  now(),
-	}
-	err = mongodb.UpdateRouterSwapResult(fromChainID, txid, logIndex, updates)
-	if err != nil {
-		logWorkerError("update", "updateOldSwapTxs fialed", err, "chainid", fromChainID, "txid", txid, "logIndex", logIndex, "swaptxs", len(oldSwapTxs))
-	} else {
-		logWorker("update", "updateOldSwapTxs success", "chainid", fromChainID, "txid", txid, "logIndex", logIndex, "swaptxs", len(oldSwapTxs))
-	}
-	return err
-}
-
 func markSwapResultUnstable(fromChainID, txid string, logIndex int) (err error) {
 	status := mongodb.MatchTxNotStable
 	timestamp := now()
