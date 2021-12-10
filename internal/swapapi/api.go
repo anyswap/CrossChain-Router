@@ -12,6 +12,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/anyswap/CrossChain-Router/v3/worker"
 	rpcjson "github.com/gorilla/rpc/v2/json2"
 )
 
@@ -136,10 +137,15 @@ func RegisterRouterSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, e
 		}
 		if oldSwap == nil {
 			err = addMgoSwap(swapInfo, newStatus, memo)
+		} else if router.IsBigValueSwap(swapInfo) {
+			result[logIndex] = "bigvalue"
+		} else if router.IsBlacklistSwap(swapInfo) {
+			result[logIndex] = "blacklist"
 		} else if newStatus != oldSwap.Status {
 			mgoSwapInfo := mongodb.ConvertToSwapInfo(&swapInfo.SwapInfo)
 			log.Info("[register] update swap info and status", "chainid", fromChainID, "txid", txid, "logIndex", logIndexStr, "oldStatus", oldSwap.Status, "newStatus", newStatus, "swapinfo", mgoSwapInfo)
 			err = mongodb.UpdateRouterSwapInfoAndStatus(fromChainID, txid, logIndex, &mgoSwapInfo, newStatus, time.Now().Unix(), memo)
+			worker.DeleteCachedVerifyingSwap(oldSwap.Key)
 		}
 		if err != nil {
 			log.Info("register swap db error", "chainid", fromChainID, "txid", txid, "logIndex", logIndexStr, "err", err)

@@ -139,19 +139,9 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 	swapInfo, err := bridge.VerifyTransaction(txid, verifyArgs)
 	switch {
 	case err == nil:
-		isVerifyPassed := true
-		if verifyArgs.SwapType == tokens.ERC20SwapType {
-			tokenID := swapInfo.GetTokenID()
-			fromDecimals := bridge.GetTokenConfig(swapInfo.ERC20SwapInfo.Token).Decimals
-			bigValueThreshold := tokens.GetBigValueThreshold(tokenID, swapInfo.ToChainID.String(), fromDecimals)
-			if swapInfo.Value.Cmp(bigValueThreshold) > 0 &&
-				!params.IsInBigValueWhitelist(tokenID, swapInfo.From) &&
-				!params.IsInBigValueWhitelist(tokenID, swapInfo.TxTo) {
-				isVerifyPassed = false
-				dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxWithBigValue, now(), "big swap value")
-			}
-		}
-		if isVerifyPassed {
+		if router.IsBigValueSwap(swapInfo) {
+			dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxWithBigValue, now(), "big swap value")
+		} else {
 			dbErr = mongodb.PassRouterSwapVerify(fromChainID, txid, logIndex, now())
 			if dbErr == nil {
 				dbErr = AddInitialSwapResult(swapInfo, mongodb.MatchTxEmpty)
@@ -192,4 +182,9 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 	}
 
 	return err
+}
+
+// DeleteCachedVerifyingSwap delete cached verifying swap
+func DeleteCachedVerifyingSwap(key string) {
+	cachedVerifyingSwaps.Remove(key)
 }

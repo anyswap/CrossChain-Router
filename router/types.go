@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
@@ -48,4 +49,33 @@ func PrintMultichainTokens() {
 		}
 	}
 	log.Info("*** end print all multichain tokens")
+}
+
+// IsBigValueSwap is big value swap
+func IsBigValueSwap(swapInfo *tokens.SwapTxInfo) bool {
+	if swapInfo.SwapType != tokens.ERC20SwapType {
+		return false
+	}
+	tokenID := swapInfo.GetTokenID()
+	if params.IsInBigValueWhitelist(tokenID, swapInfo.From) ||
+		params.IsInBigValueWhitelist(tokenID, swapInfo.TxTo) {
+		return false
+	}
+	bridge := GetBridgeByChainID(swapInfo.FromChainID.String())
+	if bridge == nil {
+		return false
+	}
+	fromDecimals := bridge.GetTokenConfig(swapInfo.ERC20SwapInfo.Token).Decimals
+	bigValueThreshold := tokens.GetBigValueThreshold(tokenID, swapInfo.ToChainID.String(), fromDecimals)
+	return swapInfo.Value.Cmp(bigValueThreshold) > 0
+}
+
+// IsBlacklistSwap is swap blacked
+func IsBlacklistSwap(swapInfo *tokens.SwapTxInfo) bool {
+	return params.IsChainIDInBlackList(swapInfo.FromChainID.String()) ||
+		params.IsChainIDInBlackList(swapInfo.ToChainID.String()) ||
+		params.IsTokenIDInBlackList(swapInfo.GetTokenID()) ||
+		params.IsAccountInBlackList(swapInfo.From) ||
+		params.IsAccountInBlackList(swapInfo.Bind) ||
+		params.IsAccountInBlackList(swapInfo.TxTo)
 }
