@@ -65,7 +65,11 @@ func IsBigValueSwap(swapInfo *tokens.SwapTxInfo) bool {
 	if bridge == nil {
 		return false
 	}
-	fromDecimals := bridge.GetTokenConfig(swapInfo.ERC20SwapInfo.Token).Decimals
+	tokenCfg := bridge.GetTokenConfig(swapInfo.ERC20SwapInfo.Token)
+	if tokenCfg == nil {
+		return false
+	}
+	fromDecimals := tokenCfg.Decimals
 	bigValueThreshold := tokens.GetBigValueThreshold(tokenID, swapInfo.ToChainID.String(), fromDecimals)
 	return swapInfo.Value.Cmp(bigValueThreshold) > 0
 }
