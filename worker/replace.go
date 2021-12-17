@@ -214,7 +214,7 @@ func verifyReplaceSwap(res *mongodb.MgoSwapResult, isManual bool) (*mongodb.MgoS
 	if res.Status != mongodb.MatchTxNotStable {
 		return nil, errors.New("swap result status is not 'MatchTxNotStable'")
 	}
-	if res.SwapHeight != 0 {
+	if res.SwapHeight != 0 && !isManual {
 		return nil, errors.New("swaptx with block height")
 	}
 	resBridge := router.GetBridgeByChainID(res.ToChainID)
@@ -229,12 +229,6 @@ func verifyReplaceSwap(res *mongodb.MgoSwapResult, isManual bool) (*mongodb.MgoS
 }
 
 func checkIfSwapNonceHasPassed(bridge tokens.IBridge, res *mongodb.MgoSwapResult, isReplace bool) error {
-	if res.SwapHeight != 0 {
-		if isReplace {
-			return errors.New("swaptx with block height")
-		}
-		return nil
-	}
 	nonceSetter, ok := bridge.(tokens.NonceSetter)
 	if !ok {
 		return nil

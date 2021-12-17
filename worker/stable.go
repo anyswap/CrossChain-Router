@@ -82,6 +82,9 @@ func processRouterSwapStable(swap *mongodb.MgoSwapResult) (err error) {
 	}
 	txStatus := getSwapTxStatus(resBridge, swap)
 	if txStatus == nil || txStatus.BlockHeight == 0 {
+		if swap.SwapHeight != 0 {
+			return nil
+		}
 		return checkIfSwapNonceHasPassed(resBridge, swap, false)
 	}
 
