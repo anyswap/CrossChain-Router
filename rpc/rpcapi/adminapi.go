@@ -7,6 +7,7 @@ import (
 
 	"github.com/anyswap/CrossChain-Router/v3/admin"
 	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
@@ -35,9 +36,20 @@ func (s *RouterSwapAPI) AdminCall(r *http.Request, rawTx, result *string) (err e
 	if err != nil {
 		return err
 	}
-	if !params.IsRouterAdmin(sender.String()) {
-		return fmt.Errorf("sender %v is not admin", sender.String())
+	senderAddress := sender.String()
+	if !params.IsRouterAdmin(senderAddress) {
+		switch args.Method {
+		case reswapCmd:
+			return fmt.Errorf("sender %v is not admin", senderAddress)
+		case passbigvalueCmd, replaceswapCmd:
+			if !params.IsRouterAssistant(senderAddress) {
+				return fmt.Errorf("sender %v is not assistant", senderAddress)
+			}
+		default:
+			return fmt.Errorf("unknown admin method '%v'", args.Method)
+		}
 	}
+	log.Info("admin call", "caller", senderAddress, "args", args, "result", result)
 	return doRouterAdminCall(args, result)
 }
 

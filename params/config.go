@@ -45,9 +45,10 @@ var (
 
 // RouterServerConfig only for server
 type RouterServerConfig struct {
-	Admins    []string
-	MongoDB   *MongoDBConfig
-	APIServer *APIServerConfig
+	Admins     []string
+	Assistants []string
+	MongoDB    *MongoDBConfig
+	APIServer  *APIServerConfig
 
 	ChainIDBlackList []string `toml:",omitempty" json:",omitempty"`
 	TokenIDBlackList []string `toml:",omitempty" json:",omitempty"`
@@ -440,6 +441,16 @@ func HasRouterAdmin() bool {
 func IsRouterAdmin(account string) bool {
 	for _, admin := range routerConfig.Server.Admins {
 		if strings.EqualFold(account, admin) {
+			return true
+		}
+	}
+	return false
+}
+
+// IsRouterAssistant is router assistants
+func IsRouterAssistant(account string) bool {
+	for _, assistant := range routerConfig.Server.Assistants {
+		if strings.EqualFold(account, assistant) {
 			return true
 		}
 	}
