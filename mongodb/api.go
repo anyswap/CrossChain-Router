@@ -47,6 +47,15 @@ func AddRouterSwap(ms *MgoSwap) error {
 		log.Info("mongodb add router swap success", "chainid", ms.FromChainID, "txid", ms.TxID, "logindex", ms.LogIndex)
 	} else if !mongo.IsDuplicateKeyError(err) {
 		log.Error("mongodb add router swap failed", "chainid", ms.FromChainID, "txid", ms.TxID, "logindex", ms.LogIndex, "err", err)
+	} else {
+		swap := &MgoSwap{}
+		errt := collRouterSwap.FindOne(clientCtx, bson.M{"_id": ms.Key}).Decode(swap)
+		if errt == nil && swap.Status == TxNotSwapped {
+			now := time.Now().Unix()
+			if swap.Timestamp+3*24*3600 < now {
+				_, _ = collRouterSwap.UpdateByID(clientCtx, ms.Key, bson.M{"$set": bson.M{"timestamp": now}})
+			}
+		}
 	}
 	return mgoError(err)
 }
