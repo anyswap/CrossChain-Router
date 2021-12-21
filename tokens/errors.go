@@ -19,6 +19,7 @@ var (
 	ErrTxWithRemovedLog      = errors.New("tx with removed log")
 	ErrWrongBindAddress      = errors.New("wrong bind address")
 	ErrWrongRawTx            = errors.New("wrong raw tx")
+	ErrUnsupportedFuncHash   = errors.New("unsupported method func hash")
 	ErrWrongCountOfMsgHashes = errors.New("wrong count of msg hashed")
 	ErrMsgHashMismatch       = errors.New("message hash mismatch")
 	ErrSwapInBlacklist       = errors.New("swap is in black list")

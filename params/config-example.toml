@@ -90,6 +90,8 @@ ServerAPIAddress = "http://127.0.0.1:11556/rpc"
 [Extra]
 # is swap trade enabled
 EnableSwapTrade = false
+# is swap with permit enabled
+EnableSwapWithPermit = false
 # force call anySwapInAuto
 ForceAnySwapInAuto = false
 # for nft swap, add data in swapout log and swapin argument

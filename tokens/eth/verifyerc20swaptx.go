@@ -22,6 +22,9 @@ var (
 	LogAnySwapTradeTokensForTokensTopic = common.FromHex("0xfea6abdf4fd32f20966dff7619354cd82cd43dc78a3bee479f04c74dbfc585b3")
 	// LogAnySwapTradeTokensForNative(address[] path, address from, address to, uint amountIn, uint amountOutMin, uint fromChainID, uint toChainID);
 	LogAnySwapTradeTokensForNativeTopic = common.FromHex("0x278277e0209c347189add7bd92411973b5f6b8644f7ac62ea1be984ce993f8f4")
+
+	anySwapOutUnderlyingWithPermitFuncHash         = common.FromHex("0x8d7d3eea")
+	anySwapOutUnderlyingWithTransferPermitFuncHash = common.FromHex("0x1b91a934")
 )
 
 func (b *Bridge) verifyERC20SwapTx(txHash string, logIndex int, allowUnstable bool) (*tokens.SwapTxInfo, error) {
@@ -45,6 +48,11 @@ func (b *Bridge) verifyERC20SwapTx(txHash string, logIndex int, allowUnstable bo
 	}
 
 	err = b.checkERC20SwapInfo(swapInfo)
+	if err != nil {
+		return swapInfo, err
+	}
+
+	err = b.checkSwapWithPermit(swapInfo, receipt, logIndex)
 	if err != nil {
 		return swapInfo, err
 	}
@@ -318,5 +326,31 @@ func checkSwapTradePath(swapInfo *tokens.SwapTxInfo) error {
 			return tokens.ErrTxWithWrongPath
 		}
 	}
+	return nil
+}
+
+func (b *Bridge) checkSwapWithPermit(swapInfo *tokens.SwapTxInfo, _ *types.RPCTxReceipt, _ int) error {
+	if params.IsSwapWithPermitEnabled() {
+		return nil
+	}
+
+	if common.IsEqualIgnoreCase(swapInfo.TxTo, b.ChainConfig.RouterContract) {
+		tx, err := b.GetTransactionByHash(swapInfo.Hash)
+		if err != nil {
+			return err
+		}
+		if tx.Payload == nil || len(*tx.Payload) < 4 {
+			return tokens.ErrUnsupportedFuncHash
+		}
+
+		data := *tx.Payload
+		funcHash := data[:4]
+		if bytes.Equal(funcHash, anySwapOutUnderlyingWithPermitFuncHash) ||
+			bytes.Equal(funcHash, anySwapOutUnderlyingWithTransferPermitFuncHash) {
+			return tokens.ErrUnsupportedFuncHash
+		}
+		return nil
+	}
+
 	return nil
 }
