@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -57,6 +58,12 @@ func RPCPostWithTimeout(timeout int, result interface{}, url, method string, par
 	return RPCPostRequest(url, req, result)
 }
 
+// RPCPostWithContext rpc post with context
+func RPCPostWithContext(ctx context.Context, result interface{}, url, method string, params ...interface{}) error {
+	req := NewRequest(method, params...)
+	return RPCPostRequestWithContext(ctx, url, req, result)
+}
+
 // RPCPostWithTimeoutAndID rpc post with timeout and id
 func RPCPostWithTimeoutAndID(result interface{}, timeout, id int, url, method string, params ...interface{}) error {
 	req := NewRequestWithTimeoutAndID(timeout, id, method, params...)
@@ -90,13 +97,18 @@ type jsonrpcResponse struct {
 
 // RPCPostRequest rpc post request
 func RPCPostRequest(url string, req *Request, result interface{}) error {
+	return RPCPostRequestWithContext(httpCtx, url, req, result)
+}
+
+// RPCPostRequestWithContext rpc post request with context
+func RPCPostRequestWithContext(ctx context.Context, url string, req *Request, result interface{}) error {
 	reqBody := &RequestBody{
 		Version: "2.0",
 		Method:  req.Method,
 		Params:  req.Params,
 		ID:      req.ID,
 	}
-	resp, err := HTTPPost(url, reqBody, nil, nil, req.Timeout)
+	resp, err := HTTPPostWithContext(ctx, url, reqBody, nil, nil, req.Timeout)
 	if err != nil {
 		log.Trace("post rpc error", "url", url, "request", req, "err", err)
 		return err
