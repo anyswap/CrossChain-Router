@@ -18,6 +18,10 @@ import (
 var (
 	defSwapDeadlineOffset = int64(36000)
 
+	ForceAnySwapInAutoTokenVersion       = uint64(10001)
+	ForceAnySwapInTokenVersion           = uint64(10002)
+	ForceAnySwapInUnderlyingTokenVersion = uint64(10003)
+
 	// anySwapIn(bytes32 txs, address token, address to, uint amount, uint fromChainID)
 	AnySwapInFuncHash = common.FromHex("0x825bb13c")
 	// anySwapInUnderlying(bytes32 txs, address token, address to, uint amount, uint fromChainID)
@@ -29,6 +33,33 @@ var (
 	// anySwapInExactTokensForNative(bytes32 txs, uint amountIn, uint amountOutMin, address[] path, address to, uint deadline, uint fromChainID)
 	AnySwapInExactTokensForNativeFuncHash = common.FromHex("0x52a397d5")
 )
+
+// GetSwapInFuncHash get swapin func hash
+func GetSwapInFuncHash(tokenCfg *tokens.TokenConfig, forUnderlying bool) []byte {
+	if forUnderlying {
+		return AnySwapInUnderlyingFuncHash
+	}
+
+	switch tokenCfg.ContractVersion {
+	case ForceAnySwapInAutoTokenVersion:
+		return AnySwapInAutoFuncHash
+	case ForceAnySwapInTokenVersion:
+		return AnySwapInFuncHash
+	case ForceAnySwapInUnderlyingTokenVersion:
+		return AnySwapInUnderlyingFuncHash
+	case 0:
+		if tokenCfg.GetUnderlying() == (common.Address{}) {
+			// without underlying
+			return AnySwapInFuncHash
+		}
+	default:
+		if tokenCfg.GetUnderlying() == (common.Address{}) && !params.IsForceAnySwapInAuto() {
+			// without underlying, and not force swapinAuto
+			return AnySwapInFuncHash
+		}
+	}
+	return AnySwapInAutoFuncHash
+}
 
 func (b *Bridge) buildERC20SwapTxInput(args *tokens.BuildTxArgs) (err error) {
 	if args.ERC20SwapInfo == nil || args.ERC20SwapInfo.TokenID == "" {
@@ -52,26 +83,13 @@ func (b *Bridge) buildERC20SwapoutTxInput(args *tokens.BuildTxArgs, multichainTo
 	if err != nil {
 		return err
 	}
-	erc20SwapInfo := args.ERC20SwapInfo
 
 	toTokenCfg := b.GetTokenConfig(multichainToken)
 	if toTokenCfg == nil {
 		return tokens.ErrMissTokenConfig
 	}
 
-	var funcHash []byte
-	if erc20SwapInfo.ForUnderlying {
-		funcHash = AnySwapInUnderlyingFuncHash
-	} else if toTokenCfg.ContractVersion == 0 {
-		// for those who don't use our templates
-		funcHash = AnySwapInFuncHash
-	} else if params.IsForceAnySwapInAuto() {
-		funcHash = AnySwapInAutoFuncHash
-	} else if toTokenCfg.GetUnderlying() == (common.Address{}) {
-		funcHash = AnySwapInFuncHash
-	} else { // default
-		funcHash = AnySwapInAutoFuncHash
-	}
+	funcHash := GetSwapInFuncHash(toTokenCfg, args.ERC20SwapInfo.ForUnderlying)
 
 	input := abicoder.PackDataWithFuncHash(funcHash,
 		common.HexToHash(args.SwapID),
