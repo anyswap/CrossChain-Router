@@ -29,6 +29,7 @@ var (
 
 	errAlreadySwapped     = errors.New("already swapped")
 	errSendTxWithDiffHash = errors.New("send tx with different hash")
+	errSwapChannelIsFull  = errors.New("swap task channel is full")
 )
 
 // StartSwapJob swap job
@@ -65,7 +66,8 @@ func startRouterSwapJob(chainID string) {
 			err = processRouterSwap(swap)
 			switch {
 			case err == nil,
-				errors.Is(err, errAlreadySwapped):
+				errors.Is(err, errAlreadySwapped),
+				errors.Is(err, errSwapChannelIsFull):
 			default:
 				logWorkerError("swap", "process router swap error", err, "chainID", chainID, "txid", swap.TxID, "logIndex", swap.LogIndex)
 			}
@@ -102,6 +104,10 @@ func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
 		err = tokens.ErrSwapInBlacklist
 		_ = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.SwapInBlacklist, now(), err.Error())
 		return nil
+	}
+
+	if err = checkSwapTaskChannel(toChainID); err != nil {
+		return err
 	}
 
 	res, err := mongodb.FindRouterSwapResult(fromChainID, txid, logIndex)
@@ -205,6 +211,18 @@ func processHistory(res *mongodb.MgoSwapResult) error {
 	return errAlreadySwapped
 }
 
+func checkSwapTaskChannel(toChainID string) error {
+	swapChan, exist := routerSwapTaskChanMap[toChainID]
+	if !exist {
+		return fmt.Errorf("no swapout task channel for toChainID '%v'", toChainID)
+	}
+	if len(swapChan) == cap(swapChan) {
+		logWorkerWarn("doSwap", "swap task channel is full", "toChainID", toChainID)
+		return errSwapChannelIsFull
+	}
+	return nil
+}
+
 func dispatchSwapTask(args *tokens.BuildTxArgs) error {
 	if !args.SwapType.IsValidType() {
 		return fmt.Errorf("unknown router swap type %d", args.SwapType)
@@ -214,9 +232,19 @@ func dispatchSwapTask(args *tokens.BuildTxArgs) error {
 	if !exist {
 		return fmt.Errorf("no swapout task channel for chainID '%v'", args.ToChainID)
 	}
-	swapChan <- args
 
-	logWorker("doSwap", "dispatch router swap task", "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "value", args.OriginValue, "swapNonce", args.GetTxNonce())
+	ctx := []interface{}{
+		"fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "value", args.OriginValue, "swapNonce", args.GetTxNonce(),
+	}
+
+	select {
+	case swapChan <- args:
+		logWorker("doSwap", "dispatch router swap task", ctx...)
+	default:
+		logWorkerWarn("doSwap", "swap task channel is full", ctx...)
+		return errSwapChannelIsFull
+	}
+
 	return nil
 }
 
