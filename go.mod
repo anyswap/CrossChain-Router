@@ -15,6 +15,7 @@ require (
 	github.com/jowenshaw/gethclient v0.2.0
 	github.com/lestrrat-go/file-rotatelogs v2.4.0+incompatible
 	github.com/lestrrat-go/strftime v1.0.4 // indirect
+	github.com/mr-tron/base58 v1.2.0
 	github.com/pborman/uuid v1.2.1
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.7.0

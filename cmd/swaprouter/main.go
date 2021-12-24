@@ -33,6 +33,7 @@ func initApp() {
 	app.Commands = []*cli.Command{
 		adminCommand,
 		configCommand,
+		toolsCommand,
 		utils.LicenseCommand,
 		utils.VersionCommand,
 	}
