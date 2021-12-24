@@ -181,11 +181,11 @@ func (b *Bridge) InitTokenConfig(tokenID string, chainID *big.Int) {
 			log.Fatal("token decimals mismatch", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract", decimals)
 		}
 		err = b.checkTokenMinter(tokenAddr, tokenCfg.ContractVersion)
-		if err != nil && tokenCfg.ContractVersion > 0 {
+		if err != nil && isStandardTokenVersion(tokenCfg.ContractVersion) {
 			log.Fatal("check token minter failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
 		}
 		underlying, err = b.GetUnderlyingAddress(tokenAddr)
-		if err != nil && tokenCfg.ContractVersion > 0 {
+		if err != nil && isStandardTokenVersion(tokenCfg.ContractVersion) {
 			log.Fatal("get underlying address failed", "err", err)
 		}
 		tokenCfg.SetUnderlying(common.HexToAddress(underlying)) // init underlying address
@@ -303,12 +303,12 @@ func (b *Bridge) ReloadTokenConfig(tokenID string, chainID *big.Int) {
 			return
 		}
 		err = b.checkTokenMinter(tokenAddr, tokenCfg.ContractVersion)
-		if err != nil && tokenCfg.ContractVersion > 0 {
+		if err != nil && isStandardTokenVersion(tokenCfg.ContractVersion) {
 			log.Error("[reload] check token minter failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
 			return
 		}
 		underlying, err = b.GetUnderlyingAddress(tokenAddr)
-		if err != nil && tokenCfg.ContractVersion > 0 {
+		if err != nil && isStandardTokenVersion(tokenCfg.ContractVersion) {
 			log.Error("[reload] get underlying address failed", "err", err)
 			return
 		}
@@ -326,7 +326,14 @@ func (b *Bridge) ReloadTokenConfig(tokenID string, chainID *big.Int) {
 	tokensMap[chainID.String()] = tokenAddr
 }
 
+func isStandardTokenVersion(tokenVer uint64) bool {
+	return tokenVer > 0 && tokenVer <= 10000
+}
+
 func (b *Bridge) checkTokenMinter(tokenAddr string, tokenVer uint64) (err error) {
+	if !isStandardTokenVersion(tokenVer) {
+		return nil
+	}
 	routerContract := b.ChainConfig.RouterContract
 	var minterAddr string
 	var isMinter bool
@@ -344,8 +351,6 @@ func (b *Bridge) checkTokenMinter(tokenAddr string, tokenVer uint64) (err error)
 		minterAddr, err = b.GetVaultAddress(tokenAddr)
 	case 2, 1:
 		minterAddr, err = b.GetOwnerAddress(tokenAddr)
-	case 0:
-		return nil
 	}
 	if err != nil {
 		return err
