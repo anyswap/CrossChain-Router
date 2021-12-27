@@ -117,10 +117,14 @@ func RegisterRouterSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, e
 	}
 	swapInfos, errs := bridge.RegisterSwap(txid, registerArgs)
 	for i, swapInfo := range swapInfos {
+		var memo string
 		verifyErr := errs[i]
+		if verifyErr != nil {
+			memo = verifyErr.Error()
+		}
 		logIndex := swapInfo.LogIndex
 		if !tokens.ShouldRegisterRouterSwapForError(verifyErr) {
-			result[logIndex] = "failed: " + verifyErr.Error()
+			result[logIndex] = "verify error: " + memo
 			continue
 		}
 		oldSwap, registeredOk := getRegisteredRouterSwap(fromChainID, txid, logIndex)
@@ -130,24 +134,28 @@ func RegisterRouterSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, e
 		}
 		result[logIndex] = "success"
 		newStatus := mongodb.GetRouterSwapStatusByVerifyError(verifyErr)
-		var memo string
-		if verifyErr != nil {
-			memo = verifyErr.Error()
-			result[-1-logIndex] = "verify error is " + memo
-		}
 		if oldSwap == nil {
+			if verifyErr != nil {
+				result[-1-logIndex] = "verify error: " + memo
+			} else if router.IsBigValueSwap(swapInfo) {
+				result[-1-logIndex] = "verify error: bigvalue"
+			} else if router.IsBlacklistSwap(swapInfo) {
+				result[-1-logIndex] = "verify error: blacklist"
+			}
 			err = addMgoSwap(swapInfo, newStatus, memo)
-		} else if router.IsBigValueSwap(swapInfo) {
-			result[logIndex] = "already registered: bigvalue"
-		} else if router.IsBlacklistSwap(swapInfo) {
-			result[logIndex] = "already registered: blacklist"
-		} else if newStatus != oldSwap.Status {
-			mgoSwapInfo := mongodb.ConvertToSwapInfo(&swapInfo.SwapInfo)
-			log.Info("[register] update swap info and status", "chainid", fromChainID, "txid", txid, "logIndex", logIndexStr, "oldStatus", oldSwap.Status, "newStatus", newStatus, "swapinfo", mgoSwapInfo)
-			err = mongodb.UpdateRouterSwapInfoAndStatus(fromChainID, txid, logIndex, &mgoSwapInfo, newStatus, time.Now().Unix(), memo)
-			worker.DeleteCachedVerifyingSwap(oldSwap.Key)
+		} else if verifyErr == nil {
+			if router.IsBigValueSwap(swapInfo) {
+				result[logIndex] = "already registered: bigvalue"
+			} else if router.IsBlacklistSwap(swapInfo) {
+				result[logIndex] = "already registered: blacklist"
+			} else if newStatus != oldSwap.Status {
+				mgoSwapInfo := mongodb.ConvertToSwapInfo(&swapInfo.SwapInfo)
+				log.Info("[register] update swap info and status", "chainid", fromChainID, "txid", txid, "logIndex", logIndexStr, "oldStatus", oldSwap.Status, "newStatus", newStatus, "swapinfo", mgoSwapInfo)
+				err = mongodb.UpdateRouterSwapInfoAndStatus(fromChainID, txid, logIndex, &mgoSwapInfo, newStatus, time.Now().Unix(), memo)
+				worker.DeleteCachedVerifyingSwap(oldSwap.Key)
+			}
 		} else {
-			result[logIndex] = "already registered"
+			result[logIndex] = "already registered: " + memo
 		}
 		if err != nil {
 			log.Info("register swap db error", "chainid", fromChainID, "txid", txid, "logIndex", logIndexStr, "err", err)
