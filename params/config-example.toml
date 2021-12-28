@@ -122,6 +122,9 @@ AllowCallByContract = false
 [Extra.BaseFeePercent]
 4     = 100
 46688 = 50
+# customs, key is chainID. value is a mapping.
+[Extra.Customs.1313161554]
+sendtxTimeout = "60"
 # big value whitelist, key is tokenID
 [Extra.BigValueWhitelist]
 USDC = ["0x1111111111111111111111111111111111111111"]

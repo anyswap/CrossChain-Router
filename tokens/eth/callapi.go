@@ -25,6 +25,8 @@ var (
 	errTxReceiptMissBlockInfo = errors.New("tx receipt missing block info")
 
 	wrapRPCQueryError = tokens.WrapRPCQueryError
+
+	sendtxTimeout int
 )
 
 // GetLatestBlockNumberOf call eth_blockNumber
@@ -348,10 +350,10 @@ func (b *Bridge) SendSignedTransaction(tx *types.Transaction) (txHash string, er
 		log.Info("call eth_sendRawTransaction finished", "txHash", txHash)
 	}()
 	for _, url := range gateway.APIAddress {
-		go sendRawTransaction(wg, hexData, url, ch)
+		go b.sendRawTransaction(wg, hexData, url, ch)
 	}
 	for _, url := range gateway.APIAddressExt {
-		go sendRawTransaction(wg, hexData, url, ch)
+		go b.sendRawTransaction(wg, hexData, url, ch)
 	}
 	for res := range ch {
 		txHash, err = res.txHash, res.err
@@ -367,10 +369,25 @@ type sendTxResult struct {
 	err    error
 }
 
-func sendRawTransaction(wg *sync.WaitGroup, hexData string, url string, ch chan<- *sendTxResult) {
+func (b *Bridge) sendRawTransaction(wg *sync.WaitGroup, hexData string, url string, ch chan<- *sendTxResult) {
 	defer wg.Done()
+	if sendtxTimeout == 0 {
+		timeoutStr := params.GetCustom(b.ChainConfig.ChainID, "sendtxTimeout")
+		if timeoutStr != "" {
+			timeout, err := common.GetUint64FromStr(timeoutStr)
+			if err != nil {
+				log.Error("get sendtxTimeout failed", "err", err)
+				ch <- &sendTxResult{"", err}
+				return
+			}
+			sendtxTimeout = int(timeout)
+		}
+		if sendtxTimeout == 0 {
+			sendtxTimeout = client.GetDefaultTimeout(true)
+		}
+	}
 	var result string
-	err := client.RPCPost(&result, url, "eth_sendRawTransaction", hexData)
+	err := client.RPCPostWithTimeout(sendtxTimeout, &result, url, "eth_sendRawTransaction", hexData)
 	if err != nil {
 		log.Trace("call eth_sendRawTransaction failed", "txHash", result, "url", url, "err", err)
 	}

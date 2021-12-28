@@ -384,6 +384,7 @@ func (c *ExtraConfig) CheckConfig() (err error) {
 		"initDisableUseFromChainIDInReceiptChains", c.DisableUseFromChainIDInReceiptChains,
 		"baseFeePercent", c.BaseFeePercent,
 		"usePendingBalance", c.UsePendingBalance,
+		"customs", c.Customs,
 	)
 	return nil
 }

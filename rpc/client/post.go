@@ -25,6 +25,14 @@ type Request struct {
 	ID      int
 }
 
+// GetDefaultTimeout get defaule timeout
+func GetDefaultTimeout(slow bool) int {
+	if slow {
+		return defaultSlowTimeout
+	}
+	return defaultTimeout
+}
+
 // NewRequest new request
 func NewRequest(method string, params ...interface{}) *Request {
 	return NewRequestWithTimeoutAndID(defaultTimeout, defaultRequestID, method, params...)

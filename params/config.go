@@ -116,6 +116,9 @@ type ExtraConfig struct {
 	EnableCheckTxBlockHashChains         []string `toml:",omitempty" json:",omitempty"`
 	EnableCheckTxBlockIndexChains        []string `toml:",omitempty" json:",omitempty"`
 	DisableUseFromChainIDInReceiptChains []string `toml:",omitempty" json:",omitempty"`
+
+	// chainID,customKey => customValue
+	Customs map[string]map[string]string `toml:",omitempty" json:",omitempty"`
 }
 
 // OnchainConfig struct
@@ -296,6 +299,22 @@ func GetBaseFeePercent(chainID string) int64 {
 		return baseFeePercent
 	}
 	return 0
+}
+
+// GetCustom get custom
+func GetCustom(chainID, key string) string {
+	extraCfg := GetExtraConfig()
+	if extraCfg == nil {
+		return ""
+	}
+	mapping, exist := extraCfg.Customs[chainID]
+	if !exist || len(mapping) == 0 {
+		return ""
+	}
+	if value, exist := mapping[key]; exist {
+		return value
+	}
+	return ""
 }
 
 // IsDebugMode is debug mode, add more debugging log infos
