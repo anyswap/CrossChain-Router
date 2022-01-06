@@ -7,6 +7,7 @@ import (
 
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
+	"github.com/anyswap/CrossChain-Router/v3/mpc"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
@@ -180,6 +181,9 @@ func signAndSendReplaceTx(resBridge tokens.IBridge, rawTx interface{}, args *tok
 	signedTx, txHash, err := resBridge.MPCSignTransaction(rawTx, args)
 	if err != nil {
 		logWorkerError("replaceSwap", "mpc sign tx failed", err, "fromChainID", res.FromChainID, "toChainID", res.ToChainID, "txid", res.TxID, "nonce", res.SwapNonce, "logIndex", res.LogIndex)
+		if errors.Is(err, mpc.ErrGetSignStatusHasDisagree) {
+			reverifySwap(args)
+		}
 		return
 	}
 

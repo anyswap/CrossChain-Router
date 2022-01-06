@@ -148,15 +148,16 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 			}
 		}
 	case errors.Is(err, tokens.ErrTxNotStable),
-		errors.Is(err, tokens.ErrRPCQueryError):
+		(errors.Is(err, tokens.ErrRPCQueryError) && !errors.Is(err, tokens.ErrNotFound)):
 		isProcessed = false
 		return err
-	case errors.Is(err, tokens.ErrTxNotFound):
+	case errors.Is(err, tokens.ErrTxNotFound), errors.Is(err, tokens.ErrNotFound):
 		nowMilli := common.NowMilli()
 		if swap.InitTime+1000*maxTxNotFoundTime < nowMilli {
 			duration := time.Duration((nowMilli - swap.InitTime) / 1000 * int64(time.Second))
 			logWorker("verify", "set longer not found swap to verify failed", "fromChainID", fromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex, "inittime", swap.InitTime, "duration", duration.String())
 			dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxVerifyFailed, now(), err.Error())
+			_ = mongodb.UpdateRouterSwapResultStatus(fromChainID, txid, logIndex, mongodb.TxVerifyFailed, now(), err.Error())
 		} else {
 			isProcessed = false
 			return err

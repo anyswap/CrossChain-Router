@@ -10,6 +10,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
+	"github.com/anyswap/CrossChain-Router/v3/mpc"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
@@ -324,6 +325,9 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 	signedTx, txHash, err := resBridge.MPCSignTransaction(rawTx, args)
 	if err != nil {
 		logWorkerError("doSwap", "sign tx failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex)
+		if errors.Is(err, mpc.ErrGetSignStatusHasDisagree) {
+			reverifySwap(args)
+		}
 		return err
 	}
 
@@ -420,6 +424,9 @@ func signAndSendTx(rawTx interface{}, args *tokens.BuildTxArgs) error {
 	signedTx, txHash, err := resBridge.MPCSignTransaction(rawTx, args)
 	if err != nil {
 		logWorkerError("doSwap", "sign tx failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "swapNonce", swapTxNonce)
+		if errors.Is(err, mpc.ErrGetSignStatusHasDisagree) {
+			reverifySwap(args)
+		}
 		return err
 	}
 
@@ -433,6 +440,32 @@ func signAndSendTx(rawTx interface{}, args *tokens.BuildTxArgs) error {
 		_ = mongodb.UpdateRouterOldSwapTxs(fromChainID, txid, logIndex, sentTxHash)
 	}
 	return err
+}
+
+func reverifySwap(args *tokens.BuildTxArgs) {
+	fromChainID := args.FromChainID.String()
+	toChainID := args.ToChainID.String()
+	txid := args.SwapID
+	logIndex := args.LogIndex
+	verifyArgs := &tokens.VerifyArgs{
+		SwapType:      args.SwapType,
+		LogIndex:      logIndex,
+		AllowUnstable: false,
+	}
+	srcBridge := router.GetBridgeByChainID(fromChainID)
+	if srcBridge == nil {
+		return
+	}
+	_, err := srcBridge.VerifyTransaction(txid, verifyArgs)
+	switch {
+	case err == nil:
+	case errors.Is(err, tokens.ErrTxNotStable):
+	case errors.Is(err, tokens.ErrRPCQueryError) && !errors.Is(err, tokens.ErrNotFound):
+	default:
+		logWorkerWarn("reverify swap after get sign status has disagree", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "err", err)
+		_ = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxNotStable, now(), "")
+		_ = mongodb.UpdateRouterSwapResultStatus(fromChainID, txid, logIndex, mongodb.TxNotStable, now(), err.Error())
+	}
 }
 
 // DeleteCachedSwap delete cached swap
