@@ -115,7 +115,7 @@ func (b *Bridge) GetTransaction(txHash string) (interface{}, error) {
 func (b *Bridge) GetTransactionByHash(txHash string) (tx *types.RPCTransaction, err error) {
 	gateway := b.GatewayConfig
 	tx, err = b.getTransactionByHash(txHash, gateway.APIAddress)
-	if err != nil && errors.Is(err, tokens.ErrRPCQueryError) && len(gateway.APIAddressExt) > 0 {
+	if err != nil && tokens.IsRPCQueryOrNotFoundError(err) && len(gateway.APIAddressExt) > 0 {
 		tx, err = b.getTransactionByHash(txHash, gateway.APIAddressExt)
 	}
 	return tx, err
@@ -174,7 +174,7 @@ func (b *Bridge) GetPendingTransactions() (result []*types.RPCTransaction, err e
 func (b *Bridge) GetTransactionReceipt(txHash string) (receipt *types.RPCTxReceipt, url string, err error) {
 	gateway := b.GatewayConfig
 	receipt, url, err = b.getTransactionReceipt(txHash, gateway.APIAddress)
-	if err != nil && errors.Is(err, tokens.ErrRPCQueryError) && len(gateway.APIAddressExt) > 0 {
+	if err != nil && tokens.IsRPCQueryOrNotFoundError(err) && len(gateway.APIAddressExt) > 0 {
 		return b.getTransactionReceipt(txHash, gateway.APIAddressExt)
 	}
 	return receipt, url, err

@@ -2,7 +2,6 @@ package eth
 
 import (
 	"bytes"
-	"errors"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -319,7 +318,7 @@ func checkSwapTradePath(swapInfo *tokens.SwapTxInfo) error {
 	for i := 1; i < len(path); i++ {
 		pairs, err := swapTrader.GetPairFor(factory, path[i-1], path[i])
 		if err != nil || pairs == "" {
-			if errors.Is(err, tokens.ErrRPCQueryError) {
+			if tokens.IsRPCQueryOrNotFoundError(err) {
 				return err
 			}
 			log.Warn("check swap trade path pairs failed", "factory", factory, "token0", path[i-1], "token1", path[i], "err", err)

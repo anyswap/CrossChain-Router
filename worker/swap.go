@@ -458,9 +458,10 @@ func reverifySwap(args *tokens.BuildTxArgs) {
 	}
 	_, err := srcBridge.VerifyTransaction(txid, verifyArgs)
 	switch {
-	case err == nil:
-	case errors.Is(err, tokens.ErrTxNotStable):
-	case errors.Is(err, tokens.ErrRPCQueryError) && !errors.Is(err, tokens.ErrNotFound):
+	case err == nil,
+		errors.Is(err, tokens.ErrTxNotStable),
+		errors.Is(err, tokens.ErrRPCQueryError):
+		// ignore the above situations
 	default:
 		logWorkerWarn("reverify swap after get sign status has disagree", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "err", err)
 		_ = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxNotStable, now(), "")

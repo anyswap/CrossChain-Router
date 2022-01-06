@@ -1,19 +1,15 @@
 package tokens
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 )
 
-// ErrNotFound not found error
-var ErrNotFound = errors.New("not found")
-
 // WrapRPCQueryError wrap rpc error
 func WrapRPCQueryError(err error, method string, params ...interface{}) error {
 	if err == nil {
-		err = ErrNotFound
+		return fmt.Errorf("call '%s %v' failed, err='%w'", method, params, ErrNotFound)
 	}
 	return fmt.Errorf("%w: call '%s %v' failed, err='%v'", ErrRPCQueryError, method, params, err)
 }

@@ -9,6 +9,7 @@ var (
 	ErrSwapTypeNotSupported  = errors.New("swap type not supported")
 	ErrNoBridgeForChainID    = errors.New("no bridge for chain id")
 	ErrSwapTradeNotSupport   = errors.New("swap trade not support")
+	ErrNotFound              = errors.New("not found")
 	ErrTxNotFound            = errors.New("tx not found")
 	ErrTxNotStable           = errors.New("tx not stable")
 	ErrLogIndexOutOfRange    = errors.New("log index out of range")
@@ -46,4 +47,9 @@ func ShouldRegisterRouterSwapForError(err error) bool {
 		return true
 	}
 	return false
+}
+
+// IsRPCQueryOrNotFoundError is rpc or not found error
+func IsRPCQueryOrNotFoundError(err error) bool {
+	return errors.Is(err, ErrRPCQueryError) || errors.Is(err, ErrNotFound)
 }
