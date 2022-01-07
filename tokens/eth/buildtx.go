@@ -65,10 +65,19 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 		isDynamicFeeTx = params.IsDynamicFeeTxEnabled(b.ChainConfig.ChainID)
 	)
 
-	needValue := b.getMinReserveFee()
-	if value != nil {
+	// swap need value = tx value + min reserve + 5 * gas fee
+	needValue := big.NewInt(0)
+	if value != nil && value.Sign() > 0 {
 		needValue.Add(needValue, value)
 	}
+	needValue.Add(needValue, b.getMinReserveFee())
+	var gasFee *big.Int
+	if isDynamicFeeTx {
+		gasFee = new(big.Int).Mul(gasFeeCap, new(big.Int).SetUint64(gasLimit))
+	} else {
+		gasFee = new(big.Int).Mul(gasPrice, new(big.Int).SetUint64(gasLimit))
+	}
+	needValue.Add(needValue, new(big.Int).Mul(big.NewInt(5), gasFee))
 
 	err = b.checkCoinBalance(args.From, needValue)
 	if err != nil {
