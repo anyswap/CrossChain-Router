@@ -32,7 +32,7 @@ func (b *Bridge) verifyERC20SwapTx(txHash string, logIndex int, allowUnstable bo
 	swapInfo.Hash = strings.ToLower(txHash)  // Hash
 	swapInfo.LogIndex = logIndex             // LogIndex
 
-	receipt, err := b.getAndVerifySwapTxReceipt(swapInfo, allowUnstable)
+	receipt, err := b.getSwapTxReceipt(swapInfo, allowUnstable)
 	if err != nil {
 		return swapInfo, err
 	}
@@ -42,6 +42,11 @@ func (b *Bridge) verifyERC20SwapTx(txHash string, logIndex int, allowUnstable bo
 	}
 
 	err = b.verifyERC20SwapTxLog(swapInfo, receipt.Logs[logIndex])
+	if err != nil {
+		return swapInfo, err
+	}
+
+	err = b.checkCallByContract(swapInfo)
 	if err != nil {
 		return swapInfo, err
 	}
@@ -116,7 +121,7 @@ func (b *Bridge) getAndVerifySwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUns
 	if err != nil {
 		return receipt, err
 	}
-	err = b.verifySwapTxReceipt(swapInfo, receipt)
+	err = b.verifySwapTxReceipt(receipt)
 	return receipt, err
 }
 
@@ -136,6 +141,13 @@ func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable boo
 	swapInfo.Height = txStatus.BlockHeight  // Height
 	swapInfo.Timestamp = txStatus.BlockTime // Timestamp
 
+	if receipt.Recipient == nil {
+		return nil, tokens.ErrTxWithWrongContract
+	}
+
+	swapInfo.TxTo = receipt.Recipient.LowerHex() // TxTo
+	swapInfo.From = receipt.From.LowerHex()      // From
+
 	if !allowUnstable && txStatus.Confirmations < b.ChainConfig.Confirmations {
 		return nil, tokens.ErrTxNotStable
 	}
@@ -148,18 +160,34 @@ func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable boo
 	return receipt, nil
 }
 
-func (b *Bridge) verifySwapTxReceipt(swapInfo *tokens.SwapTxInfo, receipt *types.RPCTxReceipt) error {
+func (b *Bridge) verifySwapTxReceipt(receipt *types.RPCTxReceipt) error {
 	if receipt.Recipient == nil {
 		return tokens.ErrTxWithWrongContract
 	}
 
-	swapInfo.TxTo = receipt.Recipient.LowerHex() // TxTo
-	swapInfo.From = receipt.From.LowerHex()      // From
+	txTo := receipt.Recipient.LowerHex()
 
 	if !params.AllowCallByContract() &&
-		!common.IsEqualIgnoreCase(swapInfo.TxTo, b.ChainConfig.RouterContract) &&
-		!params.IsInCallByContractWhitelist(b.ChainConfig.ChainID, swapInfo.TxTo) {
+		!common.IsEqualIgnoreCase(txTo, b.ChainConfig.RouterContract) &&
+		!params.IsInCallByContractWhitelist(b.ChainConfig.ChainID, txTo) {
 		return tokens.ErrTxWithWrongContract
+	}
+
+	return nil
+}
+
+func (b *Bridge) checkCallByContract(swapInfo *tokens.SwapTxInfo) error {
+	txTo := swapInfo.TxTo
+
+	if !params.AllowCallByContract() &&
+		!common.IsEqualIgnoreCase(txTo, b.ChainConfig.RouterContract) &&
+		!params.IsInCallByContractWhitelist(b.ChainConfig.ChainID, txTo) {
+		// this verify maybe slow, so do it after receipt's log verified
+		master := b.GetEIP1167Master(common.HexToAddress(txTo))
+		if master == (common.Address{}) ||
+			!params.IsInCallByContractWhitelist(b.ChainConfig.ChainID, master.LowerHex()) {
+			return tokens.ErrTxWithWrongContract
+		}
 	}
 
 	return nil

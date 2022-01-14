@@ -236,7 +236,7 @@ func verifyTestTx(test *verifyTxTest) (err error) {
 
 	params.SetAllowCallByContract(test.allowCallByContract)
 
-	err = br.verifySwapTxReceipt(swapInfo, test.receipt)
+	err = br.verifySwapTxReceipt(test.receipt)
 	if err != nil {
 		return err
 	}
