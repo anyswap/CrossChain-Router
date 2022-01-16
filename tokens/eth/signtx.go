@@ -10,12 +10,13 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mpc"
 	"github.com/anyswap/CrossChain-Router/v3/params"
+	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tools/crypto"
 	"github.com/anyswap/CrossChain-Router/v3/types"
 )
 
-func (b *Bridge) verifyTransactionReceiver(rawTx interface{}) (*types.Transaction, error) {
+func (b *Bridge) verifyTransactionReceiver(rawTx interface{}, token string) (*types.Transaction, error) {
 	tx, ok := rawTx.(*types.Transaction)
 	if !ok {
 		return nil, errors.New("[sign] wrong raw tx param")
@@ -23,7 +24,7 @@ func (b *Bridge) verifyTransactionReceiver(rawTx interface{}) (*types.Transactio
 	if tx.To() == nil || *tx.To() == (common.Address{}) {
 		return nil, errors.New("[sign] tx receiver is empty")
 	}
-	checkReceiver := b.ChainConfig.RouterContract
+	checkReceiver := b.GetRouterContract(token)
 	if !strings.EqualFold(tx.To().String(), checkReceiver) {
 		return nil, fmt.Errorf("[sign] tx receiver mismatch. have %v want %v", tx.To().String(), checkReceiver)
 	}
@@ -32,7 +33,7 @@ func (b *Bridge) verifyTransactionReceiver(rawTx interface{}) (*types.Transactio
 
 // MPCSignTransaction mpc sign raw tx
 func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs) (signTx interface{}, txHash string, err error) {
-	tx, err := b.verifyTransactionReceiver(rawTx)
+	tx, err := b.verifyTransactionReceiver(rawTx, args.GetToken())
 	if err != nil {
 		return nil, "", err
 	}
@@ -46,8 +47,10 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 		}
 	}
 
-	mpcAddress := b.ChainConfig.GetRouterMPC()
-	mpcPubkey := b.ChainConfig.GetRouterMPCPubkey()
+	mpcPubkey := router.GetMPCPublicKey(args.From)
+	if mpcPubkey == "" {
+		return nil, "", tokens.ErrMissMPCPublicKey
+	}
 
 	signer := b.Signer
 	msgHash := signer.Hash(tx)
@@ -77,7 +80,7 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 		return nil, "", errors.New("wrong signature length")
 	}
 
-	signedTx, err := b.signTxWithSignature(tx, signature, common.HexToAddress(mpcAddress))
+	signedTx, err := b.signTxWithSignature(tx, signature, common.HexToAddress(args.From))
 	if err != nil {
 		return nil, "", err
 	}
@@ -111,7 +114,7 @@ func (b *Bridge) signTxWithSignature(tx *types.Transaction, signature []byte, si
 }
 
 // GetSignedTxHashOfKeyID get signed tx hash by keyID (called by oracle)
-func (b *Bridge) GetSignedTxHashOfKeyID(keyID string, rawTx interface{}) (txHash string, err error) {
+func (b *Bridge) GetSignedTxHashOfKeyID(sender, keyID string, rawTx interface{}) (txHash string, err error) {
 	tx, ok := rawTx.(*types.Transaction)
 	if !ok {
 		return "", errors.New("wrong raw tx of keyID " + keyID)
@@ -130,8 +133,7 @@ func (b *Bridge) GetSignedTxHashOfKeyID(keyID string, rawTx interface{}) (txHash
 		return "", errors.New("wrong signature of keyID " + keyID)
 	}
 
-	mpcAddress := b.ChainConfig.GetRouterMPC()
-	signedTx, err := b.signTxWithSignature(tx, signature, common.HexToAddress(mpcAddress))
+	signedTx, err := b.signTxWithSignature(tx, signature, common.HexToAddress(sender))
 	if err != nil {
 		return "", err
 	}

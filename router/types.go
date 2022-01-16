@@ -16,11 +16,61 @@ var (
 	MultichainTokens = make(map[string]map[string]string) // key is tokenID,chainID
 	AllChainIDs      []*big.Int                           // all chainIDs is retrieved only once
 	AllTokenIDs      []string                             // all tokenIDs can be reload
+
+	MPCPublicKeys = make(map[string]string)          // key is mpc address
+	RouterInfos   = make(map[string]*SwapRouterInfo) // key is router contract address
 )
+
+// SwapRouterInfo swap router info
+type SwapRouterInfo struct {
+	RouterMPC     string
+	RouterFactory string
+	RouterWNative string
+}
 
 // GetBridgeByChainID get bridge by chain id
 func GetBridgeByChainID(chainID string) tokens.IBridge {
 	return RouterBridges[chainID]
+}
+
+// SetRouterInfo set router info
+func SetRouterInfo(router, mpc, factory, wNative string) {
+	key := strings.ToLower(router)
+	if _, exist := RouterInfos[key]; exist {
+		return
+	}
+	RouterInfos[key] = &SwapRouterInfo{
+		RouterMPC:     mpc,
+		RouterFactory: factory,
+		RouterWNative: wNative,
+	}
+}
+
+// GetRouterInfo get router info
+func GetRouterInfo(router string) *SwapRouterInfo {
+	key := strings.ToLower(router)
+	if info, exist := RouterInfos[key]; exist {
+		return info
+	}
+	return nil
+}
+
+// SetMPCPublicKey set router mpc public key
+func SetMPCPublicKey(mpc, pubkey string) {
+	key := strings.ToLower(mpc)
+	if _, exist := MPCPublicKeys[key]; exist {
+		return
+	}
+	MPCPublicKeys[key] = pubkey
+}
+
+// GetMPCPublicKey get mpc puvlic key
+func GetMPCPublicKey(mpc string) string {
+	key := strings.ToLower(mpc)
+	if pubkey, exist := MPCPublicKeys[key]; exist {
+		return pubkey
+	}
+	return ""
 }
 
 // GetCachedMultichainTokens get multichain tokens of `tokenid`

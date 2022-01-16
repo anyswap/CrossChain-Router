@@ -29,6 +29,8 @@ var (
 	ErrRPCQueryError         = errors.New("rpc query error")
 	ErrMissDynamicFeeConfig  = errors.New("miss dynamic fee config")
 	ErrFromChainIDMismatch   = errors.New("from chainID mismatch")
+	ErrMissMPCPublicKey      = errors.New("miss mpc public key config")
+	ErrMissRouterInfo        = errors.New("miss router info")
 	// errors should register in router swap
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")
 	ErrTxWithWrongPath   = errors.New("swap trade tx with wrong path")

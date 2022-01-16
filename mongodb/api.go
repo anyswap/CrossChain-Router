@@ -453,13 +453,12 @@ func FindNextSwapNonce(chainID, mpc string) (uint64, error) {
 }
 
 // FindRouterSwapResultsToReplace find router swap result with status
-func FindRouterSwapResultsToReplace(chainID *big.Int, septime int64, mpc string) ([]*MgoSwapResult, error) {
+func FindRouterSwapResultsToReplace(chainID *big.Int, septime int64) ([]*MgoSwapResult, error) {
 	qtime := bson.M{"inittime": bson.M{"$gte": septime}}
 	qstatus := bson.M{"status": MatchTxNotStable}
 	qchainid := bson.M{"toChainID": chainID.String()}
 	qheight := bson.M{"swapheight": 0}
-	qmpc := bson.M{"mpc": strings.ToLower(mpc)}
-	queries := []bson.M{qtime, qstatus, qchainid, qheight, qmpc}
+	queries := []bson.M{qtime, qstatus, qchainid, qheight}
 
 	limit := int64(20)
 	opts := &options.FindOptions{
@@ -584,7 +583,7 @@ func UpdateRouterSwapResult(fromChainID, txid string, logindex int, items *SwapR
 		updates["status"] = items.Status
 	}
 	if items.MPC != "" {
-		updates["mpc"] = strings.ToLower(items.MPC)
+		updates["mpc"] = items.MPC
 	}
 	if items.SwapTx != "" {
 		updates["swaptx"] = items.SwapTx
@@ -726,7 +725,7 @@ func RouterAdminReswap(fromChainID, txid string, logIndex int) error {
 
 	nonceSetter, ok := resBridge.(tokens.NonceSetter)
 	if ok {
-		mpcAddress := resBridge.GetChainConfig().GetRouterMPC()
+		mpcAddress := res.MPC
 		nonce, errf := nonceSetter.GetPoolNonce(mpcAddress, "latest")
 		if errf != nil {
 			log.Warn("get router mpc nonce failed", "address", mpcAddress)

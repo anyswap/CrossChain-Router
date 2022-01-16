@@ -59,9 +59,6 @@ type ChainConfig struct {
 	RouterContract string
 	Confirmations  uint64
 	InitialHeight  uint64
-	RouterMPC      string
-	RouterFactory  string
-	RouterWNative  string
 }
 
 // TokenConfig rpc type
@@ -70,6 +67,7 @@ type TokenConfig struct {
 	Decimals        uint8
 	ContractAddress string
 	ContractVersion uint64
+	RouterContract  string
 	Underlying      string
 }
 

@@ -85,6 +85,17 @@ func (s *SwapInfo) GetTokenID() string {
 	return ""
 }
 
+// GetToken get token
+func (s *SwapInfo) GetToken() string {
+	if s.ERC20SwapInfo != nil {
+		return s.ERC20SwapInfo.Token
+	}
+	if s.NFTSwapInfo != nil {
+		return s.NFTSwapInfo.Token
+	}
+	return ""
+}
+
 // SwapTxInfo struct
 type SwapTxInfo struct {
 	SwapInfo    `json:"swapinfo"`
@@ -193,6 +204,7 @@ func (args *BuildTxArgs) GetReplaceNum() uint64 {
 // GetExtraArgs get extra args
 func (args *BuildTxArgs) GetExtraArgs() *BuildTxArgs {
 	return &BuildTxArgs{
+		From:     args.From,
 		SwapArgs: args.SwapArgs,
 		Extra:    args.Extra,
 	}

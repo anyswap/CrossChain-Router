@@ -79,50 +79,9 @@ func (b *Bridge) InitChainConfig(chainID *big.Int) {
 	if err = chainCfg.CheckConfig(); err != nil {
 		log.Fatal("check chain config failed", "chainID", chainID, "err", err)
 	}
-	var routerFactory, routerWNative string
-	if tokens.IsERC20Router() {
-		routerFactory, err = b.GetFactoryAddress(chainCfg.RouterContract)
-		if err != nil {
-			log.Warn("get router factory address failed", "routerContract", chainCfg.RouterContract, "err", err)
-		}
-		routerWNative, err = b.GetWNativeAddress(chainCfg.RouterContract)
-		if err != nil {
-			log.Warn("get router wNative address failed", "routerContract", chainCfg.RouterContract, "err", err)
-		}
-		chainCfg.SetRouterFactory(routerFactory)
-		chainCfg.SetRouterWNative(routerWNative)
-	}
-	routerMPC, err := b.GetMPCAddress(chainCfg.RouterContract)
-	if err != nil {
-		log.Fatal("get router mpc address failed", "routerContract", chainCfg.RouterContract, "err", err)
-	}
-	if common.HexToAddress(routerMPC) == (common.Address{}) {
-		log.Fatal("get router mpc address return an empty address", "routerContract", chainCfg.RouterContract)
-	}
-	log.Info("get router mpc address success", "routerContract", chainCfg.RouterContract, "routerMPC", routerMPC)
-	routerMPCPubkey, err := router.GetMPCPubkey(routerMPC)
-	if err != nil {
-		log.Fatal("get mpc public key failed", "mpc", routerMPC, "err", err)
-	}
-	if err = tokens.VerifyMPCPubKey(routerMPC, routerMPCPubkey); err != nil {
-		log.Fatal("verify mpc public key failed", "mpc", routerMPC, "mpcPubkey", routerMPCPubkey, "err", err)
-	}
-	chainCfg.SetRouterMPC(routerMPC)
-	chainCfg.SetRouterMPCPubkey(routerMPCPubkey)
 	b.SetChainConfig(chainCfg)
 	b.initSigner(chainID)
-	log.Info("init chain config success", "blockChain", chainCfg.BlockChain, "chainID", chainID,
-		"routerContract", chainCfg.RouterContract, "routerMPC", routerMPC,
-		"routerFactory", routerFactory, "routerWNative", routerWNative)
-	log.Infof(">>> [%5v] init chain config success. router contract is %v, mpc address is %v", chainID, chainCfg.RouterContract, routerMPC)
-
-	if mongodb.HasClient() {
-		nextSwapNonce, err := mongodb.FindNextSwapNonce(chainID.String(), strings.ToLower(routerMPC))
-		if err == nil {
-			log.Info("init next swap nonce from db", "chainID", chainID, "mpc", routerMPC, "nonce", nextSwapNonce)
-			b.InitSwapNonce(routerMPC, nextSwapNonce)
-		}
-	}
+	log.Info(">>> [%5v] init chain config success", "blockChain", chainCfg.BlockChain, "chainID", chainID)
 }
 
 func (b *Bridge) initSigner(chainID *big.Int) {
@@ -171,16 +130,22 @@ func (b *Bridge) InitTokenConfig(tokenID string, chainID *big.Int) {
 	if err = tokenCfg.CheckConfig(); err != nil {
 		log.Fatal("check token config failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
 	}
+	routerContract, err := router.GetCustomConfig(chainID, tokenAddr)
+	if err != nil {
+		log.Fatal("get custome config failed", "chainID", chainID, "key", tokenAddr, "err", err)
+	}
+	tokenCfg.RouterContract = routerContract
+
 	var underlying string
 	if tokens.IsERC20Router() {
-		decimals, err := b.GetErc20Decimals(tokenAddr)
-		if err != nil {
-			log.Fatal("get token decimals failed", "tokenAddr", tokenAddr, "err", err)
+		decimals, errt := b.GetErc20Decimals(tokenAddr)
+		if errt != nil {
+			log.Fatal("get token decimals failed", "tokenAddr", tokenAddr, "err", errt)
 		}
 		if decimals != tokenCfg.Decimals {
 			log.Fatal("token decimals mismatch", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract", decimals)
 		}
-		err = b.checkTokenMinter(tokenAddr, tokenCfg.ContractVersion)
+		err = b.checkTokenMinter(routerContract, tokenAddr, tokenCfg.ContractVersion)
 		if err != nil && isStandardTokenVersion(tokenCfg.ContractVersion) {
 			log.Fatal("check token minter failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
 		}
@@ -190,8 +155,8 @@ func (b *Bridge) InitTokenConfig(tokenID string, chainID *big.Int) {
 		}
 		tokenCfg.SetUnderlying(common.HexToAddress(underlying)) // init underlying address
 	}
+
 	b.SetTokenConfig(tokenAddr, tokenCfg)
-	log.Info(fmt.Sprintf(">>> [%5v] init '%v' token config success", chainID, tokenID), "tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "underlying", underlying)
 
 	tokenIDKey := strings.ToLower(tokenID)
 	tokensMap := router.MultichainTokens[tokenIDKey]
@@ -200,6 +165,48 @@ func (b *Bridge) InitTokenConfig(tokenID string, chainID *big.Int) {
 		router.MultichainTokens[tokenIDKey] = tokensMap
 	}
 	tokensMap[chainID.String()] = tokenAddr
+
+	var routerFactory, routerWNative string
+	if tokens.IsERC20Router() {
+		routerFactory, err = b.GetFactoryAddress(routerContract)
+		if err != nil {
+			log.Warn("get router factory address failed", "routerContract", routerContract, "err", err)
+		}
+		routerWNative, err = b.GetWNativeAddress(routerContract)
+		if err != nil {
+			log.Warn("get router wNative address failed", "routerContract", routerContract, "err", err)
+		}
+	}
+	routerMPC, err := b.GetMPCAddress(routerContract)
+	if err != nil {
+		log.Fatal("get router mpc address failed", "routerContract", routerContract, "err", err)
+	}
+	if common.HexToAddress(routerMPC) == (common.Address{}) {
+		log.Fatal("get router mpc address return an empty address", "routerContract", routerContract)
+	}
+	log.Info("get router mpc address success", "routerContract", routerContract, "routerMPC", routerMPC)
+	routerMPCPubkey, err := router.GetMPCPubkey(routerMPC)
+	if err != nil {
+		log.Fatal("get mpc public key failed", "mpc", routerMPC, "err", err)
+	}
+	if err = tokens.VerifyMPCPubKey(routerMPC, routerMPCPubkey); err != nil {
+		log.Fatal("verify mpc public key failed", "mpc", routerMPC, "mpcPubkey", routerMPCPubkey, "err", err)
+	}
+	router.SetRouterInfo(routerContract, routerMPC, routerFactory, routerWNative)
+	router.SetMPCPublicKey(routerMPC, routerMPCPubkey)
+
+	log.Info(fmt.Sprintf(">>> [%5v] init '%v' token config success", chainID, tokenID),
+		"tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "underlying", underlying,
+		"routerContract", routerContract, "routerMPC", routerMPC,
+		"routerFactory", routerFactory, "routerWNative", routerWNative)
+
+	if mongodb.HasClient() {
+		nextSwapNonce, err := mongodb.FindNextSwapNonce(chainID.String(), strings.ToLower(routerMPC))
+		if err == nil {
+			log.Info("init next swap nonce from db", "chainID", chainID, "mpc", routerMPC, "nonce", nextSwapNonce)
+			b.InitSwapNonce(routerMPC, nextSwapNonce)
+		}
+	}
 }
 
 // ReloadChainConfig reload chain config
@@ -221,39 +228,8 @@ func (b *Bridge) ReloadChainConfig(chainID *big.Int) {
 		log.Error("[reload] check chain config failed", "chainID", chainID, "err", err)
 		return
 	}
-	var routerFactory, routerWNative string
-	if tokens.IsERC20Router() {
-		routerFactory, err = b.GetFactoryAddress(chainCfg.RouterContract)
-		if err != nil {
-			log.Warn("[reload] get router factory address failed", "routerContract", chainCfg.RouterContract, "err", err)
-		}
-		routerWNative, err = b.GetWNativeAddress(chainCfg.RouterContract)
-		if err != nil {
-			log.Warn("get router wNative address failed", "routerContract", chainCfg.RouterContract, "err", err)
-		}
-		chainCfg.SetRouterFactory(routerFactory)
-		chainCfg.SetRouterWNative(routerWNative)
-	}
-	routerMPC, err := b.GetMPCAddress(chainCfg.RouterContract)
-	if err != nil {
-		log.Error("[reload] get router mpc address failed", "routerContract", chainCfg.RouterContract, "err", err)
-		return
-	}
-	routerMPCPubkey, err := router.GetMPCPubkey(routerMPC)
-	if err != nil {
-		log.Error("[reload] get mpc public key failed", "mpc", routerMPC, "err", err)
-		return
-	}
-	if err = tokens.VerifyMPCPubKey(routerMPC, routerMPCPubkey); err != nil {
-		log.Error("[reload] verify mpc public key failed", "mpc", routerMPC, "mpcPubkey", routerMPCPubkey, "err", err)
-		return
-	}
-	chainCfg.SetRouterMPC(routerMPC)
-	chainCfg.SetRouterMPCPubkey(routerMPCPubkey)
 	b.SetChainConfig(chainCfg)
-	log.Info("reload chain config success", "blockChain", chainCfg.BlockChain, "chainID", chainID,
-		"routerContract", chainCfg.RouterContract, "routerMPC", routerMPC,
-		"routerFactory", routerFactory, "routerWNative", routerWNative)
+	log.Info("reload chain config success", "blockChain", chainCfg.BlockChain, "chainID", chainID)
 }
 
 // ReloadTokenConfig reload token config
@@ -291,18 +267,25 @@ func (b *Bridge) ReloadTokenConfig(tokenID string, chainID *big.Int) {
 		log.Error("[reload] check token config failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
 		return
 	}
+	routerContract, err := router.GetCustomConfig(chainID, tokenAddr)
+	if err != nil {
+		log.Error("get custome config failed", "chainID", chainID, "key", tokenAddr, "err", err)
+		return
+	}
+	tokenCfg.RouterContract = routerContract
+
 	var underlying string
 	if tokens.IsERC20Router() {
-		decimals, err := b.GetErc20Decimals(tokenAddr)
-		if err != nil {
-			log.Error("[reload] get token decimals failed", "tokenAddr", tokenAddr, "err", err)
+		decimals, errt := b.GetErc20Decimals(tokenAddr)
+		if errt != nil {
+			log.Error("[reload] get token decimals failed", "tokenAddr", tokenAddr, "err", errt)
 			return
 		}
 		if decimals != tokenCfg.Decimals {
 			log.Error("[reload] token decimals mismatch", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract", decimals)
 			return
 		}
-		err = b.checkTokenMinter(tokenAddr, tokenCfg.ContractVersion)
+		err = b.checkTokenMinter(routerContract, tokenAddr, tokenCfg.ContractVersion)
 		if err != nil && isStandardTokenVersion(tokenCfg.ContractVersion) {
 			log.Error("[reload] check token minter failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
 			return
@@ -314,8 +297,8 @@ func (b *Bridge) ReloadTokenConfig(tokenID string, chainID *big.Int) {
 		}
 		tokenCfg.SetUnderlying(common.HexToAddress(underlying)) // init underlying address
 	}
+
 	b.SetTokenConfig(tokenAddr, tokenCfg)
-	log.Info("reload token config success", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "underlying", underlying)
 
 	tokenIDKey := strings.ToLower(tokenID)
 	tokensMap := router.MultichainTokens[tokenIDKey]
@@ -324,17 +307,48 @@ func (b *Bridge) ReloadTokenConfig(tokenID string, chainID *big.Int) {
 		router.MultichainTokens[tokenIDKey] = tokensMap
 	}
 	tokensMap[chainID.String()] = tokenAddr
+
+	var routerFactory, routerWNative string
+	if tokens.IsERC20Router() {
+		routerFactory, err = b.GetFactoryAddress(routerContract)
+		if err != nil {
+			log.Warn("[reload] get router factory address failed", "routerContract", routerContract, "err", err)
+		}
+		routerWNative, err = b.GetWNativeAddress(routerContract)
+		if err != nil {
+			log.Warn("get router wNative address failed", "routerContract", routerContract, "err", err)
+		}
+	}
+	routerMPC, err := b.GetMPCAddress(routerContract)
+	if err != nil {
+		log.Error("[reload] get router mpc address failed", "routerContract", routerContract, "err", err)
+		return
+	}
+	routerMPCPubkey, err := router.GetMPCPubkey(routerMPC)
+	if err != nil {
+		log.Error("[reload] get mpc public key failed", "mpc", routerMPC, "err", err)
+		return
+	}
+	if err = tokens.VerifyMPCPubKey(routerMPC, routerMPCPubkey); err != nil {
+		log.Error("[reload] verify mpc public key failed", "mpc", routerMPC, "mpcPubkey", routerMPCPubkey, "err", err)
+		return
+	}
+	router.SetRouterInfo(routerContract, routerMPC, routerFactory, routerWNative)
+	router.SetMPCPublicKey(routerMPC, routerMPCPubkey)
+	log.Info("reload token config success", "chainID", chainID, "tokenID", tokenID,
+		"tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "underlying", underlying,
+		"routerContract", routerContract, "routerMPC", routerMPC,
+		"routerFactory", routerFactory, "routerWNative", routerWNative)
 }
 
 func isStandardTokenVersion(tokenVer uint64) bool {
 	return tokenVer > 0 && tokenVer <= 10000
 }
 
-func (b *Bridge) checkTokenMinter(tokenAddr string, tokenVer uint64) (err error) {
+func (b *Bridge) checkTokenMinter(routerContract, tokenAddr string, tokenVer uint64) (err error) {
 	if !isStandardTokenVersion(tokenVer) {
 		return nil
 	}
-	routerContract := b.ChainConfig.RouterContract
 	var minterAddr string
 	var isMinter bool
 	switch tokenVer {

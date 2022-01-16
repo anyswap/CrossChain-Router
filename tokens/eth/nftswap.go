@@ -134,7 +134,11 @@ func (b *Bridge) verifyNFTSwapTx(txHash string, logIndex int, allowUnstable bool
 
 func (b *Bridge) verifyNFTSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
 	swapInfo.To = rlog.Address.LowerHex() // To
-	if !common.IsEqualIgnoreCase(rlog.Address.LowerHex(), b.ChainConfig.RouterContract) {
+	routerContract := b.GetRouterContract(swapInfo.NFTSwapInfo.Token)
+	if routerContract == "" {
+		return tokens.ErrMissRouterInfo
+	}
+	if !common.IsEqualIgnoreCase(rlog.Address.LowerHex(), routerContract) {
 		return tokens.ErrTxWithWrongContract
 	}
 
@@ -418,8 +422,8 @@ func (b *Bridge) buildNFTSwapTxInput(args *tokens.BuildTxArgs) (err error) {
 		}
 	}
 
-	args.Input = (*hexutil.Bytes)(&input)  // input
-	args.To = b.ChainConfig.RouterContract // to
+	args.Input = (*hexutil.Bytes)(&input)            // input
+	args.To = b.GetRouterContract(nftSwapInfo.Token) // to
 
 	return nil
 }

@@ -121,7 +121,7 @@ func (b *Bridge) getAndVerifySwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUns
 	if err != nil {
 		return receipt, err
 	}
-	err = b.verifySwapTxReceipt(receipt)
+	err = b.verifySwapTxReceipt(swapInfo, receipt)
 	return receipt, err
 }
 
@@ -160,15 +160,19 @@ func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable boo
 	return receipt, nil
 }
 
-func (b *Bridge) verifySwapTxReceipt(receipt *types.RPCTxReceipt) error {
+func (b *Bridge) verifySwapTxReceipt(swapInfo *tokens.SwapTxInfo, receipt *types.RPCTxReceipt) error {
 	if receipt.Recipient == nil {
 		return tokens.ErrTxWithWrongContract
 	}
 
 	txTo := receipt.Recipient.LowerHex()
+	routerContract := b.GetRouterContract(swapInfo.ERC20SwapInfo.Token)
+	if routerContract == "" {
+		return tokens.ErrMissRouterInfo
+	}
 
 	if !params.AllowCallByContract() &&
-		!common.IsEqualIgnoreCase(txTo, b.ChainConfig.RouterContract) &&
+		!common.IsEqualIgnoreCase(txTo, routerContract) &&
 		!params.IsInCallByContractWhitelist(b.ChainConfig.ChainID, txTo) {
 		return tokens.ErrTxWithWrongContract
 	}
@@ -178,9 +182,10 @@ func (b *Bridge) verifySwapTxReceipt(receipt *types.RPCTxReceipt) error {
 
 func (b *Bridge) checkCallByContract(swapInfo *tokens.SwapTxInfo) error {
 	txTo := swapInfo.TxTo
+	routerContract := b.GetRouterContract(swapInfo.ERC20SwapInfo.Token)
 
 	if !params.AllowCallByContract() &&
-		!common.IsEqualIgnoreCase(txTo, b.ChainConfig.RouterContract) &&
+		!common.IsEqualIgnoreCase(txTo, routerContract) &&
 		!params.IsInCallByContractWhitelist(b.ChainConfig.ChainID, txTo) {
 		// this verify maybe slow, so do it after receipt's log verified
 		master := b.GetEIP1167Master(common.HexToAddress(txTo))
@@ -195,7 +200,11 @@ func (b *Bridge) checkCallByContract(swapInfo *tokens.SwapTxInfo) error {
 
 func (b *Bridge) verifyERC20SwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
 	swapInfo.To = rlog.Address.LowerHex() // To
-	if !common.IsEqualIgnoreCase(rlog.Address.LowerHex(), b.ChainConfig.RouterContract) {
+	routerContract := b.GetRouterContract(swapInfo.ERC20SwapInfo.Token)
+	if routerContract == "" {
+		return tokens.ErrMissRouterInfo
+	}
+	if !common.IsEqualIgnoreCase(rlog.Address.LowerHex(), routerContract) {
 		return tokens.ErrTxWithWrongContract
 	}
 
@@ -322,8 +331,12 @@ func checkSwapTradePath(swapInfo *tokens.SwapTxInfo) error {
 		log.Warn("check swap trade path first element failed", "token", path[0])
 		return tokens.ErrTxWithWrongPath
 	}
+	routerInfo := router.GetRouterInfo(tokenCfg.RouterContract)
+	if routerInfo == nil {
+		return tokens.ErrMissRouterInfo
+	}
 	if erc20SwapInfo.ForNative {
-		wNative := dstBridge.GetChainConfig().GetRouterWNative()
+		wNative := routerInfo.RouterWNative
 		wNativeAddr := common.HexToAddress(wNative)
 		if wNativeAddr == (common.Address{}) {
 			return tokens.ErrSwapTradeNotSupport
@@ -333,7 +346,7 @@ func checkSwapTradePath(swapInfo *tokens.SwapTxInfo) error {
 			return tokens.ErrTxWithWrongPath
 		}
 	}
-	factory := dstBridge.GetChainConfig().GetRouterFactory()
+	factory := routerInfo.RouterFactory
 	if common.HexToAddress(factory) == (common.Address{}) {
 		return tokens.ErrSwapTradeNotSupport
 	}
@@ -360,8 +373,12 @@ func (b *Bridge) checkSwapWithPermit(swapInfo *tokens.SwapTxInfo, _ *types.RPCTx
 	if params.IsSwapWithPermitEnabled() {
 		return nil
 	}
+	routerContract := b.GetRouterContract(swapInfo.ERC20SwapInfo.Token)
+	if routerContract == "" {
+		return tokens.ErrMissRouterInfo
+	}
 
-	if common.IsEqualIgnoreCase(swapInfo.TxTo, b.ChainConfig.RouterContract) {
+	if common.IsEqualIgnoreCase(swapInfo.TxTo, routerContract) {
 		tx, err := b.GetTransactionByHash(swapInfo.Hash)
 		if err != nil {
 			return err

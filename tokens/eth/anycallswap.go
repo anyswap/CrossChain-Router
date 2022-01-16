@@ -110,7 +110,8 @@ func (b *Bridge) verifyAnyCallSwapTx(txHash string, logIndex int, allowUnstable 
 
 func (b *Bridge) verifyAnyCallSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
 	swapInfo.To = rlog.Address.LowerHex() // To
-	if !common.IsEqualIgnoreCase(rlog.Address.LowerHex(), b.ChainConfig.RouterContract) {
+	routerContract := b.GetRouterContract("")
+	if !common.IsEqualIgnoreCase(rlog.Address.LowerHex(), routerContract) {
 		return tokens.ErrTxWithWrongContract
 	}
 
@@ -200,8 +201,10 @@ func (b *Bridge) buildAnyCallSwapTxInput(args *tokens.BuildTxArgs) (err error) {
 		anycallSwapInfo.CallNonces,
 		args.FromChainID,
 	)
-	args.Input = (*hexutil.Bytes)(&input)  // input
-	args.To = b.ChainConfig.RouterContract // to
+	args.Input = (*hexutil.Bytes)(&input) // input
+
+	routerContract := b.GetRouterContract("")
+	args.To = routerContract // to
 
 	return nil
 }

@@ -292,7 +292,7 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 
 	buildTxArgs := &tokens.BuildTxArgs{
 		SwapArgs:    args.SwapArgs,
-		From:        dstBridge.GetChainConfig().GetRouterMPC(),
+		From:        args.From,
 		OriginFrom:  swapInfo.From,
 		OriginTxTo:  swapInfo.TxTo,
 		OriginValue: swapInfo.Value,
@@ -317,13 +317,13 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 
 func saveAcceptRecord(bridge tokens.IBridge, keyID string, args *tokens.BuildTxArgs, rawTx interface{}, ctx []interface{}) {
 	impl, ok := bridge.(interface {
-		GetSignedTxHashOfKeyID(keyID string, rawTx interface{}) (txHash string, err error)
+		GetSignedTxHashOfKeyID(sender, keyID string, rawTx interface{}) (txHash string, err error)
 	})
 	if !ok {
 		return
 	}
 
-	swapTx, err := impl.GetSignedTxHashOfKeyID(keyID, rawTx)
+	swapTx, err := impl.GetSignedTxHashOfKeyID(args.From, keyID, rawTx)
 	if err != nil {
 		logWorkerError("accept", "get signed tx hash failed", err, ctx...)
 		return

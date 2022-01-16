@@ -94,9 +94,6 @@ func ConvertChainConfig(c *tokens.ChainConfig) *ChainConfig {
 		RouterContract: c.RouterContract,
 		Confirmations:  c.Confirmations,
 		InitialHeight:  c.InitialHeight,
-		RouterMPC:      c.GetRouterMPC(),
-		RouterFactory:  c.GetRouterFactory(),
-		RouterWNative:  c.GetRouterWNative(),
 	}
 }
 
@@ -110,6 +107,7 @@ func ConvertTokenConfig(c *tokens.TokenConfig) *TokenConfig {
 		Decimals:        c.Decimals,
 		ContractAddress: c.ContractAddress,
 		ContractVersion: c.ContractVersion,
+		RouterContract:  c.RouterContract,
 		Underlying:      c.GetUnderlying().String(),
 	}
 }

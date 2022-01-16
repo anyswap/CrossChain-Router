@@ -21,11 +21,7 @@ type ChainConfig struct {
 	InitialHeight  uint64
 
 	// cached value
-	chainID         *big.Int
-	routerMPC       string
-	routerMPCPubkey string
-	routerFactory   string
-	routerWNative   string
+	chainID *big.Int
 }
 
 // TokenConfig struct
@@ -34,6 +30,7 @@ type TokenConfig struct {
 	Decimals        uint8
 	ContractAddress string
 	ContractVersion uint64
+	RouterContract  string
 
 	// calced value
 	underlying common.Address
@@ -70,55 +67,12 @@ func (c *ChainConfig) CheckConfig() (err error) {
 	if c.Confirmations == 0 {
 		return errors.New("chain must config nonzero 'Confirmations'")
 	}
-	if c.RouterContract == "" {
-		return errors.New("chain must config 'RouterContract'")
-	}
 	return nil
 }
 
 // GetChainID get chainID of number
 func (c *ChainConfig) GetChainID() *big.Int {
 	return c.chainID
-}
-
-// SetRouterMPC set router mpc
-func (c *ChainConfig) SetRouterMPC(mpc string) {
-	c.routerMPC = mpc
-}
-
-// GetRouterMPC get router mpc
-func (c *ChainConfig) GetRouterMPC() string {
-	return c.routerMPC
-}
-
-// SetRouterMPCPubkey set router mpc public key
-func (c *ChainConfig) SetRouterMPCPubkey(pubkey string) {
-	c.routerMPCPubkey = pubkey
-}
-
-// GetRouterMPCPubkey get router mpc public key
-func (c *ChainConfig) GetRouterMPCPubkey() string {
-	return c.routerMPCPubkey
-}
-
-// SetRouterFactory set factory address of router contract
-func (c *ChainConfig) SetRouterFactory(factory string) {
-	c.routerFactory = factory
-}
-
-// GetRouterFactory get factory address of router contract
-func (c *ChainConfig) GetRouterFactory() string {
-	return c.routerFactory
-}
-
-// SetRouterWNative set wNative address of router contract
-func (c *ChainConfig) SetRouterWNative(wNative string) {
-	c.routerWNative = wNative
-}
-
-// GetRouterWNative get wNative address of router contract
-func (c *ChainConfig) GetRouterWNative() string {
-	return c.routerWNative
 }
 
 // CheckConfig check token config

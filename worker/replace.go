@@ -69,9 +69,7 @@ func doReplaceJob(toChainID *big.Int) {
 
 func findRouterSwapResultToReplace(toChainID *big.Int) ([]*mongodb.MgoSwapResult, error) {
 	septime := getSepTimeInFind(maxReplaceSwapLifetime)
-	resBridge := router.GetBridgeByChainID(toChainID.String())
-	mpcAddress := resBridge.GetChainConfig().GetRouterMPC()
-	return mongodb.FindRouterSwapResultsToReplace(toChainID, septime, mpcAddress)
+	return mongodb.FindRouterSwapResultsToReplace(toChainID, septime)
 }
 
 func processRouterSwapReplace(res *mongodb.MgoSwapResult) error {
@@ -152,7 +150,7 @@ func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int, isManual b
 			FromChainID: biFromChainID,
 			ToChainID:   biToChainID,
 		},
-		From:        resBridge.GetChainConfig().GetRouterMPC(),
+		From:        res.MPC,
 		OriginFrom:  swap.From,
 		OriginTxTo:  swap.TxTo,
 		OriginValue: biValue,
@@ -237,8 +235,7 @@ func checkIfSwapNonceHasPassed(bridge tokens.IBridge, res *mongodb.MgoSwapResult
 	if !ok {
 		return nil
 	}
-	mpc := bridge.GetChainConfig().GetRouterMPC()
-	nonce, err := nonceSetter.GetPoolNonce(mpc, "latest")
+	nonce, err := nonceSetter.GetPoolNonce(res.MPC, "latest")
 	if err != nil {
 		return fmt.Errorf("get router mpc nonce failed, %w", err)
 	}

@@ -98,6 +98,20 @@ func (b *CrossChainBridgeBase) GetTokenConfig(token string) *TokenConfig {
 	return b.TokenConfigMap[strings.ToLower(token)]
 }
 
+// GetRouterContract get router contract
+func (b *CrossChainBridgeBase) GetRouterContract(token string) string {
+	if token != "" {
+		tokenCfg := b.GetTokenConfig(token)
+		if tokenCfg == nil {
+			return ""
+		}
+		if tokenCfg.RouterContract != "" {
+			return tokenCfg.RouterContract
+		}
+	}
+	return b.ChainConfig.RouterContract
+}
+
 // SetSwapConfigs set swap configs
 func SetSwapConfigs(swapCfgs map[string]map[string]*SwapConfig) {
 	swapConfigMap = swapCfgs
