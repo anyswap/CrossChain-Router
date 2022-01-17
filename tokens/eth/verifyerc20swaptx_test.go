@@ -233,14 +233,16 @@ func verifyTestTx(test *verifyTxTest) (err error) {
 	swapInfo := &tokens.SwapTxInfo{SwapInfo: tokens.SwapInfo{ERC20SwapInfo: &tokens.ERC20SwapInfo{}}}
 	swapInfo.SwapType = tokens.ERC20SwapType                                             // SwapType
 	swapInfo.Hash = "0x0000000000000000000000000000000000000000000000000000000000000000" // Hash
+	swapInfo.TxTo = test.receipt.Recipient.String()
 
 	params.SetAllowCallByContract(test.allowCallByContract)
 
-	err = br.verifySwapTxReceipt(swapInfo, test.receipt)
+	err = br.verifyERC20SwapTxLog(swapInfo, test.receipt.Logs[0])
 	if err != nil {
 		return err
 	}
-	return br.verifyERC20SwapTxLog(swapInfo, test.receipt.Logs[0])
+
+	return br.checkCallByContract(swapInfo)
 }
 
 func constructTests(t *testing.T, argsSlice []*consArgs) []*verifyTxTest {

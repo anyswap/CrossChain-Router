@@ -114,6 +114,8 @@ EnableCheckTxBlockIndexChains = ["1", "56"]
 DisableUseFromChainIDInReceiptChains = ["1666600000"]
 # allow call into router from contract
 AllowCallByContract = false
+# whether check eip1167 master call by contract
+CheckEIP1167Master = false
 # min reserve fee. key is chainID. defaults to 1e16 wei
 [Extra.MinReserveFee]
 4     = 100000000000000000

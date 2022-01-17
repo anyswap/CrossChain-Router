@@ -36,6 +36,7 @@ var (
 	isDebugMode           *bool
 	isNFTSwapWithData     *bool
 	isAllowCallByContract *bool
+	isCheckEIP1167Master  *bool
 )
 
 // exported variables
@@ -109,6 +110,7 @@ type ExtraConfig struct {
 	PendingInvalidAccept  bool   `toml:",omitempty" json:",omitempty"`
 
 	AllowCallByContract     bool                `toml:",omitempty" json:",omitempty"`
+	CheckEIP1167Master      bool                `toml:",omitempty" json:",omitempty"`
 	CallByContractWhitelist map[string][]string `toml:",omitempty" json:",omitempty"` // chainID -> whitelist
 	BigValueWhitelist       map[string][]string `toml:",omitempty" json:",omitempty"` // tokenID -> whitelist
 
@@ -351,6 +353,15 @@ func SetAllowCallByContract(allow bool) {
 	} else {
 		*isAllowCallByContract = allow
 	}
+}
+
+// CheckEIP1167Master whether check eip1167 master call by contract
+func CheckEIP1167Master() bool {
+	if isCheckEIP1167Master == nil {
+		flag := GetExtraConfig() != nil && GetExtraConfig().CheckEIP1167Master
+		isCheckEIP1167Master = &flag
+	}
+	return *isCheckEIP1167Master
 }
 
 func initCallByContractWhitelist() {
