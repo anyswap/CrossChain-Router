@@ -8,6 +8,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
+	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/types"
 )
@@ -26,6 +27,14 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	}
 	if args.From == "" {
 		return nil, fmt.Errorf("forbid empty sender")
+	}
+	routerMPC, err := router.GetRouterMPC(b, args.GetToken())
+	if err != nil {
+		return nil, err
+	}
+	if !common.IsEqualIgnoreCase(args.From, routerMPC) {
+		log.Error("build tx mpc mismatch", "have", args.From, "want", routerMPC)
+		return nil, tokens.ErrSenderMismatch
 	}
 
 	switch args.SwapType {

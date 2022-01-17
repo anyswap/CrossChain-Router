@@ -133,6 +133,11 @@ func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
 		return err
 	}
 
+	routerMPC, err := router.GetRouterMPC(dstBridge, swap.GetToken())
+	if err != nil {
+		return err
+	}
+
 	args := &tokens.BuildTxArgs{
 		SwapArgs: tokens.SwapArgs{
 			Identifier:  params.GetIdentifier(),
@@ -144,7 +149,7 @@ func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
 			ToChainID:   biToChainID,
 			Reswapping:  res.Status == mongodb.Reswapping,
 		},
-		From:        res.MPC,
+		From:        routerMPC,
 		OriginFrom:  swap.From,
 		OriginTxTo:  swap.TxTo,
 		OriginValue: biValue,

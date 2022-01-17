@@ -16,6 +16,7 @@ type IBridgeConfg interface {
 	GetGatewayConfig() *GatewayConfig
 	GetChainConfig() *ChainConfig
 	GetTokenConfig(tokenAddr string) *TokenConfig
+	GetRouterContract(token string) string
 
 	InitGatewayConfig(chainID *big.Int)
 	InitChainConfig(chainID *big.Int)

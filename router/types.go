@@ -55,6 +55,20 @@ func GetRouterInfo(router string) *SwapRouterInfo {
 	return nil
 }
 
+// GetRouterMPC get router mpc
+func GetRouterMPC(bridge tokens.IBridge, token string) (string, error) {
+	routerContract := bridge.GetRouterContract(token)
+	if routerContract == "" {
+		return "", tokens.ErrMissRouterInfo
+	}
+	routerInfo := GetRouterInfo(routerContract)
+	if routerInfo == nil {
+		return "", tokens.ErrMissRouterInfo
+	}
+	return routerInfo.RouterMPC, nil
+
+}
+
 // SetMPCPublicKey set router mpc public key
 func SetMPCPublicKey(mpc, pubkey string) {
 	key := strings.ToLower(mpc)
