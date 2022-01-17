@@ -183,6 +183,9 @@ func (b *Bridge) verifySwapTxReceipt(swapInfo *tokens.SwapTxInfo, receipt *types
 func (b *Bridge) checkCallByContract(swapInfo *tokens.SwapTxInfo) error {
 	txTo := swapInfo.TxTo
 	routerContract := b.GetRouterContract(swapInfo.ERC20SwapInfo.Token)
+	if routerContract == "" {
+		return tokens.ErrMissRouterInfo
+	}
 
 	if !params.AllowCallByContract() &&
 		!common.IsEqualIgnoreCase(txTo, routerContract) &&

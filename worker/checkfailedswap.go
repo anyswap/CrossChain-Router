@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
@@ -59,6 +60,13 @@ func checkFailedRouterSwap(swap *mongodb.MgoSwapResult) error {
 	nonceSetter, ok := resBridge.(tokens.NonceSetter)
 	if !ok {
 		return nil
+	}
+	routerMPC, err := router.GetRouterMPC(resBridge, swap.GetToken())
+	if err != nil {
+		return nil
+	}
+	if !common.IsEqualIgnoreCase(swap.MPC, routerMPC) {
+		return tokens.ErrSenderMismatch
 	}
 
 	txStatus := getSwapTxStatus(resBridge, swap)

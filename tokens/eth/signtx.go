@@ -25,6 +25,9 @@ func (b *Bridge) verifyTransactionReceiver(rawTx interface{}, token string) (*ty
 		return nil, errors.New("[sign] tx receiver is empty")
 	}
 	checkReceiver := b.GetRouterContract(token)
+	if checkReceiver == "" {
+		return nil, tokens.ErrMissRouterInfo
+	}
 	if !strings.EqualFold(tx.To().String(), checkReceiver) {
 		return nil, fmt.Errorf("[sign] tx receiver mismatch. have %v want %v", tx.To().String(), checkReceiver)
 	}

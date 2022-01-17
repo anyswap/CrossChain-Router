@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
 	"github.com/anyswap/CrossChain-Router/v3/mpc"
 	"github.com/anyswap/CrossChain-Router/v3/params"
@@ -124,6 +125,13 @@ func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int, isManual b
 	resBridge := router.GetBridgeByChainID(res.ToChainID)
 	if resBridge == nil {
 		return tokens.ErrNoBridgeForChainID
+	}
+	routerMPC, err := router.GetRouterMPC(resBridge, swap.GetToken())
+	if err != nil {
+		return err
+	}
+	if !common.IsEqualIgnoreCase(res.MPC, routerMPC) {
+		return tokens.ErrSenderMismatch
 	}
 
 	biFromChainID, biToChainID, biValue, err := getFromToChainIDAndValue(res.FromChainID, res.ToChainID, res.Value)

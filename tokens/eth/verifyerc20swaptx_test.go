@@ -217,7 +217,7 @@ func TestVerifyTx(t *testing.T) {
 	tests := constructTests(t, consArgsSlice)
 	for i, test := range tests {
 		err := verifyTestTx(test)
-		if false && !errors.Is(err, test.wantErr) { // TODO : pass testing
+		if !errors.Is(err, test.wantErr) {
 			receiptJs, _ := json.Marshal(test.receipt)
 			allPassed = false
 			t.Errorf("verify tx failed, index %v, allowCallByContract %v, receipt %v, want error '%v', real error '%v'",
