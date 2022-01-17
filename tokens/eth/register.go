@@ -32,7 +32,7 @@ func (b *Bridge) registerERC20SwapTx(txHash string, logIndex int) ([]*tokens.Swa
 	commonInfo.Hash = strings.ToLower(txHash)  // Hash
 	commonInfo.LogIndex = logIndex             // LogIndex
 
-	receipt, err := b.getAndVerifySwapTxReceipt(commonInfo, true)
+	receipt, err := b.getSwapTxReceipt(commonInfo, true)
 	if err != nil {
 		return []*tokens.SwapTxInfo{commonInfo}, []error{err}
 	}
