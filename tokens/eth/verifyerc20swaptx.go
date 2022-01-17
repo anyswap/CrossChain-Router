@@ -334,7 +334,11 @@ func checkSwapTradePath(swapInfo *tokens.SwapTxInfo) error {
 		log.Warn("check swap trade path first element failed", "token", path[0])
 		return tokens.ErrTxWithWrongPath
 	}
-	routerInfo := router.GetRouterInfo(tokenCfg.RouterContract)
+	routerContract := dstBridge.GetRouterContract(erc20SwapInfo.Token)
+	if routerContract == "" {
+		return tokens.ErrMissRouterInfo
+	}
+	routerInfo := router.GetRouterInfo(routerContract)
 	if routerInfo == nil {
 		return tokens.ErrMissRouterInfo
 	}
