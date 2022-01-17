@@ -135,6 +135,9 @@ func (b *Bridge) InitTokenConfig(tokenID string, chainID *big.Int) {
 		log.Fatal("get custome config failed", "chainID", chainID, "key", tokenAddr, "err", err)
 	}
 	tokenCfg.RouterContract = routerContract
+	if routerContract == "" {
+		routerContract = b.ChainConfig.RouterContract
+	}
 
 	var underlying string
 	if tokens.IsERC20Router() {
@@ -273,6 +276,9 @@ func (b *Bridge) ReloadTokenConfig(tokenID string, chainID *big.Int) {
 		return
 	}
 	tokenCfg.RouterContract = routerContract
+	if routerContract == "" {
+		routerContract = b.ChainConfig.RouterContract
+	}
 
 	var underlying string
 	if tokens.IsERC20Router() {
