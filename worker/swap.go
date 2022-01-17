@@ -133,7 +133,7 @@ func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
 		return err
 	}
 
-	routerMPC, err := router.GetRouterMPC(dstBridge, swap.GetToken())
+	routerMPC, err := router.GetRouterMPC(dstBridge, swap.GetTokenID(), toChainID)
 	if err != nil {
 		return err
 	}

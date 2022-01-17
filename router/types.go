@@ -55,9 +55,14 @@ func GetRouterInfo(router string) *SwapRouterInfo {
 	return nil
 }
 
-// GetRouterMPC get router mpc
-func GetRouterMPC(bridge tokens.IBridge, token string) (string, error) {
-	routerContract := bridge.GetRouterContract(token)
+// GetRouterMPC get router mpc on dest chain (to build swapin tx)
+func GetRouterMPC(dstBridge tokens.IBridge, tokenID, chainID string) (string, error) {
+	multichainToken := GetCachedMultichainToken(tokenID, chainID)
+	if multichainToken == "" {
+		log.Warn("GetRouterMPC: get multichain token failed", "tokenID", tokenID, "chainID", chainID)
+		return "", tokens.ErrMissTokenConfig
+	}
+	routerContract := dstBridge.GetRouterContract(multichainToken)
 	if routerContract == "" {
 		return "", tokens.ErrMissRouterInfo
 	}

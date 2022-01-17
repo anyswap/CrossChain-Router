@@ -61,7 +61,7 @@ func checkFailedRouterSwap(swap *mongodb.MgoSwapResult) error {
 	if !ok {
 		return nil
 	}
-	routerMPC, err := router.GetRouterMPC(resBridge, swap.GetToken())
+	routerMPC, err := router.GetRouterMPC(resBridge, swap.GetTokenID(), swap.ToChainID)
 	if err != nil {
 		return nil
 	}

@@ -28,7 +28,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	if args.From == "" {
 		return nil, fmt.Errorf("forbid empty sender")
 	}
-	routerMPC, err := router.GetRouterMPC(b, args.GetToken())
+	routerMPC, err := router.GetRouterMPC(b, args.GetTokenID(), b.ChainConfig.ChainID)
 	if err != nil {
 		return nil, err
 	}
