@@ -141,13 +141,6 @@ func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable boo
 	swapInfo.Height = txStatus.BlockHeight  // Height
 	swapInfo.Timestamp = txStatus.BlockTime // Timestamp
 
-	if receipt.Recipient == nil {
-		return nil, tokens.ErrTxWithWrongContract
-	}
-
-	swapInfo.TxTo = receipt.Recipient.LowerHex() // TxTo
-	swapInfo.From = receipt.From.LowerHex()      // From
-
 	if !allowUnstable && txStatus.Confirmations < b.ChainConfig.Confirmations {
 		return nil, tokens.ErrTxNotStable
 	}
@@ -156,6 +149,13 @@ func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable boo
 	if !ok || !receipt.IsStatusOk() {
 		return receipt, tokens.ErrTxWithWrongReceipt
 	}
+
+	if receipt.Recipient == nil {
+		return nil, tokens.ErrTxWithWrongContract
+	}
+
+	swapInfo.TxTo = receipt.Recipient.LowerHex() // TxTo
+	swapInfo.From = receipt.From.LowerHex()      // From
 
 	return receipt, nil
 }
