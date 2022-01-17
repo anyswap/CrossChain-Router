@@ -51,7 +51,7 @@ func (b *Bridge) registerNFTSwapTx(txHash string, logIndex int) ([]*tokens.SwapT
 	commonInfo.Hash = strings.ToLower(txHash) // Hash
 	commonInfo.LogIndex = logIndex            // LogIndex
 
-	receipt, err := b.getAndVerifySwapTxReceipt(commonInfo, true)
+	receipt, err := b.getSwapTxReceipt(commonInfo, true)
 	if err != nil {
 		return []*tokens.SwapTxInfo{commonInfo}, []error{err}
 	}
@@ -100,7 +100,7 @@ func (b *Bridge) verifyNFTSwapTx(txHash string, logIndex int, allowUnstable bool
 	swapInfo.Hash = strings.ToLower(txHash) // Hash
 	swapInfo.LogIndex = logIndex            // LogIndex
 
-	receipt, err := b.getAndVerifySwapTxReceipt(swapInfo, allowUnstable)
+	receipt, err := b.getSwapTxReceipt(swapInfo, allowUnstable)
 	if err != nil {
 		return swapInfo, err
 	}
@@ -134,13 +134,6 @@ func (b *Bridge) verifyNFTSwapTx(txHash string, logIndex int, allowUnstable bool
 
 func (b *Bridge) verifyNFTSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
 	swapInfo.To = rlog.Address.LowerHex() // To
-	routerContract := b.GetRouterContract(swapInfo.NFTSwapInfo.Token)
-	if routerContract == "" {
-		return tokens.ErrMissRouterInfo
-	}
-	if !common.IsEqualIgnoreCase(rlog.Address.LowerHex(), routerContract) {
-		return tokens.ErrTxWithWrongContract
-	}
 
 	logTopic := rlog.Topics[0].Bytes()
 	if params.IsNFTSwapWithData() {
@@ -201,6 +194,14 @@ func (b *Bridge) parseNFT721SwapoutTxLog(swapInfo *tokens.SwapTxInfo, rlog *type
 		return tokens.ErrMissTokenConfig
 	}
 	nftSwapInfo.TokenID = tokenCfg.TokenID
+
+	routerContract := b.GetRouterContract(swapInfo.NFTSwapInfo.Token)
+	if routerContract == "" {
+		return tokens.ErrMissRouterInfo
+	}
+	if !common.IsEqualIgnoreCase(rlog.Address.LowerHex(), routerContract) {
+		return tokens.ErrTxWithWrongContract
+	}
 
 	return nil
 }

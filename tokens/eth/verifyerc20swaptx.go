@@ -116,15 +116,6 @@ func (b *Bridge) checkERC20SwapInfo(swapInfo *tokens.SwapTxInfo) error {
 	return nil
 }
 
-func (b *Bridge) getAndVerifySwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable bool) (receipt *types.RPCTxReceipt, err error) {
-	receipt, err = b.getSwapTxReceipt(swapInfo, allowUnstable)
-	if err != nil {
-		return receipt, err
-	}
-	err = b.verifySwapTxReceipt(swapInfo, receipt)
-	return receipt, err
-}
-
 func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable bool) (receipt *types.RPCTxReceipt, err error) {
 	txStatus, err := b.GetTransactionStatus(swapInfo.Hash)
 	if err != nil {
@@ -203,13 +194,6 @@ func (b *Bridge) checkCallByContract(swapInfo *tokens.SwapTxInfo) error {
 
 func (b *Bridge) verifyERC20SwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
 	swapInfo.To = rlog.Address.LowerHex() // To
-	routerContract := b.GetRouterContract(swapInfo.ERC20SwapInfo.Token)
-	if routerContract == "" {
-		return tokens.ErrMissRouterInfo
-	}
-	if !common.IsEqualIgnoreCase(rlog.Address.LowerHex(), routerContract) {
-		return tokens.ErrTxWithWrongContract
-	}
 
 	logTopic := rlog.Topics[0].Bytes()
 	switch {
@@ -260,6 +244,14 @@ func (b *Bridge) parseERC20SwapoutTxLog(swapInfo *tokens.SwapTxInfo, rlog *types
 		return tokens.ErrMissTokenConfig
 	}
 	erc20SwapInfo.TokenID = tokenCfg.TokenID
+
+	routerContract := b.GetRouterContract(erc20SwapInfo.Token)
+	if routerContract == "" {
+		return tokens.ErrMissRouterInfo
+	}
+	if !common.IsEqualIgnoreCase(rlog.Address.LowerHex(), routerContract) {
+		return tokens.ErrTxWithWrongContract
+	}
 
 	return nil
 }

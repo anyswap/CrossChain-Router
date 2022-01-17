@@ -29,7 +29,7 @@ func (b *Bridge) registerAnyCallSwapTx(txHash string, logIndex int) ([]*tokens.S
 	commonInfo.Hash = strings.ToLower(txHash)    // Hash
 	commonInfo.LogIndex = logIndex               // LogIndex
 
-	receipt, err := b.getAndVerifySwapTxReceipt(commonInfo, true)
+	receipt, err := b.getSwapTxReceipt(commonInfo, true)
 	if err != nil {
 		return []*tokens.SwapTxInfo{commonInfo}, []error{err}
 	}
@@ -78,7 +78,7 @@ func (b *Bridge) verifyAnyCallSwapTx(txHash string, logIndex int, allowUnstable 
 	swapInfo.Hash = strings.ToLower(txHash)    // Hash
 	swapInfo.LogIndex = logIndex               // LogIndex
 
-	receipt, err := b.getAndVerifySwapTxReceipt(swapInfo, allowUnstable)
+	receipt, err := b.getSwapTxReceipt(swapInfo, allowUnstable)
 	if err != nil {
 		return swapInfo, err
 	}
@@ -171,6 +171,10 @@ func (b *Bridge) parseAnyCallSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.
 }
 
 func (b *Bridge) checkAnyCallSwapInfo(swapInfo *tokens.SwapTxInfo) error {
+	err := b.checkCallByContract(swapInfo)
+	if err != nil {
+		return err
+	}
 	if swapInfo.FromChainID.String() != b.ChainConfig.ChainID {
 		log.Error("anycall swap tx with mismatched fromChainID in receipt", "txid", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "fromChainID", swapInfo.FromChainID, "toChainID", swapInfo.ToChainID, "chainID", b.ChainConfig.ChainID)
 		return tokens.ErrFromChainIDMismatch

@@ -35,6 +35,9 @@ func GetBridgeByChainID(chainID string) tokens.IBridge {
 
 // SetRouterInfo set router info
 func SetRouterInfo(router, mpc, factory, wNative string) {
+	if router == "" {
+		return
+	}
 	key := strings.ToLower(router)
 	if _, exist := RouterInfos[key]; exist {
 		return
