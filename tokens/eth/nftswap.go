@@ -422,8 +422,8 @@ func (b *Bridge) buildNFTSwapTxInput(args *tokens.BuildTxArgs) (err error) {
 		}
 	}
 
-	args.Input = (*hexutil.Bytes)(&input)            // input
-	args.To = b.GetRouterContract(nftSwapInfo.Token) // to
+	args.Input = (*hexutil.Bytes)(&input)          // input
+	args.To = b.GetRouterContract(multichainToken) // to
 
 	return nil
 }

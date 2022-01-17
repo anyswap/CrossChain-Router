@@ -16,7 +16,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/types"
 )
 
-func (b *Bridge) verifyTransactionReceiver(rawTx interface{}, token string) (*types.Transaction, error) {
+func (b *Bridge) verifyTransactionReceiver(rawTx interface{}, tokenID string) (*types.Transaction, error) {
 	tx, ok := rawTx.(*types.Transaction)
 	if !ok {
 		return nil, errors.New("[sign] wrong raw tx param")
@@ -24,7 +24,12 @@ func (b *Bridge) verifyTransactionReceiver(rawTx interface{}, token string) (*ty
 	if tx.To() == nil || *tx.To() == (common.Address{}) {
 		return nil, errors.New("[sign] tx receiver is empty")
 	}
-	checkReceiver := b.GetRouterContract(token)
+	multichainToken := router.GetCachedMultichainToken(tokenID, b.ChainConfig.ChainID)
+	if multichainToken == "" {
+		log.Warn("get multichain token failed", "tokenID", tokenID, "chainID", b.ChainConfig.ChainID)
+		return nil, tokens.ErrMissTokenConfig
+	}
+	checkReceiver := b.GetRouterContract(multichainToken)
 	if checkReceiver == "" {
 		return nil, tokens.ErrMissRouterInfo
 	}
@@ -36,7 +41,7 @@ func (b *Bridge) verifyTransactionReceiver(rawTx interface{}, token string) (*ty
 
 // MPCSignTransaction mpc sign raw tx
 func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs) (signTx interface{}, txHash string, err error) {
-	tx, err := b.verifyTransactionReceiver(rawTx, args.GetToken())
+	tx, err := b.verifyTransactionReceiver(rawTx, args.GetTokenID())
 	if err != nil {
 		return nil, "", err
 	}
