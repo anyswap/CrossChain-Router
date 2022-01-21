@@ -146,6 +146,9 @@ func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable boo
 
 	swapInfo.TxTo = receipt.Recipient.LowerHex() // TxTo
 	swapInfo.From = receipt.From.LowerHex()      // From
+	if *receipt.From == (common.Address{}) {
+		return nil, tokens.ErrTxWithWrongSender
+	}
 
 	return receipt, nil
 }

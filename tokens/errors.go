@@ -32,6 +32,7 @@ var (
 	ErrMissMPCPublicKey      = errors.New("miss mpc public key config")
 	ErrMissRouterInfo        = errors.New("miss router info")
 	ErrSenderMismatch        = errors.New("sender mismatch")
+	ErrTxWithWrongSender     = errors.New("tx with wrong sender")
 	// errors should register in router swap
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")
 	ErrTxWithWrongPath   = errors.New("swap trade tx with wrong path")
