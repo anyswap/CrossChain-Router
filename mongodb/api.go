@@ -826,3 +826,21 @@ func getStatusInfo(coll *mongo.Collection, filterStatuses []SwapStatus) (result 
 
 	return result, nil
 }
+
+// ----------------------------- helper functions -------------------------------------
+
+// GetRegisteredRouterSwap get registered router swap
+func GetRegisteredRouterSwap(fromChainID, txid string, logIndex int) (oldSwap *MgoSwap, registeredOk bool) {
+	oldSwap, err := FindRouterSwap(fromChainID, txid, logIndex)
+	if err != nil || oldSwap == nil {
+		return nil, false
+	}
+	if oldSwap.Status.IsRegisteredOk() {
+		return oldSwap, true
+	}
+	oldSwapRes, err := FindRouterSwapResult(fromChainID, txid, logIndex)
+	if err == nil && oldSwapRes != nil {
+		return oldSwap, true
+	}
+	return oldSwap, false
+}
