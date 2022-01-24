@@ -60,8 +60,8 @@ func (b *Bridge) InitGatewayConfig(chainID *big.Int) {
 	if err != nil {
 		log.Fatal("get lastest block number failed", "chainID", chainID, "err", err)
 	}
-	log.Infof(">>> [%5v] lastest block number is %v", chainID, latestBlock)
-	log.Infof(">>> [%5v] init gateway config success", chainID)
+	log.Infof("[%5v] lastest block number is %v", chainID, latestBlock)
+	log.Infof("[%5v] init gateway config success", chainID)
 }
 
 // InitChainConfig impl
@@ -81,7 +81,7 @@ func (b *Bridge) InitChainConfig(chainID *big.Int) {
 	}
 	b.SetChainConfig(chainCfg)
 	b.initSigner(chainID)
-	log.Info(">>> [%5v] init chain config success", "blockChain", chainCfg.BlockChain, "chainID", chainID)
+	log.Info("init chain config success", "blockChain", chainCfg.BlockChain, "chainID", chainID)
 }
 
 func (b *Bridge) initSigner(chainID *big.Int) {
@@ -110,7 +110,7 @@ func (b *Bridge) InitTokenConfig(tokenID string, chainID *big.Int) {
 		log.Fatal("get token address failed", "tokenID", tokenID, "chainID", chainID, "err", err)
 	}
 	if common.HexToAddress(tokenAddr) == (common.Address{}) {
-		log.Debugf(">>> [%5v] '%v' token address is empty", chainID, tokenID)
+		log.Debugf("[%5v] '%v' token address is empty", chainID, tokenID)
 		return
 	}
 	tokenCfg, err := router.GetTokenConfig(chainID, tokenID)
@@ -198,7 +198,7 @@ func (b *Bridge) InitTokenConfig(tokenID string, chainID *big.Int) {
 	router.SetRouterInfo(routerContract, routerMPC, routerFactory, routerWNative)
 	router.SetMPCPublicKey(routerMPC, routerMPCPubkey)
 
-	log.Info(fmt.Sprintf(">>> [%5v] init '%v' token config success", chainID, tokenID),
+	log.Info(fmt.Sprintf("[%5v] init '%v' token config success", chainID, tokenID),
 		"tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "underlying", underlying,
 		"routerContract", routerContract, "routerMPC", routerMPC,
 		"routerFactory", routerFactory, "routerWNative", routerWNative)

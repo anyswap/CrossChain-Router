@@ -86,7 +86,7 @@ func InitRouterBridges(isServer bool) {
 
 	startReloadRouterConfigTask()
 
-	log.Info(">>> init router bridges success", "isServer", isServer)
+	log.Info("init router bridges success", "isServer", isServer)
 }
 
 func loadSwapConfigs() error {
