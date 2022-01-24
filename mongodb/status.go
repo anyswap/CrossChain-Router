@@ -43,6 +43,7 @@ const (
 	TxWithBigValue    SwapStatus = 12
 	MatchTxFailed     SwapStatus = 14
 	SwapInBlacklist   SwapStatus = 15
+	ManualMakeFail    SwapStatus = 16
 	TxWithWrongPath   SwapStatus = 19
 	MissTokenConfig   SwapStatus = 20
 	NoUnderlyingToken SwapStatus = 21
@@ -64,7 +65,7 @@ func (status SwapStatus) IsResultStatus() bool {
 // IsRegisteredOk is successfully registered
 func (status SwapStatus) IsRegisteredOk() bool {
 	switch status {
-	case TxNotStable, TxNotSwapped, TxProcessed:
+	case TxNotStable, TxNotSwapped, TxProcessed, ManualMakeFail:
 		return true
 	default:
 		return false
@@ -96,6 +97,8 @@ func (status SwapStatus) String() string {
 		return "MatchTxFailed"
 	case SwapInBlacklist:
 		return "SwapInBlacklist"
+	case ManualMakeFail:
+		return "ManualMakeFail"
 	case TxWithWrongPath:
 		return "TxWithWrongPath"
 	case MissTokenConfig:

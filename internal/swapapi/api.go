@@ -18,6 +18,8 @@ import (
 
 var (
 	oraclesInfo sync.Map // string -> *OracleInfo // key is enode
+
+	errAlreadyRegistered = newRPCError(-32001, "already registered")
 )
 
 func newRPCError(ec rpcjson.ErrorCode, message string) error {
@@ -110,6 +112,10 @@ func RegisterRouterSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, e
 	if bridge == nil {
 		return nil, newRPCInternalError(tokens.ErrNoBridgeForChainID)
 	}
+	_, registeredOk := mongodb.GetRegisteredRouterSwap(fromChainID, txid, logIndex)
+	if registeredOk {
+		return nil, errAlreadyRegistered
+	}
 	result := MapIntResult(make(map[int]string))
 	registerArgs := &tokens.RegisterArgs{
 		SwapType: swapType,
@@ -122,12 +128,12 @@ func RegisterRouterSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, e
 		if verifyErr != nil {
 			memo = verifyErr.Error()
 		}
-		logIndex := swapInfo.LogIndex
+		logIndex = swapInfo.LogIndex
 		if !tokens.ShouldRegisterRouterSwapForError(verifyErr) {
 			result[logIndex] = "verify error: " + memo
 			continue
 		}
-		oldSwap, registeredOk := getRegisteredRouterSwap(fromChainID, txid, logIndex)
+		oldSwap, registeredOk := mongodb.GetRegisteredRouterSwap(fromChainID, txid, logIndex)
 		if registeredOk {
 			result[logIndex] = "already registered"
 			continue
@@ -162,21 +168,6 @@ func RegisterRouterSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, e
 		}
 	}
 	return &result, nil
-}
-
-func getRegisteredRouterSwap(fromChainID, txid string, logIndex int) (oldSwap *mongodb.MgoSwap, registeredOk bool) {
-	oldSwap, _ = mongodb.FindRouterSwap(fromChainID, txid, logIndex)
-	if oldSwap == nil {
-		return nil, false
-	}
-	if oldSwap.Status.IsRegisteredOk() {
-		return oldSwap, true
-	}
-	oldSwapRes, _ := mongodb.FindRouterSwapResult(fromChainID, txid, logIndex)
-	if oldSwapRes != nil {
-		return oldSwap, true
-	}
-	return oldSwap, false
 }
 
 func addMgoSwap(swapInfo *tokens.SwapTxInfo, status mongodb.SwapStatus, memo string) (err error) {
