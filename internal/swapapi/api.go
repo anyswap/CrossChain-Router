@@ -180,12 +180,17 @@ func getRegisteredRouterSwap(fromChainID, txid string, logIndex int) (oldSwap *m
 }
 
 func addMgoSwap(swapInfo *tokens.SwapTxInfo, status mongodb.SwapStatus, memo string) (err error) {
+	valueStr := "0"
+	if swapInfo.Value != nil {
+		valueStr = swapInfo.Value.String()
+	}
 	swap := &mongodb.MgoSwap{
 		SwapType:    uint32(swapInfo.SwapType),
 		TxID:        swapInfo.Hash,
 		TxTo:        swapInfo.TxTo,
 		From:        swapInfo.From,
 		Bind:        swapInfo.Bind,
+		Value:       valueStr,
 		LogIndex:    swapInfo.LogIndex,
 		FromChainID: swapInfo.FromChainID.String(),
 		ToChainID:   swapInfo.ToChainID.String(),
