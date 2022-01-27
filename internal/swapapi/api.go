@@ -150,9 +150,9 @@ func RegisterRouterSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, e
 			}
 			err = addMgoSwap(swapInfo, newStatus, memo)
 		} else if verifyErr == nil {
-			if router.IsBigValueSwap(swapInfo) {
+			if oldSwap.Status == mongodb.TxWithBigValue && router.IsBigValueSwap(swapInfo) {
 				result[logIndex] = "already registered: bigvalue"
-			} else if router.IsBlacklistSwap(swapInfo) {
+			} else if oldSwap.Status == mongodb.SwapInBlacklist && router.IsBlacklistSwap(swapInfo) {
 				result[logIndex] = "already registered: blacklist"
 			} else if newStatus != oldSwap.Status {
 				mgoSwapInfo := mongodb.ConvertToSwapInfo(&swapInfo.SwapInfo)
