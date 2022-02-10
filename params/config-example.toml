@@ -191,6 +191,13 @@ Initiators = [
 	"0x897a9980808a2cae0d09ff693f02a4f80abb2233"
 ]
 
+# use private key instead (use for testing)
+SignWithPrivateKey = false
+# set signer's private key, key is chain ID (use for testing)
+[MPC.SignerPrivateKeys]
+4     = "0x1111111111111111111111111111111111111111111111111111111111111111"
+46688 = "0x2222222222222222222222222222222222222222222222222222222222222222"
+
 # MPC default node config
 [MPC.DefaultNode]
 # mpc sub groups for signing (server only)

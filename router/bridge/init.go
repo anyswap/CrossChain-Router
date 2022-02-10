@@ -81,8 +81,16 @@ func InitRouterBridges(isServer bool) {
 		log.Fatal("load swap configs failed", "err", err)
 	}
 
-	cfg := params.GetRouterConfig()
-	mpc.Init(cfg.MPC, isServer)
+	if params.SignWithPrivateKey() {
+		for _, chainID := range chainIDs {
+			priKey := params.GetSignerPrivateKey(chainID.String())
+			if priKey == "" {
+				log.Fatalf("missing config private key on chain %v", chainID)
+			}
+		}
+	} else {
+		mpc.Init(params.GetMPCConfig(), isServer)
+	}
 
 	startReloadRouterConfigTask()
 

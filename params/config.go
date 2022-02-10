@@ -148,6 +148,9 @@ type MPCConfig struct {
 	Initiators    []string
 	DefaultNode   *MPCNodeConfig
 	OtherNodes    []*MPCNodeConfig `toml:",omitempty" json:",omitempty"`
+
+	SignWithPrivateKey bool              // use private key instead (use for testing)
+	SignerPrivateKeys  map[string]string `json:"-"` // key is chain ID (use for testing)
 }
 
 // MPCNodeConfig mpc node config
@@ -321,6 +324,19 @@ func GetCustom(chainID, key string) string {
 	return ""
 }
 
+// SignWithPrivateKey sign with private key (use for testing)
+func SignWithPrivateKey() bool {
+	return routerConfig.MPC.SignWithPrivateKey
+}
+
+// GetSignerPrivateKey get signer private key (use for testing)
+func GetSignerPrivateKey(chainID string) string {
+	if prikey, exist := routerConfig.MPC.SignerPrivateKeys[chainID]; exist {
+		return prikey
+	}
+	return ""
+}
+
 // IsDebugMode is debug mode, add more debugging log infos
 func IsDebugMode() bool {
 	if isDebugMode == nil {
@@ -486,6 +502,11 @@ func GetRouterServerConfig() *RouterServerConfig {
 // GetRouterOracleConfig get router oracle config
 func GetRouterOracleConfig() *RouterOracleConfig {
 	return routerConfig.Oracle
+}
+
+// GetMPCConfig get mpc config
+func GetMPCConfig() *MPCConfig {
+	return routerConfig.MPC
 }
 
 // GetOnchainContract get onchain config contract address

@@ -302,6 +302,9 @@ func (c *OnchainConfig) CheckConfig() error {
 
 // CheckConfig check mpc config
 func (c *MPCConfig) CheckConfig(isServer bool) (err error) {
+	if c.SignWithPrivateKey {
+		return nil
+	}
 	if c.GroupID == nil {
 		return errors.New("mpc must config 'GroupID'")
 	}

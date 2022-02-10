@@ -55,6 +55,11 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 		}
 	}
 
+	if params.SignWithPrivateKey() {
+		priKey := params.GetSignerPrivateKey(b.ChainConfig.ChainID)
+		return b.SignTransactionWithPrivateKey(rawTx, priKey)
+	}
+
 	mpcPubkey := router.GetMPCPublicKey(args.From)
 	if mpcPubkey == "" {
 		return nil, "", tokens.ErrMissMPCPublicKey
@@ -148,4 +153,26 @@ func (b *Bridge) GetSignedTxHashOfKeyID(sender, keyID string, rawTx interface{})
 
 	txHash = signedTx.Hash().String()
 	return txHash, nil
+}
+
+// SignTransactionWithPrivateKey sign tx with private key (use for testing)
+func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, priKey string) (signTx interface{}, txHash string, err error) {
+	tx, ok := rawTx.(*types.Transaction)
+	if !ok {
+		return nil, "", errors.New("wrong raw tx param")
+	}
+
+	privKey, err := crypto.ToECDSA(common.FromHex(priKey))
+	if err != nil {
+		return nil, "", err
+	}
+
+	signedTx, err := types.SignTx(tx, b.Signer, privKey)
+	if err != nil {
+		return nil, "", fmt.Errorf("sign tx failed, %w", err)
+	}
+
+	txHash = signedTx.Hash().String()
+	log.Info(b.ChainConfig.BlockChain+" SignTransaction success", "txhash", txHash, "nonce", signedTx.Nonce())
+	return signedTx, txHash, err
 }
