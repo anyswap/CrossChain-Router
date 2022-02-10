@@ -90,9 +90,10 @@ type SwapResultUpdateItems struct {
 
 // SwapInfo struct
 type SwapInfo struct {
-	ERC20SwapInfo   *ERC20SwapInfo   `bson:"routerSwapInfo,omitempty"  json:"routerSwapInfo,omitempty"`
-	NFTSwapInfo     *NFTSwapInfo     `bson:"nftSwapInfo,omitempty"     json:"nftSwapInfo,omitempty"`
-	AnyCallSwapInfo *AnyCallSwapInfo `bson:"anycallSwapInfo,omitempty" json:"anycallSwapInfo,omitempty"`
+	ERC20SwapInfo        *ERC20SwapInfo        `bson:"routerSwapInfo,omitempty"  json:"routerSwapInfo,omitempty"`
+	NFTSwapInfo          *NFTSwapInfo          `bson:"nftSwapInfo,omitempty"     json:"nftSwapInfo,omitempty"`
+	AnyCallSwapInfo      *AnyCallSwapInfo      `bson:"anycallSwapInfo,omitempty" json:"anycallSwapInfo,omitempty"`
+	CurveAnyCallSwapInfo *CurveAnyCallSwapInfo `bson:"anycallSwapInfo2,omitempty" json:"anycallSwapInfo2,omitempty"`
 }
 
 // ERC20SwapInfo struct
@@ -122,6 +123,14 @@ type AnyCallSwapInfo struct {
 	CallData   []string `bson:"callData"   json:"callData"`
 	Callbacks  []string `bson:"callbacks"  json:"callbacks"`
 	CallNonces []string `bson:"callNonces" json:"callNonces"`
+}
+
+// CurveAnyCallSwapInfo struct
+type CurveAnyCallSwapInfo struct {
+	CallFrom string `json:"callFrom"`
+	CallTo   string `json:"callTo"`
+	CallData string `json:"callData"`
+	Fallback string `json:"fallback"`
 }
 
 // GetToken get token

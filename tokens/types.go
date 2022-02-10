@@ -67,11 +67,20 @@ type AnyCallSwapInfo struct {
 	CallNonces []*big.Int      `json:"callNonces"`
 }
 
+// CurveAnyCallSwapInfo struct
+type CurveAnyCallSwapInfo struct {
+	CallFrom string        `json:"callFrom"`
+	CallTo   string        `json:"callTo"`
+	CallData hexutil.Bytes `json:"callData"`
+	Fallback string        `json:"fallback"`
+}
+
 // SwapInfo struct
 type SwapInfo struct {
-	ERC20SwapInfo   *ERC20SwapInfo   `json:"routerSwapInfo,omitempty"`
-	NFTSwapInfo     *NFTSwapInfo     `json:"nftSwapInfo,omitempty"`
-	AnyCallSwapInfo *AnyCallSwapInfo `json:"anycallSwapInfo,omitempty"`
+	ERC20SwapInfo        *ERC20SwapInfo        `json:"routerSwapInfo,omitempty"`
+	NFTSwapInfo          *NFTSwapInfo          `json:"nftSwapInfo,omitempty"`
+	AnyCallSwapInfo      *AnyCallSwapInfo      `json:"anycallSwapInfo,omitempty"`
+	CurveAnyCallSwapInfo *CurveAnyCallSwapInfo `json:"anycallSwapInfo2,omitempty"`
 }
 
 // GetTokenID get tokenID
