@@ -354,6 +354,7 @@ func (c *MPCNodeConfig) CheckConfig(isServer bool) (err error) {
 // CheckConfig check extra config
 func (c *ExtraConfig) CheckConfig() (err error) {
 	initCallByContractWhitelist()
+	initCallByContractCodeHashWhitelist()
 	initBigValueWhitelist()
 	initDynamicFeeTxEnabledChains()
 	initEnableCheckTxBlockHashChains()
@@ -377,6 +378,7 @@ func (c *ExtraConfig) CheckConfig() (err error) {
 		"minReserveFee", c.MinReserveFee,
 		"allowCallByContract", c.AllowCallByContract,
 		"callByContractWhitelist", c.CallByContractWhitelist,
+		"callByContractCodeHashWhitelist", c.CallByContractCodeHashWhitelist,
 		"bigValueWhitelist", c.BigValueWhitelist,
 		"dynamicFeeTxEnabledChains", c.DynamicFeeTxEnabledChains,
 		"enableCheckTxBlockHashChains", c.EnableCheckTxBlockHashChains,

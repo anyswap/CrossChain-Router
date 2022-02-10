@@ -170,6 +170,13 @@ func (b *Bridge) checkCallByContract(swapInfo *tokens.SwapTxInfo) error {
 				return nil
 			}
 		}
+		if params.HasCallByContractCodeHashWhitelist(b.ChainConfig.ChainID) {
+			codehash := b.GetContractCodeHash(common.HexToAddress(txTo))
+			if codehash != (common.Hash{}) &&
+				params.IsInCallByContractCodeHashWhitelist(b.ChainConfig.ChainID, codehash.String()) {
+				return nil
+			}
+		}
 		log.Warn("tx to with wrong contract", "txTo", txTo, "want", routerContract)
 		return tokens.ErrTxWithWrongContract
 	}

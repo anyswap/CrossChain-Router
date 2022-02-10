@@ -14,6 +14,9 @@ var (
 
 	eip1167ProxyCodePattern = regexp.MustCompile("^0x363d3d373d3d3d363d73([0-9a-fA-F]{40})5af43d82803e903d91602b57fd5bf3$")
 	eip1167ProxyCodeLen     = 45 // bytes
+
+	contractCodeHashes    = make(map[common.Address]common.Hash)
+	maxContractCodeHashes = 2000
 )
 
 // IsValidAddress check address
@@ -36,14 +39,9 @@ func (b *Bridge) IsValidAddress(address string) bool {
 
 // IsContractAddress is contract address
 func (b *Bridge) IsContractAddress(address string) (bool, error) {
-	var code []byte
-	var err error
-	for i := 0; i < retryRPCCount; i++ {
-		code, err = b.GetCode(address)
-		if err == nil {
-			return len(code) > 1, nil // unexpect RSK getCode return 0x00
-		}
-		time.Sleep(retryRPCInterval)
+	code, err := b.getContractCode(address)
+	if err == nil {
+		return len(code) > 1, nil // unexpect RSK getCode return 0x00
 	}
 	return false, err
 }
@@ -60,17 +58,8 @@ func (b *Bridge) GetEIP1167Master(proxy common.Address) (master common.Address) 
 
 	proxyAddr := proxy.String()
 
-	var code []byte
-	var err error
-	for i := 0; i < retryRPCCount; i++ {
-		code, err = b.GetCode(proxyAddr)
-		if err == nil && len(code) > 1 {
-			break
-		}
-		log.Warn("GetEIP1167Master call getCode failed", "address", proxy, "err", err)
-		time.Sleep(retryRPCInterval)
-	}
-	if len(code) != eip1167ProxyCodeLen {
+	code, err := b.getContractCode(proxyAddr)
+	if err != nil || len(code) != eip1167ProxyCodeLen {
 		return master
 	}
 
@@ -80,4 +69,36 @@ func (b *Bridge) GetEIP1167Master(proxy common.Address) (master common.Address) 
 		eip1167Proxies[proxy] = master
 	}
 	return master
+}
+
+// GetContractCodeHash get contract code hash
+func (b *Bridge) GetContractCodeHash(contract common.Address) common.Hash {
+	codeHash, exist := contractCodeHashes[contract]
+	if exist {
+		return codeHash
+	}
+	if len(contractCodeHashes) > maxContractCodeHashes {
+		contractCodeHashes = nil
+	}
+
+	code, err := b.getContractCode(contract.String())
+	if err == nil && len(code) > 1 {
+		codeHash = common.Keccak256Hash(code)
+		contractCodeHashes[contract] = codeHash
+	}
+	return codeHash
+}
+
+func (b *Bridge) getContractCode(contract string) (code []byte, err error) {
+	for i := 0; i < retryRPCCount; i++ {
+		code, err = b.GetCode(contract)
+		if err == nil && len(code) > 1 {
+			return code, nil
+		}
+		if err != nil {
+			log.Warn("get contract code failed", "contract", contract, "err", err)
+		}
+		time.Sleep(retryRPCInterval)
+	}
+	return code, err
 }

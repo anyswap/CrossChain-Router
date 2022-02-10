@@ -25,8 +25,9 @@ var (
 	fixedGasPriceMap    = make(map[string]*big.Int) // key is chainID
 	maxGasPriceMap      = make(map[string]*big.Int) // key is chainID
 
-	callByContractWhitelist map[string]map[string]struct{} // chainID -> caller
-	bigValueWhitelist       map[string]map[string]struct{} // tokenID -> caller
+	callByContractWhitelist         map[string]map[string]struct{} // chainID -> caller
+	callByContractCodeHashWhitelist map[string]map[string]struct{} // chainID -> codehash
+	bigValueWhitelist               map[string]map[string]struct{} // tokenID -> caller
 
 	dynamicFeeTxEnabledChains            map[string]struct{}
 	enableCheckTxBlockHashChains         map[string]struct{}
@@ -109,10 +110,11 @@ type ExtraConfig struct {
 	GetAcceptListInterval uint64 `toml:",omitempty" json:",omitempty"`
 	PendingInvalidAccept  bool   `toml:",omitempty" json:",omitempty"`
 
-	AllowCallByContract     bool                `toml:",omitempty" json:",omitempty"`
-	CheckEIP1167Master      bool                `toml:",omitempty" json:",omitempty"`
-	CallByContractWhitelist map[string][]string `toml:",omitempty" json:",omitempty"` // chainID -> whitelist
-	BigValueWhitelist       map[string][]string `toml:",omitempty" json:",omitempty"` // tokenID -> whitelist
+	AllowCallByContract             bool                `toml:",omitempty" json:",omitempty"`
+	CheckEIP1167Master              bool                `toml:",omitempty" json:",omitempty"`
+	CallByContractWhitelist         map[string][]string `toml:",omitempty" json:",omitempty"` // chainID -> whitelist
+	CallByContractCodeHashWhitelist map[string][]string `toml:",omitempty" json:",omitempty"` // chainID -> whitelist
+	BigValueWhitelist               map[string][]string `toml:",omitempty" json:",omitempty"` // tokenID -> whitelist
 
 	DynamicFeeTxEnabledChains            []string `toml:",omitempty" json:",omitempty"`
 	EnableCheckTxBlockHashChains         []string `toml:",omitempty" json:",omitempty"`
@@ -392,6 +394,43 @@ func IsInCallByContractWhitelist(chainID, caller string) bool {
 		return false
 	}
 	_, exist = whitelist[strings.ToLower(caller)]
+	return exist
+}
+
+func initCallByContractCodeHashWhitelist() {
+	callByContractCodeHashWhitelist = make(map[string]map[string]struct{})
+	if GetExtraConfig() == nil || len(GetExtraConfig().CallByContractCodeHashWhitelist) == 0 {
+		return
+	}
+	for cid, whitelist := range GetExtraConfig().CallByContractCodeHashWhitelist {
+		if _, err := common.GetBigIntFromStr(cid); err != nil {
+			log.Fatal("initCallByContractCodeHashWhitelist wrong chainID", "chainID", cid, "err", err)
+		}
+		whitelistMap := make(map[string]struct{}, len(whitelist))
+		for _, codehash := range whitelist {
+			if !common.IsHexHash(codehash) {
+				log.Fatal("initCallByContractCodeHashWhitelist wrong code hash", "chainID", cid, "codehash", codehash)
+			}
+			whitelistMap[codehash] = struct{}{}
+		}
+		callByContractCodeHashWhitelist[cid] = whitelistMap
+	}
+	log.Info("initCallByContractCodeHashWhitelist success")
+}
+
+// HasCallByContractCodeHashWhitelist has call by contract code hash whitelist
+func HasCallByContractCodeHashWhitelist(chainID string) bool {
+	whitelist, exist := callByContractCodeHashWhitelist[chainID]
+	return exist && len(whitelist) > 0
+}
+
+// IsInCallByContractCodeHashWhitelist is in call by contract code hash whitelist
+func IsInCallByContractCodeHashWhitelist(chainID, codehash string) bool {
+	whitelist, exist := callByContractCodeHashWhitelist[chainID]
+	if !exist {
+		return false
+	}
+	_, exist = whitelist[codehash]
 	return exist
 }
 
