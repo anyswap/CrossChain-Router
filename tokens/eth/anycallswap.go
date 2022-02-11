@@ -27,10 +27,6 @@ var (
 	CurveAnyExecFuncHash = common.FromHex("0xb4c5dbd0")
 )
 
-const (
-	curveAnycallSubType = "curve"
-)
-
 // nolint:dupl // ok
 func (b *Bridge) registerAnyCallSwapTx(txHash string, logIndex int) ([]*tokens.SwapTxInfo, []error) {
 	commonInfo := &tokens.SwapTxInfo{}
@@ -118,7 +114,7 @@ func (b *Bridge) verifyAnyCallSwapTx(txHash string, logIndex int, allowUnstable 
 
 func getCallFrom(swapInfo *tokens.SwapTxInfo) string {
 	switch params.GetSwapSubType() {
-	case curveAnycallSubType:
+	case tokens.CurveAnycallSubType:
 		return swapInfo.CurveAnyCallSwapInfo.CallFrom
 	default:
 		return swapInfo.AnyCallSwapInfo.CallFrom
@@ -129,7 +125,7 @@ func (b *Bridge) verifyAnyCallSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types
 	swapInfo.To = rlog.Address.LowerHex() // To
 
 	switch params.GetSwapSubType() {
-	case curveAnycallSubType:
+	case tokens.CurveAnycallSubType:
 		err = b.parseCurveAnyCallSwapTxLog(swapInfo, rlog)
 	default:
 		err = b.parseAnyCallSwapTxLog(swapInfo, rlog)
@@ -248,7 +244,7 @@ func (b *Bridge) buildAnyCallSwapTxInput(args *tokens.BuildTxArgs) (err error) {
 
 	var input []byte
 	switch params.GetSwapSubType() {
-	case curveAnycallSubType:
+	case tokens.CurveAnycallSubType:
 		funcHash := CurveAnyExecFuncHash
 		anycallSwapInfo := args.CurveAnyCallSwapInfo
 		if anycallSwapInfo == nil {

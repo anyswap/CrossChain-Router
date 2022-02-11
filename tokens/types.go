@@ -20,6 +20,11 @@ const (
 	MaxValidSwapType
 )
 
+// SwapSubType constants
+const (
+	CurveAnycallSubType = "curve"
+)
+
 func (s SwapType) String() string {
 	switch s {
 	case ERC20SwapType:

@@ -24,10 +24,13 @@ func (b *Bridge) verifyTransactionReceiver(rawTx interface{}, tokenID string) (*
 	if tx.To() == nil || *tx.To() == (common.Address{}) {
 		return nil, errors.New("[sign] tx receiver is empty")
 	}
-	multichainToken := router.GetCachedMultichainToken(tokenID, b.ChainConfig.ChainID)
-	if multichainToken == "" {
-		log.Warn("get multichain token failed", "tokenID", tokenID, "chainID", b.ChainConfig.ChainID)
-		return nil, tokens.ErrMissTokenConfig
+	multichainToken := ""
+	if !tokens.IsAnyCallRouter() {
+		multichainToken = router.GetCachedMultichainToken(tokenID, b.ChainConfig.ChainID)
+		if multichainToken == "" {
+			log.Warn("get multichain token failed", "tokenID", tokenID, "chainID", b.ChainConfig.ChainID)
+			return nil, tokens.ErrMissTokenConfig
+		}
 	}
 	checkReceiver := b.GetRouterContract(multichainToken)
 	if checkReceiver == "" {
