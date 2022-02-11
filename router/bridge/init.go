@@ -25,15 +25,18 @@ func InitRouterBridges(isServer bool) {
 	client.InitHTTPClient()
 	router.InitRouterConfigClients()
 
-	chainIDs, err := router.GetAllChainIDs()
+	allChainIDs, err := router.GetAllChainIDs()
 	if err != nil {
 		log.Fatal("call GetAllChainIDs failed", "err", err)
 	}
 	// get rid of blacked chainIDs
-	for i, chainID := range chainIDs {
+	chainIDs := make([]*big.Int, 0, len(allChainIDs))
+	for _, chainID := range allChainIDs {
 		if params.IsChainIDInBlackList(chainID.String()) {
-			chainIDs = append(chainIDs[:i], chainIDs[i+1:]...)
+			log.Debugf("ingore chainID %v in black list", chainID)
+			continue
 		}
+		chainIDs = append(chainIDs, chainID)
 	}
 	router.AllChainIDs = chainIDs
 	log.Info("get all chain ids success", "chainIDs", chainIDs)
@@ -41,15 +44,18 @@ func InitRouterBridges(isServer bool) {
 		log.Fatal("empty chain IDs")
 	}
 
-	tokenIDs, err := router.GetAllTokenIDs()
+	allTokenIDs, err := router.GetAllTokenIDs()
 	if err != nil {
 		log.Fatal("call GetAllTokenIDs failed", "err", err)
 	}
 	// get rid of blacked tokenIDs
-	for i, tokenID := range tokenIDs {
+	tokenIDs := make([]string, 0, len(allTokenIDs))
+	for _, tokenID := range allTokenIDs {
 		if params.IsTokenIDInBlackList(tokenID) {
-			tokenIDs = append(tokenIDs[:i], tokenIDs[i+1:]...)
+			log.Debugf("ingore tokenID %v in black list", tokenID)
+			continue
 		}
+		tokenIDs = append(tokenIDs, tokenID)
 	}
 	router.AllTokenIDs = tokenIDs
 	log.Info("get all token ids success", "tokenIDs", tokenIDs)
@@ -58,10 +64,6 @@ func InitRouterBridges(isServer bool) {
 	}
 
 	for _, chainID := range chainIDs {
-		if params.IsChainIDInBlackList(chainID.String()) {
-			log.Warnf("ingore chainID %v in black list", chainID)
-			continue
-		}
 		bridge := NewCrossChainBridge(chainID)
 
 		bridge.InitGatewayConfig(chainID)

@@ -127,6 +127,9 @@ func (s *RouterServerConfig) CheckConfig() error {
 		}
 		chainIDBlacklistMap[key] = struct{}{}
 	}
+	if len(chainIDBlacklistMap) > 0 {
+		log.Infof("chainID blacklist is %v", chainIDBlacklistMap)
+	}
 	for _, tokenID := range s.TokenIDBlackList {
 		if tokenID == "" {
 			return errors.New("empty token id in black list")
@@ -137,6 +140,9 @@ func (s *RouterServerConfig) CheckConfig() error {
 		}
 		tokenIDBlacklistMap[key] = struct{}{}
 	}
+	if len(tokenIDBlacklistMap) > 0 {
+		log.Infof("tokenID blacklist is %v", tokenIDBlacklistMap)
+	}
 	for _, account := range s.AccountBlackList {
 		if account == "" {
 			return errors.New("empty account in black list")
@@ -146,6 +152,9 @@ func (s *RouterServerConfig) CheckConfig() error {
 			return fmt.Errorf("duplicate account '%v' in black list", key)
 		}
 		accountBlacklistMap[key] = struct{}{}
+	}
+	if len(accountBlacklistMap) > 0 {
+		log.Infof("account blacklist is %v", accountBlacklistMap)
 	}
 	for chainID, fixedGasPriceStr := range s.FixedGasPrice {
 		biChainID, ok := new(big.Int).SetString(chainID, 0)

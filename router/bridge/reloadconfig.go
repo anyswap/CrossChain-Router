@@ -53,17 +53,33 @@ func ReloadRouterConfig() bool {
 	chainIDs := router.AllChainIDs
 	log.Info("[reload] get all chain ids success", "chainIDs", chainIDs)
 
-	tokenIDs, err := router.GetAllTokenIDs()
+	oldAllTokenIDs := router.AllTokenIDs
+
+	allTokenIDs, err := router.GetAllTokenIDs()
 	if err != nil {
 		log.Error("[reload] call GetAllTokenIDs failed", "err", err)
 		return false
 	}
+
+	// get rid of blacked tokenIDs
+	tokenIDs := make([]string, 0, len(allTokenIDs))
+	for _, tokenID := range allTokenIDs {
+		if params.IsTokenIDInBlackList(tokenID) {
+			log.Debugf("ingore tokenID %v in black list", tokenID)
+			continue
+		}
+		tokenIDs = append(tokenIDs, tokenID)
+	}
+	router.AllTokenIDs = tokenIDs
 	log.Info("[reload] get all token ids success", "tokenIDs", tokenIDs)
+	if len(router.AllTokenIDs) == 0 && !tokens.IsAnyCallRouter() {
+		log.Error("[reload] empty token IDs")
+	}
 
 	removedTokenIDs := make([]string, 0)
-	for _, tokenID := range router.AllTokenIDs {
+	for _, tokenID := range oldAllTokenIDs {
 		exist := false
-		for _, newTokenIDs := range tokenIDs {
+		for _, newTokenIDs := range allTokenIDs {
 			if tokenID == newTokenIDs {
 				exist = true
 				break
@@ -75,16 +91,6 @@ func ReloadRouterConfig() bool {
 	}
 	if len(removedTokenIDs) > 0 {
 		log.Info("[reload] remove token ids", "removedTokenIDs", removedTokenIDs)
-	}
-	// get rid of blacked tokenIDs
-	for i, tokenID := range tokenIDs {
-		if params.IsTokenIDInBlackList(tokenID) {
-			tokenIDs = append(tokenIDs[:i], tokenIDs[i+1:]...)
-		}
-	}
-	router.AllTokenIDs = tokenIDs
-	if len(router.AllTokenIDs) == 0 && !tokens.IsAnyCallRouter() {
-		log.Error("[reload] empty token IDs")
 	}
 
 	for _, chainID := range chainIDs {
