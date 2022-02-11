@@ -11,7 +11,6 @@ import (
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
-	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 
@@ -693,10 +692,6 @@ func RouterAdminPassBigValue(fromChainID, txid string, logIndex int) error {
 
 // RouterAdminReswap reswap
 func RouterAdminReswap(fromChainID, txid string, logIndex int) error {
-	if tokens.IsAnyCallRouter() &&
-		params.GetSwapSubType() == tokens.CurveAnycallSubType {
-		return fmt.Errorf("forbid reswap")
-	}
 	swap, err := FindRouterSwap(fromChainID, txid, logIndex)
 	if err != nil {
 		return err
