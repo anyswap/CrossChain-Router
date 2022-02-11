@@ -79,6 +79,9 @@ func (b *Bridge) InitChainConfig(chainID *big.Int) {
 	if err = chainCfg.CheckConfig(); err != nil {
 		log.Fatal("check chain config failed", "chainID", chainID, "err", err)
 	}
+	if err = b.InitRouterInfo(chainID, chainCfg.RouterContract); err != nil {
+		log.Fatal("init chain router info failed", "routerContract", chainCfg.RouterContract, "err", err)
+	}
 	b.SetChainConfig(chainCfg)
 	b.initSigner(chainID)
 	log.Info("init chain config success", "blockChain", chainCfg.BlockChain, "chainID", chainID)
@@ -98,6 +101,61 @@ func (b *Bridge) initSigner(chainID *big.Int) {
 	} else {
 		b.Signer = types.MakeSigner("EIP155", signerChainID)
 	}
+}
+
+// InitRouterInfo init router info
+func (b *Bridge) InitRouterInfo(biChainID *big.Int, routerContract string) (err error) {
+	if routerContract == "" {
+		return nil
+	}
+	var routerFactory, routerWNative string
+	if tokens.IsERC20Router() {
+		routerFactory, err = b.GetFactoryAddress(routerContract)
+		if err != nil {
+			log.Warn("get router factory address failed", "routerContract", routerContract, "err", err)
+		}
+		routerWNative, err = b.GetWNativeAddress(routerContract)
+		if err != nil {
+			log.Warn("get router wNative address failed", "routerContract", routerContract, "err", err)
+		}
+	}
+	routerMPC, err := b.GetMPCAddress(routerContract)
+	if err != nil {
+		log.Warn("get router mpc address failed", "routerContract", routerContract, "err", err)
+		return err
+	}
+	if common.HexToAddress(routerMPC) == (common.Address{}) {
+		log.Warn("get router mpc address return an empty address", "routerContract", routerContract)
+		return fmt.Errorf("empty router mpc address")
+	}
+	log.Info("get router mpc address success", "routerContract", routerContract, "routerMPC", routerMPC)
+	routerMPCPubkey, err := router.GetMPCPubkey(routerMPC)
+	if err != nil {
+		log.Warn("get mpc public key failed", "mpc", routerMPC, "err", err)
+		return err
+	}
+	if err = tokens.VerifyMPCPubKey(routerMPC, routerMPCPubkey); err != nil {
+		log.Warn("verify mpc public key failed", "mpc", routerMPC, "mpcPubkey", routerMPCPubkey, "err", err)
+		return err
+	}
+	router.SetRouterInfo(routerContract, routerMPC, routerFactory, routerWNative)
+	router.SetMPCPublicKey(routerMPC, routerMPCPubkey)
+
+	chainID := biChainID.String()
+
+	log.Info(fmt.Sprintf("[%5v] init router info success", chainID),
+		"routerContract", routerContract, "routerMPC", routerMPC,
+		"routerFactory", routerFactory, "routerWNative", routerWNative)
+
+	if mongodb.HasClient() {
+		nextSwapNonce, err := mongodb.FindNextSwapNonce(chainID, strings.ToLower(routerMPC))
+		if err == nil {
+			log.Info("init next swap nonce from db", "chainID", chainID, "mpc", routerMPC, "nonce", nextSwapNonce)
+			b.InitSwapNonce(routerMPC, nextSwapNonce)
+		}
+	}
+
+	return nil
 }
 
 // InitTokenConfig impl
@@ -138,6 +196,9 @@ func (b *Bridge) InitTokenConfig(tokenID string, chainID *big.Int) {
 	if routerContract == "" {
 		routerContract = b.ChainConfig.RouterContract
 	}
+	if err = b.InitRouterInfo(chainID, tokenCfg.RouterContract); err != nil {
+		log.Fatal("init token router info failed", "routerContract", tokenCfg.RouterContract, "err", err)
+	}
 
 	var underlying string
 	if tokens.IsERC20Router() {
@@ -169,47 +230,8 @@ func (b *Bridge) InitTokenConfig(tokenID string, chainID *big.Int) {
 	}
 	tokensMap[chainID.String()] = tokenAddr
 
-	var routerFactory, routerWNative string
-	if tokens.IsERC20Router() {
-		routerFactory, err = b.GetFactoryAddress(routerContract)
-		if err != nil {
-			log.Warn("get router factory address failed", "routerContract", routerContract, "err", err)
-		}
-		routerWNative, err = b.GetWNativeAddress(routerContract)
-		if err != nil {
-			log.Warn("get router wNative address failed", "routerContract", routerContract, "err", err)
-		}
-	}
-	routerMPC, err := b.GetMPCAddress(routerContract)
-	if err != nil {
-		log.Fatal("get router mpc address failed", "routerContract", routerContract, "err", err)
-	}
-	if common.HexToAddress(routerMPC) == (common.Address{}) {
-		log.Fatal("get router mpc address return an empty address", "routerContract", routerContract)
-	}
-	log.Info("get router mpc address success", "routerContract", routerContract, "routerMPC", routerMPC)
-	routerMPCPubkey, err := router.GetMPCPubkey(routerMPC)
-	if err != nil {
-		log.Fatal("get mpc public key failed", "mpc", routerMPC, "err", err)
-	}
-	if err = tokens.VerifyMPCPubKey(routerMPC, routerMPCPubkey); err != nil {
-		log.Fatal("verify mpc public key failed", "mpc", routerMPC, "mpcPubkey", routerMPCPubkey, "err", err)
-	}
-	router.SetRouterInfo(routerContract, routerMPC, routerFactory, routerWNative)
-	router.SetMPCPublicKey(routerMPC, routerMPCPubkey)
-
 	log.Info(fmt.Sprintf("[%5v] init '%v' token config success", chainID, tokenID),
-		"tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "underlying", underlying,
-		"routerContract", routerContract, "routerMPC", routerMPC,
-		"routerFactory", routerFactory, "routerWNative", routerWNative)
-
-	if mongodb.HasClient() {
-		nextSwapNonce, err := mongodb.FindNextSwapNonce(chainID.String(), strings.ToLower(routerMPC))
-		if err == nil {
-			log.Info("init next swap nonce from db", "chainID", chainID, "mpc", routerMPC, "nonce", nextSwapNonce)
-			b.InitSwapNonce(routerMPC, nextSwapNonce)
-		}
-	}
+		"tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "underlying", underlying)
 }
 
 // ReloadChainConfig reload chain config
@@ -229,6 +251,10 @@ func (b *Bridge) ReloadChainConfig(chainID *big.Int) {
 	}
 	if err = chainCfg.CheckConfig(); err != nil {
 		log.Error("[reload] check chain config failed", "chainID", chainID, "err", err)
+		return
+	}
+	if err = b.InitRouterInfo(chainID, chainCfg.RouterContract); err != nil {
+		log.Error("init chain router info failed", "routerContract", chainCfg.RouterContract, "err", err)
 		return
 	}
 	b.SetChainConfig(chainCfg)
@@ -279,6 +305,10 @@ func (b *Bridge) ReloadTokenConfig(tokenID string, chainID *big.Int) {
 	if routerContract == "" {
 		routerContract = b.ChainConfig.RouterContract
 	}
+	if err = b.InitRouterInfo(chainID, tokenCfg.RouterContract); err != nil {
+		log.Error("init token router info failed", "routerContract", tokenCfg.RouterContract, "err", err)
+		return
+	}
 
 	var underlying string
 	if tokens.IsERC20Router() {
@@ -314,37 +344,8 @@ func (b *Bridge) ReloadTokenConfig(tokenID string, chainID *big.Int) {
 	}
 	tokensMap[chainID.String()] = tokenAddr
 
-	var routerFactory, routerWNative string
-	if tokens.IsERC20Router() {
-		routerFactory, err = b.GetFactoryAddress(routerContract)
-		if err != nil {
-			log.Warn("[reload] get router factory address failed", "routerContract", routerContract, "err", err)
-		}
-		routerWNative, err = b.GetWNativeAddress(routerContract)
-		if err != nil {
-			log.Warn("get router wNative address failed", "routerContract", routerContract, "err", err)
-		}
-	}
-	routerMPC, err := b.GetMPCAddress(routerContract)
-	if err != nil {
-		log.Error("[reload] get router mpc address failed", "routerContract", routerContract, "err", err)
-		return
-	}
-	routerMPCPubkey, err := router.GetMPCPubkey(routerMPC)
-	if err != nil {
-		log.Error("[reload] get mpc public key failed", "mpc", routerMPC, "err", err)
-		return
-	}
-	if err = tokens.VerifyMPCPubKey(routerMPC, routerMPCPubkey); err != nil {
-		log.Error("[reload] verify mpc public key failed", "mpc", routerMPC, "mpcPubkey", routerMPCPubkey, "err", err)
-		return
-	}
-	router.SetRouterInfo(routerContract, routerMPC, routerFactory, routerWNative)
-	router.SetMPCPublicKey(routerMPC, routerMPCPubkey)
 	log.Info("reload token config success", "chainID", chainID, "tokenID", tokenID,
-		"tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "underlying", underlying,
-		"routerContract", routerContract, "routerMPC", routerMPC,
-		"routerFactory", routerFactory, "routerWNative", routerWNative)
+		"tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "underlying", underlying)
 }
 
 func isStandardTokenVersion(tokenVer uint64) bool {
