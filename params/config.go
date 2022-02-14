@@ -87,6 +87,7 @@ type RouterConfig struct {
 
 	Identifier  string
 	SwapType    string
+	SwapSubType string
 	Onchain     *OnchainConfig
 	Gateways    map[string][]string // key is chain ID
 	GatewaysExt map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
@@ -208,6 +209,11 @@ func GetIdentifier() string {
 // GetSwapType get router swap type
 func GetSwapType() string {
 	return GetRouterConfig().SwapType
+}
+
+// GetSwapSubType get router swap sub type
+func GetSwapSubType() string {
+	return GetRouterConfig().SwapSubType
 }
 
 // IsAutoSwapNonceEnabled is auto swap nonce enabled

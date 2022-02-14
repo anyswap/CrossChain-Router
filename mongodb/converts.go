@@ -52,6 +52,14 @@ func ConvertToSwapInfo(info *tokens.SwapInfo) SwapInfo {
 			Callbacks:  anycallSwapInfo.Callbacks,
 			CallNonces: fromBigIntSlice(anycallSwapInfo.CallNonces),
 		}
+	case info.CurveAnyCallSwapInfo != nil:
+		anycallSwapInfo := info.CurveAnyCallSwapInfo
+		swapinfo.CurveAnyCallSwapInfo = &CurveAnyCallSwapInfo{
+			CallFrom: anycallSwapInfo.CallFrom,
+			CallTo:   anycallSwapInfo.CallTo,
+			CallData: common.ToHex(anycallSwapInfo.CallData),
+			Fallback: anycallSwapInfo.Fallback,
+		}
 	}
 	return swapinfo
 }
@@ -108,6 +116,14 @@ func ConvertFromSwapInfo(swapinfo *SwapInfo) (tokens.SwapInfo, error) {
 			CallData:   toHexBytesSlice(anyCallSwapInfo.CallData),
 			Callbacks:  anyCallSwapInfo.Callbacks,
 			CallNonces: nonces,
+		}
+	case swapinfo.CurveAnyCallSwapInfo != nil:
+		anyCallSwapInfo := swapinfo.CurveAnyCallSwapInfo
+		info.CurveAnyCallSwapInfo = &tokens.CurveAnyCallSwapInfo{
+			CallFrom: anyCallSwapInfo.CallFrom,
+			CallTo:   anyCallSwapInfo.CallTo,
+			CallData: common.FromHex(anyCallSwapInfo.CallData),
+			Fallback: anyCallSwapInfo.Fallback,
 		}
 	}
 	return info, nil

@@ -1,7 +1,9 @@
 # router swap identifier, must have prefix 'routerswap'
 Identifier = "routerswap#20210326"
-# router swap type (eg. erc20swap, nftswap)
+# router swap type (eg. erc20swap, nftswap, anycallswap)
 SwapType = "erc20swap"
+# default subtype is empty. anycall has subtype of 'curve'
+SwapSubType = ""
 
 # router sever config (server only)
 [Server]

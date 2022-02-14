@@ -3,6 +3,7 @@ package eth
 import (
 	"bytes"
 	"errors"
+	"math/big"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -17,14 +18,18 @@ import (
 
 // anycall lot topics and func hashes
 var (
+	// LogAnyCall(address,address[],bytes[],address[],uint256[],uint256,uint256)
 	LogAnyCallTopic = common.FromHex("0x3d1b3d059223895589208a5541dce543eab6d5942b3b1129231a942d1c47bc45")
+	AnyExecFuncHash = common.FromHex("0x32f29022")
 
-	AnyCallFuncHash = common.FromHex("0x32f29022")
+	// LogAnyCall(address,address,bytes,address,uint256)
+	LogCurveAnyCallTopic = common.FromHex("0x9ca1de98ebed0a9c38ace93d3ca529edacbbe199cf1b6f0f416ae9b724d4a81c")
+	CurveAnyExecFuncHash = common.FromHex("0xb4c5dbd0")
 )
 
 // nolint:dupl // ok
 func (b *Bridge) registerAnyCallSwapTx(txHash string, logIndex int) ([]*tokens.SwapTxInfo, []error) {
-	commonInfo := &tokens.SwapTxInfo{SwapInfo: tokens.SwapInfo{AnyCallSwapInfo: &tokens.AnyCallSwapInfo{}}}
+	commonInfo := &tokens.SwapTxInfo{}
 	commonInfo.SwapType = tokens.AnyCallSwapType // SwapType
 	commonInfo.Hash = strings.ToLower(txHash)    // Hash
 	commonInfo.LogIndex = logIndex               // LogIndex
@@ -49,7 +54,6 @@ func (b *Bridge) registerAnyCallSwapTx(txHash string, logIndex int) ([]*tokens.S
 	for i := startIndex; i < endIndex; i++ {
 		swapInfo := &tokens.SwapTxInfo{}
 		*swapInfo = *commonInfo
-		swapInfo.AnyCallSwapInfo = &tokens.AnyCallSwapInfo{}
 		swapInfo.LogIndex = i // LogIndex
 		err := b.verifyAnyCallSwapTxLog(swapInfo, receipt.Logs[i])
 		switch {
@@ -73,7 +77,7 @@ func (b *Bridge) registerAnyCallSwapTx(txHash string, logIndex int) ([]*tokens.S
 }
 
 func (b *Bridge) verifyAnyCallSwapTx(txHash string, logIndex int, allowUnstable bool) (*tokens.SwapTxInfo, error) {
-	swapInfo := &tokens.SwapTxInfo{SwapInfo: tokens.SwapInfo{AnyCallSwapInfo: &tokens.AnyCallSwapInfo{}}}
+	swapInfo := &tokens.SwapTxInfo{}
 	swapInfo.SwapType = tokens.AnyCallSwapType // SwapType
 	swapInfo.Hash = strings.ToLower(txHash)    // Hash
 	swapInfo.LogIndex = logIndex               // LogIndex
@@ -102,21 +106,30 @@ func (b *Bridge) verifyAnyCallSwapTx(txHash string, logIndex int, allowUnstable 
 			"from", swapInfo.From, "to", swapInfo.To, "txid", txHash, "logIndex", logIndex,
 			"height", swapInfo.Height, "timestamp", swapInfo.Timestamp,
 			"fromChainID", swapInfo.FromChainID, "toChainID", swapInfo.ToChainID,
-			"callFrom", swapInfo.AnyCallSwapInfo.CallFrom)
+			"callFrom", getCallFrom(swapInfo))
 	}
 
 	return swapInfo, nil
 }
 
+func getCallFrom(swapInfo *tokens.SwapTxInfo) string {
+	switch params.GetSwapSubType() {
+	case tokens.CurveAnycallSubType:
+		return swapInfo.CurveAnyCallSwapInfo.CallFrom
+	default:
+		return swapInfo.AnyCallSwapInfo.CallFrom
+	}
+}
+
 func (b *Bridge) verifyAnyCallSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
 	swapInfo.To = rlog.Address.LowerHex() // To
 
-	logTopic := rlog.Topics[0].Bytes()
-	if !bytes.Equal(logTopic, LogAnyCallTopic) {
-		return tokens.ErrSwapoutLogNotFound
+	switch params.GetSwapSubType() {
+	case tokens.CurveAnycallSubType:
+		err = b.parseCurveAnyCallSwapTxLog(swapInfo, rlog)
+	default:
+		err = b.parseAnyCallSwapTxLog(swapInfo, rlog)
 	}
-
-	err = b.parseAnyCallSwapTxLog(swapInfo, rlog)
 	if err != nil {
 		log.Info(b.ChainConfig.BlockChain+" b.verifyAnyCallSwapTxLog fail", "tx", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "err", err)
 		return err
@@ -128,7 +141,42 @@ func (b *Bridge) verifyAnyCallSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types
 
 	routerContract := b.GetRouterContract("")
 	if !common.IsEqualIgnoreCase(rlog.Address.LowerHex(), routerContract) {
+		log.Warn("swap tx with wrong contract", "log.Address", rlog.Address.LowerHex(), "routerContract", routerContract)
 		return tokens.ErrTxWithWrongContract
+	}
+	return nil
+}
+
+func (b *Bridge) parseCurveAnyCallSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
+	logTopics := rlog.Topics
+	if len(logTopics) != 4 {
+		return tokens.ErrTxWithWrongTopics
+	}
+	logTopic := rlog.Topics[0].Bytes()
+	if !bytes.Equal(logTopic, LogCurveAnyCallTopic) {
+		return tokens.ErrSwapoutLogNotFound
+	}
+
+	logData := *rlog.Data
+	if len(logData) < 96 {
+		return abicoder.ErrParseDataError
+	}
+
+	swapInfo.SwapInfo = tokens.SwapInfo{CurveAnyCallSwapInfo: &tokens.CurveAnyCallSwapInfo{}}
+	anycallSwapInfo := swapInfo.CurveAnyCallSwapInfo
+
+	anycallSwapInfo.CallFrom = common.BytesToAddress(logTopics[1].Bytes()).LowerHex()
+	anycallSwapInfo.CallTo = common.BytesToAddress(logTopics[2].Bytes()).LowerHex()
+	swapInfo.ToChainID = new(big.Int).SetBytes(logTopics[3].Bytes())
+	swapInfo.FromChainID = b.ChainConfig.GetChainID()
+
+	anycallSwapInfo.CallData, err = abicoder.ParseBytesInData(logData, 0)
+	if err != nil {
+		return err
+	}
+	anycallSwapInfo.Fallback = common.BytesToAddress(common.GetData(logData, 32, 32)).LowerHex()
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -138,11 +186,17 @@ func (b *Bridge) parseAnyCallSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.
 	if len(logTopics) != 2 {
 		return tokens.ErrTxWithWrongTopics
 	}
+	logTopic := rlog.Topics[0].Bytes()
+	if !bytes.Equal(logTopic, LogAnyCallTopic) {
+		return tokens.ErrSwapoutLogNotFound
+	}
+
 	logData := *rlog.Data
 	if len(logData) < 320 {
 		return abicoder.ErrParseDataError
 	}
 
+	swapInfo.SwapInfo = tokens.SwapInfo{AnyCallSwapInfo: &tokens.AnyCallSwapInfo{}}
 	anycallSwapInfo := swapInfo.AnyCallSwapInfo
 
 	anycallSwapInfo.CallFrom = common.BytesToAddress(logTopics[1].Bytes()).LowerHex()
@@ -172,10 +226,6 @@ func (b *Bridge) parseAnyCallSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.
 }
 
 func (b *Bridge) checkAnyCallSwapInfo(swapInfo *tokens.SwapTxInfo) error {
-	err := b.checkCallByContract(swapInfo)
-	if err != nil {
-		return err
-	}
 	if swapInfo.FromChainID.String() != b.ChainConfig.ChainID {
 		log.Error("anycall swap tx with mismatched fromChainID in receipt", "txid", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "fromChainID", swapInfo.FromChainID, "toChainID", swapInfo.ToChainID, "chainID", b.ChainConfig.ChainID)
 		return tokens.ErrFromChainIDMismatch
@@ -188,24 +238,41 @@ func (b *Bridge) checkAnyCallSwapInfo(swapInfo *tokens.SwapTxInfo) error {
 }
 
 func (b *Bridge) buildAnyCallSwapTxInput(args *tokens.BuildTxArgs) (err error) {
-	if args.AnyCallSwapInfo == nil {
-		return errors.New("build anycall swaptx without swapinfo")
-	}
-	anycallSwapInfo := args.AnyCallSwapInfo
-	funcHash := AnyCallFuncHash
-
 	if b.ChainConfig.ChainID != args.ToChainID.String() {
 		return errors.New("anycall to chainId mismatch")
 	}
 
-	input := abicoder.PackDataWithFuncHash(funcHash,
-		common.HexToAddress(anycallSwapInfo.CallFrom),
-		toAddresses(anycallSwapInfo.CallTo),
-		anycallSwapInfo.CallData,
-		toAddresses(anycallSwapInfo.Callbacks),
-		anycallSwapInfo.CallNonces,
-		args.FromChainID,
-	)
+	var input []byte
+	switch params.GetSwapSubType() {
+	case tokens.CurveAnycallSubType:
+		funcHash := CurveAnyExecFuncHash
+		anycallSwapInfo := args.CurveAnyCallSwapInfo
+		if anycallSwapInfo == nil {
+			return errors.New("build anycall swaptx without swapinfo")
+		}
+		input = abicoder.PackDataWithFuncHash(funcHash,
+			common.HexToAddress(anycallSwapInfo.CallFrom),
+			common.HexToAddress(anycallSwapInfo.CallTo),
+			anycallSwapInfo.CallData,
+			common.HexToAddress(anycallSwapInfo.Fallback),
+			args.FromChainID,
+		)
+	default:
+		funcHash := AnyExecFuncHash
+		anycallSwapInfo := args.AnyCallSwapInfo
+		if anycallSwapInfo == nil {
+			return errors.New("build anycall swaptx without swapinfo")
+		}
+		input = abicoder.PackDataWithFuncHash(funcHash,
+			common.HexToAddress(anycallSwapInfo.CallFrom),
+			toAddresses(anycallSwapInfo.CallTo),
+			anycallSwapInfo.CallData,
+			toAddresses(anycallSwapInfo.Callbacks),
+			anycallSwapInfo.CallNonces,
+			args.FromChainID,
+		)
+	}
+
 	args.Input = (*hexutil.Bytes)(&input) // input
 
 	routerContract := b.GetRouterContract("")
