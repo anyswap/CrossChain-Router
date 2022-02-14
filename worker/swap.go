@@ -352,9 +352,11 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 	addSwapHistory(fromChainID, txid, logIndex, txHash)
 	matchTx := &MatchTx{
 		SwapTx:    txHash,
-		SwapValue: args.SwapValue.String(),
 		SwapNonce: swapTxNonce,
 		MPC:       args.From,
+	}
+	if args.SwapValue != nil {
+		matchTx.SwapValue = args.SwapValue.String()
 	}
 	err = updateRouterSwapResult(fromChainID, txid, logIndex, matchTx)
 	if err != nil {

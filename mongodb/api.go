@@ -270,9 +270,11 @@ func AllocateRouterSwapNonce(args *tokens.BuildTxArgs, nonceptr *uint64, isRecyc
 	resUpdates := bson.M{
 		"mpc":       args.From,
 		"status":    MatchTxNotStable,
-		"swapvalue": args.SwapValue.String(),
 		"swapnonce": swapnonce,
 		"timestamp": nowTime,
+	}
+	if args.SwapValue != nil {
+		resUpdates["swapvalue"] = args.SwapValue.String()
 	}
 	_, err = collRouterSwapResult.UpdateByID(clientCtx, key, bson.M{"$set": resUpdates})
 	if err != nil {
