@@ -65,13 +65,17 @@ func InitRouterBridges(isServer bool) {
 
 	for _, chainID := range chainIDs {
 		bridge := NewCrossChainBridge(chainID)
+		configLoader, ok := bridge.(tokens.IBridgeConfigLoader)
+		if !ok {
+			log.Fatal("do not support onchain config loading", "chainID", chainID)
+		}
 
-		bridge.InitGatewayConfig(chainID)
+		configLoader.InitGatewayConfig(chainID)
 		AdjustGatewayOrder(bridge, chainID.String())
-		bridge.InitChainConfig(chainID)
+		configLoader.InitChainConfig(chainID)
 
 		for _, tokenID := range tokenIDs {
-			bridge.InitTokenConfig(tokenID, chainID)
+			configLoader.InitTokenConfig(tokenID, chainID)
 		}
 
 		router.RouterBridges[chainID.String()] = bridge

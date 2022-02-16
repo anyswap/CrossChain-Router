@@ -100,22 +100,27 @@ func ReloadRouterConfig() bool {
 			log.Warn("[reload] do not support new chainID", "chainID", chainID)
 			continue
 		}
+		configLoader, ok := bridge.(tokens.IBridgeConfigLoader)
+		if !ok {
+			log.Warn("[reload] do not support onchain config reloading", "chainID", chainID)
+			continue
+		}
 
 		log.Info("[reload] set chain config", "chainID", chainID)
-		bridge.ReloadChainConfig(chainID)
+		configLoader.ReloadChainConfig(chainID)
 
 		for _, tokenID := range removedTokenIDs {
 			tokenAddr := router.GetCachedMultichainToken(tokenID, chainIDStr)
 			if tokenAddr != "" {
 				log.Info("[reload] remove token config", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr)
-				bridge.RemoveTokenConfig(tokenAddr)
+				configLoader.RemoveTokenConfig(tokenAddr)
 			}
 			router.MultichainTokens[strings.ToLower(tokenID)] = nil
 		}
 
 		for _, tokenID := range tokenIDs {
 			log.Info("[reload] set token config", "tokenID", tokenID, "chainID", chainID)
-			bridge.ReloadTokenConfig(tokenID, chainID)
+			configLoader.ReloadTokenConfig(tokenID, chainID)
 		}
 	}
 

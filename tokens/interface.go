@@ -12,12 +12,20 @@ type IMPCSign interface {
 }
 
 // IBridgeConfg interface
+// implemented by 'CrossChainBridgeBase'
 type IBridgeConfg interface {
 	GetGatewayConfig() *GatewayConfig
 	GetChainConfig() *ChainConfig
 	GetTokenConfig(tokenAddr string) *TokenConfig
 	GetRouterContract(token string) string
 
+	SetChainConfig(chainCfg *ChainConfig)
+	SetGatewayConfig(gatewayCfg *GatewayConfig)
+	SetTokenConfig(token string, tokenCfg *TokenConfig)
+}
+
+// IBridgeConfigLoader interface
+type IBridgeConfigLoader interface {
 	InitGatewayConfig(chainID *big.Int)
 	InitChainConfig(chainID *big.Int)
 	InitTokenConfig(tokenID string, chainID *big.Int)
