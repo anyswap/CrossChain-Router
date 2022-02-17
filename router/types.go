@@ -44,6 +44,7 @@ type SwapRouterInfo struct {
 	RouterMPC     string
 	RouterFactory string
 	RouterWNative string
+	RouterPDA     string
 }
 
 // SetBridge set bridge
