@@ -40,6 +40,8 @@ type IBridge interface {
 	IBridgeConfg
 	IMPCSign
 
+	InitAfterConfig()
+
 	RegisterSwap(txHash string, args *RegisterArgs) ([]*SwapTxInfo, []error)
 	VerifyTransaction(txHash string, ars *VerifyArgs) (*SwapTxInfo, error)
 	BuildRawTransaction(args *BuildTxArgs) (rawTx interface{}, err error)

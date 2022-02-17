@@ -63,6 +63,10 @@ func NewCrossChainBridgeBase() *CrossChainBridgeBase {
 	}
 }
 
+// InitAfterConfig init variables (ie. extra members) after loading config
+func (b *CrossChainBridgeBase) InitAfterConfig() {
+}
+
 // SetChainConfig set chain config
 func (b *CrossChainBridgeBase) SetChainConfig(chainCfg *ChainConfig) {
 	b.ChainConfig = chainCfg

@@ -72,6 +72,37 @@ func StartAPIServer() {
 
 }
 
+// StartTestServer start api test server
+func StartTestServer(apiPort int) {
+	router := mux.NewRouter()
+	router.HandleFunc("/swap/test/{txid}", restapi.TestRouterSwapHandler).Methods("GET", "POST")
+
+	corsOptions := []handlers.CORSOption{
+		handlers.AllowedMethods([]string{"GET", "POST"}),
+	}
+	handler := handlers.CORS(corsOptions...)(router)
+
+	log.Info("JSON RPC test service listen and serving", "port", apiPort)
+	svr := http.Server{
+		Addr:         fmt.Sprintf(":%v", apiPort),
+		ReadTimeout:  60 * time.Second,
+		WriteTimeout: 300 * time.Second,
+		Handler:      handler,
+	}
+	go func() {
+		if err := svr.ListenAndServe(); err != nil {
+			if errors.Is(err, http.ErrServerClosed) && utils.IsCleanuping() {
+				return
+			}
+			log.Fatal("ListenAndServe error", "err", err)
+		}
+	}()
+
+	utils.TopWaitGroup.Add(1)
+	go utils.WaitAndCleanup(func() { doCleanup(&svr) })
+
+}
+
 func doCleanup(svr *http.Server) {
 	defer utils.TopWaitGroup.Done()
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)

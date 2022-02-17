@@ -15,6 +15,9 @@ const (
 	RouterSwapPrefixID = "routerswap"
 )
 
+// IsTestMode used for testing
+var IsTestMode bool
+
 var (
 	routerConfig = &RouterConfig{}
 	locDataDir   string
@@ -335,12 +338,26 @@ func SignWithPrivateKey() bool {
 	return routerConfig.MPC.SignWithPrivateKey
 }
 
+// EnableSignWithPrivateKey enable sign with private key (use for testing)
+func EnableSignWithPrivateKey() {
+	if routerConfig.MPC == nil {
+		routerConfig.MPC = &MPCConfig{}
+	}
+	routerConfig.MPC.SignWithPrivateKey = true
+	routerConfig.MPC.SignerPrivateKeys = make(map[string]string)
+}
+
 // GetSignerPrivateKey get signer private key (use for testing)
 func GetSignerPrivateKey(chainID string) string {
 	if prikey, exist := routerConfig.MPC.SignerPrivateKeys[chainID]; exist {
 		return prikey
 	}
 	return ""
+}
+
+// SetSignerPrivateKey set signer private key (use for testing)
+func SetSignerPrivateKey(chainID, prikey string) {
+	routerConfig.MPC.SignerPrivateKeys[chainID] = prikey
 }
 
 // IsDebugMode is debug mode, add more debugging log infos
@@ -350,6 +367,15 @@ func IsDebugMode() bool {
 		isDebugMode = &flag
 	}
 	return *isDebugMode
+}
+
+// SetDebugMode set debug mode
+func SetDebugMode(flag bool) {
+	if isDebugMode == nil {
+		isDebugMode = &flag
+	} else {
+		*isDebugMode = flag
+	}
 }
 
 // IsNFTSwapWithData is nft swap with data, add data in swapout log and swapin argument

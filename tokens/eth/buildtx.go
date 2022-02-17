@@ -224,6 +224,10 @@ func (b *Bridge) getGasPrice(args *tokens.BuildTxArgs) (price *big.Int, err erro
 		}
 	}
 
+	if params.IsTestMode {
+		return price, nil
+	}
+
 	price, err = b.adjustSwapGasPrice(args, price)
 	if err != nil {
 		return nil, err

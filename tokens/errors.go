@@ -6,6 +6,7 @@ import (
 
 // common errors
 var (
+	ErrNotImplemented        = errors.New("not implemented")
 	ErrSwapTypeNotSupported  = errors.New("swap type not supported")
 	ErrNoBridgeForChainID    = errors.New("no bridge for chain id")
 	ErrSwapTradeNotSupport   = errors.New("swap trade not support")
