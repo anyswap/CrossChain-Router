@@ -134,11 +134,18 @@ func (b *Bridge) InitRouterInfo(biChainID *big.Int, routerContract string) (err 
 		log.Warn("get mpc public key failed", "mpc", routerMPC, "err", err)
 		return err
 	}
-	if err = tokens.VerifyMPCPubKey(routerMPC, routerMPCPubkey); err != nil {
+	if err = VerifyMPCPubKey(routerMPC, routerMPCPubkey); err != nil {
 		log.Warn("verify mpc public key failed", "mpc", routerMPC, "mpcPubkey", routerMPCPubkey, "err", err)
 		return err
 	}
-	router.SetRouterInfo(routerContract, routerMPC, routerFactory, routerWNative)
+	router.SetRouterInfo(
+		routerContract,
+		&router.SwapRouterInfo{
+			RouterMPC:     routerMPC,
+			RouterFactory: routerFactory,
+			RouterWNative: routerWNative,
+		},
+	)
 	router.SetMPCPublicKey(routerMPC, routerMPCPubkey)
 
 	chainID := biChainID.String()
@@ -190,7 +197,7 @@ func (b *Bridge) InitTokenConfig(tokenID string, chainID *big.Int) {
 	}
 	routerContract, err := router.GetCustomConfig(chainID, tokenAddr)
 	if err != nil {
-		log.Fatal("get custome config failed", "chainID", chainID, "key", tokenAddr, "err", err)
+		log.Fatal("get custom config failed", "chainID", chainID, "key", tokenAddr, "err", err)
 	}
 	tokenCfg.RouterContract = routerContract
 	if routerContract == "" {
@@ -209,12 +216,12 @@ func (b *Bridge) InitTokenConfig(tokenID string, chainID *big.Int) {
 		if decimals != tokenCfg.Decimals {
 			log.Fatal("token decimals mismatch", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract", decimals)
 		}
-		err = b.checkTokenMinter(routerContract, tokenAddr, tokenCfg.ContractVersion)
-		if err != nil && isStandardTokenVersion(tokenCfg.ContractVersion) {
+		err = b.checkTokenMinter(routerContract, tokenCfg)
+		if err != nil && tokenCfg.IsStandardTokenVersion() {
 			log.Fatal("check token minter failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
 		}
 		underlying, err = b.GetUnderlyingAddress(tokenAddr)
-		if err != nil && isStandardTokenVersion(tokenCfg.ContractVersion) {
+		if err != nil && tokenCfg.IsStandardTokenVersion() {
 			log.Fatal("get underlying address failed", "err", err)
 		}
 		tokenCfg.SetUnderlying(common.HexToAddress(underlying)) // init underlying address
@@ -298,7 +305,7 @@ func (b *Bridge) ReloadTokenConfig(tokenID string, chainID *big.Int) {
 	}
 	routerContract, err := router.GetCustomConfig(chainID, tokenAddr)
 	if err != nil {
-		log.Error("get custome config failed", "chainID", chainID, "key", tokenAddr, "err", err)
+		log.Error("get custom config failed", "chainID", chainID, "key", tokenAddr, "err", err)
 		return
 	}
 	tokenCfg.RouterContract = routerContract
@@ -321,13 +328,13 @@ func (b *Bridge) ReloadTokenConfig(tokenID string, chainID *big.Int) {
 			log.Error("[reload] token decimals mismatch", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract", decimals)
 			return
 		}
-		err = b.checkTokenMinter(routerContract, tokenAddr, tokenCfg.ContractVersion)
-		if err != nil && isStandardTokenVersion(tokenCfg.ContractVersion) {
+		err = b.checkTokenMinter(routerContract, tokenCfg)
+		if err != nil && tokenCfg.IsStandardTokenVersion() {
 			log.Error("[reload] check token minter failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
 			return
 		}
 		underlying, err = b.GetUnderlyingAddress(tokenAddr)
-		if err != nil && isStandardTokenVersion(tokenCfg.ContractVersion) {
+		if err != nil && tokenCfg.IsStandardTokenVersion() {
 			log.Error("[reload] get underlying address failed", "err", err)
 			return
 		}
@@ -348,17 +355,14 @@ func (b *Bridge) ReloadTokenConfig(tokenID string, chainID *big.Int) {
 		"tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "underlying", underlying)
 }
 
-func isStandardTokenVersion(tokenVer uint64) bool {
-	return tokenVer > 0 && tokenVer <= 10000
-}
-
-func (b *Bridge) checkTokenMinter(routerContract, tokenAddr string, tokenVer uint64) (err error) {
-	if !isStandardTokenVersion(tokenVer) {
+func (b *Bridge) checkTokenMinter(routerContract string, tokenCfg *tokens.TokenConfig) (err error) {
+	if !tokenCfg.IsStandardTokenVersion() {
 		return nil
 	}
+	tokenAddr := tokenCfg.ContractAddress
 	var minterAddr string
 	var isMinter bool
-	switch tokenVer {
+	switch tokenCfg.ContractVersion {
 	default:
 		isMinter, err = b.IsMinter(tokenAddr, routerContract)
 		if err != nil {

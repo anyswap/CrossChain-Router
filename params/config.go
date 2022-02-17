@@ -139,6 +139,7 @@ type OnchainConfig struct {
 
 // MPCConfig mpc related config
 type MPCConfig struct {
+	SignType                  string
 	APIPrefix                 string
 	RPCTimeout                uint64 `toml:",omitempty" json:",omitempty"`
 	SignTimeout               uint64 `toml:",omitempty" json:",omitempty"`
@@ -699,7 +700,7 @@ func GetDynamicFeeTxConfig(chainID string) *DynamicFeeTxConfig {
 }
 
 // LoadRouterConfig load router swap config
-func LoadRouterConfig(configFile string, isServer bool) *RouterConfig {
+func LoadRouterConfig(configFile string, isServer, check bool) *RouterConfig {
 	if configFile == "" {
 		log.Fatal("must specify config file")
 	}
@@ -728,8 +729,10 @@ func LoadRouterConfig(configFile string, isServer bool) *RouterConfig {
 	}
 	log.Println("LoadRouterConfig finished.", string(bs))
 
-	if err := config.CheckConfig(isServer); err != nil {
-		log.Fatalf("Check config failed. %v", err)
+	if check {
+		if err := config.CheckConfig(isServer); err != nil {
+			log.Fatalf("Check config failed. %v", err)
+		}
 	}
 
 	return routerConfig

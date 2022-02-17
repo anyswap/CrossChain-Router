@@ -97,7 +97,12 @@ func initRouter() {
 
 	router.AllChainIDs = testCfg.GetAllChainIDs()
 	router.AllTokenIDs = []string{testCfg.Token.TokenID}
-	router.SetRouterInfo(testCfg.Token.RouterContract, testCfg.SignerAddress, "", "")
+	router.SetRouterInfo(
+		testCfg.Token.RouterContract,
+		&router.SwapRouterInfo{
+			RouterMPC: testCfg.SignerAddress,
+		},
+	)
 
 	tokensMap := make(map[string]string)
 	router.MultichainTokens[strings.ToLower(testCfg.Token.TokenID)] = tokensMap

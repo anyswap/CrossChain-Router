@@ -22,13 +22,16 @@ var (
 
 // BuildRawTransaction build raw tx
 func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{}, err error) {
+	if !params.IsTestMode && args.ToChainID.String() != b.ChainConfig.ChainID {
+		return nil, tokens.ErrToChainIDMismatch
+	}
 	if args.Input != nil {
 		return nil, fmt.Errorf("forbid build raw swap tx with input data")
 	}
 	if args.From == "" {
 		return nil, fmt.Errorf("forbid empty sender")
 	}
-	routerMPC, err := router.GetRouterMPC(b, args.GetTokenID(), b.ChainConfig.ChainID)
+	routerMPC, err := router.GetRouterMPC(args.GetTokenID(), b.ChainConfig.ChainID)
 	if err != nil {
 		return nil, err
 	}

@@ -14,6 +14,11 @@ var (
 	swapConfigMap  = make(map[string]map[string]*SwapConfig) // key is tokenID,toChainID
 )
 
+// IsNativeCoin is native coin
+func IsNativeCoin(name string) bool {
+	return strings.EqualFold(name, "native")
+}
+
 // InitRouterSwapType init router swap type
 func InitRouterSwapType(swapTypeStr string) {
 	switch strings.ToLower(swapTypeStr) {
@@ -74,6 +79,9 @@ func (b *CrossChainBridgeBase) SetChainConfig(chainCfg *ChainConfig) {
 
 // SetGatewayConfig set gateway config
 func (b *CrossChainBridgeBase) SetGatewayConfig(gatewayCfg *GatewayConfig) {
+	if len(gatewayCfg.APIAddress) == 0 {
+		log.Fatal("empty gateway 'APIAddress'")
+	}
 	b.GatewayConfig = gatewayCfg
 }
 

@@ -108,7 +108,7 @@ func doSignImpl(mpcNode *NodeInfo, signGroupIndex int, signPubkey string, msgHas
 		PubKey:     signPubkey,
 		MsgHash:    msgHash,
 		MsgContext: msgContext,
-		Keytype:    "ECDSA",
+		Keytype:    mpcSignType,
 		GroupID:    signGroup,
 		ThresHold:  mpcThreshold,
 		Mode:       mpcMode,
@@ -148,15 +148,17 @@ func doSignImpl(mpcNode *NodeInfo, signGroupIndex int, signPubkey string, msgHas
 			lastTime: time.Now().Unix(),
 		}
 	}
-	for _, rsv := range rsvs {
-		signature := common.FromHex(rsv)
-		if len(signature) != crypto.SignatureLength {
-			return "", nil, errWrongSignatureLength
-		}
-		r := common.ToHex(signature[:32])
-		err = mongodb.AddUsedRValue(signPubkey, r)
-		if err != nil {
-			return "", nil, errRValueIsUsed
+	if isECDSA() { // prevent multiple use of same r value
+		for _, rsv := range rsvs {
+			signature := common.FromHex(rsv)
+			if len(signature) != crypto.SignatureLength {
+				return "", nil, errWrongSignatureLength
+			}
+			r := common.ToHex(signature[:32])
+			err = mongodb.AddUsedRValue(signPubkey, r)
+			if err != nil {
+				return "", nil, errRValueIsUsed
+			}
 		}
 	}
 	return keyID, rsvs, nil

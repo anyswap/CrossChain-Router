@@ -34,7 +34,7 @@ func GetBridgeByChainID(chainID string) tokens.IBridge {
 }
 
 // SetRouterInfo set router info
-func SetRouterInfo(router, mpc, factory, wNative string) {
+func SetRouterInfo(router string, routerInfo *SwapRouterInfo) {
 	if router == "" {
 		return
 	}
@@ -42,11 +42,7 @@ func SetRouterInfo(router, mpc, factory, wNative string) {
 	if _, exist := RouterInfos[key]; exist {
 		return
 	}
-	RouterInfos[key] = &SwapRouterInfo{
-		RouterMPC:     mpc,
-		RouterFactory: factory,
-		RouterWNative: wNative,
-	}
+	RouterInfos[key] = routerInfo
 }
 
 // GetRouterInfo get router info
@@ -58,26 +54,47 @@ func GetRouterInfo(router string) *SwapRouterInfo {
 	return nil
 }
 
-// GetRouterMPC get router mpc on dest chain (to build swapin tx)
-func GetRouterMPC(dstBridge tokens.IBridge, tokenID, chainID string) (string, error) {
+// GetTokenRouterContract get token router contract
+func GetTokenRouterContract(tokenID, chainID string) (string, error) {
+	bridge := GetBridgeByChainID(chainID)
+	if bridge == nil {
+		return "", tokens.ErrNoBridgeForChainID
+	}
 	multichainToken := ""
 	if !tokens.IsAnyCallRouter() {
 		multichainToken = GetCachedMultichainToken(tokenID, chainID)
 		if multichainToken == "" {
-			log.Warn("GetRouterMPC: get multichain token failed", "tokenID", tokenID, "chainID", chainID)
+			log.Warn("GetTokenRouterContract get multichain token failed", "tokenID", tokenID, "chainID", chainID)
 			return "", tokens.ErrMissTokenConfig
 		}
 	}
-	routerContract := dstBridge.GetRouterContract(multichainToken)
+	routerContract := bridge.GetRouterContract(multichainToken)
 	if routerContract == "" {
 		return "", tokens.ErrMissRouterInfo
 	}
+	return routerContract, nil
+}
+
+// GetTokenRouterInfo get token router info
+func GetTokenRouterInfo(tokenID, chainID string) (*SwapRouterInfo, error) {
+	routerContract, err := GetTokenRouterContract(tokenID, chainID)
+	if err != nil {
+		return nil, err
+	}
 	routerInfo := GetRouterInfo(routerContract)
 	if routerInfo == nil {
-		return "", tokens.ErrMissRouterInfo
+		return nil, tokens.ErrMissRouterInfo
+	}
+	return routerInfo, nil
+}
+
+// GetRouterMPC get router mpc on dest chain (to build swapin tx)
+func GetRouterMPC(tokenID, chainID string) (string, error) {
+	routerInfo, err := GetTokenRouterInfo(tokenID, chainID)
+	if err != nil {
+		return "", err
 	}
 	return routerInfo.RouterMPC, nil
-
 }
 
 // SetMPCPublicKey set router mpc public key

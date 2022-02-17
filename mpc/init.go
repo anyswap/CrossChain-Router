@@ -25,6 +25,7 @@ var (
 	mpcSigner = types.MakeSigner("EIP155", big.NewInt(mpcWalletServiceID))
 	mpcToAddr = common.HexToAddress(mpcToAddress)
 
+	mpcSignType      = "ECDSA" // default sign type
 	mpcAPIPrefix     = "smpc_" // default prefix
 	mpcGroupID       string
 	mpcThreshold     string
@@ -42,6 +43,10 @@ var (
 	allEnodes []string
 )
 
+func isECDSA() bool {
+	return mpcSignType == "ECDSA"
+}
+
 // NodeInfo mpc node info
 type NodeInfo struct {
 	keyWrapper             *keystore.Key
@@ -55,6 +60,9 @@ type NodeInfo struct {
 
 // Init init mpc
 func Init(mpcConfig *params.MPCConfig, isServer bool) {
+	if mpcConfig.SignType != "" {
+		mpcSignType = mpcConfig.SignType
+	}
 	if mpcConfig.APIPrefix != "" {
 		mpcAPIPrefix = mpcConfig.APIPrefix
 	}
@@ -83,7 +91,7 @@ func Init(mpcConfig *params.MPCConfig, isServer bool) {
 	initAllEnodes()
 
 	verifyInitiators(mpcConfig.Initiators)
-	log.Info("init mpc success", "apiPrefix", mpcAPIPrefix, "isServer", isServer,
+	log.Info("init mpc success", "signType", mpcSignType, "apiPrefix", mpcAPIPrefix, "isServer", isServer,
 		"rpcTimeout", mpcRPCTimeout, "signTimeout", mpcSignTimeout.String(),
 		"maxSignGroupFailures", maxSignGroupFailures,
 		"minIntervalToAddSignGroup", minIntervalToAddSignGroup,

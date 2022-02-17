@@ -101,7 +101,7 @@ type RPCTxReceipt struct {
 
 // IsStatusOk is status ok
 func (r *RPCTxReceipt) IsStatusOk() bool {
-	return r != nil && r.Status != nil && *r.Status == 1
+	return r != nil && r.Status != nil && *r.Status == 1 && len(r.Logs) > 0
 }
 
 // FilterQuery struct

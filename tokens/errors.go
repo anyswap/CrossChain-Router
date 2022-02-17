@@ -34,6 +34,10 @@ var (
 	ErrMissRouterInfo        = errors.New("miss router info")
 	ErrSenderMismatch        = errors.New("sender mismatch")
 	ErrTxWithWrongSender     = errors.New("tx with wrong sender")
+	ErrToChainIDMismatch     = errors.New("to chainID mismatch")
+	ErrTxWithWrongStatus     = errors.New("tx with wrong status")
+	ErrUnknownSwapoutType    = errors.New("unknown swapout type")
+	ErrEmptyTokenID          = errors.New("empty tokenID")
 	// errors should register in router swap
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")
 	ErrTxWithWrongPath   = errors.New("swap trade tx with wrong path")

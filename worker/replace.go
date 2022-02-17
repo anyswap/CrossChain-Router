@@ -126,7 +126,7 @@ func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int, isManual b
 	if resBridge == nil {
 		return tokens.ErrNoBridgeForChainID
 	}
-	routerMPC, err := router.GetRouterMPC(resBridge, swap.GetTokenID(), res.ToChainID)
+	routerMPC, err := router.GetRouterMPC(swap.GetTokenID(), res.ToChainID)
 	if err != nil {
 		return err
 	}

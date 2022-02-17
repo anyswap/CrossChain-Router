@@ -314,6 +314,11 @@ func (c *MPCConfig) CheckConfig(isServer bool) (err error) {
 	if c.SignWithPrivateKey {
 		return nil
 	}
+	switch c.SignType {
+	case "", "ECDSA", "ED25519":
+	default:
+		return fmt.Errorf("unknown mpc sign type '%v'", c.SignType)
+	}
 	if c.GroupID == nil {
 		return errors.New("mpc must config 'GroupID'")
 	}
