@@ -3,6 +3,7 @@ module github.com/anyswap/CrossChain-Router/v3
 go 1.15
 
 require (
+	filippo.io/edwards25519 v1.0.0-rc.1
 	github.com/BurntSushi/toml v0.4.1
 	github.com/btcsuite/btcd v0.22.0-beta
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
@@ -18,9 +19,9 @@ require (
 	github.com/mr-tron/base58 v1.2.0
 	github.com/pborman/uuid v1.2.1
 	github.com/sirupsen/logrus v1.8.1
+	github.com/streamingfast/binary v0.0.0-20210809212148-fe6580164efb
 	github.com/stretchr/testify v1.7.0
 	github.com/syndtr/goleveldb v1.0.1-0.20210305035536-64b5b1c73954
-	github.com/tidwall/pretty v1.0.2 // indirect
 	github.com/urfave/cli/v2 v2.3.0
 	go.mongodb.org/mongo-driver v1.7.2
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
