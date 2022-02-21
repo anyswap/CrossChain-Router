@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
@@ -194,28 +195,43 @@ SENDTX_LOOP:
 		return txHash, err
 	}
 
-	// update swap result tx height in goroutine
-	go func() {
-		var txStatus *tokens.TxStatus
-		var errt error
-		for i := int64(0); i < 10; i++ {
-			txStatus, errt = bridge.GetTransactionStatus(txHash)
-			if errt == nil && txStatus.BlockHeight > 0 {
-				break
-			}
-			sleepSeconds(5)
-		}
-		if errt == nil && txStatus.BlockHeight > 0 {
+	go sendTxLoopUntilSuccess(bridge, txHash, signedTx, args)
+
+	return txHash, nil
+}
+
+func sendTxLoopUntilSuccess(bridge tokens.IBridge, txHash string, signedTx interface{}, args *tokens.BuildTxArgs) {
+	severCfg := params.GetRouterServerConfig()
+	sendTxLoopCount := severCfg.SendTxLoopCount
+	if sendTxLoopCount == 0 {
+		sendTxLoopCount = 30
+	}
+	sendTxLoopInterval := severCfg.SendTxLoopInterval
+	if sendTxLoopInterval == 0 {
+		sendTxLoopInterval = 10
+	}
+	for loop := 1; loop <= sendTxLoopCount; loop++ {
+		txStatus, err := bridge.GetTransactionStatus(txHash)
+		if err == nil && txStatus.BlockHeight > 0 {
+			logWorker("sendtx", "send tx in loop success", "txHash", txHash, "loop", loop, "blockNumber", txStatus.BlockHeight)
 			matchTx := &MatchTx{
 				SwapTx:     txHash,
 				SwapHeight: txStatus.BlockHeight,
 				SwapTime:   txStatus.BlockTime,
 			}
 			_ = updateRouterSwapResult(args.FromChainID.String(), args.SwapID, args.LogIndex, matchTx)
+			break
 		}
-	}()
 
-	return txHash, err
+		txHash, err = bridge.SendTransaction(signedTx)
+		if err != nil {
+			logWorkerError("sendtx", "send tx in loop failed", err, "swapID", args.SwapID, "txHash", txHash, "loop", loop)
+		} else {
+			logWorker("sendtx", "send tx in loop done", "swapID", args.SwapID, "txHash", txHash, "loop", loop)
+		}
+
+		sleepSeconds(sendTxLoopInterval)
+	}
 }
 
 func needRetrySendTx(err error) bool {

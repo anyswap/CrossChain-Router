@@ -74,6 +74,8 @@ type RouterServerConfig struct {
 	FixedGasPrice              map[string]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	MaxGasPrice                map[string]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	NoncePassedConfirmInterval map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID
+	SendTxLoopCount            int               `toml:",omitempty" json:",omitempty"`
+	SendTxLoopInterval         int               `toml:",omitempty" json:",omitempty"`
 
 	DynamicFeeTx map[string]*DynamicFeeTxConfig `toml:",omitempty" json:",omitempty"` // key is chain ID
 }

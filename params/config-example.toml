@@ -42,6 +42,10 @@ MaxPlusGasPricePercentage = 100
 MaxGasPriceFluctPercent = 10
 # swap deadline offset for trading
 SwapDeadlineOffset = 36000
+# send tx loop count until success (use negative to disable loop)
+SendTxLoopCount = 30
+SendTxLoopInterval = 10
+
 # default gas limit. key is chainID. if not set, use 90000 as default.
 [Server.DefaultGasLimit]
 4     = 90000
