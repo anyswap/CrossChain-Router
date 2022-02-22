@@ -148,6 +148,8 @@ type MPCConfig struct {
 	MaxSignGroupFailures      int    `toml:",omitempty" json:",omitempty"`
 	MinIntervalToAddSignGroup int64  `toml:",omitempty" json:",omitempty"`
 
+	VerifySignatureInAccept bool `toml:",omitempty" json:",omitempty"`
+
 	GroupID       *string
 	NeededOracles *uint32
 	TotalOracles  *uint32

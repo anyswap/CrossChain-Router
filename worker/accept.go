@@ -221,9 +221,6 @@ func processAcceptInfo(info *mpc.SignInfoData) {
 func verifySignInfo(signInfo *mpc.SignInfoData) (*tokens.BuildTxArgs, error) {
 	msgHash := signInfo.MsgHash
 	msgContext := signInfo.MsgContext
-	if len(msgContext) != 1 {
-		return nil, errWrongMsgContext
-	}
 	var args tokens.BuildTxArgs
 	err := json.Unmarshal([]byte(msgContext[0]), &args)
 	if err != nil {

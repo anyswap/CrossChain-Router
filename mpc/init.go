@@ -33,6 +33,8 @@ var (
 	mpcNeededOracles uint32
 	mpcTotalOracles  uint32
 
+	verifySignatureInAccept bool
+
 	mpcRPCTimeout  = 10                // default to 10 seconds
 	mpcSignTimeout = 120 * time.Second // default to 120 seconds
 
@@ -77,6 +79,8 @@ func Init(mpcConfig *params.MPCConfig, isServer bool) {
 	if mpcConfig.MinIntervalToAddSignGroup > 0 {
 		minIntervalToAddSignGroup = mpcConfig.MinIntervalToAddSignGroup
 	}
+
+	verifySignatureInAccept = mpcConfig.VerifySignatureInAccept
 
 	setMPCGroup(*mpcConfig.GroupID, mpcConfig.Mode, *mpcConfig.NeededOracles, *mpcConfig.TotalOracles)
 	setDefaultMPCNodeInfo(initMPCNodeInfo(mpcConfig.DefaultNode, isServer))
