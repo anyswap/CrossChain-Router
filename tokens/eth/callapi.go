@@ -355,10 +355,11 @@ func (b *Bridge) SendSignedTransaction(tx *types.Transaction) (txHash string, er
 	for _, url := range gateway.APIAddressExt {
 		go b.sendRawTransaction(wg, hexData, url, ch)
 	}
-	for res := range ch {
+	for i := 0; i < urlCount; i++ {
+		res := <-ch
 		txHash, err = res.txHash, res.err
 		if err == nil && txHash != "" {
-			return res.txHash, nil
+			return txHash, nil
 		}
 	}
 	return "", wrapRPCQueryError(err, "eth_sendRawTransaction")
@@ -375,8 +376,9 @@ func (b *Bridge) sendRawTransaction(wg *sync.WaitGroup, hexData string, url stri
 	err := client.RPCPostWithTimeout(sendtxTimeout, &result, url, "eth_sendRawTransaction", hexData)
 	if err != nil {
 		log.Trace("call eth_sendRawTransaction failed", "txHash", result, "url", url, "err", err)
+	} else {
+		log.Trace("call eth_sendRawTransaction success", "txHash", result, "url", url)
 	}
-	log.Trace("call eth_sendRawTransaction success", "txHash", result, "url", url)
 	ch <- &sendTxResult{result, err}
 }
 
