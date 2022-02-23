@@ -6,11 +6,13 @@ import (
 	"math/big"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
+	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/eth/callapi"
@@ -454,6 +456,14 @@ func (b *Bridge) CallContract(contract string, data hexutil.Bytes, blockNumber s
 	for _, apiAddress := range gateway.APIAddress {
 		url := apiAddress
 		err = client.RPCPost(&result, url, "eth_call", reqArgs, blockNumber)
+		if err != nil && router.IsIniting {
+			for i := 0; i < router.RetryRPCCountInInit; i++ {
+				if err = client.RPCPost(&result, url, "eth_call", reqArgs, blockNumber); err == nil {
+					return result, nil
+				}
+				time.Sleep(router.RetryRPCIntervalInInit)
+			}
+		}
 		if err == nil {
 			return result, nil
 		}

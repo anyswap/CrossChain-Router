@@ -4,6 +4,7 @@ package router
 import (
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
@@ -19,6 +20,10 @@ var (
 
 	MPCPublicKeys = make(map[string]string)          // key is mpc address
 	RouterInfos   = make(map[string]*SwapRouterInfo) // key is router contract address
+
+	IsIniting              bool
+	RetryRPCCountInInit    = 10
+	RetryRPCIntervalInInit = 1 * time.Second
 )
 
 // SwapRouterInfo swap router info

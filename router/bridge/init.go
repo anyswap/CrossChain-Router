@@ -15,6 +15,10 @@ import (
 // InitRouterBridges init router bridges
 func InitRouterBridges(isServer bool) {
 	log.Info("start init router bridges")
+	router.IsIniting = true
+	defer func() {
+		router.IsIniting = false
+	}()
 
 	client.InitHTTPClient()
 	router.InitRouterConfigClients()

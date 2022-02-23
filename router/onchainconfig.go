@@ -77,6 +77,14 @@ func CallOnchainContract(data hexutil.Bytes, blockNumber string) (result []byte,
 	}
 	for _, cli := range routerConfigClients {
 		result, err = cli.CallContract(routerConfigCtx, msg, nil)
+		if err != nil && IsIniting {
+			for i := 0; i < RetryRPCCountInInit; i++ {
+				if result, err = cli.CallContract(routerConfigCtx, msg, nil); err == nil {
+					return result, nil
+				}
+				time.Sleep(RetryRPCIntervalInInit)
+			}
+		}
 		if err == nil {
 			return result, nil
 		}
