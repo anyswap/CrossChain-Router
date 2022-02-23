@@ -41,6 +41,16 @@ func NewCrossChainBridge() *Bridge {
 	}
 }
 
+// InitAfterConfig init variables (ie. extra members) after loading config
+func (b *Bridge) InitAfterConfig() {
+	chainID, err := common.GetBigIntFromStr(b.ChainConfig.ChainID)
+	if err != nil {
+		log.Fatal("wrong chainID", "chainID", b.ChainConfig.ChainID, "blockChain", b.ChainConfig.BlockChain)
+	}
+	b.InitExtraCustoms()
+	b.initSigner(chainID)
+}
+
 // InitGatewayConfig impl
 func (b *Bridge) InitGatewayConfig(chainID *big.Int) {
 	if chainID.Sign() == 0 {
@@ -83,7 +93,6 @@ func (b *Bridge) InitChainConfig(chainID *big.Int) {
 		log.Fatal("init chain router info failed", "routerContract", chainCfg.RouterContract, "err", err)
 	}
 	b.SetChainConfig(chainCfg)
-	b.initSigner(chainID)
 	log.Info("init chain config success", "blockChain", chainCfg.BlockChain, "chainID", chainID)
 }
 
@@ -425,4 +434,18 @@ func (b *Bridge) getETCSignerChainID() (*big.Int, error) {
 		return nil, errors.New("unsupported etc network id")
 	}
 	return new(big.Int).SetUint64(chainID), nil
+}
+
+// InitExtraCustoms init extra customs
+func (b *Bridge) InitExtraCustoms() {
+	timeoutStr := params.GetCustom(b.ChainConfig.ChainID, "sendtxTimeout")
+	if timeoutStr != "" {
+		timeout, err := common.GetUint64FromStr(timeoutStr)
+		if err != nil {
+			log.Fatal("get sendtxTimeout failed", "err", err)
+		}
+		if timeout != 0 {
+			sendtxTimeout = int(timeout)
+		}
+	}
 }

@@ -26,7 +26,7 @@ var (
 
 	wrapRPCQueryError = tokens.WrapRPCQueryError
 
-	sendtxTimeout int
+	sendtxTimeout = client.GetDefaultTimeout(false)
 )
 
 // GetLatestBlockNumberOf call eth_blockNumber
@@ -371,21 +371,6 @@ type sendTxResult struct {
 
 func (b *Bridge) sendRawTransaction(wg *sync.WaitGroup, hexData string, url string, ch chan<- *sendTxResult) {
 	defer wg.Done()
-	if sendtxTimeout == 0 {
-		timeoutStr := params.GetCustom(b.ChainConfig.ChainID, "sendtxTimeout")
-		if timeoutStr != "" {
-			timeout, err := common.GetUint64FromStr(timeoutStr)
-			if err != nil {
-				log.Error("get sendtxTimeout failed", "err", err)
-				ch <- &sendTxResult{"", err}
-				return
-			}
-			sendtxTimeout = int(timeout)
-		}
-		if sendtxTimeout == 0 {
-			sendtxTimeout = client.GetDefaultTimeout(true)
-		}
-	}
 	var result string
 	err := client.RPCPostWithTimeout(sendtxTimeout, &result, url, "eth_sendRawTransaction", hexData)
 	if err != nil {

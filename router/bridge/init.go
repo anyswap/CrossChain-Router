@@ -72,6 +72,8 @@ func InitRouterBridges(isServer bool) {
 			configLoader.InitTokenConfig(tokenID, chainID)
 		}
 
+		bridge.InitAfterConfig()
+
 		router.RouterBridges[chainID.String()] = bridge
 	}
 	router.PrintMultichainTokens()
