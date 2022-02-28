@@ -167,6 +167,9 @@ func (s *RouterSwapAPI) GetTokenConfig(r *http.Request, args *GetTokenConfigArgs
 	tokenConfig := swapapi.ConvertTokenConfig(bridge.GetTokenConfig(address))
 	if tokenConfig != nil {
 		*result = *tokenConfig
+		if result.RouterContract == "" {
+			result.RouterContract = bridge.GetChainConfig().RouterContract
+		}
 		return nil
 	}
 	return fmt.Errorf("token config not found")
