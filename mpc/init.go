@@ -46,7 +46,7 @@ var (
 )
 
 func isECDSA() bool {
-	return mpcSignType == "ECDSA"
+	return strings.HasPrefix(mpcSignType, "EC")
 }
 
 // NodeInfo mpc node info
