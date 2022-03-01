@@ -290,7 +290,60 @@ func getMaxPoolNonce(account common.Address, height string, urls []string) (maxN
 // SuggestPrice call eth_gasPrice
 func (b *Bridge) SuggestPrice() (*big.Int, error) {
 	gateway := b.GatewayConfig
-	return getMedianGasPrice(gateway.APIAddress, gateway.APIAddressExt)
+	calcMethod := params.GetCalcGasPriceMethod(b.ChainConfig.ChainID)
+	switch calcMethod {
+	case "first":
+		return getGasPrice(gateway.APIAddress[0])
+	case "max":
+		return getMaxGasPrice(gateway.APIAddress, gateway.APIAddressExt)
+	default:
+		return getMedianGasPrice(gateway.APIAddress, gateway.APIAddressExt)
+	}
+}
+
+func getGasPrice(url string) (*big.Int, error) {
+	logFunc := log.GetPrintFuncOr(params.IsDebugMode, log.Info, log.Trace)
+	var result hexutil.Big
+	var err error
+	for i := 0; i < 3; i++ {
+		err = client.RPCPost(&result, url, "eth_gasPrice")
+		if err == nil {
+			gasPrice := result.ToInt()
+			logFunc("getGasPrice success", "url", url, "gasPrice", gasPrice)
+			return gasPrice, nil
+		}
+		logFunc("call eth_gasPrice failed", "url", url, "err", err)
+	}
+	return nil, wrapRPCQueryError(err, "eth_gasPrice")
+}
+
+func getMaxGasPrice(urlsSlice ...[]string) (*big.Int, error) {
+	logFunc := log.GetPrintFuncOr(params.IsDebugMode, log.Info, log.Trace)
+
+	var maxGasPrice *big.Int
+	var maxGasPriceURL string
+
+	var result hexutil.Big
+	var err error
+	for _, urls := range urlsSlice {
+		for _, url := range urls {
+			if err = client.RPCPost(&result, url, "eth_gasPrice"); err != nil {
+				logFunc("call eth_gasPrice failed", "url", url, "err", err)
+				continue
+			}
+			gasPrice := result.ToInt()
+			if maxGasPrice == nil || gasPrice.Cmp(maxGasPrice) > 0 {
+				maxGasPrice = gasPrice
+				maxGasPriceURL = url
+			}
+		}
+	}
+	if maxGasPrice == nil {
+		log.Warn("getMaxGasPrice failed", "err", err)
+		return nil, wrapRPCQueryError(err, "eth_gasPrice")
+	}
+	logFunc("getMaxGasPrice success", "url", maxGasPriceURL, "maxGasPrice", maxGasPrice)
+	return maxGasPrice, nil
 }
 
 // get median gas price as the rpc result fluctuates too widely

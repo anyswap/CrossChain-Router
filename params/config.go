@@ -74,6 +74,7 @@ type RouterServerConfig struct {
 	FixedGasPrice              map[string]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	MaxGasPrice                map[string]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	NoncePassedConfirmInterval map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID
+	CalcGasPriceMethod         map[string]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	SendTxLoopCount            int               `toml:",omitempty" json:",omitempty"`
 	SendTxLoopInterval         int               `toml:",omitempty" json:",omitempty"`
 
@@ -290,13 +291,24 @@ func GetMaxGasPrice(chainID string) *big.Int {
 // GetNoncePassedConfirmInterval get nonce passed confirm interval
 func GetNoncePassedConfirmInterval(chainID string) int64 {
 	serverCfg := GetRouterServerConfig()
-	if serverCfg != nil {
+	if serverCfg == nil {
 		return 0
 	}
 	if interval, exist := serverCfg.NoncePassedConfirmInterval[chainID]; exist {
 		return interval
 	}
 	return 0
+}
+
+// GetCalcGasPriceMethod get calc gas price method eg. median (default), first, max, etc.
+func GetCalcGasPriceMethod(chainID string) string {
+	serverCfg := GetRouterServerConfig()
+	if serverCfg != nil {
+		if method, exist := serverCfg.CalcGasPriceMethod[chainID]; exist {
+			return method
+		}
+	}
+	return "median" // default value
 }
 
 // GetMinReserveFee get min reserve fee

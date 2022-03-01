@@ -69,6 +69,9 @@ PlusGasFeeCapPercent = 10
 BlockCountFeeHistory = 3
 MaxGasTipCap         = "5000000000"
 MaxGasFeeCap         = "10000000000"
+# how to calc gas price, eg. median (default), first, max, etc.
+[Server.CalcGasPriceMethod]
+43114 = "first"
 
 # modgodb database connection config
 [Server.MongoDB]
