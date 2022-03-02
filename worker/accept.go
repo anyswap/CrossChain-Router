@@ -295,7 +295,17 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 	}
 
 	buildTxArgs := &tokens.BuildTxArgs{
-		SwapArgs:    args.SwapArgs,
+		SwapArgs: tokens.SwapArgs{
+			SwapInfo:    swapInfo.SwapInfo,
+			Identifier:  params.GetIdentifier(),
+			SwapID:      swapInfo.Hash,
+			SwapType:    swapInfo.SwapType,
+			Bind:        swapInfo.Bind,
+			LogIndex:    swapInfo.LogIndex,
+			FromChainID: swapInfo.FromChainID,
+			ToChainID:   swapInfo.ToChainID,
+			Reswapping:  args.Reswapping,
+		},
 		From:        args.From,
 		OriginFrom:  swapInfo.From,
 		OriginTxTo:  swapInfo.TxTo,
