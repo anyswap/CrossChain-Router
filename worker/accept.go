@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -285,6 +286,12 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 	if err != nil {
 		logWorkerError("accept", "verifySignInfo failed", err, ctx...)
 		return err
+	}
+	if !strings.EqualFold(args.Bind, swapInfo.Bind) {
+		return fmt.Errorf("bind mismatch: '%v' != '%v'", args.Bind, swapInfo.Bind)
+	}
+	if args.ToChainID.Cmp(swapInfo.ToChainID) != 0 {
+		return fmt.Errorf("toChainID mismatch: '%v' != '%v'", args.ToChainID, swapInfo.ToChainID)
 	}
 
 	buildTxArgs := &tokens.BuildTxArgs{
