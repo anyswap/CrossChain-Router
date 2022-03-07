@@ -276,6 +276,13 @@ func checkIfSwapNonceHasPassed(bridge tokens.IBridge, res *mongodb.MgoSwapResult
 					return nil
 				}
 			}
+			oldRes, errf := mongodb.FindRouterSwapResult(fromChainID, txid, logIndex)
+			if errf != nil {
+				return errf
+			}
+			if oldRes.Status == mongodb.Reswapping {
+				return errors.New("forbid mark reswaping result to failed status")
+			}
 			logWorker(iden, "mark swap result nonce passed",
 				"fromChainID", fromChainID, "txid", txid, "logIndex", logIndex,
 				"swaptime", res.Timestamp, "nowtime", now())
