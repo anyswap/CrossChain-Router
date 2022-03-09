@@ -32,6 +32,8 @@ var (
 	callByContractCodeHashWhitelist map[string]map[string]struct{} // chainID -> codehash
 	bigValueWhitelist               map[string]map[string]struct{} // tokenID -> caller
 
+	autoSwapNonceEnabledChains map[string]struct{}
+
 	dynamicFeeTxEnabledChains            map[string]struct{}
 	enableCheckTxBlockHashChains         map[string]struct{}
 	enableCheckTxBlockIndexChains        map[string]struct{}
@@ -59,10 +61,11 @@ type RouterServerConfig struct {
 	TokenIDBlackList []string `toml:",omitempty" json:",omitempty"`
 	AccountBlackList []string `toml:",omitempty" json:",omitempty"`
 
+	AutoSwapNonceEnabledChains []string `toml:",omitempty" json:",omitempty"`
+
 	// extras
 	EnableReplaceSwap          bool
 	EnablePassBigValueSwap     bool
-	EnableAutoSwapNonce        bool
 	ReplacePlusGasPricePercent uint64            `toml:",omitempty" json:",omitempty"`
 	WaitTimeToReplace          int64             `toml:",omitempty" json:",omitempty"` // seconds
 	MaxReplaceCount            int               `toml:",omitempty" json:",omitempty"`
@@ -223,14 +226,6 @@ func GetSwapType() string {
 // GetSwapSubType get router swap sub type
 func GetSwapSubType() string {
 	return GetRouterConfig().SwapSubType
-}
-
-// IsAutoSwapNonceEnabled is auto swap nonce enabled
-func IsAutoSwapNonceEnabled() bool {
-	if routerConfig.Server != nil {
-		return routerConfig.Server.EnableAutoSwapNonce
-	}
-	return false
 }
 
 // IsSwapTradeEnabled is swap trade enabled
@@ -617,6 +612,27 @@ func IsTokenIDInBlackList(tokenID string) bool {
 // IsAccountInBlackList is account in black list
 func IsAccountInBlackList(account string) bool {
 	_, exist := accountBlacklistMap[strings.ToLower(account)]
+	return exist
+}
+
+func initAutoSwapNonceEnabledChains() {
+	autoSwapNonceEnabledChains = make(map[string]struct{})
+	serverCfg := GetRouterServerConfig()
+	if serverCfg == nil || len(serverCfg.AutoSwapNonceEnabledChains) == 0 {
+		return
+	}
+	for _, cid := range serverCfg.AutoSwapNonceEnabledChains {
+		if _, err := common.GetBigIntFromStr(cid); err != nil {
+			log.Fatal("initAutoSwapNonceEnabledChains wrong chainID", "chainID", cid, "err", err)
+		}
+		autoSwapNonceEnabledChains[cid] = struct{}{}
+	}
+	log.Info("initAutoSwapNonceEnabledChains success", "chains", serverCfg.AutoSwapNonceEnabledChains)
+}
+
+// IsAutoSwapNonceEnabled is auto swap nonce enabled
+func IsAutoSwapNonceEnabled(chainID string) bool {
+	_, exist := autoSwapNonceEnabledChains[chainID]
 	return exist
 }
 

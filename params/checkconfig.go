@@ -116,6 +116,7 @@ func (s *RouterServerConfig) CheckConfig() error {
 	if err := s.MongoDB.CheckConfig(); err != nil {
 		return err
 	}
+	initAutoSwapNonceEnabledChains()
 	for _, chainID := range s.ChainIDBlackList {
 		biChainID, ok := new(big.Int).SetString(chainID, 0)
 		if !ok {

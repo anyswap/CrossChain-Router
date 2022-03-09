@@ -292,7 +292,7 @@ func (b *Bridge) getAccountNonce(args *tokens.BuildTxArgs) (nonceptr *uint64, er
 		return &nonce, err
 	}
 
-	if params.IsAutoSwapNonceEnabled() { // increase automatically
+	if params.IsAutoSwapNonceEnabled(b.ChainConfig.ChainID) { // increase automatically
 		nonce = b.GetSwapNonce(args.From)
 		return &nonce, nil
 
