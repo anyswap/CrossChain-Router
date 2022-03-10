@@ -58,7 +58,7 @@ func (b *Bridge) GetEIP1167Master(proxy common.Address) (master common.Address) 
 		return master
 	}
 	if len(eip1167Proxies) > maxEip1167ProxiesSize {
-		eip1167Proxies = nil
+		eip1167Proxies = make(map[common.Address]common.Address) // clear
 	}
 
 	proxyAddr := proxy.String()
@@ -83,7 +83,7 @@ func (b *Bridge) GetContractCodeHash(contract common.Address) common.Hash {
 		return codeHash
 	}
 	if len(contractCodeHashes) > maxContractCodeHashes {
-		contractCodeHashes = nil
+		contractCodeHashes = make(map[common.Address]common.Hash) // clear
 	}
 
 	code, err := b.getContractCode(contract.String())
