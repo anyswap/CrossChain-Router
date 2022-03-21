@@ -18,20 +18,29 @@ import (
 var (
 	defSwapDeadlineOffset = int64(36000)
 
-	ForceAnySwapInAutoTokenVersion       = uint64(10001)
-	ForceAnySwapInTokenVersion           = uint64(10002)
-	ForceAnySwapInUnderlyingTokenVersion = uint64(10003)
+	ForceAnySwapInAutoTokenVersion             = uint64(10001)
+	ForceAnySwapInTokenVersion                 = uint64(10002)
+	ForceAnySwapInUnderlyingTokenVersion       = uint64(10003)
+	ForceAnySwapInNativeTokenVersion           = uint64(10004)
+	ForceAnySwapInAndCallTokenVersion          = uint64(10005)
+	ForceAnySwapInUnerlyingAndCallTokenVersion = uint64(10006)
 
 	// anySwapIn(bytes32 txs, address token, address to, uint amount, uint fromChainID)
 	AnySwapInFuncHash = common.FromHex("0x825bb13c")
 	// anySwapInUnderlying(bytes32 txs, address token, address to, uint amount, uint fromChainID)
 	AnySwapInUnderlyingFuncHash = common.FromHex("0x3f88de89")
+	// anySwapInNative(bytes32 txs, address token, address to, uint amount, uint fromChainID)
+	AnySwapInNativeFuncHash = common.FromHex("0x21974f28")
 	// anySwapInAuto(bytes32 txs, address token, address to, uint amount, uint fromChainID)
 	AnySwapInAutoFuncHash = common.FromHex("0x0175b1c4")
 	// anySwapInExactTokensForTokens(bytes32 txs, uint amountIn, uint amountOutMin, address[] path, address to, uint deadline, uint fromChainID)
 	AnySwapInExactTokensForTokensFuncHash = common.FromHex("0x2fc1e728")
 	// anySwapInExactTokensForNative(bytes32 txs, uint amountIn, uint amountOutMin, address[] path, address to, uint deadline, uint fromChainID)
 	AnySwapInExactTokensForNativeFuncHash = common.FromHex("0x52a397d5")
+	// anySwapInAndExec(bytes32 txs, address token, address to, uint amount, uint fromChainID, address anycallProxy, bytes calldata data)
+	AnySwapInAndExecFuncHash = common.FromHex("0x22db7336")
+	// anySwapInUnderlyingAndExec(bytes32 txs, address token, address to, uint amount, uint fromChainID, address anycallProxy, bytes calldata data)
+	AnySwapInUnderlyingAndExecFuncHash = common.FromHex("0x302ef85a")
 )
 
 // GetSwapInFuncHash get swapin func hash
@@ -47,6 +56,8 @@ func GetSwapInFuncHash(tokenCfg *tokens.TokenConfig, forUnderlying bool) []byte 
 		return AnySwapInFuncHash
 	case ForceAnySwapInUnderlyingTokenVersion:
 		return AnySwapInUnderlyingFuncHash
+	case ForceAnySwapInNativeTokenVersion:
+		return AnySwapInNativeFuncHash
 	case 0:
 		if tokenCfg.GetUnderlying() == (common.Address{}) {
 			// without underlying
@@ -61,6 +72,21 @@ func GetSwapInFuncHash(tokenCfg *tokens.TokenConfig, forUnderlying bool) []byte 
 	return AnySwapInAutoFuncHash
 }
 
+// GetSwapInAndExecFuncHash get swapin and call func hash
+func GetSwapInAndExecFuncHash(tokenCfg *tokens.TokenConfig) []byte {
+	switch tokenCfg.ContractVersion {
+	case ForceAnySwapInAndCallTokenVersion:
+		return AnySwapInAndExecFuncHash
+	case ForceAnySwapInUnerlyingAndCallTokenVersion:
+		return AnySwapInUnderlyingAndExecFuncHash
+	default:
+		if tokenCfg.GetUnderlying() == (common.Address{}) {
+			return AnySwapInAndExecFuncHash
+		}
+	}
+	return AnySwapInUnderlyingAndExecFuncHash
+}
+
 func (b *Bridge) buildERC20SwapTxInput(args *tokens.BuildTxArgs) (err error) {
 	if args.ERC20SwapInfo == nil || args.ERC20SwapInfo.TokenID == "" {
 		return errors.New("build router swaptx without tokenID")
@@ -72,10 +98,45 @@ func (b *Bridge) buildERC20SwapTxInput(args *tokens.BuildTxArgs) (err error) {
 		return tokens.ErrMissTokenConfig
 	}
 
+	if erc20SwapInfo.CallProxy != "" {
+		return b.buildSwapAndExecTxInput(args, multichainToken)
+	}
+
 	if len(erc20SwapInfo.Path) > 0 && erc20SwapInfo.AmountOutMin != nil {
 		return b.buildERC20SwapTradeTxInput(args, multichainToken)
 	}
 	return b.buildERC20SwapoutTxInput(args, multichainToken)
+}
+
+func (b *Bridge) buildSwapAndExecTxInput(args *tokens.BuildTxArgs, multichainToken string) (err error) {
+	receiver, amount, err := b.getReceiverAndAmount(args, multichainToken)
+	if err != nil {
+		return err
+	}
+
+	toTokenCfg := b.GetTokenConfig(multichainToken)
+	if toTokenCfg == nil {
+		return tokens.ErrMissTokenConfig
+	}
+
+	erc20SwapInfo := args.ERC20SwapInfo
+
+	funcHash := GetSwapInAndExecFuncHash(toTokenCfg)
+
+	input := abicoder.PackDataWithFuncHash(funcHash,
+		common.HexToHash(args.SwapID),
+		common.HexToAddress(multichainToken),
+		receiver,
+		amount,
+		args.FromChainID,
+		common.HexToAddress(erc20SwapInfo.CallProxy),
+		erc20SwapInfo.CallData,
+	)
+	args.Input = (*hexutil.Bytes)(&input)          // input
+	args.To = b.GetRouterContract(multichainToken) // to
+	args.SwapValue = amount                        // swapValue
+
+	return nil
 }
 
 func (b *Bridge) buildERC20SwapoutTxInput(args *tokens.BuildTxArgs, multichainToken string) (err error) {
