@@ -44,12 +44,16 @@ func (s SwapType) IsValidType() bool {
 
 // ERC20SwapInfo struct
 type ERC20SwapInfo struct {
+	Token   string `json:"token"`
+	TokenID string `json:"tokenID"`
+
 	ForNative     bool     `json:"forNative,omitempty"`
 	ForUnderlying bool     `json:"forUnderlying,omitempty"`
-	Token         string   `json:"token"`
-	TokenID       string   `json:"tokenID"`
 	Path          []string `json:"path,omitempty"`
 	AmountOutMin  *big.Int `json:"amountOutMin,omitempty"`
+
+	CallProxy string        `json:"callProxy,omitempty"`
+	CallData  hexutil.Bytes `json:"callData,omitempty"`
 }
 
 // NFTSwapInfo struct
