@@ -23,15 +23,31 @@ func ConvertToSwapInfo(info *tokens.SwapInfo) SwapInfo {
 	switch {
 	case info.ERC20SwapInfo != nil:
 		erc20SwapInfo := info.ERC20SwapInfo
-		swapinfo.ERC20SwapInfo = &ERC20SwapInfo{
-			ForNative:     erc20SwapInfo.ForNative,
-			ForUnderlying: erc20SwapInfo.ForUnderlying,
-			Token:         erc20SwapInfo.Token,
-			TokenID:       erc20SwapInfo.TokenID,
-			Path:          erc20SwapInfo.Path,
-		}
-		if erc20SwapInfo.AmountOutMin != nil {
-			swapinfo.ERC20SwapInfo.AmountOutMin = erc20SwapInfo.AmountOutMin.String()
+		if len(erc20SwapInfo.Path) > 0 {
+			swapinfo.ERC20SwapInfo = &ERC20SwapInfo{
+				Token:         erc20SwapInfo.Token,
+				TokenID:       erc20SwapInfo.TokenID,
+				ForNative:     erc20SwapInfo.ForNative,
+				ForUnderlying: erc20SwapInfo.ForUnderlying,
+				Path:          erc20SwapInfo.Path,
+			}
+			if erc20SwapInfo.AmountOutMin != nil {
+				swapinfo.ERC20SwapInfo.AmountOutMin = erc20SwapInfo.AmountOutMin.String()
+			}
+		} else if erc20SwapInfo.CallProxy != "" {
+			swapinfo.ERC20SwapInfo = &ERC20SwapInfo{
+				Token:     erc20SwapInfo.Token,
+				TokenID:   erc20SwapInfo.TokenID,
+				CallProxy: erc20SwapInfo.CallProxy,
+			}
+			if erc20SwapInfo.CallData != nil {
+				swapinfo.ERC20SwapInfo.CallData = erc20SwapInfo.CallData.String()
+			}
+		} else {
+			swapinfo.ERC20SwapInfo = &ERC20SwapInfo{
+				Token:   erc20SwapInfo.Token,
+				TokenID: erc20SwapInfo.TokenID,
+			}
 		}
 	case info.NFTSwapInfo != nil:
 		nftSwapInfo := info.NFTSwapInfo
@@ -70,21 +86,31 @@ func ConvertFromSwapInfo(swapinfo *SwapInfo) (tokens.SwapInfo, error) {
 	switch {
 	case swapinfo.ERC20SwapInfo != nil:
 		erc20SwapInfo := swapinfo.ERC20SwapInfo
-		var amountOutMin *big.Int
-		var err error
 		if len(erc20SwapInfo.Path) > 0 {
-			amountOutMin, err = common.GetBigIntFromStr(erc20SwapInfo.AmountOutMin)
+			amountOutMin, err := common.GetBigIntFromStr(erc20SwapInfo.AmountOutMin)
 			if err != nil {
 				return info, fmt.Errorf("wrong amountOutMin %v", erc20SwapInfo.AmountOutMin)
 			}
-		}
-		info.ERC20SwapInfo = &tokens.ERC20SwapInfo{
-			ForNative:     erc20SwapInfo.ForNative,
-			ForUnderlying: erc20SwapInfo.ForUnderlying,
-			Token:         erc20SwapInfo.Token,
-			TokenID:       erc20SwapInfo.TokenID,
-			Path:          erc20SwapInfo.Path,
-			AmountOutMin:  amountOutMin,
+			info.ERC20SwapInfo = &tokens.ERC20SwapInfo{
+				Token:         erc20SwapInfo.Token,
+				TokenID:       erc20SwapInfo.TokenID,
+				ForNative:     erc20SwapInfo.ForNative,
+				ForUnderlying: erc20SwapInfo.ForUnderlying,
+				Path:          erc20SwapInfo.Path,
+				AmountOutMin:  amountOutMin,
+			}
+		} else if erc20SwapInfo.CallProxy != "" {
+			info.ERC20SwapInfo = &tokens.ERC20SwapInfo{
+				Token:     erc20SwapInfo.Token,
+				TokenID:   erc20SwapInfo.TokenID,
+				CallProxy: erc20SwapInfo.CallProxy,
+				CallData:  common.FromHex(erc20SwapInfo.CallData),
+			}
+		} else {
+			info.ERC20SwapInfo = &tokens.ERC20SwapInfo{
+				Token:   erc20SwapInfo.Token,
+				TokenID: erc20SwapInfo.TokenID,
+			}
 		}
 	case swapinfo.NFTSwapInfo != nil:
 		nftSwapInfo := swapinfo.NFTSwapInfo

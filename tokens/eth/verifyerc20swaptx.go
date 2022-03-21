@@ -56,14 +56,27 @@ func (b *Bridge) verifyERC20SwapTx(txHash string, logIndex int, allowUnstable bo
 	}
 
 	if !allowUnstable {
-		log.Info("verify router swap tx stable pass", "identifier", params.GetIdentifier(),
-			"from", swapInfo.From, "to", swapInfo.To, "bind", swapInfo.Bind, "value", swapInfo.Value,
-			"txid", txHash, "logIndex", logIndex, "height", swapInfo.Height, "timestamp", swapInfo.Timestamp,
+		ctx := []interface{}{
+			"identifier", params.GetIdentifier(),
+			"from", swapInfo.From, "to", swapInfo.To,
+			"bind", swapInfo.Bind, "value", swapInfo.Value,
+			"txid", txHash, "logIndex", logIndex,
+			"height", swapInfo.Height, "timestamp", swapInfo.Timestamp,
 			"fromChainID", swapInfo.FromChainID, "toChainID", swapInfo.ToChainID,
-			"token", swapInfo.ERC20SwapInfo.Token,
-			"tokenID", swapInfo.ERC20SwapInfo.TokenID,
-			"forNative", swapInfo.ERC20SwapInfo.ForNative,
-			"forUnderlying", swapInfo.ERC20SwapInfo.ForUnderlying)
+			"token", swapInfo.ERC20SwapInfo.Token, "tokenID", swapInfo.ERC20SwapInfo.TokenID,
+		}
+		if len(swapInfo.ERC20SwapInfo.Path) > 0 {
+			ctx = append(ctx,
+				"forNative", swapInfo.ERC20SwapInfo.ForNative,
+				"forUnderlying", swapInfo.ERC20SwapInfo.ForUnderlying,
+				"amountOutMin", swapInfo.ERC20SwapInfo.AmountOutMin,
+			)
+		} else if swapInfo.ERC20SwapInfo.CallProxy != "" {
+			ctx = append(ctx,
+				"callProxy", swapInfo.ERC20SwapInfo.CallProxy,
+			)
+		}
+		log.Info("verify router swap tx stable pass", ctx...)
 	}
 
 	return swapInfo, nil
@@ -445,6 +458,9 @@ func checkSwapTradePath(swapInfo *tokens.SwapTxInfo) error {
 
 func (b *Bridge) checkSwapWithPermit(swapInfo *tokens.SwapTxInfo) error {
 	if params.IsSwapWithPermitEnabled() {
+		return nil
+	}
+	if swapInfo.ERC20SwapInfo.CallProxy != "" {
 		return nil
 	}
 	routerContract := b.GetRouterContract(swapInfo.ERC20SwapInfo.Token)

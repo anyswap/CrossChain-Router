@@ -101,8 +101,7 @@ func (b *Bridge) buildERC20SwapTxInput(args *tokens.BuildTxArgs) (err error) {
 	if erc20SwapInfo.CallProxy != "" {
 		return b.buildSwapAndExecTxInput(args, multichainToken)
 	}
-
-	if len(erc20SwapInfo.Path) > 0 && erc20SwapInfo.AmountOutMin != nil {
+	if len(erc20SwapInfo.Path) > 0 {
 		return b.buildERC20SwapTradeTxInput(args, multichainToken)
 	}
 	return b.buildERC20SwapoutTxInput(args, multichainToken)

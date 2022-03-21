@@ -98,12 +98,14 @@ type SwapInfo struct {
 
 // ERC20SwapInfo struct
 type ERC20SwapInfo struct {
-	ForNative     bool     `bson:"forNative,omitempty"     json:"forNative,omitempty"`
-	ForUnderlying bool     `bson:"forUnderlying,omitempty" json:"forUnderlying,omitempty"`
 	Token         string   `bson:"token"                   json:"token"`
 	TokenID       string   `bson:"tokenID"                 json:"tokenID"`
+	ForNative     bool     `bson:"forNative,omitempty"     json:"forNative,omitempty"`
+	ForUnderlying bool     `bson:"forUnderlying,omitempty" json:"forUnderlying,omitempty"`
 	Path          []string `bson:"path,omitempty"          json:"path,omitempty"`
 	AmountOutMin  string   `bson:"amountOutMin,omitempty"  json:"amountOutMin,omitempty"`
+	CallProxy     string   `bson:"callProxy,omitempty"     json:"callProxy,omitempty"`
+	CallData      string   `bson:"callProxy,omitempty"     json:"callData,omitempty"`
 }
 
 // NFTSwapInfo struct
