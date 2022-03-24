@@ -114,8 +114,9 @@ type ExtraConfig struct {
 	EnableParallelSwap   bool `toml:",omitempty" json:",omitempty"`
 	UsePendingBalance    bool `toml:",omitempty" json:",omitempty"`
 
-	MinReserveFee  map[string]uint64 `toml:",omitempty" json:",omitempty"`
-	BaseFeePercent map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID
+	MinReserveFee    map[string]uint64 `toml:",omitempty" json:",omitempty"`
+	BaseFeePercent   map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID
+	MinReserveBudget map[string]uint64 `toml:",omitempty" json:",omitempty"`
 
 	GetAcceptListInterval uint64 `toml:",omitempty" json:",omitempty"`
 	PendingInvalidAccept  bool   `toml:",omitempty" json:",omitempty"`
@@ -312,6 +313,22 @@ func GetMinReserveFee(chainID string) *big.Int {
 		return nil
 	}
 	if minReserve, exist := GetExtraConfig().MinReserveFee[chainID]; exist {
+		return new(big.Int).SetUint64(minReserve)
+	}
+	return nil
+}
+
+// HasMinReserveBudgetConfig has min reserve budget config
+func HasMinReserveBudgetConfig() bool {
+	return GetExtraConfig() != nil && len(GetExtraConfig().MinReserveBudget) > 0
+}
+
+// GetMinReserveBudget get min reserve budget
+func GetMinReserveBudget(chainID string) *big.Int {
+	if GetExtraConfig() == nil {
+		return nil
+	}
+	if minReserve, exist := GetExtraConfig().MinReserveBudget[chainID]; exist {
 		return new(big.Int).SetUint64(minReserve)
 	}
 	return nil

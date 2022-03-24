@@ -53,6 +53,10 @@ type IBridge interface {
 	GetLatestBlockNumberOf(url string) (uint64, error)
 
 	IsValidAddress(address string) bool
+
+	// GetBalance get balance is used for checking budgets
+	// to prevent DOS attacking (used in anycall)
+	GetBalance(account string) (*big.Int, error)
 }
 
 // ISwapTrade interface

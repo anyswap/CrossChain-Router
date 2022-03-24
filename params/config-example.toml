@@ -125,10 +125,14 @@ DisableUseFromChainIDInReceiptChains = ["1666600000"]
 AllowCallByContract = false
 # whether check eip1167 master call by contract
 CheckEIP1167Master = false
-# min reserve fee. key is chainID. defaults to 1e16 wei
+# min reserve fee. key is chainID. defaults to 1e17 wei
 [Extra.MinReserveFee]
 4     = 100000000000000000
 46688 = 100000000000000000
+# min reserve budget. key is chainID. defaults to 1e16 wei
+[Extra.MinReserveBudget]
+4     = 10000000000000000
+46688 = 10000000000000000
 # base fee percent, must be in range [-90, 500]. key is dest chainID
 [Extra.BaseFeePercent]
 4     = 100

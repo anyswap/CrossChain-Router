@@ -38,6 +38,8 @@ var (
 	ErrTxWithWrongStatus     = errors.New("tx with wrong status")
 	ErrUnknownSwapoutType    = errors.New("unknown swapout type")
 	ErrEmptyTokenID          = errors.New("empty tokenID")
+	ErrNoEnoughReserveBudget = errors.New("no enough reserve budget")
+
 	// errors should register in router swap
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")
 	ErrTxWithWrongPath   = errors.New("swap trade tx with wrong path")
