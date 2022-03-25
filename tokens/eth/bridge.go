@@ -12,6 +12,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
+	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/types"
 )
@@ -25,20 +26,35 @@ var (
 
 // Bridge eth bridge
 type Bridge struct {
+	CustomConfig
 	*tokens.CrossChainBridgeBase
 	*NonceSetterBase
 	Signer        types.Signer
 	SignerChainID *big.Int
-
-	// eg. RSK chain do not check mixed case or not same as eth
-	DontCheckAddressMixedCase bool
 }
 
 // NewCrossChainBridge new bridge
 func NewCrossChainBridge() *Bridge {
 	return &Bridge{
+		CustomConfig:         NewCustomConfig(),
 		CrossChainBridgeBase: tokens.NewCrossChainBridgeBase(),
 		NonceSetterBase:      NewNonceSetterBase(),
+	}
+}
+
+// CustomConfig custom config
+type CustomConfig struct {
+	// some chain's rpc is slow and need config a longer rpc timeout
+	SendtxTimeout int
+	// eg. RSK chain do not check mixed case or not same as eth
+	DontCheckAddressMixedCase bool
+}
+
+// NewCustomConfig new custom config
+func NewCustomConfig() CustomConfig {
+	return CustomConfig{
+		SendtxTimeout:             client.GetDefaultTimeout(false),
+		DontCheckAddressMixedCase: false,
 	}
 }
 
@@ -462,7 +478,9 @@ func (b *Bridge) InitExtraCustoms() {
 			log.Fatal("get sendtxTimeout failed", "err", err)
 		}
 		if timeout != 0 {
-			sendtxTimeout = int(timeout)
+			b.SendtxTimeout = int(timeout)
 		}
 	}
+	flag := params.GetCustom(b.ChainConfig.ChainID, "dontCheckAddressMixedCase")
+	b.DontCheckAddressMixedCase = strings.EqualFold(flag, "true")
 }

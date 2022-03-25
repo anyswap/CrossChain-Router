@@ -140,6 +140,8 @@ CheckEIP1167Master = false
 # customs, key is chainID. value is a mapping.
 [Extra.Customs.1313161554]
 sendtxTimeout = "60"
+[Extra.Customs.30]
+dontCheckAddressMixedCase = "true"
 # big value whitelist, key is tokenID
 [Extra.BigValueWhitelist]
 USDC = ["0x1111111111111111111111111111111111111111"]

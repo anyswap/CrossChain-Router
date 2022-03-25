@@ -27,8 +27,6 @@ var (
 	errTxReceiptMissBlockInfo = errors.New("tx receipt missing block info")
 
 	wrapRPCQueryError = tokens.WrapRPCQueryError
-
-	sendtxTimeout = client.GetDefaultTimeout(false)
 )
 
 // GetLatestBlockNumberOf call eth_blockNumber
@@ -428,7 +426,7 @@ type sendTxResult struct {
 func (b *Bridge) sendRawTransaction(wg *sync.WaitGroup, hexData string, url string, ch chan<- *sendTxResult) {
 	defer wg.Done()
 	var result string
-	err := client.RPCPostWithTimeout(sendtxTimeout, &result, url, "eth_sendRawTransaction", hexData)
+	err := client.RPCPostWithTimeout(b.SendtxTimeout, &result, url, "eth_sendRawTransaction", hexData)
 	if err != nil {
 		log.Trace("call eth_sendRawTransaction failed", "txHash", result, "url", url, "err", err)
 	} else {
