@@ -121,6 +121,7 @@ type ExtraConfig struct {
 	GetAcceptListInterval uint64 `toml:",omitempty" json:",omitempty"`
 	PendingInvalidAccept  bool   `toml:",omitempty" json:",omitempty"`
 
+	AllowCallByConstructor          bool                `toml:",omitempty" json:",omitempty"`
 	AllowCallByContract             bool                `toml:",omitempty" json:",omitempty"`
 	CheckEIP1167Master              bool                `toml:",omitempty" json:",omitempty"`
 	CallByContractWhitelist         map[string][]string `toml:",omitempty" json:",omitempty"` // chainID -> whitelist
@@ -414,6 +415,11 @@ func IsNFTSwapWithData() bool {
 		isNFTSwapWithData = &flag
 	}
 	return *isNFTSwapWithData
+}
+
+// AllowCallByConstructor allow call by constructor
+func AllowCallByConstructor() bool {
+	return GetExtraConfig() != nil && GetExtraConfig().AllowCallByConstructor
 }
 
 // AllowCallByContract allow call into router from contract

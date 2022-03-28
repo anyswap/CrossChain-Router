@@ -158,11 +158,13 @@ func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable boo
 	}
 
 	if receipt.Recipient == nil {
-		return nil, tokens.ErrTxWithWrongContract
+		if !params.AllowCallByConstructor() {
+			return nil, tokens.ErrTxWithWrongContract
+		}
+	} else {
+		swapInfo.TxTo = receipt.Recipient.LowerHex() // TxTo
 	}
-
-	swapInfo.TxTo = receipt.Recipient.LowerHex() // TxTo
-	swapInfo.From = receipt.From.LowerHex()      // From
+	swapInfo.From = receipt.From.LowerHex() // From
 	if *receipt.From == (common.Address{}) {
 		return nil, tokens.ErrTxWithWrongSender
 	}
