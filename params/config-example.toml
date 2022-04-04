@@ -40,9 +40,13 @@ MaxPlusGasPricePercentage = 100
 MaxGasPriceFluctPercent = 10
 # swap deadline offset for trading
 SwapDeadlineOffset = 36000
-# send tx loop count until success (use negative to disable loop)
-SendTxLoopCount = 30
-SendTxLoopInterval = 10
+# send tx loop count until success, key is chainID. use negative to disable loop
+[SendTxLoopCount]
+43114 = 30
+25    = 3
+[SendTxLoopInterval]
+43114 = 10
+25    = 10
 # apecify auto swap nonce enabled chainids
 AutoSwapNonceEnabledChains = ["25"]
 

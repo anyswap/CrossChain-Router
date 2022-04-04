@@ -25,7 +25,7 @@ var (
 	cachedSwapTasks    = mapset.NewSet()
 	maxCachedSwapTasks = 1000
 
-	swapChanSize          = 10
+	swapChanSize          = 50
 	routerSwapTaskChanMap = make(map[string]chan *tokens.BuildTxArgs) // key is chainID
 
 	errAlreadySwapped     = errors.New("already swapped")
@@ -108,6 +108,9 @@ func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
 	}
 
 	if err = checkSwapTaskChannel(toChainID); err != nil {
+		if errors.Is(err, errSwapChannelIsFull) {
+			logWorkerTrace("doSwap", "swap task channel is full", "txid", txid, "logIndex", logIndex, "fromChainID", fromChainID, "toChainID", toChainID)
+		}
 		return err
 	}
 
@@ -223,7 +226,6 @@ func checkSwapTaskChannel(toChainID string) error {
 		return fmt.Errorf("no swapout task channel for toChainID '%v'", toChainID)
 	}
 	if len(swapChan) == cap(swapChan) {
-		logWorkerWarn("doSwap", "swap task channel is full", "toChainID", toChainID)
 		return errSwapChannelIsFull
 	}
 	return nil

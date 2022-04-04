@@ -201,16 +201,19 @@ SENDTX_LOOP:
 }
 
 func sendTxLoopUntilSuccess(bridge tokens.IBridge, txHash string, signedTx interface{}, args *tokens.BuildTxArgs) {
+	toChainID := args.ToChainID.String()
 	severCfg := params.GetRouterServerConfig()
-	sendTxLoopCount := severCfg.SendTxLoopCount
+	sendTxLoopCount := severCfg.SendTxLoopCount[toChainID]
 	if sendTxLoopCount == 0 {
 		sendTxLoopCount = 30
 	}
-	sendTxLoopInterval := severCfg.SendTxLoopInterval
+	sendTxLoopInterval := severCfg.SendTxLoopInterval[toChainID]
 	if sendTxLoopInterval == 0 {
 		sendTxLoopInterval = 10
 	}
 	for loop := 1; loop <= sendTxLoopCount; loop++ {
+		sleepSeconds(sendTxLoopInterval)
+
 		txStatus, err := bridge.GetTransactionStatus(txHash)
 		if err == nil && txStatus.BlockHeight > 0 {
 			logWorker("sendtx", "send tx in loop success", "txHash", txHash, "loop", loop, "blockNumber", txStatus.BlockHeight)
@@ -229,8 +232,6 @@ func sendTxLoopUntilSuccess(bridge tokens.IBridge, txHash string, signedTx inter
 		} else {
 			logWorker("sendtx", "send tx in loop done", "swapID", args.SwapID, "txHash", txHash, "loop", loop)
 		}
-
-		sleepSeconds(sendTxLoopInterval)
 	}
 }
 
