@@ -105,7 +105,7 @@ type ERC20SwapInfo struct {
 	Path          []string `bson:"path,omitempty"          json:"path,omitempty"`
 	AmountOutMin  string   `bson:"amountOutMin,omitempty"  json:"amountOutMin,omitempty"`
 	CallProxy     string   `bson:"callProxy,omitempty"     json:"callProxy,omitempty"`
-	CallData      string   `bson:"callProxy,omitempty"     json:"callData,omitempty"`
+	CallData      string   `bson:"callData,omitempty"     json:"callData,omitempty"`
 }
 
 // NFTSwapInfo struct
