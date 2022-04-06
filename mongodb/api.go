@@ -454,6 +454,30 @@ func FindNextSwapNonce(chainID, mpc string) (uint64, error) {
 	return result.SwapNonce + 1, nil
 }
 
+// FindRouterSwapResultsToStable find swap results to stable
+func FindRouterSwapResultsToStable(chainID string, septime int64) ([]*MgoSwapResult, error) {
+	qtime := bson.M{"inittime": bson.M{"$gte": septime}}
+	qstatus := bson.M{"status": MatchTxNotStable}
+	qchainid := bson.M{"toChainID": chainID}
+	queries := []bson.M{qtime, qstatus, qchainid}
+
+	limit := int64(100)
+	opts := &options.FindOptions{
+		Sort:  bson.D{{Key: "swapnonce", Value: 1}},
+		Limit: &limit,
+	}
+	cur, err := collRouterSwapResult.Find(clientCtx, bson.M{"$and": queries}, opts)
+	if err != nil {
+		return nil, mgoError(err)
+	}
+	result := make([]*MgoSwapResult, 0, limit)
+	err = cur.All(clientCtx, &result)
+	if err != nil {
+		return nil, mgoError(err)
+	}
+	return result, nil
+}
+
 // FindRouterSwapResultsToReplace find router swap result with status
 func FindRouterSwapResultsToReplace(chainID *big.Int, septime int64) ([]*MgoSwapResult, error) {
 	qtime := bson.M{"inittime": bson.M{"$gte": septime}}

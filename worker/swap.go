@@ -107,13 +107,6 @@ func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
 		return nil
 	}
 
-	if err = checkSwapTaskChannel(toChainID); err != nil {
-		if errors.Is(err, errSwapChannelIsFull) {
-			logWorkerTrace("doSwap", "swap task channel is full", "txid", txid, "logIndex", logIndex, "fromChainID", fromChainID, "toChainID", toChainID)
-		}
-		return err
-	}
-
 	res, err := mongodb.FindRouterSwapResult(fromChainID, txid, logIndex)
 	if err != nil {
 		return err
@@ -218,17 +211,6 @@ func processHistory(res *mongodb.MgoSwapResult) error {
 	_ = mongodb.UpdateRouterSwapStatus(chainID, txid, logIndex, mongodb.TxProcessed, now(), "")
 	logWorker("swap", "ignore swapped router swap", "fromChainID", res.FromChainID, "toChainID", res.ToChainID, "txid", txid, "logIndex", logIndex, "matchTx", history.matchTx)
 	return errAlreadySwapped
-}
-
-func checkSwapTaskChannel(toChainID string) error {
-	swapChan, exist := routerSwapTaskChanMap[toChainID]
-	if !exist {
-		return fmt.Errorf("no swapout task channel for toChainID '%v'", toChainID)
-	}
-	if len(swapChan) == cap(swapChan) {
-		return errSwapChannelIsFull
-	}
-	return nil
 }
 
 func dispatchSwapTask(args *tokens.BuildTxArgs) error {

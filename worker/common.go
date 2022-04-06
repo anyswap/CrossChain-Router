@@ -246,6 +246,7 @@ func needRetrySendTx(err error) bool {
 	switch {
 	case strings.Contains(errMsg, "Client.Timeout exceeded while awaiting headers"): // timeout
 	case strings.Contains(errMsg, "json-rpc error -32000, internal"): // cronos specific
+	case strings.EqualFold(errMsg, "json-rpc error -32000, "): // cronos specific
 	default:
 		return false
 	}
