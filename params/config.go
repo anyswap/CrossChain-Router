@@ -78,6 +78,7 @@ type RouterServerConfig struct {
 	MaxGasPrice                map[string]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	NoncePassedConfirmInterval map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID
 	CalcGasPriceMethod         map[string]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+	RetrySendTxLoopCount       map[string]int    `toml:",omitempty" json:",omitempty"` // key is chain ID
 	SendTxLoopCount            map[string]int    `toml:",omitempty" json:",omitempty"` // key is chain ID
 	SendTxLoopInterval         map[string]int    `toml:",omitempty" json:",omitempty"` // key is chain ID
 

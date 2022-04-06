@@ -166,14 +166,18 @@ func markSwapResultFailed(fromChainID, txid string, logIndex int) (err error) {
 
 func sendSignedTransaction(bridge tokens.IBridge, signedTx interface{}, args *tokens.BuildTxArgs) (txHash string, err error) {
 	var (
-		retrySendTxCount = 3
-		swapTxNonce      = args.GetTxNonce()
-		replaceNum       = args.GetReplaceNum()
+		swapTxNonce = args.GetTxNonce()
+		replaceNum  = args.GetReplaceNum()
 	)
 
+	retrySendTxLoops := params.GetRouterServerConfig().RetrySendTxLoopCount[args.ToChainID.String()]
+	if retrySendTxLoops == 0 {
+		retrySendTxLoops = 2
+	}
+
 SENDTX_LOOP:
-	for {
-		for i := 0; i < retrySendTxCount; i++ {
+	for loop := 0; loop < retrySendTxLoops; loop++ {
+		for i := 0; i < 3; i++ {
 			txHash, err = bridge.SendTransaction(signedTx)
 			if err == nil {
 				logWorker("sendtx", "send tx success", "txHash", txHash, "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "swapNonce", swapTxNonce, "replaceNum", replaceNum)
@@ -183,11 +187,11 @@ SENDTX_LOOP:
 		}
 
 		// prevent sendtx failed cause many same swap nonce allocation
-		if err == nil || !needRetrySendTx(err) {
-			break
+		if !needRetrySendTx(err) || loop+1 == retrySendTxLoops {
+			break SENDTX_LOOP
 		}
-		logWorkerWarn("sendtx", "send tx failed and will retry", "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "swapNonce", swapTxNonce, "replaceNum", replaceNum, "err", err)
-		sleepSeconds(10)
+		logWorkerWarn("sendtx", "send tx failed and will retry", "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "swapNonce", swapTxNonce, "replaceNum", replaceNum, "loop", loop, "err", err)
+		sleepSeconds(3)
 	}
 
 	if err != nil {
@@ -195,7 +199,9 @@ SENDTX_LOOP:
 		return txHash, err
 	}
 
-	go sendTxLoopUntilSuccess(bridge, txHash, signedTx, args)
+	if params.GetRouterServerConfig().SendTxLoopCount[args.ToChainID.String()] >= 0 {
+		go sendTxLoopUntilSuccess(bridge, txHash, signedTx, args)
+	}
 
 	return txHash, nil
 }

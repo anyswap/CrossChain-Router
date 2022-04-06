@@ -43,11 +43,16 @@ SwapDeadlineOffset = 36000
 # apecify auto swap nonce enabled chainids
 AutoSwapNonceEnabledChains = ["25"]
 
-# send tx loop count until success, key is chainID. use negative to disable loop
+# retry send tx loop count, key is chainID. (in main thread)
+[Server.RetrySendTxLoopCount]
+43114 = 2
+25    = 10
+# send tx loop count until success in child routines (after retry loop)
+# key is chainID. use negative to disable loop
 [Server.SendTxLoopCount]
 43114 = 30
-25    = 3
-# send tx loop interval, key is chainID.
+25    = -1
+# send tx until success in child routines loop interval of seconds, key is chainID.
 [Server.SendTxLoopInterval]
 43114 = 10
 25    = 10
