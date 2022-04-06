@@ -149,6 +149,10 @@ CheckEIP1167Master = false
 [Extra.BaseFeePercent]
 4     = 100
 46688 = 50
+# RPC timeout, key is chainID, value is of seconds (deafults to 5)
+[Extra.RPCClientTimeout]
+1313161554 = 60
+25 = 60
 # customs, key is chainID. value is a mapping.
 [Extra.Customs.1313161554]
 sendtxTimeout = "60"

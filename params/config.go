@@ -134,6 +134,7 @@ type ExtraConfig struct {
 	EnableCheckTxBlockIndexChains        []string `toml:",omitempty" json:",omitempty"`
 	DisableUseFromChainIDInReceiptChains []string `toml:",omitempty" json:",omitempty"`
 
+	RPCClientTimeout map[string]int `toml:",omitempty" json:",omitempty"` // key is chainID
 	// chainID,customKey => customValue
 	Customs map[string]map[string]string `toml:",omitempty" json:",omitempty"`
 }
@@ -346,6 +347,15 @@ func GetBaseFeePercent(chainID string) int64 {
 		return baseFeePercent
 	}
 	return 0
+}
+
+// GetRPCClientTimeout get rpc client timeout
+func GetRPCClientTimeout(chainID string) int {
+	extraCfg := GetExtraConfig()
+	if extraCfg == nil {
+		return 0
+	}
+	return extraCfg.RPCClientTimeout[chainID]
 }
 
 // GetCustom get custom

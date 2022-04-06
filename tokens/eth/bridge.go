@@ -45,7 +45,7 @@ func NewCrossChainBridge() *Bridge {
 // CustomConfig custom config
 type CustomConfig struct {
 	// some chain's rpc is slow and need config a longer rpc timeout
-	SendtxTimeout int
+	RPCClientTimeout int
 	// eg. RSK chain do not check mixed case or not same as eth
 	DontCheckAddressMixedCase bool
 }
@@ -53,7 +53,7 @@ type CustomConfig struct {
 // NewCustomConfig new custom config
 func NewCustomConfig() CustomConfig {
 	return CustomConfig{
-		SendtxTimeout:             client.GetDefaultTimeout(false),
+		RPCClientTimeout:          client.GetDefaultTimeout(false),
 		DontCheckAddressMixedCase: false,
 	}
 }
@@ -471,14 +471,19 @@ func (b *Bridge) getETCSignerChainID() (*big.Int, error) {
 
 // InitExtraCustoms init extra customs
 func (b *Bridge) InitExtraCustoms() {
-	timeoutStr := params.GetCustom(b.ChainConfig.ChainID, "sendtxTimeout")
-	if timeoutStr != "" {
-		timeout, err := common.GetUint64FromStr(timeoutStr)
-		if err != nil {
-			log.Fatal("get sendtxTimeout failed", "err", err)
-		}
-		if timeout != 0 {
-			b.SendtxTimeout = int(timeout)
+	clientTimeout := params.GetRPCClientTimeout(b.ChainConfig.ChainID)
+	if clientTimeout != 0 {
+		b.RPCClientTimeout = clientTimeout
+	} else {
+		timeoutStr := params.GetCustom(b.ChainConfig.ChainID, "sendtxTimeout")
+		if timeoutStr != "" {
+			timeout, err := common.GetUint64FromStr(timeoutStr)
+			if err != nil {
+				log.Fatal("get sendtxTimeout failed", "err", err)
+			}
+			if timeout != 0 {
+				b.RPCClientTimeout = int(timeout)
+			}
 		}
 	}
 	flag := params.GetCustom(b.ChainConfig.ChainID, "dontCheckAddressMixedCase")

@@ -14,12 +14,12 @@ var (
 // ------------------------ kusama specific apis -----------------------------
 
 // KsmGetLatestBlockNumberOf get latest block number
-func KsmGetLatestBlockNumberOf(url string, gateway *tokens.GatewayConfig) (latest uint64, err error) {
-	blockHash, err := KsmGetFinalizedHead(url)
+func KsmGetLatestBlockNumberOf(url string, gateway *tokens.GatewayConfig, timeout int) (latest uint64, err error) {
+	blockHash, err := KsmGetFinalizedHead(url, timeout)
 	if err != nil {
 		return 0, err
 	}
-	header, err := KsmGetHeader(blockHash.String(), gateway)
+	header, err := KsmGetHeader(blockHash.String(), gateway, timeout)
 	if err != nil {
 		return 0, err
 	}
@@ -27,8 +27,8 @@ func KsmGetLatestBlockNumberOf(url string, gateway *tokens.GatewayConfig) (lates
 }
 
 // KsmGetFinalizedHead call chain_getFinalizedHead
-func KsmGetFinalizedHead(url string) (result common.Hash, err error) {
-	err = client.RPCPost(&result, url, "chain_getFinalizedHead")
+func KsmGetFinalizedHead(url string, timeout int) (result common.Hash, err error) {
+	err = client.RPCPostWithTimeout(timeout, &result, url, "chain_getFinalizedHead")
 	if err == nil {
 		return result, nil
 	}
@@ -42,17 +42,17 @@ type KsmHeader struct {
 }
 
 // KsmGetHeader call chain_getHeader
-func KsmGetHeader(blockHash string, gateway *tokens.GatewayConfig) (result *KsmHeader, err error) {
-	result, err = ksmGetHeader(blockHash, gateway.APIAddress)
+func KsmGetHeader(blockHash string, gateway *tokens.GatewayConfig, timeout int) (result *KsmHeader, err error) {
+	result, err = ksmGetHeader(blockHash, gateway.APIAddress, timeout)
 	if err != nil && len(gateway.APIAddressExt) > 0 {
-		result, err = ksmGetHeader(blockHash, gateway.APIAddressExt)
+		result, err = ksmGetHeader(blockHash, gateway.APIAddressExt, timeout)
 	}
 	return result, err
 }
 
-func ksmGetHeader(blockHash string, urls []string) (result *KsmHeader, err error) {
+func ksmGetHeader(blockHash string, urls []string, timeout int) (result *KsmHeader, err error) {
 	for _, url := range urls {
-		err = client.RPCPost(&result, url, "chain_getHeader", blockHash)
+		err = client.RPCPostWithTimeout(timeout, &result, url, "chain_getHeader", blockHash)
 		if err == nil && result != nil {
 			return result, nil
 		}
