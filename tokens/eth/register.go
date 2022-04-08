@@ -57,6 +57,7 @@ func (b *Bridge) registerERC20SwapTx(txHash string, logIndex int) ([]*tokens.Swa
 		err = b.verifyERC20SwapTxLog(swapInfo, receipt.Logs[i])
 		switch {
 		case errors.Is(err, tokens.ErrSwapoutLogNotFound),
+			errors.Is(err, tokens.ErrTxWithWrongTopics),
 			errors.Is(err, tokens.ErrTxWithWrongContract):
 			continue
 		case err == nil:

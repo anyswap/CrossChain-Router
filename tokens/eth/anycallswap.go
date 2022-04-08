@@ -60,6 +60,7 @@ func (b *Bridge) registerAnyCallSwapTx(txHash string, logIndex int) ([]*tokens.S
 		err := b.verifyAnyCallSwapTxLog(swapInfo, receipt.Logs[i])
 		switch {
 		case errors.Is(err, tokens.ErrSwapoutLogNotFound),
+			errors.Is(err, tokens.ErrTxWithWrongTopics),
 			errors.Is(err, tokens.ErrTxWithWrongContract):
 			continue
 		case err == nil:

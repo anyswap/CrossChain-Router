@@ -76,6 +76,7 @@ func (b *Bridge) registerNFTSwapTx(txHash string, logIndex int) ([]*tokens.SwapT
 		err := b.verifyNFTSwapTxLog(swapInfo, receipt.Logs[i])
 		switch {
 		case errors.Is(err, tokens.ErrSwapoutLogNotFound),
+			errors.Is(err, tokens.ErrTxWithWrongTopics),
 			errors.Is(err, tokens.ErrTxWithWrongContract):
 			continue
 		case err == nil:
