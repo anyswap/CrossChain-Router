@@ -95,6 +95,10 @@ func isBlacked(swap *mongodb.MgoSwap) bool {
 func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 	defer atomic.AddInt64(&curVerifyRoutines, -1)
 
+	if router.IsChainIDPaused(swap.FromChainID) || router.IsChainIDPaused(swap.ToChainID) {
+		return nil
+	}
+
 	fromChainID := swap.FromChainID
 	txid := swap.TxID
 	logIndex := swap.LogIndex

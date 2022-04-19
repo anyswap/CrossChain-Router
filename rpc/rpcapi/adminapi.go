@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/admin"
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -16,6 +17,7 @@ import (
 )
 
 const (
+	maintainCmd     = "maintain"
 	passbigvalueCmd = "passbigvalue"
 	reswapCmd       = "reswap"
 	replaceswapCmd  = "replaceswap"
@@ -39,7 +41,7 @@ func (s *RouterSwapAPI) AdminCall(r *http.Request, rawTx, result *string) (err e
 	senderAddress := sender.String()
 	if !params.IsRouterAdmin(senderAddress) {
 		switch args.Method {
-		case reswapCmd:
+		case maintainCmd, reswapCmd:
 			return fmt.Errorf("sender %v is not admin", senderAddress)
 		case passbigvalueCmd, replaceswapCmd:
 			if !params.IsRouterAssistant(senderAddress) {
@@ -55,6 +57,8 @@ func (s *RouterSwapAPI) AdminCall(r *http.Request, rawTx, result *string) (err e
 
 func doRouterAdminCall(args *admin.CallArgs, result *string) error {
 	switch args.Method {
+	case maintainCmd:
+		return maintain(args, result)
 	case passbigvalueCmd:
 		return routerPassBigValue(args, result)
 	case reswapCmd:
@@ -87,6 +91,31 @@ func getKeys(args *admin.CallArgs, startPos int) (chainID, txid string, logIndex
 		err = fmt.Errorf("wrong log index '%v'", logIndexStr)
 	}
 	return
+}
+
+func maintain(args *admin.CallArgs, result *string) (err error) {
+	if len(args.Params) != 2 {
+		return fmt.Errorf("wrong number of params, have %v want 2", len(args.Params))
+	}
+	action := args.Params[0]
+	arguments := args.Params[1]
+
+	actPause := "pause"
+	actUnpause := "unpause"
+
+	switch action {
+	case actPause, actUnpause:
+		chainIDs := strings.Split(arguments, ",")
+		if action == actPause {
+			router.AddPausedChainIDs(chainIDs)
+		} else {
+			router.RemovePausedChainIDs(chainIDs)
+		}
+		log.Infof("after action %v, the paused chainIDs are %v", action, router.GetPausedChainIDs())
+	default:
+		return fmt.Errorf("unkown maintain action '%v'", action)
+	}
+	return nil
 }
 
 func getGasPrice(args *admin.CallArgs, startPos int) (gasPrice *big.Int, err error) {

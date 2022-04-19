@@ -3,12 +3,15 @@ package router
 
 import (
 	"math/big"
+	"sort"
 	"strings"
 	"time"
 
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	mapset "github.com/deckarep/golang-set"
 )
 
 // router bridges
@@ -17,6 +20,8 @@ var (
 	MultichainTokens = make(map[string]map[string]string) // key is tokenID,chainID
 	AllChainIDs      []*big.Int                           // all chainIDs is retrieved only once
 	AllTokenIDs      []string                             // all tokenIDs can be reload
+
+	pausedChainIDs = mapset.NewSet() // paused chainIDs in memory by admin command
 
 	MPCPublicKeys = make(map[string]string)          // key is mpc address
 	RouterInfos   = make(map[string]*SwapRouterInfo) // key is router contract address
@@ -179,4 +184,51 @@ func IsBlacklistSwap(swapInfo *tokens.SwapTxInfo) bool {
 		params.IsAccountInBlackList(swapInfo.From) ||
 		params.IsAccountInBlackList(swapInfo.Bind) ||
 		params.IsAccountInBlackList(swapInfo.TxTo)
+}
+
+// AddPausedChainIDs add paused chainIDs
+func AddPausedChainIDs(chainIDs []string) {
+	for _, chainID := range chainIDs {
+		_, err := common.GetBigIntFromStr(chainID)
+		if err != nil || chainID == "" {
+			continue
+		}
+		pausedChainIDs.Add(chainID)
+	}
+}
+
+// RemovePausedChainIDs remove paused chainIDs
+func RemovePausedChainIDs(chainIDs []string) {
+	for _, chainID := range chainIDs {
+		_, err := common.GetBigIntFromStr(chainID)
+		if err != nil || chainID == "" {
+			continue
+		}
+		pausedChainIDs.Remove(chainID)
+	}
+}
+
+// GetPausedChainIDs get paused chainIDs
+func GetPausedChainIDs() []*big.Int {
+	count := pausedChainIDs.Cardinality()
+	if count == 0 {
+		return nil
+	}
+	chainIDs := make([]*big.Int, 0, count)
+	pausedChainIDs.Each(func(elem interface{}) bool {
+		chainID, err := common.GetBigIntFromStr(elem.(string))
+		if err == nil {
+			chainIDs = append(chainIDs, chainID)
+		}
+		return false // stop iterate if return true
+	})
+	sort.Slice(chainIDs, func(i, j int) bool {
+		return chainIDs[i].Cmp(chainIDs[j]) < 0
+	})
+	return chainIDs
+}
+
+// IsChainIDPaused is chainID paused
+func IsChainIDPaused(chainID string) bool {
+	return pausedChainIDs.Contains(chainID)
 }

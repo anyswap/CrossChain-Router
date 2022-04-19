@@ -88,6 +88,10 @@ func findRouterSwapToSwap(chainID string) ([]*mongodb.MgoSwap, error) {
 }
 
 func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
+	if router.IsChainIDPaused(swap.FromChainID) || router.IsChainIDPaused(swap.ToChainID) {
+		return nil
+	}
+
 	fromChainID := swap.FromChainID
 	toChainID := swap.ToChainID
 	txid := swap.TxID

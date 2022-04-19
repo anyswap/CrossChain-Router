@@ -20,6 +20,17 @@ admin router swap
 `,
 		Subcommands: []*cli.Command{
 			{
+				Name:      "maintain",
+				Usage:     "maintain router",
+				Action:    maintain,
+				ArgsUsage: "<action> [comma separated arguments]",
+				Description: `
+maintain router.
+example:
+<pause|unpause> <chainID[,chainID]...>
+`,
+			},
+			{
 				Name:   "passbigvalue",
 				Usage:  "pass swap with big value",
 				Action: passbigvalue,
@@ -55,6 +66,33 @@ replace pending swap with same nonce and new gas price
 		utils.LogIndexFlag,
 	}
 )
+
+func maintain(ctx *cli.Context) error {
+	utils.SetLogger(ctx)
+	if ctx.NArg() == 0 {
+		return fmt.Errorf("maintain: no action is specified")
+	}
+
+	method := "maintain"
+	err := admin.Prepare(ctx)
+	if err != nil {
+		return err
+	}
+
+	action := ctx.Args().Get(0)
+	arguments := ""
+	if ctx.NArg() > 1 {
+		arguments = ctx.Args().Get(1)
+	}
+
+	log.Printf("%v: %v %v", method, action, arguments)
+
+	params := []string{action, arguments}
+	result, err := admin.SwapAdmin(method, params)
+
+	log.Printf("result is '%v'", result)
+	return err
+}
 
 func getKeys(ctx *cli.Context) (chainID, txid, logIndex string, err error) {
 	chainID = ctx.String(utils.ChainIDFlag.Name)
