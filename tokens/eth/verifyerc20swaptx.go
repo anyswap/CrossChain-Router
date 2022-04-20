@@ -2,6 +2,8 @@ package eth
 
 import (
 	"bytes"
+	"fmt"
+	"math/big"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -46,6 +48,11 @@ func (b *Bridge) verifyERC20SwapTx(txHash string, logIndex int, allowUnstable bo
 	}
 
 	err = b.verifyERC20SwapTxLog(swapInfo, receipt.Logs[logIndex])
+	if err != nil {
+		return swapInfo, err
+	}
+
+	err = b.checkTokenReceived(swapInfo, receipt)
 	if err != nil {
 		return swapInfo, err
 	}
@@ -488,5 +495,104 @@ func (b *Bridge) checkSwapWithPermit(swapInfo *tokens.SwapTxInfo) error {
 		return nil
 	}
 
+	return nil
+}
+
+// check underlying token is really received (or burned)
+// or anyToken is really burned by anySwapOut
+// anySwapOut burn anyToken from sender to zero address
+// anySwapOutUnderlying transfer underlying from sender to anyToken
+// anySwapOutNative transfer underlying from router to anyToken
+//nolint:funlen,gocyclo // allow long method
+func (b *Bridge) checkTokenReceived(swapInfo *tokens.SwapTxInfo, receipt *types.RPCTxReceipt) error {
+	erc20SwapInfo := swapInfo.ERC20SwapInfo
+	token := erc20SwapInfo.Token
+	tokenCfg := b.GetTokenConfig(token)
+	if tokenCfg == nil || erc20SwapInfo.TokenID == "" {
+		return tokens.ErrMissTokenConfig
+	}
+	tokenAddr := common.HexToAddress(token)
+	underlyingAddr := tokenCfg.GetUnderlying()
+	if underlyingAddr == (common.Address{}) {
+		return nil
+	}
+	routerContract := b.GetRouterContract(token)
+	if routerContract == "" {
+		return tokens.ErrMissRouterInfo
+	}
+
+	transferTopic := erc20CodeParts["LogTransfer"]
+
+	var recvAmount *big.Int
+	var isBurn bool
+	// find in reverse order
+	for i := swapInfo.LogIndex - 1; i >= 0; i-- {
+		rlog := receipt.Logs[i]
+		if rlog.Removed != nil && *rlog.Removed {
+			continue
+		}
+		if common.IsEqualIgnoreCase(rlog.Address.String(), routerContract) {
+			break // prevent re-entrance
+		}
+		if len(rlog.Topics) != 3 || rlog.Data == nil {
+			continue
+		}
+		if !bytes.Equal(rlog.Topics[0][:], transferTopic) {
+			continue
+		}
+		from := common.BytesToAddress(rlog.Topics[1][:]).String()
+		toAddr := common.BytesToAddress(rlog.Topics[2][:])
+		isBurn = toAddr == (common.Address{})
+
+		if *rlog.Address == underlyingAddr {
+			if isBurn {
+				if common.IsEqualIgnoreCase(from, swapInfo.From) {
+					recvAmount = common.GetBigInt(*rlog.Data, 0, 32)
+				}
+				break
+			} else if toAddr == tokenAddr {
+				if common.IsEqualIgnoreCase(from, swapInfo.From) ||
+					common.IsEqualIgnoreCase(from, routerContract) {
+					recvAmount = common.GetBigInt(*rlog.Data, 0, 32)
+				}
+				break
+			}
+		} else if *rlog.Address == tokenAddr {
+			// anySwapout token with underlying, but calling anyToken.burn
+			if !isBurn {
+				continue
+			}
+			if !common.IsEqualIgnoreCase(from, swapInfo.From) {
+				continue
+			}
+			if i >= 2 {
+				pLog := receipt.Logs[i-1]
+				ppLog := receipt.Logs[i-2]
+				// if the prvious two logs are token mint and underlying tranfer, ignore this log
+				// v5 and previous router mode
+				if *pLog.Address == tokenAddr &&
+					*ppLog.Address == underlyingAddr &&
+					bytes.Equal(pLog.Topics[0][:], transferTopic) &&
+					common.BytesToAddress(pLog.Topics[1][:]) == (common.Address{}) &&
+					bytes.Equal(ppLog.Topics[0][:], transferTopic) &&
+					common.BytesToAddress(ppLog.Topics[2][:]) == tokenAddr {
+					continue
+				}
+			}
+			recvAmount = common.GetBigInt(*rlog.Data, 0, 32)
+			break
+		}
+	}
+	if recvAmount == nil {
+		return fmt.Errorf("no underlying token received")
+	}
+	// at least receive 80% (consider fees and deflation burning)
+	minRecvAmount := new(big.Int).Mul(swapInfo.Value, big.NewInt(4))
+	minRecvAmount.Div(minRecvAmount, big.NewInt(5))
+	if recvAmount.Cmp(minRecvAmount) < 0 {
+		log.Warn("check underlying token received failed", "isBurn", isBurn, "received", recvAmount, "swapValue", swapInfo.Value, "minRecvAmount", minRecvAmount, "swapID", swapInfo.Hash)
+		return fmt.Errorf("check underlying token received failed")
+	}
+	log.Debug("check underlying token received success", "isBurn", isBurn, "received", recvAmount, "swapValue", swapInfo.Value)
 	return nil
 }
