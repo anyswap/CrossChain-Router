@@ -521,6 +521,7 @@ func (b *Bridge) checkTokenReceived(swapInfo *tokens.SwapTxInfo, receipt *types.
 	if routerContract == "" {
 		return tokens.ErrMissRouterInfo
 	}
+	swapFromAddr := common.HexToAddress(swapInfo.From)
 
 	transferTopic := erc20CodeParts["LogTransfer"]
 
@@ -558,6 +559,7 @@ func (b *Bridge) checkTokenReceived(swapInfo *tokens.SwapTxInfo, receipt *types.
 				}
 				break
 			}
+			log.Warn("check token received unexpected underlying transfer", "underlying", underlyingAddr, "from", from, "to", toAddr.String(), "anytoken", tokenAddr.String(), "swapID", swapInfo.Hash)
 		} else if *rlog.Address == tokenAddr {
 			// anySwapout token with underlying, but calling anyToken.burn
 			if !isBurn {
@@ -568,23 +570,22 @@ func (b *Bridge) checkTokenReceived(swapInfo *tokens.SwapTxInfo, receipt *types.
 			}
 			if i >= 2 {
 				pLog := receipt.Logs[i-1]
-				ppLog := receipt.Logs[i-2]
-				// if the prvious two logs are token mint and underlying tranfer, ignore this log
+				// if the prvious log is token mint, ignore this log
 				// v5 and previous router mode
 				if *pLog.Address == tokenAddr &&
-					*ppLog.Address == underlyingAddr &&
 					bytes.Equal(pLog.Topics[0][:], transferTopic) &&
 					common.BytesToAddress(pLog.Topics[1][:]) == (common.Address{}) &&
-					bytes.Equal(ppLog.Topics[0][:], transferTopic) &&
-					common.BytesToAddress(ppLog.Topics[2][:]) == tokenAddr {
+					common.BytesToAddress(pLog.Topics[2][:]) == swapFromAddr {
 					continue
 				}
 			}
 			recvAmount = common.GetBigInt(*rlog.Data, 0, 32)
+			log.Info("check token received found anyToken.burn with underlying", "anytoken", tokenAddr.String(), "amount", recvAmount, "from", from, "swapID", swapInfo.Hash)
 			break
 		}
 	}
 	if recvAmount == nil {
+		log.Info("no underlying token received", "isBurn", isBurn, "underlying", underlyingAddr.String(), "routerContract", routerContract, "anytoken", tokenAddr.String(), "swapFrom", swapInfo.From, "swapID", swapInfo.Hash)
 		return fmt.Errorf("no underlying token received")
 	}
 	// at least receive 80% (consider fees and deflation burning)
@@ -594,6 +595,6 @@ func (b *Bridge) checkTokenReceived(swapInfo *tokens.SwapTxInfo, receipt *types.
 		log.Warn("check underlying token received failed", "isBurn", isBurn, "received", recvAmount, "swapValue", swapInfo.Value, "minRecvAmount", minRecvAmount, "swapID", swapInfo.Hash)
 		return fmt.Errorf("check underlying token received failed")
 	}
-	log.Debug("check underlying token received success", "isBurn", isBurn, "received", recvAmount, "swapValue", swapInfo.Value)
+	log.Debug("check underlying token received success", "isBurn", isBurn, "received", recvAmount, "swapValue", swapInfo.Value, "swapID", swapInfo.Hash)
 	return nil
 }
