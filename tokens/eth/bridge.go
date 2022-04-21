@@ -14,6 +14,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/base"
 	"github.com/anyswap/CrossChain-Router/v3/types"
 )
 
@@ -27,8 +28,7 @@ var (
 // Bridge eth bridge
 type Bridge struct {
 	CustomConfig
-	*tokens.CrossChainBridgeBase
-	*NonceSetterBase
+	*base.NonceSetterBase
 	Signer        types.Signer
 	SignerChainID *big.Int
 }
@@ -36,9 +36,8 @@ type Bridge struct {
 // NewCrossChainBridge new bridge
 func NewCrossChainBridge() *Bridge {
 	return &Bridge{
-		CustomConfig:         NewCustomConfig(),
-		CrossChainBridgeBase: tokens.NewCrossChainBridgeBase(),
-		NonceSetterBase:      NewNonceSetterBase(),
+		CustomConfig:    NewCustomConfig(),
+		NonceSetterBase: base.NewNonceSetterBase(),
 	}
 }
 
@@ -200,7 +199,7 @@ func (b *Bridge) InitRouterInfo(biChainID *big.Int, routerContract string) (err 
 		nextSwapNonce, err := mongodb.FindNextSwapNonce(chainID, strings.ToLower(routerMPC))
 		if err == nil {
 			log.Info("init next swap nonce from db", "chainID", chainID, "mpc", routerMPC, "nonce", nextSwapNonce)
-			b.InitSwapNonce(routerMPC, nextSwapNonce)
+			b.InitSwapNonce(b, routerMPC, nextSwapNonce)
 		}
 	}
 
