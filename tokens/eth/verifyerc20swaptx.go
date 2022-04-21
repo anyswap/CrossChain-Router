@@ -181,7 +181,7 @@ func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable boo
 
 func (b *Bridge) checkCallByContract(swapInfo *tokens.SwapTxInfo) error {
 	txTo := swapInfo.TxTo
-	routerContract := b.GetRouterContract(swapInfo.ERC20SwapInfo.Token)
+	routerContract := b.GetRouterContract(swapInfo.GetToken())
 	if routerContract == "" {
 		return tokens.ErrMissRouterInfo
 	}
