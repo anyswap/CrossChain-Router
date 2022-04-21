@@ -508,9 +508,13 @@ func (b *Bridge) checkSwapWithPermit(swapInfo *tokens.SwapTxInfo) error {
 func (b *Bridge) checkTokenReceived(swapInfo *tokens.SwapTxInfo, receipt *types.RPCTxReceipt) error {
 	erc20SwapInfo := swapInfo.ERC20SwapInfo
 	token := erc20SwapInfo.Token
+	tokenID := erc20SwapInfo.TokenID
 	tokenCfg := b.GetTokenConfig(token)
-	if tokenCfg == nil || erc20SwapInfo.TokenID == "" {
+	if tokenCfg == nil || tokenID == "" {
 		return tokens.ErrMissTokenConfig
+	}
+	if params.DontCheckTokenReceived(tokenID) {
+		return nil
 	}
 	tokenAddr := common.HexToAddress(token)
 	underlyingAddr := tokenCfg.GetUnderlying()

@@ -38,6 +38,7 @@ var (
 	enableCheckTxBlockHashChains         map[string]struct{}
 	enableCheckTxBlockIndexChains        map[string]struct{}
 	disableUseFromChainIDInReceiptChains map[string]struct{}
+	dontCheckReceivedTokenIDs            map[string]struct{}
 
 	isDebugMode           *bool
 	isNFTSwapWithData     *bool
@@ -133,6 +134,7 @@ type ExtraConfig struct {
 	EnableCheckTxBlockHashChains         []string `toml:",omitempty" json:",omitempty"`
 	EnableCheckTxBlockIndexChains        []string `toml:",omitempty" json:",omitempty"`
 	DisableUseFromChainIDInReceiptChains []string `toml:",omitempty" json:",omitempty"`
+	DontCheckReceivedTokenIDs            []string `toml:",omitempty" json:",omitempty"`
 
 	RPCClientTimeout map[string]int `toml:",omitempty" json:",omitempty"` // key is chainID
 	// chainID,customKey => customValue
@@ -747,6 +749,23 @@ func initDisableUseFromChainIDInReceiptChains() {
 // IsUseFromChainIDInReceiptDisabled if use fromChainID from receipt log
 func IsUseFromChainIDInReceiptDisabled(chainID string) bool {
 	_, exist := disableUseFromChainIDInReceiptChains[chainID]
+	return exist
+}
+
+func initDontCheckReceivedTokenIDs() {
+	dontCheckReceivedTokenIDs = make(map[string]struct{})
+	if GetExtraConfig() == nil || len(GetExtraConfig().DontCheckReceivedTokenIDs) == 0 {
+		return
+	}
+	for _, tid := range GetExtraConfig().DontCheckReceivedTokenIDs {
+		dontCheckReceivedTokenIDs[strings.ToLower(tid)] = struct{}{}
+	}
+	log.Info("initDontCheckReceivedTokenIDs success")
+}
+
+// DontCheckTokenReceived do not check token received (a security enhance checking)
+func DontCheckTokenReceived(tokenID string) bool {
+	_, exist := dontCheckReceivedTokenIDs[strings.ToLower(tokenID)]
 	return exist
 }
 
