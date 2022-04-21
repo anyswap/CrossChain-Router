@@ -43,11 +43,12 @@ func AddRouterSwap(ms *MgoSwap) error {
 	ms.Key = GetRouterSwapKey(ms.FromChainID, ms.TxID, ms.LogIndex)
 	ms.InitTime = common.NowMilli()
 	_, err := collRouterSwap.InsertOne(clientCtx, ms)
-	if err == nil {
+	switch {
+	case err == nil:
 		log.Info("mongodb add router swap success", "chainid", ms.FromChainID, "txid", ms.TxID, "logindex", ms.LogIndex)
-	} else if !mongo.IsDuplicateKeyError(err) {
+	case !mongo.IsDuplicateKeyError(err):
 		log.Error("mongodb add router swap failed", "chainid", ms.FromChainID, "txid", ms.TxID, "logindex", ms.LogIndex, "err", err)
-	} else {
+	default:
 		swap := &MgoSwap{}
 		errt := collRouterSwap.FindOne(clientCtx, bson.M{"_id": ms.Key}).Decode(swap)
 		if errt == nil && swap.Status == TxNotSwapped {
@@ -420,6 +421,7 @@ func FindRouterSwapResultsWithStatus(status SwapStatus, septime int64) ([]*MgoSw
 }
 
 // FindRouterSwapResultsWithChainIDAndStatus find router swap result with chainid and status in the past septime
+//nolint:dupl // allow duplicate
 func FindRouterSwapResultsWithChainIDAndStatus(fromChainID string, status SwapStatus, septime int64) ([]*MgoSwapResult, error) {
 	query := getStatusQueryWithChainID(fromChainID, status, septime)
 	opts := &options.FindOptions{

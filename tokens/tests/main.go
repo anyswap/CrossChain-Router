@@ -145,7 +145,7 @@ func process(opts map[string]string) error {
 		return fmt.Errorf("error: empty txid")
 	}
 	logIndex, _ := common.GetIntFromStr(opts["logindex"])
-	log.Info("parse arguments sucess", "txid", txid, "logIndex", logIndex)
+	log.Info("parse arguments success", "txid", txid, "logIndex", logIndex)
 
 	// register tx
 	registerArgs := &tokens.RegisterArgs{

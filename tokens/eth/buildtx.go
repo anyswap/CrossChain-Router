@@ -295,7 +295,6 @@ func (b *Bridge) getAccountNonce(args *tokens.BuildTxArgs) (nonceptr *uint64, er
 	if params.IsAutoSwapNonceEnabled(b.ChainConfig.ChainID) { // increase automatically
 		nonce = b.GetSwapNonce(args.From)
 		return &nonce, nil
-
 	}
 
 	for i := 0; i < retryRPCCount; i++ {

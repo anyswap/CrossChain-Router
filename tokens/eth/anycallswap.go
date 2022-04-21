@@ -29,7 +29,6 @@ var (
 	defMinReserveBudget = big.NewInt(1e16)
 )
 
-// nolint:dupl // ok
 func (b *Bridge) registerAnyCallSwapTx(txHash string, logIndex int) ([]*tokens.SwapTxInfo, []error) {
 	commonInfo := &tokens.SwapTxInfo{}
 	commonInfo.SwapType = tokens.AnyCallSwapType // SwapType

@@ -32,8 +32,7 @@ var (
 // GetLatestBlockNumberOf call eth_blockNumber
 func (b *Bridge) GetLatestBlockNumberOf(url string) (latest uint64, err error) {
 	if b.ChainConfig != nil { // after init
-		switch b.ChainConfig.ChainID {
-		case "1285": // kusama ecosystem
+		if b.ChainConfig.ChainID == "1285" { // kusama ecosystem
 			return callapi.KsmGetLatestBlockNumberOf(url, b.GatewayConfig, b.RPCClientTimeout)
 		}
 	}
@@ -204,8 +203,8 @@ func (b *Bridge) getTransactionReceipt(txHash string, urls []string) (result *ty
 				}
 			}
 			if params.IsCheckTxBlockHashEnabled(b.ChainConfig.ChainID) {
-				if err = b.checkTxBlockHash(result.BlockNumber.ToInt(), *result.BlockHash); err != nil {
-					return nil, "", err
+				if errt := b.checkTxBlockHash(result.BlockNumber.ToInt(), *result.BlockHash); errt != nil {
+					return nil, "", errt
 				}
 			}
 			return result, url, nil
@@ -423,7 +422,7 @@ type sendTxResult struct {
 	err    error
 }
 
-func (b *Bridge) sendRawTransaction(wg *sync.WaitGroup, hexData string, url string, ch chan<- *sendTxResult) {
+func (b *Bridge) sendRawTransaction(wg *sync.WaitGroup, hexData, url string, ch chan<- *sendTxResult) {
 	defer wg.Done()
 	var result string
 	err := client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_sendRawTransaction", hexData)

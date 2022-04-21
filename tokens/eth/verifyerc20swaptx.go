@@ -399,6 +399,7 @@ func (b *Bridge) parseERC20SwapTradeTxLog(swapInfo *tokens.SwapTxInfo, rlog *typ
 
 // amend trade path [0] if missing,
 // then check path exists in pairs of dest chain
+//nolint:gocyclo // allow long check trade path
 func checkSwapTradePath(swapInfo *tokens.SwapTxInfo) error {
 	dstChainID := swapInfo.ToChainID.String()
 	dstBridge := router.GetBridgeByChainID(dstChainID)

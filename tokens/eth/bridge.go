@@ -149,6 +149,9 @@ func (b *Bridge) InitRouterInfo(biChainID *big.Int, routerContract string) (err 
 	if routerContract == "" {
 		return nil
 	}
+	if biChainID.Sign() == 0 {
+		return fmt.Errorf("chainID is zero")
+	}
 	var routerFactory, routerWNative string
 	if tokens.IsERC20Router() {
 		routerFactory, err = b.GetFactoryAddress(routerContract)
@@ -207,6 +210,7 @@ func (b *Bridge) InitRouterInfo(biChainID *big.Int, routerContract string) (err 
 }
 
 // InitTokenConfig impl
+//nolint:gocyclo // allow long init token config method
 func (b *Bridge) InitTokenConfig(tokenID string, chainID *big.Int) {
 	if tokenID == "" {
 		log.Fatal("empty token ID")
@@ -310,6 +314,7 @@ func (b *Bridge) ReloadChainConfig(chainID *big.Int) {
 }
 
 // ReloadTokenConfig reload token config
+// nolint:funlen,gocyclo // allow long reload method
 func (b *Bridge) ReloadTokenConfig(tokenID string, chainID *big.Int) {
 	if tokenID == "" {
 		return

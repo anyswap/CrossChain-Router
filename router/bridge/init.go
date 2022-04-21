@@ -16,9 +16,6 @@ import (
 func InitRouterBridges(isServer bool) {
 	log.Info("start init router bridges")
 	router.IsIniting = true
-	defer func() {
-		router.IsIniting = false
-	}()
 
 	client.InitHTTPClient()
 	router.InitRouterConfigClients()
@@ -101,6 +98,8 @@ func InitRouterBridges(isServer bool) {
 	startReloadRouterConfigTask()
 
 	log.Info("init router bridges success", "isServer", isServer)
+
+	router.IsIniting = false
 }
 
 func loadSwapConfigs() error {

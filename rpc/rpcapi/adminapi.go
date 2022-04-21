@@ -113,8 +113,9 @@ func maintain(args *admin.CallArgs, result *string) (err error) {
 		}
 		log.Infof("after action %v, the paused chainIDs are %v", action, router.GetPausedChainIDs())
 	default:
-		return fmt.Errorf("unkown maintain action '%v'", action)
+		return fmt.Errorf("unknown maintain action '%v'", action)
 	}
+	*result = successReuslt
 	return nil
 }
 

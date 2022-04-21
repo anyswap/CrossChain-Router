@@ -51,7 +51,6 @@ func (t *txdata) MarshalJSON() ([]byte, error) {
 	if t.Type != LegacyTxType {
 		enc.ChainID = (*hexutil.Big)(t.ChainID)
 		enc.AccessList = &t.AccessList
-
 	}
 	if t.Type == DynamicFeeTxType {
 		enc.MaxFeePerGas = (*hexutil.Big)(t.MaxFeePerGas)

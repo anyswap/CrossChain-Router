@@ -64,7 +64,7 @@ func (b *Bridge) GetEIP1167Master(proxy common.Address) (master common.Address) 
 		eip1167Proxies = make(map[common.Address]common.Address) // clear
 	}
 
-	proxyAddr := proxy.String()
+	proxyAddr := proxy.LowerHex()
 
 	code, err := b.getContractCode(proxyAddr)
 	if err != nil || len(code) != eip1167ProxyCodeLen {
