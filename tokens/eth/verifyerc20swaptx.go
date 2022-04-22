@@ -527,6 +527,11 @@ func (b *Bridge) checkTokenReceived(swapInfo *tokens.SwapTxInfo, receipt *types.
 	}
 	swapFromAddr := common.HexToAddress(swapInfo.From)
 
+	log.Info("start check token received",
+		"token", token, "tokenID", tokenID, "logIndex", swapInfo.LogIndex,
+		"underlying", underlyingAddr.String(), "router", routerContract,
+		"swapFrom", swapInfo.From, "swapValue", swapInfo.Value, "swapID", swapInfo.Hash)
+
 	transferTopic := erc20CodeParts["LogTransfer"]
 
 	var recvAmount *big.Int
@@ -555,15 +560,17 @@ func (b *Bridge) checkTokenReceived(swapInfo *tokens.SwapTxInfo, receipt *types.
 				if common.IsEqualIgnoreCase(from, swapInfo.From) {
 					recvAmount = common.GetBigInt(*rlog.Data, 0, 32)
 				}
+				log.Info("check token received found underlying.burn", "underlying", underlyingAddr.String(), "anytoken", tokenAddr.String(), "amount", recvAmount, "from", from, "swapFrom", swapInfo.From, "swapID", swapInfo.Hash)
 				break
 			} else if toAddr == tokenAddr {
 				if common.IsEqualIgnoreCase(from, swapInfo.From) ||
 					common.IsEqualIgnoreCase(from, routerContract) {
 					recvAmount = common.GetBigInt(*rlog.Data, 0, 32)
 				}
+				log.Info("check token received found underlying.transfer", "underlying", underlyingAddr.String(), "anytoken", tokenAddr.String(), "amount", recvAmount, "from", from, "swapFrom", swapInfo.From, "swapID", swapInfo.Hash)
 				break
 			}
-			log.Warn("check token received unexpected underlying transfer", "underlying", underlyingAddr, "from", from, "to", toAddr.String(), "anytoken", tokenAddr.String(), "swapID", swapInfo.Hash)
+			log.Warn("check token received unexpected underlying transfer", "underlying", underlyingAddr.String(), "from", from, "to", toAddr.String(), "anytoken", tokenAddr.String(), "swapID", swapInfo.Hash)
 		} else if *rlog.Address == tokenAddr {
 			// anySwapout token with underlying, but calling anyToken.burn
 			if !isBurn {
@@ -580,25 +587,26 @@ func (b *Bridge) checkTokenReceived(swapInfo *tokens.SwapTxInfo, receipt *types.
 					bytes.Equal(pLog.Topics[0][:], transferTopic) &&
 					common.BytesToAddress(pLog.Topics[1][:]) == (common.Address{}) &&
 					common.BytesToAddress(pLog.Topics[2][:]) == swapFromAddr {
+					i--
 					continue
 				}
 			}
 			recvAmount = common.GetBigInt(*rlog.Data, 0, 32)
-			log.Info("check token received found anyToken.burn with underlying", "anytoken", tokenAddr.String(), "amount", recvAmount, "from", from, "swapID", swapInfo.Hash)
+			log.Info("check token received found anyToken.burn", "underlying", underlyingAddr.String(), "anytoken", tokenAddr.String(), "amount", recvAmount, "from", from, "swapID", swapInfo.Hash)
 			break
 		}
 	}
 	if recvAmount == nil {
-		log.Info("no underlying token received", "isBurn", isBurn, "underlying", underlyingAddr.String(), "routerContract", routerContract, "anytoken", tokenAddr.String(), "swapFrom", swapInfo.From, "swapID", swapInfo.Hash)
+		log.Warn("check token received found none", "isBurn", isBurn, "underlying", underlyingAddr.String(), "routerContract", routerContract, "anytoken", tokenAddr.String(), "swapFrom", swapInfo.From, "swapID", swapInfo.Hash)
 		return fmt.Errorf("no underlying token received")
 	}
 	// at least receive 80% (consider fees and deflation burning)
 	minRecvAmount := new(big.Int).Mul(swapInfo.Value, big.NewInt(4))
 	minRecvAmount.Div(minRecvAmount, big.NewInt(5))
 	if recvAmount.Cmp(minRecvAmount) < 0 {
-		log.Warn("check underlying token received failed", "isBurn", isBurn, "received", recvAmount, "swapValue", swapInfo.Value, "minRecvAmount", minRecvAmount, "swapID", swapInfo.Hash)
+		log.Warn("check token received failed", "isBurn", isBurn, "received", recvAmount, "swapValue", swapInfo.Value, "minRecvAmount", minRecvAmount, "swapID", swapInfo.Hash)
 		return fmt.Errorf("check underlying token received failed")
 	}
-	log.Debug("check underlying token received success", "isBurn", isBurn, "received", recvAmount, "swapValue", swapInfo.Value, "swapID", swapInfo.Hash)
+	log.Info("check token received success", "isBurn", isBurn, "received", recvAmount, "swapValue", swapInfo.Value, "swapID", swapInfo.Hash)
 	return nil
 }
