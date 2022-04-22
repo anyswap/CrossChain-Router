@@ -540,9 +540,11 @@ func (b *Bridge) checkTokenReceived(swapInfo *tokens.SwapTxInfo, receipt *types.
 	for i := swapInfo.LogIndex - 1; i >= 0; i-- {
 		rlog := receipt.Logs[i]
 		if rlog.Removed != nil && *rlog.Removed {
+			log.Info("check token received ignore removed log", "index", i, "swapID", swapInfo.Hash)
 			continue
 		}
 		if common.IsEqualIgnoreCase(rlog.Address.String(), routerContract) {
+			log.Info("check token received prevent reentrance", "index", i, "swapID", swapInfo.Hash)
 			break // prevent re-entrance
 		}
 		if len(rlog.Topics) != 3 || rlog.Data == nil {
@@ -555,28 +557,31 @@ func (b *Bridge) checkTokenReceived(swapInfo *tokens.SwapTxInfo, receipt *types.
 		toAddr := common.BytesToAddress(rlog.Topics[2][:])
 		isBurn = toAddr == (common.Address{})
 
+		log.Info("check token received found transfer log", "index", i, "logAddress", rlog.Address.String(), "from", from, "to", toAddr.String(), "swapID", swapInfo.Hash)
+
 		if *rlog.Address == underlyingAddr {
 			if isBurn {
 				if common.IsEqualIgnoreCase(from, swapInfo.From) {
 					recvAmount = common.GetBigInt(*rlog.Data, 0, 32)
 				}
-				log.Info("check token received found underlying.burn", "underlying", underlyingAddr.String(), "anytoken", tokenAddr.String(), "amount", recvAmount, "from", from, "swapFrom", swapInfo.From, "swapID", swapInfo.Hash)
+				log.Info("check token received found underlying.burn", "index", i, "amount", recvAmount, "from", from, "swapID", swapInfo.Hash)
 				break
 			} else if toAddr == tokenAddr {
 				if common.IsEqualIgnoreCase(from, swapInfo.From) ||
 					common.IsEqualIgnoreCase(from, routerContract) {
 					recvAmount = common.GetBigInt(*rlog.Data, 0, 32)
 				}
-				log.Info("check token received found underlying.transfer", "underlying", underlyingAddr.String(), "anytoken", tokenAddr.String(), "amount", recvAmount, "from", from, "swapFrom", swapInfo.From, "swapID", swapInfo.Hash)
+				log.Info("check token received found underlying.transfer", "index", i, "amount", recvAmount, "from", from, "swapID", swapInfo.Hash)
 				break
 			}
-			log.Warn("check token received unexpected underlying transfer", "underlying", underlyingAddr.String(), "from", from, "to", toAddr.String(), "anytoken", tokenAddr.String(), "swapID", swapInfo.Hash)
+			log.Warn("check token received unexpected underlying transfer", "index", i, "from", from, "to", toAddr.String(), "swapID", swapInfo.Hash)
 		} else if *rlog.Address == tokenAddr {
 			// anySwapout token with underlying, but calling anyToken.burn
 			if !isBurn {
 				continue
 			}
 			if !common.IsEqualIgnoreCase(from, swapInfo.From) {
+				log.Info("check token received ingore mismatched burner", "index", i, "swapID", swapInfo.Hash)
 				continue
 			}
 			if i >= 2 {
@@ -587,17 +592,18 @@ func (b *Bridge) checkTokenReceived(swapInfo *tokens.SwapTxInfo, receipt *types.
 					bytes.Equal(pLog.Topics[0][:], transferTopic) &&
 					common.BytesToAddress(pLog.Topics[1][:]) == (common.Address{}) &&
 					common.BytesToAddress(pLog.Topics[2][:]) == swapFromAddr {
+					log.Info("check token received ingore anytoken mint and burn", "index", i, "swapID", swapInfo.Hash)
 					i--
 					continue
 				}
 			}
 			recvAmount = common.GetBigInt(*rlog.Data, 0, 32)
-			log.Info("check token received found anyToken.burn", "underlying", underlyingAddr.String(), "anytoken", tokenAddr.String(), "amount", recvAmount, "from", from, "swapID", swapInfo.Hash)
+			log.Info("check token received found anyToken.burn", "index", i, "amount", recvAmount, "swapID", swapInfo.Hash)
 			break
 		}
 	}
 	if recvAmount == nil {
-		log.Warn("check token received found none", "isBurn", isBurn, "underlying", underlyingAddr.String(), "routerContract", routerContract, "anytoken", tokenAddr.String(), "swapFrom", swapInfo.From, "swapID", swapInfo.Hash)
+		log.Warn("check token received found none", "swapID", swapInfo.Hash)
 		return fmt.Errorf("no underlying token received")
 	}
 	// at least receive 80% (consider fees and deflation burning)
