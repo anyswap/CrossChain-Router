@@ -529,7 +529,7 @@ func (b *Bridge) checkTokenReceived(swapInfo *tokens.SwapTxInfo, receipt *types.
 
 	log.Info("start check token received",
 		"token", token, "tokenID", tokenID, "logIndex", swapInfo.LogIndex,
-		"underlying", underlyingAddr.String(), "router", routerContract,
+		"underlying", underlyingAddr.LowerHex(), "router", routerContract,
 		"swapFrom", swapInfo.From, "swapValue", swapInfo.Value, "swapID", swapInfo.Hash)
 
 	transferTopic := erc20CodeParts["LogTransfer"]
@@ -539,13 +539,13 @@ func (b *Bridge) checkTokenReceived(swapInfo *tokens.SwapTxInfo, receipt *types.
 	// find in reverse order
 	for i := swapInfo.LogIndex - 1; i >= 0; i-- {
 		rlog := receipt.Logs[i]
+		if common.IsEqualIgnoreCase(rlog.Address.LowerHex(), routerContract) {
+			log.Info("check token received prevent reentrance", "index", i, "logAddress", rlog.Address.LowerHex(), "logTopic", rlog.Topics[0].Hex(), "swapID", swapInfo.Hash)
+			break // prevent re-entrance
+		}
 		if rlog.Removed != nil && *rlog.Removed {
 			log.Info("check token received ignore removed log", "index", i, "swapID", swapInfo.Hash)
 			continue
-		}
-		if common.IsEqualIgnoreCase(rlog.Address.String(), routerContract) {
-			log.Info("check token received prevent reentrance", "index", i, "swapID", swapInfo.Hash)
-			break // prevent re-entrance
 		}
 		if len(rlog.Topics) != 3 || rlog.Data == nil {
 			continue
@@ -553,11 +553,11 @@ func (b *Bridge) checkTokenReceived(swapInfo *tokens.SwapTxInfo, receipt *types.
 		if !bytes.Equal(rlog.Topics[0][:], transferTopic) {
 			continue
 		}
-		from := common.BytesToAddress(rlog.Topics[1][:]).String()
+		from := common.BytesToAddress(rlog.Topics[1][:]).LowerHex()
 		toAddr := common.BytesToAddress(rlog.Topics[2][:])
 		isBurn = toAddr == (common.Address{})
 
-		log.Info("check token received found transfer log", "index", i, "logAddress", rlog.Address.String(), "from", from, "to", toAddr.String(), "swapID", swapInfo.Hash)
+		log.Info("check token received found transfer log", "index", i, "logAddress", rlog.Address.LowerHex(), "from", from, "to", toAddr.LowerHex(), "swapID", swapInfo.Hash)
 
 		if *rlog.Address == underlyingAddr {
 			if isBurn {
@@ -574,7 +574,7 @@ func (b *Bridge) checkTokenReceived(swapInfo *tokens.SwapTxInfo, receipt *types.
 				log.Info("check token received found underlying.transfer", "index", i, "amount", recvAmount, "from", from, "swapID", swapInfo.Hash)
 				break
 			}
-			log.Warn("check token received unexpected underlying transfer", "index", i, "from", from, "to", toAddr.String(), "swapID", swapInfo.Hash)
+			log.Warn("check token received unexpected underlying transfer", "index", i, "from", from, "to", toAddr.LowerHex(), "swapID", swapInfo.Hash)
 		} else if *rlog.Address == tokenAddr {
 			// anySwapout token with underlying, but calling anyToken.burn
 			if !isBurn {
