@@ -167,6 +167,7 @@ func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int, isManual b
 				GasPrice: gasPrice,
 				Nonce:    &nonce,
 			},
+			Sequence:   &nonce,
 			ReplaceNum: replaceNum,
 		},
 	}

@@ -203,6 +203,8 @@ type BuildTxArgs struct {
 type AllExtras struct {
 	EthExtra   *EthExtraArgs `json:"ethExtra,omitempty"`
 	ReplaceNum uint64        `json:"replaceNum,omitempty"`
+	Sequence   *uint64       `json:"sequence,omitempty"`
+	Fee        *string       `json:"fee,omitempty"`
 }
 
 // EthExtraArgs struct
@@ -234,20 +236,14 @@ func (args *BuildTxArgs) GetExtraArgs() *BuildTxArgs {
 
 // GetTxNonce get tx nonce
 func (args *BuildTxArgs) GetTxNonce() uint64 {
-	if args.Extra != nil && args.Extra.EthExtra != nil && args.Extra.EthExtra.Nonce != nil {
-		return *args.Extra.EthExtra.Nonce
+	if args.Extra != nil {
+		if args.Extra.EthExtra != nil {
+			if args.Extra.EthExtra.Nonce != nil {
+				return *args.Extra.EthExtra.Nonce
+			}
+		} else if args.Extra.Sequence != nil {
+			return *args.Extra.Sequence
+		}
 	}
 	return 0
-}
-
-// SetTxNonce set tx nonce
-func (args *BuildTxArgs) SetTxNonce(nonce uint64) {
-	var extra *EthExtraArgs
-	if args.Extra == nil || args.Extra.EthExtra == nil {
-		extra = &EthExtraArgs{}
-		args.Extra = &AllExtras{EthExtra: extra}
-	} else {
-		extra = args.Extra.EthExtra
-	}
-	extra.Nonce = &nonce
 }
