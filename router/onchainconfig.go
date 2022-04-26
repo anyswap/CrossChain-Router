@@ -146,18 +146,31 @@ func parseChainConfig(data []byte) (config *tokens.ChainConfig, err error) {
 	if overflow {
 		return nil, abicoder.ErrParseDataError
 	}
-	if uint64(len(data)) < offset+160 {
+	if uint64(len(data)) < offset+224 {
 		return nil, abicoder.ErrParseDataError
 	}
 	data = data[32:]
-	config = &tokens.ChainConfig{}
-	config.BlockChain, err = abicoder.ParseStringInData(data, 0)
+	blockChain, err := abicoder.ParseStringInData(data, 0)
 	if err != nil {
 		return nil, abicoder.ErrParseDataError
 	}
-	config.RouterContract = common.BytesToAddress(common.GetData(data, 32, 32)).LowerHex()
-	config.Confirmations = common.GetBigInt(data, 64, 32).Uint64()
-	config.InitialHeight = common.GetBigInt(data, 96, 32).Uint64()
+	routerContract, err := abicoder.ParseStringInData(data, 32)
+	if err != nil {
+		return nil, abicoder.ErrParseDataError
+	}
+	confirmations := common.GetBigInt(data, 64, 32).Uint64()
+	initialHeight := common.GetBigInt(data, 96, 32).Uint64()
+	extra, err := abicoder.ParseStringInData(data, 128)
+	if err != nil {
+		return nil, abicoder.ErrParseDataError
+	}
+	config = &tokens.ChainConfig{
+		BlockChain:     blockChain,
+		RouterContract: routerContract,
+		Confirmations:  confirmations,
+		InitialHeight:  initialHeight,
+		Extra:          extra,
+	}
 	return config, nil
 }
 
@@ -181,16 +194,29 @@ func GetChainConfig(chainID *big.Int) (*tokens.ChainConfig, error) {
 }
 
 func parseTokenConfig(data []byte) (config *tokens.TokenConfig, err error) {
-	if uint64(len(data)) < 3*32 {
+	if uint64(len(data)) < 224 {
 		return nil, abicoder.ErrParseDataError
 	}
 	decimals := uint8(common.GetBigInt(data, 0, 32).Uint64())
-	contractAddress := common.BytesToAddress(common.GetData(data, 32, 32)).LowerHex()
+	contractAddress, err := abicoder.ParseStringInData(data, 32)
+	if err != nil {
+		return nil, abicoder.ErrParseDataError
+	}
 	contractVersion := common.GetBigInt(data, 64, 32).Uint64()
+	routerContract, err := abicoder.ParseStringInData(data, 96)
+	if err != nil {
+		return nil, abicoder.ErrParseDataError
+	}
+	extra, err := abicoder.ParseStringInData(data, 128)
+	if err != nil {
+		return nil, abicoder.ErrParseDataError
+	}
 	config = &tokens.TokenConfig{
 		Decimals:        decimals,
 		ContractAddress: contractAddress,
 		ContractVersion: contractVersion,
+		RouterContract:  routerContract,
+		Extra:           extra,
 	}
 	return config, err
 }

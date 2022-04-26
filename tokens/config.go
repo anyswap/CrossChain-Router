@@ -16,6 +16,7 @@ type ChainConfig struct {
 	RouterContract string
 	Confirmations  uint64
 	InitialHeight  uint64
+	Extra          string
 
 	// cached value
 	chainID *big.Int
@@ -28,6 +29,7 @@ type TokenConfig struct {
 	ContractAddress string
 	ContractVersion uint64
 	RouterContract  string
+	Extra           string
 
 	// calced value
 	underlying common.Address
