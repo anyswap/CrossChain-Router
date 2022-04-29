@@ -54,14 +54,24 @@ func pingMPCNode(nodeInfo *NodeInfo) (err error) {
 	return err
 }
 
+// DoSignOneEC mpc sign single msgHash with context msgContext
+func DoSignOneEC(signPubkey, msgHash, msgContext string) (keyID string, rsvs []string, err error) {
+	return DoSign(SignTypeEC256K1, signPubkey, []string{msgHash}, []string{msgContext})
+}
+
+// DoSignOneED mpc sign single msgHash with context msgContext
+func DoSignOneED(signPubkey, msgHash, msgContext string) (keyID string, rsvs []string, err error) {
+	return DoSign(SignTypeED25519, signPubkey, []string{msgHash}, []string{msgContext})
+}
+
 // DoSignOne mpc sign single msgHash with context msgContext
-func DoSignOne(signPubkey, msgHash, msgContext string) (keyID string, rsvs []string, err error) {
-	return DoSign(signPubkey, []string{msgHash}, []string{msgContext})
+func DoSignOne(signType, signPubkey, msgHash, msgContext string) (keyID string, rsvs []string, err error) {
+	return DoSign(signType, signPubkey, []string{msgHash}, []string{msgContext})
 }
 
 // DoSign mpc sign msgHash with context msgContext
-func DoSign(signPubkey string, msgHash, msgContext []string) (keyID string, rsvs []string, err error) {
-	log.Debug("mpc DoSign", "msgHash", msgHash, "msgContext", msgContext)
+func DoSign(signType, signPubkey string, msgHash, msgContext []string) (keyID string, rsvs []string, err error) {
+	log.Debug("mpc DoSign", "msgHash", msgHash, "msgContext", msgContext, "signType", signType)
 	if signPubkey == "" {
 		return "", nil, errSignWithoutPublickey
 	}
@@ -81,7 +91,7 @@ func DoSign(signPubkey string, msgHash, msgContext []string) (keyID string, rsvs
 			startIndex := randIndex.Int64()
 			i := startIndex
 			for {
-				keyID, rsvs, err = doSignImpl(mpcNode, signGroupIndexes[i], signPubkey, msgHash, msgContext)
+				keyID, rsvs, err = doSignImpl(mpcNode, signGroupIndexes[i], signType, signPubkey, msgHash, msgContext)
 				if err == nil {
 					return keyID, rsvs, nil
 				}
@@ -93,11 +103,11 @@ func DoSign(signPubkey string, msgHash, msgContext []string) (keyID string, rsvs
 		}
 		time.Sleep(2 * time.Second)
 	}
-	log.Warn("mpc DoSign failed", "msgHash", msgHash, "msgContext", msgContext, "err", err)
+	log.Warn("mpc DoSign failed", "msgHash", msgHash, "msgContext", msgContext, "signType", signType, "err", err)
 	return "", nil, errDoSignFailed
 }
 
-func doSignImpl(mpcNode *NodeInfo, signGroupIndex int, signPubkey string, msgHash, msgContext []string) (keyID string, rsvs []string, err error) {
+func doSignImpl(mpcNode *NodeInfo, signGroupIndex int, signType, signPubkey string, msgHash, msgContext []string) (keyID string, rsvs []string, err error) {
 	nonce, err := GetSignNonce(mpcNode.mpcUser.String(), mpcNode.mpcRPCAddress)
 	if err != nil {
 		return "", nil, err
@@ -108,7 +118,7 @@ func doSignImpl(mpcNode *NodeInfo, signGroupIndex int, signPubkey string, msgHas
 		PubKey:     signPubkey,
 		MsgHash:    msgHash,
 		MsgContext: msgContext,
-		Keytype:    mpcSignType,
+		Keytype:    signType,
 		GroupID:    signGroup,
 		ThresHold:  mpcThreshold,
 		Mode:       mpcMode,
@@ -162,7 +172,7 @@ func doSignImpl(mpcNode *NodeInfo, signGroupIndex int, signPubkey string, msgHas
 			lastTime: time.Now().Unix(),
 		}
 	}
-	if isECDSA() { // prevent multiple use of same r value
+	if isEC(signType) { // prevent multiple use of same r value
 		for _, rsv := range rsvs {
 			signature := common.FromHex(rsv)
 			if len(signature) != crypto.SignatureLength {
@@ -265,7 +275,7 @@ func (s *SignInfoData) HasValidSignature() bool {
 		PubKey:     s.PubKey,
 		MsgHash:    s.MsgHash,
 		MsgContext: msgContext,
-		Keytype:    mpcSignType,
+		Keytype:    SignTypeEC256K1,
 		GroupID:    s.GroupID,
 		ThresHold:  s.ThresHold,
 		Mode:       s.Mode,

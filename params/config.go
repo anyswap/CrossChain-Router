@@ -158,7 +158,6 @@ type OnchainConfig struct {
 
 // MPCConfig mpc related config
 type MPCConfig struct {
-	SignType                  string
 	APIPrefix                 string
 	RPCTimeout                uint64 `toml:",omitempty" json:",omitempty"`
 	SignTimeout               uint64 `toml:",omitempty" json:",omitempty"`

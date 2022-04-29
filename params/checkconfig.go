@@ -320,13 +320,6 @@ func (c *MPCConfig) CheckConfig(isServer bool) (err error) {
 	if c.SignWithPrivateKey {
 		return nil
 	}
-	switch {
-	case c.SignType == "":
-	case strings.HasPrefix(c.SignType, "EC"):
-	case strings.HasPrefix(c.SignType, "ED"):
-	default:
-		return fmt.Errorf("unknown mpc sign type '%v'", c.SignType)
-	}
 	if c.GroupID == nil {
 		return errors.New("mpc must config 'GroupID'")
 	}
