@@ -77,7 +77,11 @@ func doReloadRouterConfigManually() {
 func ReloadRouterConfig() bool {
 	log.Info("[reload] start reload router config")
 	reloadRouterConfigLock.Lock()
-	defer reloadRouterConfigLock.Unlock()
+	router.IsIniting = true
+	defer func() {
+		router.IsIniting = false
+		reloadRouterConfigLock.Unlock()
+	}()
 
 	// reload local config
 	params.ReloadRouterConfig()

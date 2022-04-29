@@ -87,6 +87,9 @@ func (c *RouterOracleConfig) CheckConfig() (err error) {
 	if c.ServerAPIAddress == "" {
 		return errors.New("oracle must config 'ServerAPIAddress'")
 	}
+	if c.NoCheckServerConnection {
+		return nil
+	}
 	var version string
 	for i := 0; i < 3; i++ {
 		err = client.RPCPostWithTimeout(60, &version, c.ServerAPIAddress, "swap.GetVersionInfo")

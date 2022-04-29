@@ -105,6 +105,8 @@ MaxRequestsLimit = 10
 [Oracle]
 # report oracle status to this server
 ServerAPIAddress = "http://127.0.0.1:11556/rpc"
+# don't check server connection
+NoCheckServerConnection = false
 
 [Extra]
 # is swap trade enabled
@@ -119,6 +121,8 @@ IsNFTSwapWithData = false
 EnableParallelSwap = false
 # use pending balace to prevent sending tx under not enough balance situation
 UsePendingBalance = false
+# dont panic in init router
+DontPanicInInitRouter = false
 # getting accept list interval (seconds) in accept job
 GetAcceptListInterval = 5
 # when meet invalid accept, ignore it instead of disagree it immediately

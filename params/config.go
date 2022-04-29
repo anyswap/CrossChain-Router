@@ -19,7 +19,7 @@ const (
 var IsTestMode bool
 
 var (
-	routerConfig = &RouterConfig{}
+	routerConfig = &RouterConfig{Extra: &ExtraConfig{}}
 
 	routerConfigFile string
 	locDataDir       string
@@ -93,7 +93,8 @@ type RouterServerConfig struct {
 
 // RouterOracleConfig only for oracle
 type RouterOracleConfig struct {
-	ServerAPIAddress string
+	ServerAPIAddress        string
+	NoCheckServerConnection bool
 }
 
 // RouterConfig config
@@ -113,13 +114,14 @@ type RouterConfig struct {
 
 // ExtraConfig extra config
 type ExtraConfig struct {
-	IsDebugMode          bool `toml:",omitempty" json:",omitempty"`
-	EnableSwapTrade      bool `toml:",omitempty" json:",omitempty"`
-	EnableSwapWithPermit bool `toml:",omitempty" json:",omitempty"`
-	ForceAnySwapInAuto   bool `toml:",omitempty" json:",omitempty"`
-	IsNFTSwapWithData    bool `toml:",omitempty" json:",omitempty"`
-	EnableParallelSwap   bool `toml:",omitempty" json:",omitempty"`
-	UsePendingBalance    bool `toml:",omitempty" json:",omitempty"`
+	IsDebugMode           bool `toml:",omitempty" json:",omitempty"`
+	EnableSwapTrade       bool `toml:",omitempty" json:",omitempty"`
+	EnableSwapWithPermit  bool `toml:",omitempty" json:",omitempty"`
+	ForceAnySwapInAuto    bool `toml:",omitempty" json:",omitempty"`
+	IsNFTSwapWithData     bool `toml:",omitempty" json:",omitempty"`
+	EnableParallelSwap    bool `toml:",omitempty" json:",omitempty"`
+	UsePendingBalance     bool `toml:",omitempty" json:",omitempty"`
+	DontPanicInInitRouter bool `toml:",omitempty" json:",omitempty"`
 
 	MinReserveFee    map[string]uint64 `toml:",omitempty" json:",omitempty"`
 	BaseFeePercent   map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID

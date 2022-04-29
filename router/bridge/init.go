@@ -17,13 +17,19 @@ import (
 func InitRouterBridges(isServer bool) {
 	log.Info("start init router bridges")
 	router.IsIniting = true
+	defer func() {
+		router.IsIniting = false
+	}()
+
+	dontPanic := params.GetExtraConfig().DontPanicInInitRouter
+	logErrFunc := log.GetLogFuncOr(dontPanic, log.Error, log.Fatal)
 
 	client.InitHTTPClient()
 	router.InitRouterConfigClients()
 
 	allChainIDs, err := router.GetAllChainIDs()
 	if err != nil {
-		log.Fatal("call GetAllChainIDs failed", "err", err)
+		logErrFunc("call GetAllChainIDs failed", "err", err)
 	}
 	// get rid of blacked chainIDs
 	chainIDs := make([]*big.Int, 0, len(allChainIDs))
@@ -37,12 +43,12 @@ func InitRouterBridges(isServer bool) {
 	router.AllChainIDs = chainIDs
 	log.Info("get all chain ids success", "chainIDs", chainIDs)
 	if len(router.AllChainIDs) == 0 {
-		log.Fatal("empty chain IDs")
+		logErrFunc("empty chain IDs")
 	}
 
 	allTokenIDs, err := router.GetAllTokenIDs()
 	if err != nil {
-		log.Fatal("call GetAllTokenIDs failed", "err", err)
+		logErrFunc("call GetAllTokenIDs failed", "err", err)
 	}
 	// get rid of blacked tokenIDs
 	tokenIDs := make([]string, 0, len(allTokenIDs))
@@ -56,14 +62,17 @@ func InitRouterBridges(isServer bool) {
 	router.AllTokenIDs = tokenIDs
 	log.Info("get all token ids success", "tokenIDs", tokenIDs)
 	if len(router.AllTokenIDs) == 0 && !tokens.IsAnyCallRouter() {
-		log.Fatal("empty token IDs")
+		logErrFunc("empty token IDs")
 	}
 
 	for _, chainID := range chainIDs {
 		bridge := NewCrossChainBridge(chainID)
 		configLoader, ok := bridge.(tokens.IBridgeConfigLoader)
 		if !ok {
-			log.Fatal("do not support onchain config loading", "chainID", chainID)
+			logErrFunc("do not support onchain config loading", "chainID", chainID)
+			if dontPanic {
+				continue
+			}
 		}
 
 		configLoader.InitGatewayConfig(chainID, false)
@@ -81,14 +90,14 @@ func InitRouterBridges(isServer bool) {
 
 	err = loadSwapConfigs()
 	if err != nil {
-		log.Fatal("load swap configs failed", "err", err)
+		logErrFunc("load swap configs failed", "err", err)
 	}
 
 	if params.SignWithPrivateKey() {
 		for _, chainID := range chainIDs {
 			priKey := params.GetSignerPrivateKey(chainID.String())
 			if priKey == "" {
-				log.Fatalf("missing config private key on chain %v", chainID)
+				logErrFunc("missing config private key", "chainID", chainID)
 			}
 		}
 	} else {
@@ -96,8 +105,6 @@ func InitRouterBridges(isServer bool) {
 	}
 
 	log.Info("init router bridges success", "isServer", isServer)
-
-	router.IsIniting = false
 }
 
 func loadSwapConfigs() error {
