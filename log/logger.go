@@ -97,6 +97,14 @@ func GetPrintFuncOr(predicate func() bool, targetFunc, otherFunc PrintFunc) Prin
 	return otherFunc
 }
 
+// GetLogFuncOr get log func of default
+func GetLogFuncOr(predicate bool, targetFunc, otherFunc PrintFunc) PrintFunc {
+	if predicate {
+		return targetFunc
+	}
+	return otherFunc
+}
+
 // Null don't output anything
 func Null(string, ...interface{}) {
 }

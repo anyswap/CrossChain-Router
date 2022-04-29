@@ -1,4 +1,5 @@
 // Package leveldb is a wrapper of goleveldb.
+//nolint
 package leveldb
 
 import (

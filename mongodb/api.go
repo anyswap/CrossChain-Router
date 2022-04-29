@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/big"
 	"strings"
 	"sync"
 	"time"
@@ -215,6 +214,7 @@ func FindRouterSwapsWithStatus(status SwapStatus, septime int64) ([]*MgoSwap, er
 }
 
 // FindRouterSwapsWithChainIDAndStatus find router swap with chainid and status in the past septime
+//nolint:dupl // allow duplicate
 func FindRouterSwapsWithChainIDAndStatus(fromChainID string, status SwapStatus, septime int64) ([]*MgoSwap, error) {
 	query := getStatusQueryWithChainID(fromChainID, status, septime)
 	opts := &options.FindOptions{
@@ -481,10 +481,10 @@ func FindRouterSwapResultsToStable(chainID string, septime int64) ([]*MgoSwapRes
 }
 
 // FindRouterSwapResultsToReplace find router swap result with status
-func FindRouterSwapResultsToReplace(chainID *big.Int, septime int64) ([]*MgoSwapResult, error) {
+func FindRouterSwapResultsToReplace(chainID string, septime int64) ([]*MgoSwapResult, error) {
 	qtime := bson.M{"inittime": bson.M{"$gte": septime}}
 	qstatus := bson.M{"status": MatchTxNotStable}
-	qchainid := bson.M{"toChainID": chainID.String()}
+	qchainid := bson.M{"toChainID": chainID}
 	qheight := bson.M{"swapheight": 0}
 	queries := []bson.M{qtime, qstatus, qchainid, qheight}
 
@@ -527,6 +527,7 @@ func getStatusesFromStr(status string) (registerStatuses, resultStatuses []SwapS
 }
 
 // FindRouterSwapResults find router swap results with chainid and address
+//nolint:gocyclo // allow long method
 func FindRouterSwapResults(fromChainID, address string, offset, limit int, status string) ([]*MgoSwapResult, error) {
 	var queries []bson.M
 

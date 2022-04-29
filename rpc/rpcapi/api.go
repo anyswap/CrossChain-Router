@@ -40,15 +40,19 @@ func (s *RouterSwapAPI) GetServerInfo(r *http.Request, args *RPCNullArgs, result
 	return nil
 }
 
+type getOracleInfoResult map[string]*swapapi.OracleInfo
+
 // GetOracleInfo api
-func (s *RouterSwapAPI) GetOracleInfo(r *http.Request, args *RPCNullArgs, result *map[string]*swapapi.OracleInfo) error {
+func (s *RouterSwapAPI) GetOracleInfo(r *http.Request, args *RPCNullArgs, result *getOracleInfoResult) error {
 	oracleInfo := swapapi.GetOracleInfo()
 	*result = oracleInfo
 	return nil
 }
 
+type getStatusInfoResult map[string]interface{}
+
 // GetStatusInfo api
-func (s *RouterSwapAPI) GetStatusInfo(r *http.Request, statuses *string, result *map[string]interface{}) error {
+func (s *RouterSwapAPI) GetStatusInfo(r *http.Request, statuses *string, result *getStatusInfoResult) error {
 	res, err := swapapi.GetStatusInfo(*statuses)
 	if err == nil && res != nil {
 		*result = res

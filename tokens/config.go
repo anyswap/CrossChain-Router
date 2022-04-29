@@ -109,6 +109,7 @@ func (c *TokenConfig) GetUnderlying() common.Address {
 }
 
 // CheckConfig check swap config
+//nolint:funlen,gocyclo // ok
 func (c *SwapConfig) CheckConfig() error {
 	if c.MaximumSwap == nil || c.MaximumSwap.Sign() <= 0 {
 		return errors.New("token must config 'MaximumSwap' (positive)")

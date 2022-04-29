@@ -277,6 +277,7 @@ func checkAndUpdateProcessSwapTaskCache(key string) error {
 	return nil
 }
 
+//nolint:funlen // ok
 func doSwap(args *tokens.BuildTxArgs) (err error) {
 	if params.IsParallelSwapEnabled() {
 		return doSwapParallel(args)
@@ -361,7 +362,9 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 
 	sentTxHash, err := sendSignedTransaction(resBridge, signedTx, args)
 	if err == nil && txHash != sentTxHash {
-		logWorkerError("doSwap", "send tx success but with different hash", errSendTxWithDiffHash, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "txHash", txHash, "sentTxHash", sentTxHash, "swapNonce", swapTxNonce)
+		logWorkerError("doSwap", "send tx success but with different hash", errSendTxWithDiffHash,
+			"fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex,
+			"txHash", txHash, "sentTxHash", sentTxHash, "swapNonce", swapTxNonce)
 		_ = mongodb.UpdateRouterOldSwapTxs(fromChainID, txid, logIndex, sentTxHash)
 	}
 	return err
@@ -431,7 +434,9 @@ func signAndSendTx(rawTx interface{}, args *tokens.BuildTxArgs) error {
 
 	sentTxHash, err := sendSignedTransaction(resBridge, signedTx, args)
 	if err == nil && txHash != sentTxHash {
-		logWorkerError("doSwap", "send tx success but with different hash", errSendTxWithDiffHash, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "txHash", txHash, "sentTxHash", sentTxHash, "swapNonce", swapTxNonce)
+		logWorkerError("doSwap", "send tx success but with different hash", errSendTxWithDiffHash,
+			"fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex,
+			"txHash", txHash, "sentTxHash", sentTxHash, "swapNonce", swapTxNonce)
 		_ = mongodb.UpdateRouterOldSwapTxs(fromChainID, txid, logIndex, sentTxHash)
 	}
 	return err

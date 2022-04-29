@@ -103,6 +103,7 @@ func (c *RouterOracleConfig) CheckConfig() (err error) {
 }
 
 // CheckConfig of router server
+//nolint:funlen,gocyclo // ok
 func (s *RouterServerConfig) CheckConfig() error {
 	if s == nil {
 		return errors.New("router server must config 'Server'")
@@ -311,6 +312,7 @@ func (c *OnchainConfig) CheckConfig() error {
 }
 
 // CheckConfig check mpc config
+//nolint:funlen,gocyclo // ok
 func (c *MPCConfig) CheckConfig(isServer bool) (err error) {
 	if c.SignWithPrivateKey {
 		return nil

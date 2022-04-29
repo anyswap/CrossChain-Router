@@ -1,3 +1,5 @@
+// Package types - eth types like transaction, receipt and logs
+//nolint
 package types
 
 import (

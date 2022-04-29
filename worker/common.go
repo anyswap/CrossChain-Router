@@ -190,7 +190,11 @@ SENDTX_LOOP:
 		if !needRetrySendTx(err) || loop+1 == retrySendTxLoops {
 			break SENDTX_LOOP
 		}
-		logWorkerWarn("sendtx", "send tx failed and will retry", "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "swapNonce", swapTxNonce, "replaceNum", replaceNum, "loop", loop, "err", err)
+		logWorkerWarn("sendtx", "send tx failed and will retry",
+			"fromChainID", args.FromChainID, "toChainID", args.ToChainID,
+			"txid", args.SwapID, "logIndex", args.LogIndex,
+			"swapNonce", swapTxNonce, "replaceNum", replaceNum,
+			"loop", loop, "err", err)
 		sleepSeconds(3)
 	}
 

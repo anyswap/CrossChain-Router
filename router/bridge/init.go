@@ -13,6 +13,7 @@ import (
 )
 
 // InitRouterBridges init router bridges
+//nolint:funlen,gocyclo // ok
 func InitRouterBridges(isServer bool) {
 	log.Info("start init router bridges")
 	router.IsIniting = true
