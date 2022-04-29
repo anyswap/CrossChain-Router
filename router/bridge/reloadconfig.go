@@ -19,8 +19,6 @@ var reloadRouterConfigLock sync.Mutex
 
 // StartReloadRouterConfigTask start reload config
 func StartReloadRouterConfigTask() {
-	log.Info("start reload router config task")
-
 	// method 1: use web socket event subscriber
 	go router.SubscribeUpdateConfig(ReloadRouterConfig)
 
