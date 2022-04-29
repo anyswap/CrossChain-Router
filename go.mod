@@ -11,6 +11,7 @@ require (
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/rpc v1.2.0
+	github.com/gorilla/websocket v1.4.2
 	github.com/jonboulle/clockwork v0.2.2 // indirect
 	github.com/jowenshaw/gethclient v0.2.0
 	github.com/lestrrat-go/file-rotatelogs v2.4.0+incompatible
@@ -24,5 +25,5 @@ require (
 	github.com/urfave/cli/v2 v2.3.0
 	go.mongodb.org/mongo-driver v1.7.2
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
-	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
+	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15
 )

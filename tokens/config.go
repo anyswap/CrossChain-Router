@@ -29,8 +29,21 @@ type TokenConfig struct {
 	ContractVersion uint64
 	RouterContract  string
 
+	RippleExtra *RippleTokenExtra
+
 	// calced value
 	underlying common.Address
+}
+
+// RippleTokenExtra ripple extra
+type RippleTokenExtra struct {
+	Currency string
+	Issuer   string
+}
+
+// IsNative is native of ripple
+func (e *RippleTokenExtra) IsNative() bool {
+	return e.Currency == "XRP"
 }
 
 // SwapConfig struct
