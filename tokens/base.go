@@ -72,7 +72,7 @@ func NewCrossChainBridgeBase() *CrossChainBridgeBase {
 }
 
 // InitAfterConfig init variables (ie. extra members) after loading config
-func (b *CrossChainBridgeBase) InitAfterConfig() {
+func (b *CrossChainBridgeBase) InitAfterConfig(isReload bool) {
 }
 
 // GetBalance get balance is used for checking budgets to prevent DOS attacking

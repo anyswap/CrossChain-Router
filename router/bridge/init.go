@@ -66,17 +66,16 @@ func InitRouterBridges(isServer bool) {
 			log.Fatal("do not support onchain config loading", "chainID", chainID)
 		}
 
-		configLoader.InitGatewayConfig(chainID)
+		configLoader.InitGatewayConfig(chainID, false)
 		AdjustGatewayOrder(bridge, chainID.String())
-		configLoader.InitChainConfig(chainID)
+		configLoader.InitChainConfig(chainID, false)
+
+		bridge.InitAfterConfig(false)
+		router.RouterBridges[chainID.String()] = bridge
 
 		for _, tokenID := range tokenIDs {
-			configLoader.InitTokenConfig(tokenID, chainID)
+			configLoader.InitTokenConfig(tokenID, chainID, false)
 		}
-
-		bridge.InitAfterConfig()
-
-		router.RouterBridges[chainID.String()] = bridge
 	}
 	router.PrintMultichainTokens()
 
@@ -95,8 +94,6 @@ func InitRouterBridges(isServer bool) {
 	} else {
 		mpc.Init(params.GetMPCConfig(), isServer)
 	}
-
-	startReloadRouterConfigTask()
 
 	log.Info("init router bridges success", "isServer", isServer)
 

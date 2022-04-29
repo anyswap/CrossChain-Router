@@ -26,12 +26,10 @@ type IBridgeConfg interface {
 
 // IBridgeConfigLoader interface
 type IBridgeConfigLoader interface {
-	InitGatewayConfig(chainID *big.Int)
-	InitChainConfig(chainID *big.Int)
-	InitTokenConfig(tokenID string, chainID *big.Int)
+	InitGatewayConfig(chainID *big.Int, isReload bool)
+	InitChainConfig(chainID *big.Int, isReload bool)
+	InitTokenConfig(tokenID string, chainID *big.Int, isReload bool)
 
-	ReloadChainConfig(chainID *big.Int)
-	ReloadTokenConfig(tokenID string, chainID *big.Int)
 	RemoveTokenConfig(tokenAddr string)
 }
 
@@ -40,7 +38,7 @@ type IBridge interface {
 	IBridgeConfg
 	IMPCSign
 
-	InitAfterConfig()
+	InitAfterConfig(isReload bool)
 
 	RegisterSwap(txHash string, args *RegisterArgs) ([]*SwapTxInfo, []error)
 	VerifyTransaction(txHash string, ars *VerifyArgs) (*SwapTxInfo, error)

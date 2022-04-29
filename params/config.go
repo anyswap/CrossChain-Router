@@ -20,7 +20,12 @@ var IsTestMode bool
 
 var (
 	routerConfig = &RouterConfig{}
-	locDataDir   string
+
+	routerConfigFile string
+	locDataDir       string
+
+	// IsSwapServer is swap server
+	IsSwapServer bool
 
 	chainIDBlacklistMap = make(map[string]struct{})
 	tokenIDBlacklistMap = make(map[string]struct{})
@@ -820,7 +825,43 @@ func LoadRouterConfig(configFile string, isServer, check bool) *RouterConfig {
 		}
 	}
 
+	routerConfigFile = configFile
 	return routerConfig
+}
+
+// ReloadRouterConfig reload config
+func ReloadRouterConfig() {
+	configFile := routerConfigFile
+	isServer := IsSwapServer
+
+	log.Info("reload router config file", "configFile", configFile, "isServer", isServer)
+
+	config := &RouterConfig{}
+	if _, err := toml.DecodeFile(configFile, &config); err != nil {
+		log.Errorf("ReloadRouterConfig error (toml DecodeFile): %v", err)
+		return
+	}
+
+	if !isServer {
+		config.Server = nil
+	} else {
+		config.Oracle = nil
+	}
+
+	if err := config.CheckConfig(isServer); err != nil {
+		log.Errorf("ReloadRouterConfig check config failed. %v", err)
+		return
+	}
+
+	var bs []byte
+	if log.JSONFormat {
+		bs, _ = json.Marshal(config)
+	} else {
+		bs, _ = json.MarshalIndent(config, "", "  ")
+	}
+	log.Println("ReloadRouterConfig finished.", string(bs))
+
+	routerConfig = config
 }
 
 // SetDataDir set data dir
