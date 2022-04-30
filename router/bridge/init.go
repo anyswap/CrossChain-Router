@@ -21,7 +21,6 @@ func InitRouterBridges(isServer bool) {
 	router.IsIniting = true
 	defer func() {
 		router.IsIniting = false
-		router.RouterInfoIsLoaded = new(sync.Map)
 		log.Info("init router bridges finished", "isServer", isServer, "success", success)
 	}()
 
@@ -89,7 +88,7 @@ func InitRouterBridges(isServer bool) {
 			configLoader.InitChainConfig(chainID, false)
 
 			bridge.InitAfterConfig(false)
-			router.RouterBridges[chainID.String()] = bridge
+			router.SetBridge(chainID.String(), bridge)
 
 			wg2 := new(sync.WaitGroup)
 			wg2.Add(len(tokenIDs))
@@ -128,10 +127,11 @@ func loadSwapConfigs(dontPanic bool) {
 		return
 	}
 	logErrFunc := log.GetLogFuncOr(dontPanic, log.Error, log.Fatal)
-	swapConfigs := make(map[string]map[string]*tokens.SwapConfig)
+	swapConfigs := new(sync.Map)
 	wg := new(sync.WaitGroup)
 	for _, tokenID := range router.AllTokenIDs {
-		swapConfigs[tokenID] = make(map[string]*tokens.SwapConfig)
+		swapConfig := new(sync.Map)
+		swapConfigs.Store(tokenID, swapConfig)
 		for _, chainID := range router.AllChainIDs {
 			wg.Add(1)
 			go func(wg *sync.WaitGroup, tokenID string, chainID *big.Int) {
@@ -152,7 +152,7 @@ func loadSwapConfigs(dontPanic bool) {
 					logErrFunc("check swap config failed", "tokenID", tokenID, "chainID", chainID, "err", err)
 					return
 				}
-				swapConfigs[tokenID][chainID.String()] = swapCfg
+				swapConfig.Store(chainID.String(), swapCfg)
 				log.Info("load swap config success", "tokenID", tokenID, "chainID", chainID, "multichainToken", multichainToken)
 			}(wg, tokenID, chainID)
 		}

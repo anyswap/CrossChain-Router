@@ -17,18 +17,15 @@ import (
 
 // router bridges
 var (
-	RouterBridges    = make(map[string]tokens.IBridge)    // key is chainID
-	MultichainTokens = make(map[string]map[string]string) // key is tokenID,chainID
-	AllChainIDs      []*big.Int                           // all chainIDs is retrieved only once
-	AllTokenIDs      []string                             // all tokenIDs can be reload
+	RouterBridges    = new(sync.Map) // key is chainID
+	MultichainTokens = new(sync.Map) // key is tokenID,chainID
+	AllChainIDs      []*big.Int      // all chainIDs is retrieved only once
+	AllTokenIDs      []string        // all tokenIDs can be reload
 
 	pausedChainIDs = mapset.NewSet() // paused chainIDs in memory by admin command
 
-	MPCPublicKeys = make(map[string]string)          // key is mpc address
-	RouterInfos   = make(map[string]*SwapRouterInfo) // key is router contract address
-
-	// used in init and reload to prevent duplicate loading (clear after loaded all)
-	RouterInfoIsLoaded = new(sync.Map)
+	MPCPublicKeys = new(sync.Map) // key is mpc address
+	RouterInfos   = new(sync.Map) // key is router contract address
 
 	IsIniting              bool
 	RetryRPCCountInInit    = 10
@@ -42,28 +39,34 @@ type SwapRouterInfo struct {
 	RouterWNative string
 }
 
+// SetBridge set bridge
+func SetBridge(chainID string, bridge tokens.IBridge) {
+	if bridge != nil {
+		RouterInfos.Store(chainID, bridge)
+	} else {
+		RouterInfos.Delete(chainID)
+	}
+}
+
 // GetBridgeByChainID get bridge by chain id
 func GetBridgeByChainID(chainID string) tokens.IBridge {
-	return RouterBridges[chainID]
+	if bridge, exist := RouterBridges.Load(chainID); exist {
+		return bridge.(tokens.IBridge)
+	}
+	return nil
 }
 
 // SetRouterInfo set router info
 func SetRouterInfo(router string, routerInfo *SwapRouterInfo) {
-	if router == "" {
-		return
-	}
 	key := strings.ToLower(router)
-	if _, exist := RouterInfos[key]; exist {
-		return
-	}
-	RouterInfos[key] = routerInfo
+	RouterInfos.Store(key, routerInfo)
 }
 
 // GetRouterInfo get router info
 func GetRouterInfo(router string) *SwapRouterInfo {
 	key := strings.ToLower(router)
-	if info, exist := RouterInfos[key]; exist {
-		return info
+	if info, exist := RouterInfos.Load(key); exist {
+		return info.(*SwapRouterInfo)
 	}
 	return nil
 }
@@ -114,46 +117,79 @@ func GetRouterMPC(tokenID, chainID string) (string, error) {
 // SetMPCPublicKey set router mpc public key
 func SetMPCPublicKey(mpc, pubkey string) {
 	key := strings.ToLower(mpc)
-	if _, exist := MPCPublicKeys[key]; exist {
-		return
-	}
-	MPCPublicKeys[key] = pubkey
+	MPCPublicKeys.Store(key, pubkey)
 }
 
 // GetMPCPublicKey get mpc puvlic key
 func GetMPCPublicKey(mpc string) string {
 	key := strings.ToLower(mpc)
-	if pubkey, exist := MPCPublicKeys[key]; exist {
-		return pubkey
+	if pubkey, exist := MPCPublicKeys.Load(key); exist {
+		return pubkey.(string)
 	}
 	return ""
 }
 
-// GetCachedMultichainTokens get multichain tokens of `tokenid`
-func GetCachedMultichainTokens(tokenID string) map[string]string {
+// SetMultichainTokens set multichain tokens
+func SetMultichainTokens(tokenID string, tokensMap *sync.Map) {
 	tokenIDKey := strings.ToLower(tokenID)
-	return MultichainTokens[tokenIDKey]
+	if tokensMap != nil {
+		MultichainTokens.Store(tokenIDKey, tokensMap)
+	} else {
+		MultichainTokens.Delete(tokenIDKey)
+	}
+}
+
+// SetMultichainToken set multichain token
+func SetMultichainToken(tokenID, chainID, tokenAddr string) {
+	tokenIDKey := strings.ToLower(tokenID)
+	if m, exist := MultichainTokens.Load(tokenIDKey); exist {
+		tokensMap := m.(*sync.Map)
+		tokensMap.Store(chainID, tokenAddr)
+	} else {
+		tokensMap := new(sync.Map)
+		tokensMap.Store(chainID, tokenAddr)
+		MultichainTokens.Store(tokenIDKey, tokensMap)
+	}
+}
+
+// GetCachedMultichainTokens get multichain tokens of `tokenid`
+func GetCachedMultichainTokens(tokenID string) *sync.Map {
+	tokenIDKey := strings.ToLower(tokenID)
+	if m, exist := MultichainTokens.Load(tokenIDKey); exist {
+		return m.(*sync.Map)
+	}
+	return nil
 }
 
 // GetCachedMultichainToken get multichain token address by tokenid and chainid
 func GetCachedMultichainToken(tokenID, chainID string) (tokenAddr string) {
-	tokenIDKey := strings.ToLower(tokenID)
-	mcTokens := MultichainTokens[tokenIDKey]
+	mcTokens := GetCachedMultichainTokens(tokenID)
 	if mcTokens == nil {
 		return ""
 	}
-	return mcTokens[chainID]
+	if addr, exist := mcTokens.Load(chainID); exist {
+		return addr.(string)
+	}
+	return ""
 }
 
 // PrintMultichainTokens print
 func PrintMultichainTokens() {
 	log.Info("*** begin print all multichain tokens")
-	for tokenID, tokensMap := range MultichainTokens {
-		log.Infof("*** multichain tokens of tokenID '%v' count is %v", tokenID, len(tokensMap))
-		for chainID, tokenAddr := range tokensMap {
+	MultichainTokens.Range(func(k, v interface{}) bool {
+		tokenID := k.(string)
+		tokensMap := v.(*sync.Map)
+		count := 0
+		tokensMap.Range(func(cid, addr interface{}) bool {
+			chainID := cid.(string)
+			tokenAddr := addr.(string)
+			count++
 			log.Infof("*** multichain token: chainID %v tokenAddr %v", chainID, tokenAddr)
-		}
-	}
+			return true
+		})
+		log.Infof("*** multichain tokens of tokenID '%v' count is %v", tokenID, count)
+		return true
+	})
 	log.Info("*** end print all multichain tokens")
 }
 

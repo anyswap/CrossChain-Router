@@ -21,8 +21,9 @@ var (
 func StartStableJob() {
 	logWorker("stable", "start router swap stable job")
 
-	for _, bridge := range router.RouterBridges {
-		chainID := bridge.GetChainConfig().ChainID
+	router.RouterBridges.Range(func(k, v interface{}) bool {
+		chainID := k.(string)
+
 		if _, exist := routerStableTaskChanMap[chainID]; !exist {
 			routerStableTaskChanMap[chainID] = make(chan *mongodb.MgoSwapResult, stableChanSize)
 			utils.TopWaitGroup.Add(1)
@@ -31,7 +32,9 @@ func StartStableJob() {
 
 		mongodb.MgoWaitGroup.Add(1)
 		go startStableJob(chainID)
-	}
+
+		return true
+	})
 }
 
 func startStableJob(chainID string) {

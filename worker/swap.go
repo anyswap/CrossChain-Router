@@ -35,8 +35,9 @@ var (
 
 // StartSwapJob swap job
 func StartSwapJob() {
-	for _, bridge := range router.RouterBridges {
-		chainID := bridge.GetChainConfig().ChainID
+	router.RouterBridges.Range(func(k, v interface{}) bool {
+		chainID := k.(string)
+
 		if _, exist := routerSwapTaskChanMap[chainID]; !exist {
 			routerSwapTaskChanMap[chainID] = make(chan *tokens.BuildTxArgs, swapChanSize)
 			utils.TopWaitGroup.Add(1)
@@ -45,7 +46,9 @@ func StartSwapJob() {
 
 		mongodb.MgoWaitGroup.Add(1)
 		go startRouterSwapJob(chainID)
-	}
+
+		return true
+	})
 }
 
 func startRouterSwapJob(chainID string) {

@@ -208,7 +208,7 @@ func (b *Bridge) InitRouterInfo(biChainID *big.Int, routerContract string, isRel
 	if biChainID.Sign() == 0 {
 		return fmt.Errorf("chainID is zero")
 	}
-	if _, loaded := router.RouterInfoIsLoaded.Load(routerContract); loaded {
+	if info := router.GetRouterInfo(routerContract); info != nil {
 		return nil
 	}
 
@@ -251,7 +251,6 @@ func (b *Bridge) InitRouterInfo(biChainID *big.Int, routerContract string, isRel
 			RouterWNative: routerWNative,
 		},
 	)
-	router.RouterInfoIsLoaded.Store(routerContract, true)
 	router.SetMPCPublicKey(routerMPC, routerMPCPubkey)
 
 	chainID := biChainID.String()
@@ -373,13 +372,7 @@ func (b *Bridge) InitTokenConfig(tokenID string, chainID *big.Int, isReload bool
 
 	b.SetTokenConfig(tokenAddr, tokenCfg)
 
-	tokenIDKey := strings.ToLower(tokenID)
-	tokensMap := router.MultichainTokens[tokenIDKey]
-	if tokensMap == nil {
-		tokensMap = make(map[string]string)
-		router.MultichainTokens[tokenIDKey] = tokensMap
-	}
-	tokensMap[chainID.String()] = tokenAddr
+	router.SetMultichainToken(tokenID, chainID.String(), tokenAddr)
 
 	log.Info(fmt.Sprintf("[%5v] init '%v' token config success", chainID, tokenID),
 		"tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals,

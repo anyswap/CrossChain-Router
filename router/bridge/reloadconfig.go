@@ -4,7 +4,6 @@ import (
 	"math/big"
 	"os"
 	"os/signal"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -78,7 +77,6 @@ func ReloadRouterConfig() (success bool) {
 	router.IsIniting = true
 	defer func() {
 		router.IsIniting = false
-		router.RouterInfoIsLoaded = new(sync.Map)
 		log.Info("[reload] reload router config finished", "success", success)
 		reloadRouterConfigLock.Unlock()
 	}()
@@ -116,7 +114,7 @@ func ReloadRouterConfig() (success bool) {
 			}
 		}
 		if !exist {
-			router.RouterBridges[chainID.String()] = nil
+			router.SetBridge(chainID.String(), nil)
 		}
 	}
 
@@ -190,12 +188,12 @@ func ReloadRouterConfig() (success bool) {
 
 			if isNewBridge {
 				bridge.InitAfterConfig(true)
-				router.RouterBridges[chainIDStr] = bridge
+				router.SetBridge(chainIDStr, bridge)
 			}
 
 			for _, tokenID := range removedTokenIDs {
 				tokenAddr := router.GetCachedMultichainToken(tokenID, chainIDStr)
-				router.MultichainTokens[strings.ToLower(tokenID)] = nil
+				router.SetMultichainTokens(tokenID, nil)
 
 				if tokenAddr != "" {
 					log.Info("[reload] remove token config", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr)
