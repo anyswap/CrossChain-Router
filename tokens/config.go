@@ -6,7 +6,6 @@ import (
 	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
-	"github.com/anyswap/CrossChain-Router/v3/log"
 )
 
 // ChainConfig struct
@@ -83,11 +82,7 @@ func (c *TokenConfig) CheckConfig() error {
 	if c.ContractAddress == "" {
 		return errors.New("token must config 'ContractAddress'")
 	}
-	if IsERC20Router() {
-		if c.ContractVersion == 0 {
-			log.Warn("token 'ContractVersion' is 0", "tokenID", c.TokenID, "address", c.ContractAddress)
-		}
-	} else if c.Decimals != 0 {
+	if !IsERC20Router() && c.Decimals != 0 {
 		return errors.New("non ERC20 token must config 'Decimals' to 0")
 	}
 	return nil

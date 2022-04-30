@@ -163,7 +163,7 @@ func (b *Bridge) InitChainConfig(chainID *big.Int, isReload bool) {
 			return
 		}
 	}
-	if err = b.InitRouterInfo(chainID, chainCfg.RouterContract); err != nil {
+	if err = b.InitRouterInfo(chainID, chainCfg.RouterContract, isReload); err != nil {
 		logErrFunc("init chain router info failed", "routerContract", chainCfg.RouterContract, "err", err)
 		if isReload {
 			return
@@ -201,13 +201,18 @@ func (b *Bridge) initSigner(chainID *big.Int) (err error) {
 }
 
 // InitRouterInfo init router info
-func (b *Bridge) InitRouterInfo(biChainID *big.Int, routerContract string) (err error) {
+func (b *Bridge) InitRouterInfo(biChainID *big.Int, routerContract string, isReload bool) (err error) {
 	if routerContract == "" {
 		return nil
 	}
 	if biChainID.Sign() == 0 {
 		return fmt.Errorf("chainID is zero")
 	}
+	if _, loaded := router.RouterInfoIsLoaded.Load(routerContract); loaded {
+		return nil
+	}
+
+	log.Info(fmt.Sprintf("[%5v] start init router info", biChainID), "routerContract", routerContract)
 	var routerFactory, routerWNative string
 	if tokens.IsERC20Router() {
 		routerFactory, err = b.GetFactoryAddress(routerContract)
@@ -246,6 +251,7 @@ func (b *Bridge) InitRouterInfo(biChainID *big.Int, routerContract string) (err 
 			RouterWNative: routerWNative,
 		},
 	)
+	router.RouterInfoIsLoaded.Store(routerContract, true)
 	router.SetMPCPublicKey(routerMPC, routerMPCPubkey)
 
 	chainID := biChainID.String()
@@ -326,7 +332,7 @@ func (b *Bridge) InitTokenConfig(tokenID string, chainID *big.Int, isReload bool
 	if routerContract == "" {
 		routerContract = b.ChainConfig.RouterContract
 	}
-	if err = b.InitRouterInfo(chainID, tokenCfg.RouterContract); err != nil {
+	if err = b.InitRouterInfo(chainID, tokenCfg.RouterContract, isReload); err != nil {
 		logErrFunc("init token router info failed", "routerContract", tokenCfg.RouterContract, "err", err)
 		if isReload {
 			return

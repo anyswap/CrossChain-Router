@@ -3,6 +3,7 @@ package bridge
 
 import (
 	"math/big"
+	"sync"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mpc"
@@ -15,10 +16,13 @@ import (
 // InitRouterBridges init router bridges
 //nolint:funlen,gocyclo // ok
 func InitRouterBridges(isServer bool) {
-	log.Info("start init router bridges")
+	log.Info("start init router bridges", "isServer", isServer)
+	var success bool
 	router.IsIniting = true
 	defer func() {
 		router.IsIniting = false
+		router.RouterInfoIsLoaded = new(sync.Map)
+		log.Info("init router bridges finished", "isServer", isServer, "success", success)
 	}()
 
 	dontPanic := params.GetExtraConfig().DontPanicInInitRouter
@@ -65,33 +69,45 @@ func InitRouterBridges(isServer bool) {
 		logErrFunc("empty token IDs")
 	}
 
+	wg := new(sync.WaitGroup)
+	wg.Add(len(chainIDs))
 	for _, chainID := range chainIDs {
-		bridge := NewCrossChainBridge(chainID)
-		configLoader, ok := bridge.(tokens.IBridgeConfigLoader)
-		if !ok {
-			logErrFunc("do not support onchain config loading", "chainID", chainID)
-			if dontPanic {
-				continue
+		go func(wg *sync.WaitGroup, chainID *big.Int) {
+			defer wg.Done()
+
+			bridge := NewCrossChainBridge(chainID)
+			configLoader, ok := bridge.(tokens.IBridgeConfigLoader)
+			if !ok {
+				logErrFunc("do not support onchain config loading", "chainID", chainID)
+				if dontPanic {
+					return
+				}
 			}
-		}
 
-		configLoader.InitGatewayConfig(chainID, false)
-		AdjustGatewayOrder(bridge, chainID.String())
-		configLoader.InitChainConfig(chainID, false)
+			configLoader.InitGatewayConfig(chainID, false)
+			AdjustGatewayOrder(bridge, chainID.String())
+			configLoader.InitChainConfig(chainID, false)
 
-		bridge.InitAfterConfig(false)
-		router.RouterBridges[chainID.String()] = bridge
+			bridge.InitAfterConfig(false)
+			router.RouterBridges[chainID.String()] = bridge
 
-		for _, tokenID := range tokenIDs {
-			configLoader.InitTokenConfig(tokenID, chainID, false)
-		}
+			wg2 := new(sync.WaitGroup)
+			wg2.Add(len(tokenIDs))
+			for _, tokenID := range tokenIDs {
+				go func(wg2 *sync.WaitGroup, tokenID string, chainID *big.Int) {
+					defer wg2.Done()
+					log.Info("start load token config", "tokenID", tokenID, "chainID", chainID)
+					configLoader.InitTokenConfig(tokenID, chainID, false)
+				}(wg2, tokenID, chainID)
+			}
+			wg2.Wait()
+		}(wg, chainID)
 	}
+	wg.Wait()
+
 	router.PrintMultichainTokens()
 
-	err = loadSwapConfigs()
-	if err != nil {
-		logErrFunc("load swap configs failed", "err", err)
-	}
+	loadSwapConfigs(dontPanic)
 
 	if params.SignWithPrivateKey() {
 		for _, chainID := range chainIDs {
@@ -104,37 +120,44 @@ func InitRouterBridges(isServer bool) {
 		mpc.Init(params.GetMPCConfig(), isServer)
 	}
 
-	log.Info("init router bridges success", "isServer", isServer)
+	success = true
 }
 
-func loadSwapConfigs() error {
+func loadSwapConfigs(dontPanic bool) {
 	if !tokens.IsERC20Router() {
-		return nil
+		return
 	}
+	logErrFunc := log.GetLogFuncOr(dontPanic, log.Error, log.Fatal)
 	swapConfigs := make(map[string]map[string]*tokens.SwapConfig)
+	wg := new(sync.WaitGroup)
 	for _, tokenID := range router.AllTokenIDs {
 		swapConfigs[tokenID] = make(map[string]*tokens.SwapConfig)
 		for _, chainID := range router.AllChainIDs {
-			multichainToken := router.GetCachedMultichainToken(tokenID, chainID.String())
-			if multichainToken == "" {
-				log.Debug("ignore swap config as no multichain token exist", "tokenID", tokenID, "chainID", chainID)
-				continue
-			}
-			swapCfg, err := router.GetSwapConfig(tokenID, chainID)
-			if err != nil {
-				log.Warn("get swap config failed", "tokenID", tokenID, "chainID", chainID, "err", err)
-				return err
-			}
-			err = swapCfg.CheckConfig()
-			if err != nil {
-				log.Warn("check swap config failed", "tokenID", tokenID, "chainID", chainID, "err", err)
-				return err
-			}
-			swapConfigs[tokenID][chainID.String()] = swapCfg
-			log.Info("load swap config success", "tokenID", tokenID, "chainID", chainID, "multichainToken", multichainToken)
+			wg.Add(1)
+			go func(wg *sync.WaitGroup, tokenID string, chainID *big.Int) {
+				defer wg.Done()
+
+				multichainToken := router.GetCachedMultichainToken(tokenID, chainID.String())
+				if multichainToken == "" {
+					log.Debug("ignore swap config as no multichain token exist", "tokenID", tokenID, "chainID", chainID)
+					return
+				}
+				swapCfg, err := router.GetSwapConfig(tokenID, chainID)
+				if err != nil {
+					logErrFunc("get swap config failed", "tokenID", tokenID, "chainID", chainID, "err", err)
+					return
+				}
+				err = swapCfg.CheckConfig()
+				if err != nil {
+					logErrFunc("check swap config failed", "tokenID", tokenID, "chainID", chainID, "err", err)
+					return
+				}
+				swapConfigs[tokenID][chainID.String()] = swapCfg
+				log.Info("load swap config success", "tokenID", tokenID, "chainID", chainID, "multichainToken", multichainToken)
+			}(wg, tokenID, chainID)
 		}
 	}
+	wg.Wait()
 	tokens.SetSwapConfigs(swapConfigs)
 	log.Info("load all swap config success")
-	return nil
 }

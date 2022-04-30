@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -25,6 +26,9 @@ var (
 
 	MPCPublicKeys = make(map[string]string)          // key is mpc address
 	RouterInfos   = make(map[string]*SwapRouterInfo) // key is router contract address
+
+	// used in init and reload to prevent duplicate loading (clear after loaded all)
+	RouterInfoIsLoaded = new(sync.Map)
 
 	IsIniting              bool
 	RetryRPCCountInInit    = 10
