@@ -72,8 +72,13 @@ func NewCrossChainBridgeBase() *CrossChainBridgeBase {
 	}
 }
 
+// InitRouterInfo init router info
+func (b *CrossChainBridgeBase) InitRouterInfo(routerContract string) error {
+	return ErrNotImplemented
+}
+
 // InitAfterConfig init variables (ie. extra members) after loading config
-func (b *CrossChainBridgeBase) InitAfterConfig(isReload bool) {
+func (b *CrossChainBridgeBase) InitAfterConfig() {
 }
 
 // GetBalance get balance is used for checking budgets to prevent DOS attacking
@@ -96,12 +101,12 @@ func (b *CrossChainBridgeBase) SetGatewayConfig(gatewayCfg *GatewayConfig) {
 
 // SetTokenConfig set token config
 func (b *CrossChainBridgeBase) SetTokenConfig(token string, tokenCfg *TokenConfig) {
-	b.TokenConfigMap.Store(strings.ToLower(token), tokenCfg)
-}
-
-// RemoveTokenConfig remove token config
-func (b *CrossChainBridgeBase) RemoveTokenConfig(token string) {
-	b.TokenConfigMap.Delete(strings.ToLower(token))
+	key := strings.ToLower(token)
+	if tokenCfg != nil {
+		b.TokenConfigMap.Store(key, tokenCfg)
+	} else {
+		b.TokenConfigMap.Delete(key)
+	}
 }
 
 // GetChainConfig get chain config

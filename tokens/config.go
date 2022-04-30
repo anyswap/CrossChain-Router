@@ -29,7 +29,7 @@ type TokenConfig struct {
 	RouterContract  string
 
 	// calced value
-	underlying common.Address
+	underlying string
 }
 
 // SwapConfig struct
@@ -94,12 +94,12 @@ func (c *TokenConfig) IsStandardTokenVersion() bool {
 }
 
 // SetUnderlying set underlying
-func (c *TokenConfig) SetUnderlying(underlying common.Address) {
+func (c *TokenConfig) SetUnderlying(underlying string) {
 	c.underlying = underlying
 }
 
 // GetUnderlying get underlying
-func (c *TokenConfig) GetUnderlying() common.Address {
+func (c *TokenConfig) GetUnderlying() string {
 	return c.underlying
 }
 

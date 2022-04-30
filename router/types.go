@@ -28,6 +28,7 @@ var (
 	RouterInfos   = new(sync.Map) // key is router contract address
 
 	IsIniting              bool
+	IsReloading            bool
 	RetryRPCCountInInit    = 10
 	RetryRPCIntervalInInit = 1 * time.Second
 )

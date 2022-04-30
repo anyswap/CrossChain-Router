@@ -86,7 +86,7 @@ func initRouter() {
 	bridge.SetGatewayConfig(testCfg.Gateway)
 	bridge.SetChainConfig(testCfg.Chain)
 	bridge.SetTokenConfig(testCfg.Token.ContractAddress, testCfg.Token)
-	bridge.InitAfterConfig(false)
+	bridge.InitAfterConfig()
 
 	_ = params.SetExtraConfig(
 		&params.ExtraConfig{

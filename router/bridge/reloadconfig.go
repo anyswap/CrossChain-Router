@@ -51,19 +51,14 @@ func doReloadRouterConfigPeriodly() {
 func doReloadRouterConfigManually() {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGUSR1)
-	isReloading := false
 	for {
 		sig := <-signalChan
-		if isReloading {
+		if router.IsReloading {
 			log.Info("ignore signal to reload router config in reloading", "signal", sig)
 			continue
 		}
 		log.Info("receive signal to reload router config", "signal", sig)
-		isReloading = true
-		go func() {
-			ReloadRouterConfig()
-			isReloading = false
-		}()
+		go ReloadRouterConfig()
 	}
 }
 
@@ -75,8 +70,11 @@ func ReloadRouterConfig() (success bool) {
 	log.Info("[reload] start reload router config")
 	reloadRouterConfigLock.Lock()
 	router.IsIniting = true
+	router.IsReloading = true
 	defer func() {
 		router.IsIniting = false
+		router.IsReloading = false
+		routerInfoIsLoaded = new(sync.Map)
 		log.Info("[reload] reload router config finished", "success", success)
 		reloadRouterConfigLock.Unlock()
 	}()
@@ -137,19 +135,14 @@ func ReloadRouterConfig() (success bool) {
 				bridge = NewCrossChainBridge(chainID)
 				isNewBridge = true
 			}
-			configLoader, ok := bridge.(tokens.IBridgeConfigLoader)
-			if !ok {
-				log.Warn("[reload] do not support onchain config reloading", "chainID", chainID)
-				return
-			}
 
 			log.Info("[reload] set chain config", "chainID", chainID)
-			configLoader.InitGatewayConfig(chainID, true)
+			InitGatewayConfig(bridge, chainID)
 			AdjustGatewayOrder(bridge, chainID.String())
-			configLoader.InitChainConfig(chainID, true)
+			InitChainConfig(bridge, chainID)
 
 			if isNewBridge {
-				bridge.InitAfterConfig(true)
+				bridge.InitAfterConfig()
 				router.SetBridge(chainID.String(), bridge)
 			}
 
@@ -159,7 +152,7 @@ func ReloadRouterConfig() (success bool) {
 				go func(wg2 *sync.WaitGroup, tokenID string, chainID *big.Int) {
 					defer wg2.Done()
 					log.Info("[reload] start load token config", "tokenID", tokenID, "chainID", chainID)
-					configLoader.InitTokenConfig(tokenID, chainID, true)
+					InitTokenConfig(bridge, tokenID, chainID)
 				}(wg2, tokenID, chainID)
 			}
 			wg2.Wait()
@@ -215,17 +208,13 @@ func ReloadRouterConfig() (success bool) {
 		if bridge == nil {
 			continue
 		}
-		configLoader, ok := bridge.(tokens.IBridgeConfigLoader)
-		if !ok {
-			continue
-		}
 		for _, tokenID := range removedTokenIDs {
 			tokenAddr := router.GetCachedMultichainToken(tokenID, chainID.String())
 			if tokenAddr == "" {
 				continue
 			}
 			log.Info("[reload] remove token config", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr)
-			configLoader.RemoveTokenConfig(tokenAddr)
+			bridge.SetTokenConfig(tokenAddr, nil)
 		}
 	}
 
