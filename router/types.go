@@ -42,9 +42,9 @@ type SwapRouterInfo struct {
 // SetBridge set bridge
 func SetBridge(chainID string, bridge tokens.IBridge) {
 	if bridge != nil {
-		RouterInfos.Store(chainID, bridge)
+		RouterBridges.Store(chainID, bridge)
 	} else {
-		RouterInfos.Delete(chainID)
+		RouterBridges.Delete(chainID)
 	}
 }
 

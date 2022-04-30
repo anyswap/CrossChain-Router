@@ -104,23 +104,6 @@ func ReloadRouterConfig() (success bool) {
 		log.Error("[reload] empty chain IDs")
 	}
 
-	// get rid of removed bridges
-	for _, chainID := range router.AllChainIDs {
-		exist := false
-		for _, newChainID := range chainIDs {
-			if chainID.Cmp(newChainID) == 0 {
-				exist = true
-				break
-			}
-		}
-		if !exist {
-			router.SetBridge(chainID.String(), nil)
-		}
-	}
-
-	// update current chainIDs
-	router.AllChainIDs = chainIDs
-
 	allTokenIDs, err := router.GetAllTokenIDs()
 	if err != nil {
 		log.Error("[reload] call GetAllTokenIDs failed", "err", err)
@@ -141,35 +124,14 @@ func ReloadRouterConfig() (success bool) {
 		log.Error("[reload] empty token IDs")
 	}
 
-	removedTokenIDs := make([]string, 0)
-	for _, tokenID := range router.AllTokenIDs {
-		exist := false
-		for _, newTokenID := range tokenIDs {
-			if tokenID == newTokenID {
-				exist = true
-				break
-			}
-		}
-		if !exist {
-			removedTokenIDs = append(removedTokenIDs, tokenID)
-		}
-	}
-	if len(removedTokenIDs) > 0 {
-		log.Info("[reload] remove token ids", "removedTokenIDs", removedTokenIDs)
-	}
-
-	// update current tokenIDs
-	router.AllTokenIDs = tokenIDs
-
 	wg := new(sync.WaitGroup)
 	wg.Add(len(chainIDs))
 	for _, chainID := range chainIDs {
 		go func(wg *sync.WaitGroup, chainID *big.Int) {
 			defer wg.Done()
 
-			chainIDStr := chainID.String()
-			bridge := router.GetBridgeByChainID(chainIDStr)
 			isNewBridge := false
+			bridge := router.GetBridgeByChainID(chainID.String())
 			if bridge == nil {
 				log.Info("[reload] add new bridge", "chainID", chainID)
 				bridge = NewCrossChainBridge(chainID)
@@ -188,17 +150,7 @@ func ReloadRouterConfig() (success bool) {
 
 			if isNewBridge {
 				bridge.InitAfterConfig(true)
-				router.SetBridge(chainIDStr, bridge)
-			}
-
-			for _, tokenID := range removedTokenIDs {
-				tokenAddr := router.GetCachedMultichainToken(tokenID, chainIDStr)
-				router.SetMultichainTokens(tokenID, nil)
-
-				if tokenAddr != "" {
-					log.Info("[reload] remove token config", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr)
-					configLoader.RemoveTokenConfig(tokenAddr)
-				}
+				router.SetBridge(chainID.String(), bridge)
 			}
 
 			wg2 := new(sync.WaitGroup)
@@ -213,8 +165,79 @@ func ReloadRouterConfig() (success bool) {
 			wg2.Wait()
 		}(wg, chainID)
 	}
+	wg.Wait()
+
+	oldChainIDs := router.AllChainIDs
+	router.AllChainIDs = chainIDs
+
+	oldTokenIDs := router.AllTokenIDs
+	router.AllTokenIDs = tokenIDs
 
 	loadSwapConfigs(true)
+
+	removedChainIDs := make([]string, 0)
+	for _, chainID := range oldChainIDs {
+		exist := false
+		for _, newChainID := range chainIDs {
+			if chainID.Cmp(newChainID) == 0 {
+				exist = true
+				break
+			}
+		}
+		if !exist {
+			removedChainIDs = append(removedChainIDs, chainID.String())
+		}
+	}
+	if len(removedChainIDs) > 0 {
+		log.Info("[reload] remove chain ids", "removedChainIDs", removedChainIDs)
+	}
+
+	removedTokenIDs := make([]string, 0)
+	for _, tokenID := range oldTokenIDs {
+		exist := false
+		for _, newTokenID := range tokenIDs {
+			if tokenID == newTokenID {
+				exist = true
+				break
+			}
+		}
+		if !exist {
+			removedTokenIDs = append(removedTokenIDs, tokenID)
+		}
+	}
+	if len(removedTokenIDs) > 0 {
+		log.Info("[reload] remove token ids", "removedTokenIDs", removedTokenIDs)
+	}
+
+	// get rid of removed token configs
+	for _, chainID := range oldChainIDs {
+		bridge := router.GetBridgeByChainID(chainID.String())
+		if bridge == nil {
+			continue
+		}
+		configLoader, ok := bridge.(tokens.IBridgeConfigLoader)
+		if !ok {
+			continue
+		}
+		for _, tokenID := range removedTokenIDs {
+			tokenAddr := router.GetCachedMultichainToken(tokenID, chainID.String())
+			if tokenAddr == "" {
+				continue
+			}
+			log.Info("[reload] remove token config", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr)
+			configLoader.RemoveTokenConfig(tokenAddr)
+		}
+	}
+
+	// get rid of removed tokenIDs
+	for _, tokenID := range removedTokenIDs {
+		router.SetMultichainTokens(tokenID, nil)
+	}
+
+	// get rid of removed chainIDs
+	for _, chainID := range removedChainIDs {
+		router.SetBridge(chainID, nil)
+	}
 
 	success = true
 	return success

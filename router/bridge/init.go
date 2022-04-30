@@ -43,9 +43,8 @@ func InitRouterBridges(isServer bool) {
 		}
 		chainIDs = append(chainIDs, chainID)
 	}
-	router.AllChainIDs = chainIDs
 	log.Info("get all chain ids success", "chainIDs", chainIDs)
-	if len(router.AllChainIDs) == 0 {
+	if len(chainIDs) == 0 {
 		logErrFunc("empty chain IDs")
 	}
 
@@ -62,9 +61,8 @@ func InitRouterBridges(isServer bool) {
 		}
 		tokenIDs = append(tokenIDs, tokenID)
 	}
-	router.AllTokenIDs = tokenIDs
 	log.Info("get all token ids success", "tokenIDs", tokenIDs)
-	if len(router.AllTokenIDs) == 0 && !tokens.IsAnyCallRouter() {
+	if len(tokenIDs) == 0 && !tokens.IsAnyCallRouter() {
 		logErrFunc("empty token IDs")
 	}
 
@@ -103,6 +101,9 @@ func InitRouterBridges(isServer bool) {
 		}(wg, chainID)
 	}
 	wg.Wait()
+
+	router.AllChainIDs = chainIDs
+	router.AllTokenIDs = tokenIDs
 
 	router.PrintMultichainTokens()
 
