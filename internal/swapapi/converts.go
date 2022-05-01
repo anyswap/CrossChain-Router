@@ -109,7 +109,7 @@ func ConvertTokenConfig(c *tokens.TokenConfig) *TokenConfig {
 		ContractAddress: c.ContractAddress,
 		ContractVersion: c.ContractVersion,
 		RouterContract:  c.RouterContract,
-		Underlying:      c.GetUnderlying().String(),
+		Underlying:      c.GetUnderlying(),
 	}
 }
 

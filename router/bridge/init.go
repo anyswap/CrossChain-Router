@@ -2,8 +2,12 @@
 package bridge
 
 import (
+	"fmt"
 	"math/big"
+	"sync"
+	"time"
 
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mpc"
 	"github.com/anyswap/CrossChain-Router/v3/params"
@@ -12,17 +16,36 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
+var (
+	routerInfoIsLoaded = new(sync.Map) // key is router contract address
+)
+
+func isRouterInfoLoaded(routerContract string) bool {
+	_, exist := routerInfoIsLoaded.Load(routerContract)
+	return exist
+}
+
 // InitRouterBridges init router bridges
+//nolint:funlen,gocyclo // ok
 func InitRouterBridges(isServer bool) {
-	log.Info("start init router bridges")
+	log.Info("start init router bridges", "isServer", isServer)
+	var success bool
 	router.IsIniting = true
+	defer func() {
+		router.IsIniting = false
+		routerInfoIsLoaded = new(sync.Map)
+		log.Info("init router bridges finished", "isServer", isServer, "success", success)
+	}()
+
+	dontPanic := params.GetExtraConfig().DontPanicInInitRouter
+	logErrFunc := log.GetLogFuncOr(dontPanic, log.Error, log.Fatal)
 
 	client.InitHTTPClient()
 	router.InitRouterConfigClients()
 
 	allChainIDs, err := router.GetAllChainIDs()
 	if err != nil {
-		log.Fatal("call GetAllChainIDs failed", "err", err)
+		logErrFunc("call GetAllChainIDs failed", "err", err)
 	}
 	// get rid of blacked chainIDs
 	chainIDs := make([]*big.Int, 0, len(allChainIDs))
@@ -33,15 +56,14 @@ func InitRouterBridges(isServer bool) {
 		}
 		chainIDs = append(chainIDs, chainID)
 	}
-	router.AllChainIDs = chainIDs
 	log.Info("get all chain ids success", "chainIDs", chainIDs)
-	if len(router.AllChainIDs) == 0 {
-		log.Fatal("empty chain IDs")
+	if len(chainIDs) == 0 {
+		logErrFunc("empty chain IDs")
 	}
 
 	allTokenIDs, err := router.GetAllTokenIDs()
 	if err != nil {
-		log.Fatal("call GetAllTokenIDs failed", "err", err)
+		logErrFunc("call GetAllTokenIDs failed", "err", err)
 	}
 	// get rid of blacked tokenIDs
 	tokenIDs := make([]string, 0, len(allTokenIDs))
@@ -52,60 +74,70 @@ func InitRouterBridges(isServer bool) {
 		}
 		tokenIDs = append(tokenIDs, tokenID)
 	}
-	router.AllTokenIDs = tokenIDs
 	log.Info("get all token ids success", "tokenIDs", tokenIDs)
-	if len(router.AllTokenIDs) == 0 && !tokens.IsAnyCallRouter() {
-		log.Fatal("empty token IDs")
+	if len(tokenIDs) == 0 && !tokens.IsAnyCallRouter() {
+		logErrFunc("empty token IDs")
 	}
 
+	wg := new(sync.WaitGroup)
+	wg.Add(len(chainIDs))
 	for _, chainID := range chainIDs {
-		bridge := NewCrossChainBridge(chainID)
-		configLoader, ok := bridge.(tokens.IBridgeConfigLoader)
-		if !ok {
-			log.Fatal("do not support onchain config loading", "chainID", chainID)
-		}
+		go func(wg *sync.WaitGroup, chainID *big.Int) {
+			defer wg.Done()
 
-		configLoader.InitGatewayConfig(chainID)
-		AdjustGatewayOrder(bridge, chainID.String())
-		configLoader.InitChainConfig(chainID)
+			bridge := NewCrossChainBridge(chainID)
 
-		for _, tokenID := range tokenIDs {
-			configLoader.InitTokenConfig(tokenID, chainID)
-		}
+			InitGatewayConfig(bridge, chainID)
+			AdjustGatewayOrder(bridge, chainID.String())
+			InitChainConfig(bridge, chainID)
 
-		bridge.InitAfterConfig()
+			bridge.InitAfterConfig()
+			router.SetBridge(chainID.String(), bridge)
 
-		router.RouterBridges[chainID.String()] = bridge
+			wg2 := new(sync.WaitGroup)
+			wg2.Add(len(tokenIDs))
+			for _, tokenID := range tokenIDs {
+				go func(wg2 *sync.WaitGroup, tokenID string, chainID *big.Int) {
+					defer wg2.Done()
+					log.Info("start load token config", "tokenID", tokenID, "chainID", chainID)
+					InitTokenConfig(bridge, tokenID, chainID)
+				}(wg2, tokenID, chainID)
+			}
+			wg2.Wait()
+		}(wg, chainID)
 	}
+	wg.Wait()
+
+	router.AllChainIDs = chainIDs
+	router.AllTokenIDs = tokenIDs
+
 	router.PrintMultichainTokens()
 
-	err = loadSwapAndFeeConfigs()
-	if err != nil {
-		log.Fatal("load swap and fee configs failed", "err", err)
-	}
+	loadSwapAndFeeConfigs(dontPanic)
 
 	if params.SignWithPrivateKey() {
 		for _, chainID := range chainIDs {
 			priKey := params.GetSignerPrivateKey(chainID.String())
 			if priKey == "" {
-				log.Fatalf("missing config private key on chain %v", chainID)
+				logErrFunc("missing config private key", "chainID", chainID)
 			}
 		}
 	} else {
 		mpc.Init(params.GetMPCConfig(), isServer)
 	}
 
-	startReloadRouterConfigTask()
-
-	log.Info("init router bridges success", "isServer", isServer)
-
-	router.IsIniting = false
+	success = true
 }
 
-func loadSwapAndFeeConfigs() (err error) {
+func loadSwapAndFeeConfigs(dontPanic bool) {
 	if !tokens.IsERC20Router() {
-		return nil
+		return
 	}
+
+	swapConfigs := new(sync.Map)
+	feeConfigs := new(sync.Map)
+
+	wg := new(sync.WaitGroup)
 	for _, tokenID := range router.AllTokenIDs {
 		supportChainIDs := make([]*big.Int, 0, len(router.AllChainIDs))
 		for _, chainID := range router.AllChainIDs {
@@ -114,80 +146,259 @@ func loadSwapAndFeeConfigs() (err error) {
 				supportChainIDs = append(supportChainIDs, chainID)
 			}
 		}
-		if err = loadSwapConfigs(supportChainIDs); err != nil {
-			return err
+		if len(supportChainIDs) == 0 {
+			continue
 		}
-		if err = loadFeeConfigs(supportChainIDs); err != nil {
-			return err
-		}
+
+		tokenIDSwapConfig := new(sync.Map)
+		swapConfigs.Store(tokenID, tokenIDSwapConfig)
+
+		tokenIDFeeConfig := new(sync.Map)
+		feeConfigs.Store(tokenID, tokenIDFeeConfig)
+
+		wg.Add(2)
+		go loadSwapConfigs(wg, tokenIDSwapConfig, tokenID, supportChainIDs, dontPanic)
+		go loadFeeConfigs(wg, tokenIDFeeConfig, tokenID, supportChainIDs, dontPanic)
 	}
-	return nil
+	wg.Wait()
+
+	tokens.SetSwapConfigs(swapConfigs)
+	tokens.SetFeeConfigs(feeConfigs)
+
+	log.Info("load all swap and fee config success")
 }
 
-func loadSwapConfigs(supportChainIDs []*big.Int) error {
-	swapConfigs := make(map[string]map[string]map[string]*tokens.SwapConfig)
+//nolint:dupl // allow duplicate
+func loadSwapConfigs(wg *sync.WaitGroup, swapConfigs *sync.Map, tokenID string, supportChainIDs []*big.Int, dontPanic bool) {
+	defer wg.Done()
 
-	for _, tokenID := range router.AllTokenIDs {
-		tmap := make(map[string]map[string]*tokens.SwapConfig)
-		swapConfigs[tokenID] = tmap
-		for i, fromChainID := range supportChainIDs {
-			fmap := make(map[string]*tokens.SwapConfig)
-			tmap[fromChainID.String()] = fmap
-			for j, toChainID := range supportChainIDs {
-				if i == j {
-					continue
-				}
+	logErrFunc := log.GetLogFuncOr(dontPanic, log.Error, log.Fatal)
+
+	wg2 := new(sync.WaitGroup)
+	for i, fromChainID := range supportChainIDs {
+		fmap := new(sync.Map)
+		swapConfigs.Store(fromChainID.String(), fmap)
+		for j, toChainID := range supportChainIDs {
+			if i == j {
+				continue
+			}
+			wg2.Add(1)
+			go func(wg *sync.WaitGroup, tokenID string, fromChainID, toChainID *big.Int) {
+				defer wg.Done()
 				swapCfg, err := router.GetActualSwapConfig(tokenID, fromChainID, toChainID)
 				if err != nil {
-					log.Warn("get swap config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "err", err)
-					return err
+					logErrFunc("get swap config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "err", err)
 				}
 				err = swapCfg.CheckConfig()
 				if err != nil {
-					log.Warn("check swap config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "err", err)
-					return err
+					logErrFunc("check swap config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "err", err)
 				}
-				fmap[toChainID.String()] = swapCfg
+				fmap.Store(toChainID.String(), swapCfg)
 				log.Info("load swap config success", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID)
-			}
+			}(wg2, tokenID, fromChainID, toChainID)
 		}
 	}
-
-	tokens.SetSwapConfigs(swapConfigs)
-	log.Info("load all swap config success")
-	return nil
+	wg2.Wait()
 }
 
-func loadFeeConfigs(supportChainIDs []*big.Int) error {
-	feeConfigs := make(map[string]map[string]map[string]*tokens.FeeConfig)
+//nolint:dupl // allow duplicate
+func loadFeeConfigs(wg *sync.WaitGroup, feeConfigs *sync.Map, tokenID string, supportChainIDs []*big.Int, dontPanic bool) {
+	defer wg.Done()
 
-	for _, tokenID := range router.AllTokenIDs {
-		tmap := make(map[string]map[string]*tokens.FeeConfig)
-		feeConfigs[tokenID] = tmap
-		for i, fromChainID := range supportChainIDs {
-			fmap := make(map[string]*tokens.FeeConfig)
-			tmap[fromChainID.String()] = fmap
-			for j, toChainID := range supportChainIDs {
-				if i == j {
-					continue
-				}
+	logErrFunc := log.GetLogFuncOr(dontPanic, log.Error, log.Fatal)
+
+	wg2 := new(sync.WaitGroup)
+	for i, fromChainID := range supportChainIDs {
+		fmap := new(sync.Map)
+		feeConfigs.Store(fromChainID.String(), fmap)
+		for j, toChainID := range supportChainIDs {
+			if i == j {
+				continue
+			}
+			wg2.Add(1)
+			go func(wg *sync.WaitGroup, tokenID string, fromChainID, toChainID *big.Int) {
+				defer wg.Done()
 				feeCfg, err := router.GetActualFeeConfig(tokenID, fromChainID, toChainID)
 				if err != nil {
-					log.Warn("get fee config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "err", err)
-					return err
+					logErrFunc("get fee config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "err", err)
 				}
 				err = feeCfg.CheckConfig()
 				if err != nil {
-					log.Warn("check fee config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "err", err)
-					return err
+					logErrFunc("check fee config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "err", err)
 				}
-				fmap[toChainID.String()] = feeCfg
+				fmap.Store(toChainID.String(), feeCfg)
 				log.Info("load fee config success", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID)
+			}(wg2, tokenID, fromChainID, toChainID)
+		}
+	}
+	wg2.Wait()
+}
+
+// InitGatewayConfig impl
+func InitGatewayConfig(b tokens.IBridge, chainID *big.Int) {
+	isReload := router.IsReloading
+	logErrFunc := log.GetLogFuncOr(isReload, log.Error, log.Fatal)
+	if chainID == nil || chainID.Sign() == 0 {
+		logErrFunc("init gateway with zero chain ID")
+		if isReload {
+			return
+		}
+	}
+	cfg := params.GetRouterConfig()
+	apiAddrs := cfg.Gateways[chainID.String()]
+	if len(apiAddrs) == 0 {
+		logErrFunc("gateway not found for chain ID", "chainID", chainID)
+		if isReload {
+			return
+		}
+	}
+	apiAddrsExt := cfg.GatewaysExt[chainID.String()]
+	b.SetGatewayConfig(&tokens.GatewayConfig{
+		APIAddress:    apiAddrs,
+		APIAddressExt: apiAddrsExt,
+	})
+	if !isReload {
+		latestBlock, err := b.GetLatestBlockNumber()
+		if err != nil && router.IsIniting {
+			for i := 0; i < router.RetryRPCCountInInit; i++ {
+				if latestBlock, err = b.GetLatestBlockNumber(); err == nil {
+					break
+				}
+				time.Sleep(router.RetryRPCIntervalInInit)
+			}
+		}
+		if err != nil {
+			logErrFunc("get lastest block number failed", "chainID", chainID, "err", err)
+			if isReload {
+				return
+			}
+		}
+		log.Infof("[%5v] lastest block number is %v", chainID, latestBlock)
+	}
+	log.Info(fmt.Sprintf("[%5v] init gateway config success", chainID), "isReload", isReload)
+}
+
+// InitChainConfig impl
+func InitChainConfig(b tokens.IBridge, chainID *big.Int) {
+	isReload := router.IsReloading
+	logErrFunc := log.GetLogFuncOr(isReload, log.Error, log.Fatal)
+	chainCfg, err := router.GetChainConfig(chainID)
+	if err != nil {
+		logErrFunc("get chain config failed", "chainID", chainID, "err", err)
+		if isReload {
+			return
+		}
+	}
+	if chainCfg == nil {
+		logErrFunc("chain config not found", "chainID", chainID)
+		if isReload {
+			return
+		}
+	}
+	if chainID.String() != chainCfg.ChainID {
+		logErrFunc("verify chain ID mismatch", "inconfig", chainCfg.ChainID, "inchainids", chainID)
+		if isReload {
+			return
+		}
+	}
+	if err = chainCfg.CheckConfig(); err != nil {
+		logErrFunc("check chain config failed", "chainID", chainID, "err", err)
+		if isReload {
+			return
+		}
+	}
+	b.SetChainConfig(chainCfg)
+	log.Info("init chain config success", "blockChain", chainCfg.BlockChain, "chainID", chainID, "isReload", isReload)
+
+	routerContract := chainCfg.RouterContract
+	if !isRouterInfoLoaded(routerContract) {
+		err = b.InitRouterInfo(routerContract)
+		if err == nil {
+			routerInfoIsLoaded.Store(routerContract, struct{}{})
+		} else {
+			logErrFunc("init chain router info failed", "routerContract", routerContract, "err", err)
+			if isReload {
+				return
 			}
 		}
 	}
+}
 
-	tokens.SetFeeConfigs(feeConfigs)
-	log.Info("load all fee config success")
-	return nil
+// InitTokenConfig impl
+//nolint:funlen,gocyclo // allow long init token config method
+func InitTokenConfig(b tokens.IBridge, tokenID string, chainID *big.Int) {
+	isReload := router.IsReloading
+	logErrFunc := log.GetLogFuncOr(isReload, log.Error, log.Fatal)
+	if tokenID == "" {
+		logErrFunc("empty token ID")
+		if isReload {
+			return
+		}
+	}
+	tokenAddr, err := router.GetMultichainToken(tokenID, chainID)
+	if err != nil {
+		logErrFunc("get token address failed", "tokenID", tokenID, "chainID", chainID, "err", err)
+		if isReload {
+			return
+		}
+	}
+	if common.HexToAddress(tokenAddr) == (common.Address{}) {
+		log.Debugf("[%5v] '%v' token address is empty", chainID, tokenID)
+		return
+	}
+	tokenCfg, err := router.GetTokenConfig(chainID, tokenID)
+	if err != nil {
+		logErrFunc("get token config failed", "chainID", chainID, "tokenID", tokenID, "err", err)
+		if isReload {
+			return
+		}
+	}
+	if tokenCfg == nil {
+		log.Debug("token config not found", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr)
+		return
+	}
+	if common.HexToAddress(tokenAddr) != common.HexToAddress(tokenCfg.ContractAddress) {
+		logErrFunc("verify token address mismach", "tokenID", tokenID, "chainID", chainID, "inconfig", tokenCfg.ContractAddress, "inmultichain", tokenAddr)
+		if isReload {
+			return
+		}
+	}
+	if tokenID != tokenCfg.TokenID {
+		logErrFunc("verify token ID mismatch", "chainID", chainID, "inconfig", tokenCfg.TokenID, "intokenids", tokenID)
+		if isReload {
+			return
+		}
+	}
+	if err = tokenCfg.CheckConfig(); err != nil {
+		logErrFunc("check token config failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
+		if isReload {
+			return
+		}
+	}
+	routerContract, err := router.GetCustomConfig(chainID, tokenAddr)
+	if err != nil {
+		logErrFunc("get custom config failed", "chainID", chainID, "key", tokenAddr, "err", err)
+		if isReload {
+			return
+		}
+	}
+
+	tokenCfg.RouterContract = routerContract
+	b.SetTokenConfig(tokenAddr, tokenCfg)
+
+	router.SetMultichainToken(tokenID, chainID.String(), tokenAddr)
+
+	log.Info(fmt.Sprintf("[%5v] init '%v' token config success", chainID, tokenID), "tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals)
+
+	if !isRouterInfoLoaded(routerContract) {
+		err = b.InitRouterInfo(routerContract)
+		if err == nil {
+			routerInfoIsLoaded.Store(routerContract, struct{}{})
+		} else {
+			logErrFunc("init token router info failed", "routerContract", routerContract, "err", err)
+			if isReload {
+				return
+			}
+		}
+	}
 }

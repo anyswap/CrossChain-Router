@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
+	"sync"
 
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -104,25 +104,25 @@ func initRouter() {
 		},
 	)
 
-	tokensMap := make(map[string]string)
-	router.MultichainTokens[strings.ToLower(testCfg.Token.TokenID)] = tokensMap
+	tokensMap := new(sync.Map)
+	router.SetMultichainTokens(testCfg.Token.TokenID, tokensMap)
 
-	swapConfigs := make(map[string]map[string]map[string]*tokens.SwapConfig)
-	swapConfigs[testCfg.Token.TokenID] = make(map[string]map[string]*tokens.SwapConfig)
-	swapConfigs[testCfg.Token.TokenID]["0"] = make(map[string]*tokens.SwapConfig)
+	swapConfigs := new(sync.Map)
+	swapConfig := new(sync.Map)
+	swapConfigs.Store(testCfg.Token.TokenID, swapConfig)
 
-	feeConfigs := make(map[string]map[string]map[string]*tokens.FeeConfig)
-	feeConfigs[testCfg.Token.TokenID] = make(map[string]map[string]*tokens.FeeConfig)
-	feeConfigs[testCfg.Token.TokenID]["0"] = make(map[string]*tokens.FeeConfig)
+	feeConfigs := new(sync.Map)
+	feeConfig := new(sync.Map)
+	feeConfigs.Store(testCfg.Token.TokenID, feeConfig)
 
 	swapCfg := testCfg.GetSwapConfig()
 	feeCfg := testCfg.GetFeeConfig()
 
 	for _, chainID := range router.AllChainIDs {
-		router.RouterBridges[chainID.String()] = bridge
-		tokensMap[chainID.String()] = testCfg.Token.ContractAddress
-		swapConfigs[testCfg.Token.TokenID]["0"][chainID.String()] = swapCfg
-		feeConfigs[testCfg.Token.TokenID]["0"][chainID.String()] = feeCfg
+		router.SetBridge(chainID.String(), bridge)
+		tokensMap.Store(chainID.String(), testCfg.Token.ContractAddress)
+		swapConfig.Store("0", swapCfg)
+		feeConfig.Store("0", feeCfg)
 		params.SetSignerPrivateKey(chainID.String(), testCfg.SignWithPrivateKey)
 	}
 	router.PrintMultichainTokens()

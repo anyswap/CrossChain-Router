@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"sync"
 	"time"
 
 	cmath "github.com/anyswap/CrossChain-Router/v3/common/math"
@@ -14,8 +15,8 @@ import (
 var (
 	routerSwapType SwapType
 
-	swapConfigMap map[string]map[string]map[string]*SwapConfig // key is tokenID,fromChainID,toChainID
-	feeConfigMap  map[string]map[string]map[string]*FeeConfig  // key is tokenID,fromChainID,toChainID
+	swapConfigMap = new(sync.Map) // key is tokenID,fromChainID,toChainID
+	feeConfigMap  = new(sync.Map) // key is tokenID,fromChainID,toChainID
 )
 
 // IsNativeCoin is native coin
@@ -24,6 +25,7 @@ func IsNativeCoin(name string) bool {
 }
 
 // InitRouterSwapType init router swap type
+//nolint:goconst // allow dupl constant string
 func InitRouterSwapType(swapTypeStr string) {
 	switch strings.ToLower(swapTypeStr) {
 	case "erc20swap":
@@ -62,14 +64,19 @@ func IsAnyCallRouter() bool {
 type CrossChainBridgeBase struct {
 	ChainConfig    *ChainConfig
 	GatewayConfig  *GatewayConfig
-	TokenConfigMap map[string]*TokenConfig // key is token address
+	TokenConfigMap *sync.Map // key is token address
 }
 
 // NewCrossChainBridgeBase new base bridge
 func NewCrossChainBridgeBase() *CrossChainBridgeBase {
 	return &CrossChainBridgeBase{
-		TokenConfigMap: make(map[string]*TokenConfig),
+		TokenConfigMap: new(sync.Map),
 	}
+}
+
+// InitRouterInfo init router info
+func (b *CrossChainBridgeBase) InitRouterInfo(routerContract string) error {
+	return ErrNotImplemented
 }
 
 // InitAfterConfig init variables (ie. extra members) after loading config
@@ -96,12 +103,12 @@ func (b *CrossChainBridgeBase) SetGatewayConfig(gatewayCfg *GatewayConfig) {
 
 // SetTokenConfig set token config
 func (b *CrossChainBridgeBase) SetTokenConfig(token string, tokenCfg *TokenConfig) {
-	b.TokenConfigMap[strings.ToLower(token)] = tokenCfg
-}
-
-// RemoveTokenConfig remove token config
-func (b *CrossChainBridgeBase) RemoveTokenConfig(token string) {
-	b.TokenConfigMap[strings.ToLower(token)] = nil
+	key := strings.ToLower(token)
+	if tokenCfg != nil {
+		b.TokenConfigMap.Store(key, tokenCfg)
+	} else {
+		b.TokenConfigMap.Delete(key)
+	}
 }
 
 // GetChainConfig get chain config
@@ -116,7 +123,10 @@ func (b *CrossChainBridgeBase) GetGatewayConfig() *GatewayConfig {
 
 // GetTokenConfig get token config
 func (b *CrossChainBridgeBase) GetTokenConfig(token string) *TokenConfig {
-	return b.TokenConfigMap[strings.ToLower(token)]
+	if config, exist := b.TokenConfigMap.Load(strings.ToLower(token)); exist {
+		return config.(*TokenConfig)
+	}
+	return nil
 }
 
 // GetRouterContract get router contract
@@ -133,48 +143,48 @@ func (b *CrossChainBridgeBase) GetRouterContract(token string) string {
 	return b.ChainConfig.RouterContract
 }
 
-// SetSwapConfigs set common swap configs
-func SetSwapConfigs(swapCfgs map[string]map[string]map[string]*SwapConfig) {
+// SetSwapConfigs set swap configs
+func SetSwapConfigs(swapCfgs *sync.Map) {
 	swapConfigMap = swapCfgs
 }
 
 // GetSwapConfig get swap config
 func GetSwapConfig(tokenID, fromChainID, toChainID string) *SwapConfig {
-	m, exist := swapConfigMap[tokenID]
+	m, exist := swapConfigMap.Load(tokenID)
 	if !exist {
 		return nil
 	}
-	mm, exist := m[fromChainID]
+	mm, exist := m.(*sync.Map).Load(fromChainID)
 	if !exist {
 		return nil
 	}
-	mmm, exist := mm[toChainID]
+	mmm, exist := mm.(*sync.Map).Load(toChainID)
 	if !exist {
 		return nil
 	}
-	return mmm
+	return mmm.(*SwapConfig)
 }
 
 // SetFeeConfigs set fee configs
-func SetFeeConfigs(feeCfgs map[string]map[string]map[string]*FeeConfig) {
+func SetFeeConfigs(feeCfgs *sync.Map) {
 	feeConfigMap = feeCfgs
 }
 
 // GetFeeConfig get fee config
 func GetFeeConfig(tokenID, fromChainID, toChainID string) *FeeConfig {
-	m, exist := feeConfigMap[tokenID]
+	m, exist := feeConfigMap.Load(tokenID)
 	if !exist {
 		return nil
 	}
-	mm, exist := m[fromChainID]
+	mm, exist := m.(*sync.Map).Load(fromChainID)
 	if !exist {
 		return nil
 	}
-	mmm, exist := mm[toChainID]
+	mmm, exist := mm.(*sync.Map).Load(toChainID)
 	if !exist {
 		return nil
 	}
-	return mmm
+	return mmm.(*FeeConfig)
 }
 
 // GetBigValueThreshold get big value threshold

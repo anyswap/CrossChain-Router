@@ -232,6 +232,7 @@ func getUserTokenConfig(ctx *cli.Context) error {
 	return getTokenConfigImpl(ctx, true)
 }
 
+//nolint:dupl // allow duplicate
 func getSwapConfig(ctx *cli.Context) error {
 	if ctx.NArg() < 3 {
 		return fmt.Errorf("miss required position argument")
@@ -262,6 +263,7 @@ func getSwapConfig(ctx *cli.Context) error {
 	return nil
 }
 
+//nolint:dupl // allow duplicate
 func getFeeConfig(ctx *cli.Context) error {
 	if ctx.NArg() < 3 {
 		return fmt.Errorf("miss required position argument")

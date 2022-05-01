@@ -43,7 +43,9 @@ func doAdjustGatewayOrderJob() {
 
 func adjustGatewayOrder(chainID string) {
 	bridge := router.GetBridgeByChainID(chainID)
-	AdjustGatewayOrder(bridge, chainID)
+	if bridge != nil {
+		AdjustGatewayOrder(bridge, chainID)
+	}
 }
 
 // AdjustGatewayOrder adjust gateway order once

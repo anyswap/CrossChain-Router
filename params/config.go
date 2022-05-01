@@ -19,8 +19,13 @@ const (
 var IsTestMode bool
 
 var (
-	routerConfig = &RouterConfig{}
-	locDataDir   string
+	routerConfig = &RouterConfig{Extra: &ExtraConfig{}}
+
+	routerConfigFile string
+	locDataDir       string
+
+	// IsSwapServer is swap server
+	IsSwapServer bool
 
 	chainIDBlacklistMap = make(map[string]struct{})
 	tokenIDBlacklistMap = make(map[string]struct{})
@@ -88,7 +93,8 @@ type RouterServerConfig struct {
 
 // RouterOracleConfig only for oracle
 type RouterOracleConfig struct {
-	ServerAPIAddress string
+	ServerAPIAddress        string
+	NoCheckServerConnection bool
 }
 
 // RouterConfig config
@@ -108,13 +114,14 @@ type RouterConfig struct {
 
 // ExtraConfig extra config
 type ExtraConfig struct {
-	IsDebugMode          bool `toml:",omitempty" json:",omitempty"`
-	EnableSwapTrade      bool `toml:",omitempty" json:",omitempty"`
-	EnableSwapWithPermit bool `toml:",omitempty" json:",omitempty"`
-	ForceAnySwapInAuto   bool `toml:",omitempty" json:",omitempty"`
-	IsNFTSwapWithData    bool `toml:",omitempty" json:",omitempty"`
-	EnableParallelSwap   bool `toml:",omitempty" json:",omitempty"`
-	UsePendingBalance    bool `toml:",omitempty" json:",omitempty"`
+	IsDebugMode           bool `toml:",omitempty" json:",omitempty"`
+	EnableSwapTrade       bool `toml:",omitempty" json:",omitempty"`
+	EnableSwapWithPermit  bool `toml:",omitempty" json:",omitempty"`
+	ForceAnySwapInAuto    bool `toml:",omitempty" json:",omitempty"`
+	IsNFTSwapWithData     bool `toml:",omitempty" json:",omitempty"`
+	EnableParallelSwap    bool `toml:",omitempty" json:",omitempty"`
+	UsePendingBalance     bool `toml:",omitempty" json:",omitempty"`
+	DontPanicInInitRouter bool `toml:",omitempty" json:",omitempty"`
 
 	MinReserveFee    map[string]uint64 `toml:",omitempty" json:",omitempty"`
 	BaseFeePercent   map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID
@@ -151,7 +158,6 @@ type OnchainConfig struct {
 
 // MPCConfig mpc related config
 type MPCConfig struct {
-	SignType                  string
 	APIPrefix                 string
 	RPCTimeout                uint64 `toml:",omitempty" json:",omitempty"`
 	SignTimeout               uint64 `toml:",omitempty" json:",omitempty"`
@@ -820,7 +826,43 @@ func LoadRouterConfig(configFile string, isServer, check bool) *RouterConfig {
 		}
 	}
 
+	routerConfigFile = configFile
 	return routerConfig
+}
+
+// ReloadRouterConfig reload config
+func ReloadRouterConfig() {
+	configFile := routerConfigFile
+	isServer := IsSwapServer
+
+	log.Info("reload router config file", "configFile", configFile, "isServer", isServer)
+
+	config := &RouterConfig{}
+	if _, err := toml.DecodeFile(configFile, &config); err != nil {
+		log.Errorf("ReloadRouterConfig error (toml DecodeFile): %v", err)
+		return
+	}
+
+	if !isServer {
+		config.Server = nil
+	} else {
+		config.Oracle = nil
+	}
+
+	if err := config.CheckConfig(isServer); err != nil {
+		log.Errorf("ReloadRouterConfig check config failed. %v", err)
+		return
+	}
+
+	var bs []byte
+	if log.JSONFormat {
+		bs, _ = json.Marshal(config)
+	} else {
+		bs, _ = json.MarshalIndent(config, "", "  ")
+	}
+	log.Println("ReloadRouterConfig finished.", string(bs))
+
+	routerConfig = config
 }
 
 // SetDataDir set data dir

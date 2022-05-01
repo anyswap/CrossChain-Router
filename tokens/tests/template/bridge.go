@@ -25,6 +25,11 @@ func NewCrossChainBridge() *Bridge {
 func (b *Bridge) InitAfterConfig() {
 }
 
+// PublicKeyToAddress public key to address
+func (b *Bridge) PublicKeyToAddress(pubKey string) (string, error) {
+	return "", tokens.ErrNotImplemented
+}
+
 // RegisterSwap register swap.
 // used in `RegisterRouterSwap` server rpc.
 func (b *Bridge) RegisterSwap(txHash string, args *tokens.RegisterArgs) ([]*tokens.SwapTxInfo, []error) {

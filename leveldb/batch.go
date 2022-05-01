@@ -1,3 +1,5 @@
+// Package leveldb - leveldb wrapper
+//nolint
 package leveldb
 
 // Batch is a write-only database that commits changes to its host database
