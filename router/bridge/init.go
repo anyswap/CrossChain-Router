@@ -247,7 +247,10 @@ func InitChainConfig(b tokens.IBridge, chainID *big.Int) {
 
 	routerContract := chainCfg.RouterContract
 	if !isRouterInfoLoaded(routerContract) {
-		if err = b.InitRouterInfo(routerContract); err != nil {
+		err = b.InitRouterInfo(routerContract)
+		if err == nil {
+			routerInfoIsLoaded.Store(routerContract, struct{}{})
+		} else {
 			logErrFunc("init chain router info failed", "routerContract", routerContract, "err", err)
 			if isReload {
 				return
@@ -323,7 +326,10 @@ func InitTokenConfig(b tokens.IBridge, tokenID string, chainID *big.Int) {
 	log.Info(fmt.Sprintf("[%5v] init '%v' token config success", chainID, tokenID), "tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals)
 
 	if !isRouterInfoLoaded(routerContract) {
-		if err = b.InitRouterInfo(routerContract); err != nil {
+		err = b.InitRouterInfo(routerContract)
+		if err == nil {
+			routerInfoIsLoaded.Store(routerContract, struct{}{})
+		} else {
 			logErrFunc("init token router info failed", "routerContract", routerContract, "err", err)
 			if isReload {
 				return
