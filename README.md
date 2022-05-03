@@ -30,7 +30,7 @@ The following is the most used functions, please ref. the abi for more info.
 call the following contract function:
 
 ```solidity
-function setChainConfig(uint256 chainID, string blockChain, address routerContract, uint64 confirmations, uint64 initialHeight);
+function setChainConfig(uint256 chainID, string blockChain, string routerContract, uint64 confirmations, uint64 initialHeight, string extra)
 ```
 
 ### 4.2 set token config
@@ -38,7 +38,7 @@ function setChainConfig(uint256 chainID, string blockChain, address routerContra
 call the following contract function:
 
 ```solidity
-function setTokenConfig(string tokenID, uint256 chainID, address tokenAddr, uint8 decimals, uint256 version);
+function setTokenConfig(string tokenID, uint256 chainID, string tokenAddr, uint8 decimals, uint256 version, string routerContract, string extra)
 ```
 
 ### 4.3 set swap and fee config
@@ -61,7 +61,7 @@ call the following contract function to set swap config:
 max/min/big value always uses decimals 18.
 
 ```solidity
-function setSwapConfig(string tokenID, uint256 srcChainID, uint256 dstChainID, uint256 max, uint256 min, uint256 big);
+function setSwapConfig(string tokenID, uint256 srcChainID, uint256 dstChainID, uint256 maxSwap, uint256 minSwap, uint256 bigSwap)
 ```
 
 swap config is stored in a map with keys tokenID,srcChainID,dstChainID
@@ -77,8 +77,6 @@ the actual swap config is decided by the following steps
 4. else use _swapConfig[tokenID][0][0].
 ```
 
-**Notice: you should always set _swapConfig[tokenID][0][0].**
-
 #### 4.3.3 set fee config
 
 call the following contract function:
@@ -88,7 +86,7 @@ rate is per million ration.
 max/min value uses decimals same as token decimals on source chain.
 
 ```solidity
-function setFeeConfig(string tokenID, uint256 srcChainID, uint256 dstChainID, uint256 max, uint256 min, uint256 big);
+function setFeeConfig(string tokenID, uint256 srcChainID, uint256 dstChainID, uint256 maxFee, uint256 minFee, uint256 feeRate)
 ```
 
 fee config is stored in a map with keys tokenID,srcChainID,dstChainID

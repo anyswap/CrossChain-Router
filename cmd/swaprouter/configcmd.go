@@ -7,7 +7,6 @@ import (
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/router"
-	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/urfave/cli/v2"
 )
 
@@ -71,16 +70,6 @@ config router swap
 				Name:      "getTokenConfig",
 				Usage:     "get token config",
 				Action:    getTokenConfig,
-				ArgsUsage: "<tokenID> <chainID>",
-				Flags: []cli.Flag{
-					onchainContractFlag,
-					gatewaysFlag,
-				},
-			},
-			{
-				Name:      "getUserTokenConfig",
-				Usage:     "get user token config",
-				Action:    getUserTokenConfig,
 				ArgsUsage: "<tokenID> <chainID>",
 				Flags: []cli.Flag{
 					onchainContractFlag,
@@ -194,7 +183,7 @@ func getChainConfig(ctx *cli.Context) error {
 	return nil
 }
 
-func getTokenConfigImpl(ctx *cli.Context, isUserConfig bool) error {
+func getTokenConfig(ctx *cli.Context) error {
 	if ctx.NArg() < 2 {
 		return fmt.Errorf("miss required position argument")
 	}
@@ -207,12 +196,7 @@ func getTokenConfigImpl(ctx *cli.Context, isUserConfig bool) error {
 		ctx.String(onchainContractFlag.Name),
 		ctx.StringSlice(gatewaysFlag.Name),
 	)
-	var tokenCfg *tokens.TokenConfig
-	if isUserConfig {
-		tokenCfg, err = router.GetUserTokenConfig(chainID, tokenID)
-	} else {
-		tokenCfg, err = router.GetTokenConfig(chainID, tokenID)
-	}
+	tokenCfg, err := router.GetTokenConfig(chainID, tokenID)
 	if err != nil {
 		return err
 	}
@@ -222,14 +206,6 @@ func getTokenConfigImpl(ctx *cli.Context, isUserConfig bool) error {
 	}
 	fmt.Println("token config is", string(jsdata))
 	return nil
-}
-
-func getTokenConfig(ctx *cli.Context) error {
-	return getTokenConfigImpl(ctx, false)
-}
-
-func getUserTokenConfig(ctx *cli.Context) error {
-	return getTokenConfigImpl(ctx, true)
 }
 
 //nolint:dupl // allow duplicate

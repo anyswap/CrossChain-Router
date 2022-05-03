@@ -194,9 +194,14 @@ func GetChainConfig(chainID *big.Int) (*tokens.ChainConfig, error) {
 }
 
 func parseTokenConfig(data []byte) (config *tokens.TokenConfig, err error) {
-	if uint64(len(data)) < 224 {
+	offset, overflow := common.GetUint64(data, 0, 32)
+	if overflow {
 		return nil, abicoder.ErrParseDataError
 	}
+	if uint64(len(data)) < offset+224 {
+		return nil, abicoder.ErrParseDataError
+	}
+	data = data[offset:]
 	decimals := uint8(common.GetBigInt(data, 0, 32).Uint64())
 	contractAddress, err := abicoder.ParseStringInData(data, 32)
 	if err != nil {
@@ -211,6 +216,7 @@ func parseTokenConfig(data []byte) (config *tokens.TokenConfig, err error) {
 	if err != nil {
 		return nil, abicoder.ErrParseDataError
 	}
+
 	config = &tokens.TokenConfig{
 		Decimals:        decimals,
 		ContractAddress: contractAddress,
@@ -221,7 +227,9 @@ func parseTokenConfig(data []byte) (config *tokens.TokenConfig, err error) {
 	return config, err
 }
 
-func getTokenConfig(funcHash []byte, chainID *big.Int, token string) (*tokens.TokenConfig, error) {
+// GetTokenConfig abi
+func GetTokenConfig(chainID *big.Int, token string) (tokenCfg *tokens.TokenConfig, err error) {
+	funcHash := common.FromHex("0x459511d1")
 	data := abicoder.PackDataWithFuncHash(funcHash, token, chainID)
 	res, err := CallOnchainContract(data, "latest")
 	if err != nil {
@@ -233,18 +241,6 @@ func getTokenConfig(funcHash []byte, chainID *big.Int, token string) (*tokens.To
 	}
 	config.TokenID = token
 	return config, nil
-}
-
-// GetTokenConfig abi
-func GetTokenConfig(chainID *big.Int, token string) (tokenCfg *tokens.TokenConfig, err error) {
-	funcHash := common.FromHex("0x459511d1")
-	return getTokenConfig(funcHash, chainID, token)
-}
-
-// GetUserTokenConfig abi
-func GetUserTokenConfig(chainID *big.Int, token string) (tokenCfg *tokens.TokenConfig, err error) {
-	funcHash := common.FromHex("0x2879196f")
-	return getTokenConfig(funcHash, chainID, token)
 }
 
 func parseSwapConfig(data []byte) (config *tokens.SwapConfig, err error) {
@@ -345,8 +341,8 @@ func GetCustomConfig(chainID *big.Int, key string) (string, error) {
 
 // GetMPCPubkey abi
 func GetMPCPubkey(mpcAddress string) (pubkey string, err error) {
-	funcHash := common.FromHex("0x58bb97fb")
-	data := abicoder.PackDataWithFuncHash(funcHash, common.HexToAddress(mpcAddress))
+	funcHash := common.FromHex("0x9f1cdedd")
+	data := abicoder.PackDataWithFuncHash(funcHash, mpcAddress)
 	res, err := CallOnchainContract(data, "latest")
 	if err != nil {
 		return "", err
@@ -404,7 +400,7 @@ func GetMultichainToken(tokenID string, chainID *big.Int) (tokenAddr string, err
 	if err != nil {
 		return "", err
 	}
-	return common.BigToAddress(common.GetBigInt(res, 0, 32)).LowerHex(), nil
+	return abicoder.ParseStringInData(res, 0)
 }
 
 // MultichainToken struct
@@ -422,14 +418,25 @@ func parseMultichainTokens(data []byte) (mcTokens []MultichainToken, err error) 
 	if overflow {
 		return nil, abicoder.ErrParseDataError
 	}
-	if uint64(len(data)) < offset+32+length*64 {
+	if uint64(len(data)) < offset+32+length*96 {
 		return nil, abicoder.ErrParseDataError
 	}
 	mcTokens = make([]MultichainToken, length)
-	data = data[offset+32:]
+	arrData := data[offset+32:]
 	for i := uint64(0); i < length; i++ {
-		mcTokens[i].ChainID = common.GetBigInt(data, i*64, 32)
-		mcTokens[i].TokenAddress = common.BytesToAddress(common.GetData(data, i*64+32, 32)).LowerHex()
+		offset, overflow = common.GetUint64(arrData, i*32, 32)
+		if overflow {
+			return nil, abicoder.ErrParseDataError
+		}
+		if uint64(len(arrData)) < offset+96 {
+			return nil, abicoder.ErrParseDataError
+		}
+		innerData := arrData[offset:]
+		mcTokens[i].ChainID = common.GetBigInt(innerData, 0, 32)
+		mcTokens[i].TokenAddress, err = abicoder.ParseStringInData(innerData, 32)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return mcTokens, nil
 }

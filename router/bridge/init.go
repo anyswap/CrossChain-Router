@@ -311,7 +311,7 @@ func InitChainConfig(b tokens.IBridge, chainID *big.Int) {
 	log.Info("init chain config success", "blockChain", chainCfg.BlockChain, "chainID", chainID, "isReload", isReload)
 
 	routerContract := chainCfg.RouterContract
-	if !isRouterInfoLoaded(routerContract) {
+	if routerContract != "" && !isRouterInfoLoaded(routerContract) {
 		err = b.InitRouterInfo(routerContract)
 		if err == nil {
 			routerInfoIsLoaded.Store(routerContract, struct{}{})
@@ -375,22 +375,14 @@ func InitTokenConfig(b tokens.IBridge, tokenID string, chainID *big.Int) {
 			return
 		}
 	}
-	routerContract, err := router.GetCustomConfig(chainID, tokenAddr)
-	if err != nil {
-		logErrFunc("get custom config failed", "chainID", chainID, "key", tokenAddr, "err", err)
-		if isReload {
-			return
-		}
-	}
-
-	tokenCfg.RouterContract = routerContract
 	b.SetTokenConfig(tokenAddr, tokenCfg)
 
 	router.SetMultichainToken(tokenID, chainID.String(), tokenAddr)
 
 	log.Info(fmt.Sprintf("[%5v] init '%v' token config success", chainID, tokenID), "tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals)
 
-	if !isRouterInfoLoaded(routerContract) {
+	routerContract := tokenCfg.RouterContract
+	if routerContract != "" && !isRouterInfoLoaded(routerContract) {
 		err = b.InitRouterInfo(routerContract)
 		if err == nil {
 			routerInfoIsLoaded.Store(routerContract, struct{}{})
