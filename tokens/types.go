@@ -132,12 +132,12 @@ type SwapTxInfo struct {
 
 // TxStatus struct
 type TxStatus struct {
-	Sender        string      `json:"sender,omitempty"`
-	Receipt       interface{} `json:"receipt,omitempty"`
-	Confirmations uint64      `json:"confirmations"`
-	BlockHeight   uint64      `json:"blockHeight"`
-	BlockHash     string      `json:"blockHash"`
-	BlockTime     uint64      `json:"blockTime"`
+	Receipt            interface{} `json:"receipt,omitempty"`
+	CustomeCheckStable func(uint64) bool
+	Confirmations      uint64 `json:"confirmations"`
+	BlockHeight        uint64 `json:"block_height"`
+	BlockHash          string `json:"block_hash"`
+	BlockTime          uint64 `json:"block_time"`
 }
 
 // StatusInterface interface
@@ -203,6 +203,7 @@ type BuildTxArgs struct {
 type AllExtras struct {
 	EthExtra   *EthExtraArgs `json:"ethExtra,omitempty"`
 	ReplaceNum uint64        `json:"replaceNum,omitempty"`
+	TronExtra *TronExtraArgs `json:"tronExtra,omitempty"`
 }
 
 // EthExtraArgs struct
@@ -212,6 +213,12 @@ type EthExtraArgs struct {
 	GasTipCap *big.Int `json:"gasTipCap,omitempty"`
 	GasFeeCap *big.Int `json:"gasFeeCap,omitempty"`
 	Nonce     *uint64  `json:"nonce,omitempty"`
+	Deadline  int64    `json:"deadline,omitempty"`
+}
+
+// TronExtraArgs struct
+type TronExtraArgs struct {
+	RawTx string `json:"rawTx,omitempty"`
 	Deadline  int64    `json:"deadline,omitempty"`
 }
 

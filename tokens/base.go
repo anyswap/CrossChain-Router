@@ -14,7 +14,10 @@ import (
 var (
 	routerSwapType SwapType
 	swapConfigMap  = make(map[string]map[string]*SwapConfig) // key is tokenID,toChainID
+	IsSwapoutToStringAddress bool = false
 )
+
+var GetPairFor func (string, string, string) (string, error)
 
 // IsNativeCoin is native coin
 func IsNativeCoin(name string) bool {

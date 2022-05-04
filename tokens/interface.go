@@ -55,8 +55,10 @@ type IBridge interface {
 	IsValidAddress(address string) bool
 
 	// GetBalance get balance is used for checking budgets
-	// to prevent DOS attacking (used in anycall)
+	// to prevent DOS attacking (used in any`call)
 	GetBalance(account string) (*big.Int, error)
+
+	GetPairFor(string, string, string) (string, error)
 }
 
 // ISwapTrade interface

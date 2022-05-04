@@ -63,6 +63,7 @@ func InitRouterBridges(isServer bool) {
 
 	for _, chainID := range chainIDs {
 		bridge := NewCrossChainBridge(chainID)
+		tokens.GetPairFor = bridge.GetPairFor
 		configLoader, ok := bridge.(tokens.IBridgeConfigLoader)
 		if !ok {
 			log.Fatal("do not support onchain config loading", "chainID", chainID)
