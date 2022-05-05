@@ -22,6 +22,12 @@ const (
 	reswapCmd       = "reswap"
 	replaceswapCmd  = "replaceswap"
 
+	// maintain actions
+	actPause       = "pause"
+	actUnpause     = "unpause"
+	actBlacklist   = "blacklist"
+	actUnblacklist = "unblacklist"
+
 	successReuslt = "Success"
 )
 
@@ -41,14 +47,20 @@ func (s *RouterSwapAPI) AdminCall(r *http.Request, rawTx, result *string) (err e
 	senderAddress := sender.String()
 	if !params.IsRouterAdmin(senderAddress) {
 		switch args.Method {
-		case maintainCmd, reswapCmd:
+		case reswapCmd:
 			return fmt.Errorf("sender %v is not admin", senderAddress)
-		case passbigvalueCmd, replaceswapCmd:
-			if !params.IsRouterAssistant(senderAddress) {
-				return fmt.Errorf("sender %v is not assistant", senderAddress)
+		case maintainCmd:
+			action := args.Params[0]
+			switch action {
+			case actPause, actUnpause:
+				return fmt.Errorf("sender %v is not admin", senderAddress)
 			}
+		case passbigvalueCmd, replaceswapCmd:
 		default:
 			return fmt.Errorf("unknown admin method '%v'", args.Method)
+		}
+		if !params.IsRouterAssistant(senderAddress) {
+			return fmt.Errorf("sender %v is not assistant", senderAddress)
 		}
 	}
 	log.Info("admin call", "caller", senderAddress, "args", args, "result", result)
@@ -100,9 +112,6 @@ func maintain(args *admin.CallArgs, result *string) (err error) {
 	action := args.Params[0]
 	arguments := args.Params[1]
 
-	actPause := "pause"
-	actUnpause := "unpause"
-
 	switch action {
 	case actPause, actUnpause:
 		chainIDs := strings.Split(arguments, ",")
@@ -112,6 +121,23 @@ func maintain(args *admin.CallArgs, result *string) (err error) {
 			router.RemovePausedChainIDs(chainIDs)
 		}
 		log.Infof("after action %v, the paused chainIDs are %v", action, router.GetPausedChainIDs())
+	case actBlacklist, actUnblacklist:
+		isAdd := strings.EqualFold(action, actBlacklist)
+		args := strings.Split(arguments, ",")
+		if len(args) < 2 {
+			return fmt.Errorf("miss arguments")
+		}
+		blacklistType := strings.ToLower(args[0])
+		switch blacklistType {
+		case "chainid":
+			params.AddOrRemoveChainIDBlackList(args[1:], isAdd)
+		case "tokenid":
+			params.AddOrRemoveTokenIDBlackList(args[1:], isAdd)
+		case "account":
+			params.AddOrRemoveAccountBlackList(args[1:], isAdd)
+		default:
+			return fmt.Errorf("unknown blacklist type '%v'", blacklistType)
+		}
 	default:
 		return fmt.Errorf("unknown maintain action '%v'", action)
 	}

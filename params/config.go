@@ -645,16 +645,72 @@ func IsChainIDInBlackList(chainID string) bool {
 	return exist
 }
 
+// AddOrRemoveChainIDBlackList add or remove chainID blacklist
+func AddOrRemoveChainIDBlackList(chainIDs []string, isAdd bool) {
+	for _, chainID := range chainIDs {
+		if isAdd {
+			chainIDBlacklistMap[chainID] = struct{}{}
+		} else {
+			delete(chainIDBlacklistMap, chainID)
+		}
+	}
+	if GetRouterServerConfig() != nil {
+		blacklist := make([]string, 0, len(chainIDBlacklistMap))
+		for chainID := range chainIDBlacklistMap {
+			blacklist = append(blacklist, chainID)
+		}
+		GetRouterServerConfig().ChainIDBlackList = blacklist
+	}
+}
+
 // IsTokenIDInBlackList is token id in black list
 func IsTokenIDInBlackList(tokenID string) bool {
 	_, exist := tokenIDBlacklistMap[strings.ToLower(tokenID)]
 	return exist
 }
 
+// AddOrRemoveTokenIDBlackList add or remove tokenID blacklist
+func AddOrRemoveTokenIDBlackList(tokenIDs []string, isAdd bool) {
+	for _, tokenID := range tokenIDs {
+		key := strings.ToLower(tokenID)
+		if isAdd {
+			tokenIDBlacklistMap[key] = struct{}{}
+		} else {
+			delete(tokenIDBlacklistMap, key)
+		}
+	}
+	if GetRouterServerConfig() != nil {
+		blacklist := make([]string, 0, len(tokenIDBlacklistMap))
+		for tokenID := range tokenIDBlacklistMap {
+			blacklist = append(blacklist, tokenID)
+		}
+		GetRouterServerConfig().TokenIDBlackList = blacklist
+	}
+}
+
 // IsAccountInBlackList is account in black list
 func IsAccountInBlackList(account string) bool {
 	_, exist := accountBlacklistMap[strings.ToLower(account)]
 	return exist
+}
+
+// AddOrRemoveAccountBlackList add or remove account blacklist
+func AddOrRemoveAccountBlackList(accounts []string, isAdd bool) {
+	for _, account := range accounts {
+		key := strings.ToLower(account)
+		if isAdd {
+			accountBlacklistMap[key] = struct{}{}
+		} else {
+			delete(accountBlacklistMap, key)
+		}
+	}
+	if GetRouterServerConfig() != nil {
+		blacklist := make([]string, 0, len(accountBlacklistMap))
+		for account := range accountBlacklistMap {
+			blacklist = append(blacklist, account)
+		}
+		GetRouterServerConfig().AccountBlackList = blacklist
+	}
 }
 
 func initAutoSwapNonceEnabledChains() {

@@ -28,6 +28,9 @@ admin router swap
 maintain router.
 example:
 <pause|unpause> <chainID[,chainID]...>
+<blacklist|unblacklist> chainid,<chainID[,chainID]...>
+<blacklist|unblacklist> tokenid,<tokenID[,tokenID]...>
+<blacklist|unblacklist> account,<address[,address]...>
 `,
 			},
 			{
