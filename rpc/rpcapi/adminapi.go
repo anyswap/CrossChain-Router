@@ -25,6 +25,8 @@ const (
 	// maintain actions
 	actPause       = "pause"
 	actUnpause     = "unpause"
+	actWhitelist   = "whitelist"
+	actUnwhitelist = "unwhitelist"
 	actBlacklist   = "blacklist"
 	actUnblacklist = "unblacklist"
 
@@ -105,6 +107,7 @@ func getKeys(args *admin.CallArgs, startPos int) (chainID, txid string, logIndex
 	return
 }
 
+//nolint:gocyclo // allow big switch
 func maintain(args *admin.CallArgs, result *string) (err error) {
 	if len(args.Params) != 2 {
 		return fmt.Errorf("wrong number of params, have %v want 2", len(args.Params))
@@ -121,6 +124,23 @@ func maintain(args *admin.CallArgs, result *string) (err error) {
 			router.RemovePausedChainIDs(chainIDs)
 		}
 		log.Infof("after action %v, the paused chainIDs are %v", action, router.GetPausedChainIDs())
+	case actWhitelist, actUnwhitelist:
+		isAdd := strings.EqualFold(action, actWhitelist)
+		args := strings.Split(arguments, ",")
+		if len(args) < 3 {
+			return fmt.Errorf("miss arguments")
+		}
+		whitelistType := strings.ToLower(args[0])
+		switch whitelistType {
+		case "callbycontract":
+			params.AddOrRemoveCallByContractWhitelist(args[1], args[2:], isAdd)
+		case "callbycontractcodehash":
+			params.AddOrRemoveCallByContractCodeHashWhitelist(args[1], args[2:], isAdd)
+		case "bigvalue":
+			params.AddOrRemoveBigValueWhitelist(args[1], args[2:], isAdd)
+		default:
+			return fmt.Errorf("unknown whitelist type '%v'", whitelistType)
+		}
 	case actBlacklist, actUnblacklist:
 		isAdd := strings.EqualFold(action, actBlacklist)
 		args := strings.Split(arguments, ",")
