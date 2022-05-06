@@ -180,9 +180,9 @@ func (b *Bridge) NetworkID() (*big.Int, error) {
 
 // GetCode returns contract bytecode
 func (b *Bridge) GetCode(contractAddress string) (data []byte, err error) {
-	contractDesc, err := tronaddress.Base58ToAddress(contractAddress)
-	if err != nil {
-		return nil, err
+	contractDesc := tronaddress.HexToAddress(anyToEth(contractAddress))
+	if contractDesc.String() == "" {
+		return nil, errors.New("invalid contract address")
 	}
 	message := new(api.BytesMessage)
 	message.Value = contractDesc
@@ -243,12 +243,12 @@ var SwapinFeeLimit int64 = 300000000 // 300 TRX
 var ExtraExpiration int64 = 900000 // 15 min
 
 func (b *Bridge) BuildTriggerConstantContractTx(from, contract string, dataBytes []byte) (tx *core.Transaction, err error) {
-	fromAddr, err := tronaddress.Base58ToAddress(from)
-	if err != nil {
+	fromAddr := tronaddress.HexToAddress(anyToEth(from))
+	if fromAddr.String() == "" {
 		return nil, errors.New("invalid from address")
 	}
-	contractAddr, err := tronaddress.Base58ToAddress(contract)
-	if err != nil {
+	contractAddr := tronaddress.HexToAddress(anyToEth(contract))
+	if contractAddr.String() == "" {
 		return nil, errors.New("invalid contract address")
 	}
 	ct := &core.TriggerSmartContract{
@@ -290,8 +290,8 @@ func (b *Bridge) BuildTriggerConstantContractTx(from, contract string, dataBytes
 
 // CallContract
 func (b *Bridge) CallContract(contract string, data hexutil.Bytes, blockNumber string) (string, error) {
-	contractAddr, err := tronaddress.Base58ToAddress(contract)
-	if err != nil {
+	contractAddr := tronaddress.HexToAddress(anyToEth(contract))
+	if contractAddr.String() == "" {
 		return "", errors.New("invalid contract address")
 	}
 
@@ -307,6 +307,7 @@ func (b *Bridge) CallContract(contract string, data hexutil.Bytes, blockNumber s
 	}
 
 	rpcError := &RPCError{[]error{}, "CallContract"}
+	var err error
 	for _, cli := range b.getClients() {
 		err = cli.Start(grpc.WithInsecure())
 		if err != nil {

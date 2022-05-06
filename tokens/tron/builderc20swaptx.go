@@ -132,7 +132,8 @@ func (b *Bridge) buildSwapAndExecTxInput(args *tokens.BuildTxArgs, multichainTok
 		erc20SwapInfo.CallData,
 	)
 	args.Input = (*hexutil.Bytes)(&input)          // input
-	args.To = b.GetRouterContract(multichainToken) // to
+	routerContract := b.GetRouterContract(multichainToken)
+	args.To = anyToTron(routerContract) // to
 	args.SwapValue = amount                        // swapValue
 
 	return nil
@@ -159,7 +160,8 @@ func (b *Bridge) buildERC20SwapoutTxInput(args *tokens.BuildTxArgs, multichainTo
 		args.FromChainID,
 	)
 	args.Input = (*hexutil.Bytes)(&input)          // input
-	args.To = b.GetRouterContract(multichainToken) // to
+	routerContract := b.GetRouterContract(multichainToken)
+	args.To = anyToTron(routerContract) // to
 	args.SwapValue = amount                        // swapValue
 
 	return nil
@@ -189,7 +191,8 @@ func (b *Bridge) buildERC20SwapTradeTxInput(args *tokens.BuildTxArgs, multichain
 		args.FromChainID,
 	)
 	args.Input = (*hexutil.Bytes)(&input)          // input
-	args.To = b.GetRouterContract(multichainToken) // to
+	routerContract := b.GetRouterContract(multichainToken)
+	args.To = anyToTron(routerContract) // to
 	args.SwapValue = amount                        // swapValue
 
 	return nil

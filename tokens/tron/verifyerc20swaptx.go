@@ -203,6 +203,7 @@ func (b *Bridge) checkTxSuccess(swapInfo *tokens.SwapTxInfo, allowUnstable bool)
 func (b *Bridge) checkCallByContract(swapInfo *tokens.SwapTxInfo) error {
 	txTo := swapInfo.TxTo
 	routerContract := b.GetRouterContract(swapInfo.ERC20SwapInfo.Token)
+	routerContract = anyToTron(routerContract)
 	if routerContract == "" {
 		return tokens.ErrMissRouterInfo
 	}
@@ -445,6 +446,7 @@ func checkSwapTradePath(swapInfo *tokens.SwapTxInfo) error {
 		return tokens.ErrTxWithWrongPath
 	}
 	routerContract := dstBridge.GetRouterContract(multichainToken)
+	routerContract = anyToTron(routerContract)
 	if routerContract == "" {
 		return tokens.ErrMissRouterInfo
 	}
@@ -464,7 +466,7 @@ func checkSwapTradePath(swapInfo *tokens.SwapTxInfo) error {
 		}
 	}
 	factory := routerInfo.RouterFactory
-	if common.HexToAddress(factory) == (common.Address{}) {
+	if factory == "" {
 		return tokens.ErrSwapTradeNotSupport
 	}
 
