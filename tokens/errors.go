@@ -15,6 +15,7 @@ var (
 	ErrTxNotStable           = errors.New("tx not stable")
 	ErrLogIndexOutOfRange    = errors.New("log index out of range")
 	ErrTxWithWrongReceipt    = errors.New("tx with wrong receipt")
+	ErrTxWithWrongReceiver   = errors.New("tx with wrong receiver")
 	ErrTxWithWrongContract   = errors.New("tx with wrong contract")
 	ErrTxWithWrongTopics     = errors.New("tx with wrong log topics")
 	ErrSwapoutLogNotFound    = errors.New("swapout log not found or removed")
@@ -39,6 +40,8 @@ var (
 	ErrUnknownSwapoutType    = errors.New("unknown swapout type")
 	ErrEmptyTokenID          = errors.New("empty tokenID")
 	ErrNoEnoughReserveBudget = errors.New("no enough reserve budget")
+	ErrTxWithNoPayment       = errors.New("tx with no payment")
+	ErrTxIsNotValidated      = errors.New("tx is not validated")
 
 	// errors should register in router swap
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")

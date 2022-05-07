@@ -28,7 +28,6 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error
 			}
 			b.SetNonce(sender.LowerHex(), tx.Nonce()+1)
 		}
-
 	}
 	if params.IsDebugMode() {
 		log.Infof("SendTransaction rawtx is %v", tx.RawStr())

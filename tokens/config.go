@@ -6,7 +6,6 @@ import (
 	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
-	"github.com/anyswap/CrossChain-Router/v3/log"
 )
 
 // ChainConfig struct
@@ -30,7 +29,7 @@ type TokenConfig struct {
 	RouterContract  string
 
 	// calced value
-	underlying common.Address
+	underlying string
 }
 
 // SwapConfig struct
@@ -83,11 +82,7 @@ func (c *TokenConfig) CheckConfig() error {
 	if c.ContractAddress == "" {
 		return errors.New("token must config 'ContractAddress'")
 	}
-	if IsERC20Router() {
-		if c.ContractVersion == 0 {
-			log.Warn("token 'ContractVersion' is 0", "tokenID", c.TokenID, "address", c.ContractAddress)
-		}
-	} else if c.Decimals != 0 {
+	if !IsERC20Router() && c.Decimals != 0 {
 		return errors.New("non ERC20 token must config 'Decimals' to 0")
 	}
 	return nil
@@ -99,16 +94,17 @@ func (c *TokenConfig) IsStandardTokenVersion() bool {
 }
 
 // SetUnderlying set underlying
-func (c *TokenConfig) SetUnderlying(underlying common.Address) {
+func (c *TokenConfig) SetUnderlying(underlying string) {
 	c.underlying = underlying
 }
 
 // GetUnderlying get underlying
-func (c *TokenConfig) GetUnderlying() common.Address {
+func (c *TokenConfig) GetUnderlying() string {
 	return c.underlying
 }
 
 // CheckConfig check swap config
+//nolint:funlen,gocyclo // ok
 func (c *SwapConfig) CheckConfig() error {
 	if c.MaximumSwap == nil || c.MaximumSwap.Sign() <= 0 {
 		return errors.New("token must config 'MaximumSwap' (positive)")

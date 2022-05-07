@@ -199,7 +199,7 @@ func LoadECDSA(file string) (*ecdsa.PrivateKey, error) {
 	if fi.Mode() != 0400 {
 		return nil, errors.New("unsafe file permissions, want 0400")
 	}
-	fd, err := os.Open(file) // nolint:gosec // ok
+	fd, err := os.Open(file)
 	if err != nil {
 		return nil, err
 	}

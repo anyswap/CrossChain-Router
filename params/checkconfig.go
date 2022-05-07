@@ -87,6 +87,9 @@ func (c *RouterOracleConfig) CheckConfig() (err error) {
 	if c.ServerAPIAddress == "" {
 		return errors.New("oracle must config 'ServerAPIAddress'")
 	}
+	if c.NoCheckServerConnection {
+		return nil
+	}
 	var version string
 	for i := 0; i < 3; i++ {
 		err = client.RPCPostWithTimeout(60, &version, c.ServerAPIAddress, "swap.GetVersionInfo")
@@ -103,6 +106,7 @@ func (c *RouterOracleConfig) CheckConfig() (err error) {
 }
 
 // CheckConfig of router server
+//nolint:funlen,gocyclo // ok
 func (s *RouterServerConfig) CheckConfig() error {
 	if s == nil {
 		return errors.New("router server must config 'Server'")
@@ -311,16 +315,10 @@ func (c *OnchainConfig) CheckConfig() error {
 }
 
 // CheckConfig check mpc config
+//nolint:funlen,gocyclo // ok
 func (c *MPCConfig) CheckConfig(isServer bool) (err error) {
 	if c.SignWithPrivateKey {
 		return nil
-	}
-	switch {
-	case c.SignType == "":
-	case strings.HasPrefix(c.SignType, "EC"):
-	case strings.HasPrefix(c.SignType, "ED"):
-	default:
-		return fmt.Errorf("unknown mpc sign type '%v'", c.SignType)
 	}
 	if c.GroupID == nil {
 		return errors.New("mpc must config 'GroupID'")
@@ -380,6 +378,7 @@ func (c *ExtraConfig) CheckConfig() (err error) {
 	initEnableCheckTxBlockHashChains()
 	initEnableCheckTxBlockIndexChains()
 	initDisableUseFromChainIDInReceiptChains()
+	initDontCheckReceivedTokenIDs()
 
 	if c.UsePendingBalance {
 		GetBalanceBlockNumberOpt = "pending"

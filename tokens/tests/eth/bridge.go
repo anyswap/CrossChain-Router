@@ -50,7 +50,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 }
 
 // VerifyMsgHash verify message hash is same.
-// 'message hash' here is the real content (usally a hash) which will be signed.
+// 'message hash' here is the real content (usually a hash) which will be signed.
 // used in `accept` work for oracles to replay the same tx on destination chain.
 // oracle will only accept a sign info if and only if the oracle can
 // verify the tx and rebuild a tx and ensure the message hash is same.

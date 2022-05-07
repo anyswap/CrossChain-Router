@@ -122,7 +122,7 @@ func (b *Bridge) checkERC20SwapInfo(swapInfo *tokens.SwapTxInfo) error {
 		log.Warn("get token config failed", "chainID", swapInfo.ToChainID, "token", multichainToken)
 		return tokens.ErrMissTokenConfig
 	}
-	if erc20SwapInfo.ForUnderlying && toTokenCfg.GetUnderlying() == (common.Address{}) {
+	if erc20SwapInfo.ForUnderlying && toTokenCfg.GetUnderlying() == "" {
 		return tokens.ErrNoUnderlyingToken
 	}
 	if !tokens.CheckTokenSwapValue(swapInfo, fromTokenCfg.Decimals, toTokenCfg.Decimals) {
@@ -440,8 +440,8 @@ func checkSwapTradePath(swapInfo *tokens.SwapTxInfo) error {
 	if len(path) < 2 {
 		return tokens.ErrTxWithWrongPath
 	}
-	srcToken := common.HexToAddress(path[0])
-	if !(srcToken == tokenCfg.GetUnderlying() || srcToken == common.HexToAddress(multichainToken)) {
+	srcToken := common.HexToAddress(path[0]).String()
+	if !(strings.EqualFold(srcToken, tokenCfg.GetUnderlying()) || strings.EqualFold(multichainToken, srcToken)) {
 		log.Warn("check swap trade path first element failed", "token", path[0])
 		return tokens.ErrTxWithWrongPath
 	}

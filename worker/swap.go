@@ -35,8 +35,9 @@ var (
 
 // StartSwapJob swap job
 func StartSwapJob() {
-	for _, bridge := range router.RouterBridges {
-		chainID := bridge.GetChainConfig().ChainID
+	router.RouterBridges.Range(func(k, v interface{}) bool {
+		chainID := k.(string)
+
 		if _, exist := routerSwapTaskChanMap[chainID]; !exist {
 			routerSwapTaskChanMap[chainID] = make(chan *tokens.BuildTxArgs, swapChanSize)
 			utils.TopWaitGroup.Add(1)
@@ -45,7 +46,9 @@ func StartSwapJob() {
 
 		mongodb.MgoWaitGroup.Add(1)
 		go startRouterSwapJob(chainID)
-	}
+
+		return true
+	})
 }
 
 func startRouterSwapJob(chainID string) {
@@ -88,6 +91,10 @@ func findRouterSwapToSwap(chainID string) ([]*mongodb.MgoSwap, error) {
 }
 
 func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
+	if router.IsChainIDPaused(swap.FromChainID) || router.IsChainIDPaused(swap.ToChainID) {
+		return nil
+	}
+
 	fromChainID := swap.FromChainID
 	toChainID := swap.ToChainID
 	txid := swap.TxID
@@ -273,6 +280,7 @@ func checkAndUpdateProcessSwapTaskCache(key string) error {
 	return nil
 }
 
+//nolint:funlen // ok
 func doSwap(args *tokens.BuildTxArgs) (err error) {
 	if params.IsParallelSwapEnabled() {
 		return doSwapParallel(args)
@@ -357,7 +365,9 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 
 	sentTxHash, err := sendSignedTransaction(resBridge, signedTx, args)
 	if err == nil && txHash != sentTxHash {
-		logWorkerError("doSwap", "send tx success but with different hash", errSendTxWithDiffHash, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "txHash", txHash, "sentTxHash", sentTxHash, "swapNonce", swapTxNonce)
+		logWorkerError("doSwap", "send tx success but with different hash", errSendTxWithDiffHash,
+			"fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex,
+			"txHash", txHash, "sentTxHash", sentTxHash, "swapNonce", swapTxNonce)
 		_ = mongodb.UpdateRouterOldSwapTxs(fromChainID, txid, logIndex, sentTxHash)
 	}
 	return err
@@ -427,7 +437,9 @@ func signAndSendTx(rawTx interface{}, args *tokens.BuildTxArgs) error {
 
 	sentTxHash, err := sendSignedTransaction(resBridge, signedTx, args)
 	if err == nil && txHash != sentTxHash {
-		logWorkerError("doSwap", "send tx success but with different hash", errSendTxWithDiffHash, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "txHash", txHash, "sentTxHash", sentTxHash, "swapNonce", swapTxNonce)
+		logWorkerError("doSwap", "send tx success but with different hash", errSendTxWithDiffHash,
+			"fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex,
+			"txHash", txHash, "sentTxHash", sentTxHash, "swapNonce", swapTxNonce)
 		_ = mongodb.UpdateRouterOldSwapTxs(fromChainID, txid, logIndex, sentTxHash)
 	}
 	return err

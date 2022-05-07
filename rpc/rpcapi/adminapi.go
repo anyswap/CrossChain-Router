@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/admin"
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -16,9 +17,18 @@ import (
 )
 
 const (
+	maintainCmd     = "maintain"
 	passbigvalueCmd = "passbigvalue"
 	reswapCmd       = "reswap"
 	replaceswapCmd  = "replaceswap"
+
+	// maintain actions
+	actPause       = "pause"
+	actUnpause     = "unpause"
+	actWhitelist   = "whitelist"
+	actUnwhitelist = "unwhitelist"
+	actBlacklist   = "blacklist"
+	actUnblacklist = "unblacklist"
 
 	successReuslt = "Success"
 )
@@ -41,12 +51,18 @@ func (s *RouterSwapAPI) AdminCall(r *http.Request, rawTx, result *string) (err e
 		switch args.Method {
 		case reswapCmd:
 			return fmt.Errorf("sender %v is not admin", senderAddress)
-		case passbigvalueCmd, replaceswapCmd:
-			if !params.IsRouterAssistant(senderAddress) {
-				return fmt.Errorf("sender %v is not assistant", senderAddress)
+		case maintainCmd:
+			action := args.Params[0]
+			switch action {
+			case actPause, actUnpause:
+				return fmt.Errorf("sender %v is not admin", senderAddress)
 			}
+		case passbigvalueCmd, replaceswapCmd:
 		default:
 			return fmt.Errorf("unknown admin method '%v'", args.Method)
+		}
+		if !params.IsRouterAssistant(senderAddress) {
+			return fmt.Errorf("sender %v is not assistant", senderAddress)
 		}
 	}
 	log.Info("admin call", "caller", senderAddress, "args", args, "result", result)
@@ -55,6 +71,8 @@ func (s *RouterSwapAPI) AdminCall(r *http.Request, rawTx, result *string) (err e
 
 func doRouterAdminCall(args *admin.CallArgs, result *string) error {
 	switch args.Method {
+	case maintainCmd:
+		return maintain(args, result)
 	case passbigvalueCmd:
 		return routerPassBigValue(args, result)
 	case reswapCmd:
@@ -87,6 +105,64 @@ func getKeys(args *admin.CallArgs, startPos int) (chainID, txid string, logIndex
 		err = fmt.Errorf("wrong log index '%v'", logIndexStr)
 	}
 	return
+}
+
+//nolint:gocyclo // allow big switch
+func maintain(args *admin.CallArgs, result *string) (err error) {
+	if len(args.Params) != 2 {
+		return fmt.Errorf("wrong number of params, have %v want 2", len(args.Params))
+	}
+	action := args.Params[0]
+	arguments := args.Params[1]
+
+	switch action {
+	case actPause, actUnpause:
+		chainIDs := strings.Split(arguments, ",")
+		if action == actPause {
+			router.AddPausedChainIDs(chainIDs)
+		} else {
+			router.RemovePausedChainIDs(chainIDs)
+		}
+		log.Infof("after action %v, the paused chainIDs are %v", action, router.GetPausedChainIDs())
+	case actWhitelist, actUnwhitelist:
+		isAdd := strings.EqualFold(action, actWhitelist)
+		args := strings.Split(arguments, ",")
+		if len(args) < 3 {
+			return fmt.Errorf("miss arguments")
+		}
+		whitelistType := strings.ToLower(args[0])
+		switch whitelistType {
+		case "callbycontract":
+			params.AddOrRemoveCallByContractWhitelist(args[1], args[2:], isAdd)
+		case "callbycontractcodehash":
+			params.AddOrRemoveCallByContractCodeHashWhitelist(args[1], args[2:], isAdd)
+		case "bigvalue":
+			params.AddOrRemoveBigValueWhitelist(args[1], args[2:], isAdd)
+		default:
+			return fmt.Errorf("unknown whitelist type '%v'", whitelistType)
+		}
+	case actBlacklist, actUnblacklist:
+		isAdd := strings.EqualFold(action, actBlacklist)
+		args := strings.Split(arguments, ",")
+		if len(args) < 2 {
+			return fmt.Errorf("miss arguments")
+		}
+		blacklistType := strings.ToLower(args[0])
+		switch blacklistType {
+		case "chainid":
+			params.AddOrRemoveChainIDBlackList(args[1:], isAdd)
+		case "tokenid":
+			params.AddOrRemoveTokenIDBlackList(args[1:], isAdd)
+		case "account":
+			params.AddOrRemoveAccountBlackList(args[1:], isAdd)
+		default:
+			return fmt.Errorf("unknown blacklist type '%v'", blacklistType)
+		}
+	default:
+		return fmt.Errorf("unknown maintain action '%v'", action)
+	}
+	*result = successReuslt
+	return nil
 }
 
 func getGasPrice(args *admin.CallArgs, startPos int) (gasPrice *big.Int, err error) {

@@ -69,7 +69,6 @@ func StartAPIServer() {
 
 	utils.TopWaitGroup.Add(1)
 	go utils.WaitAndCleanup(func() { doCleanup(&svr) })
-
 }
 
 // StartTestServer start api test server
@@ -100,7 +99,6 @@ func StartTestServer(apiPort int) {
 
 	utils.TopWaitGroup.Add(1)
 	go utils.WaitAndCleanup(func() { doCleanup(&svr) })
-
 }
 
 func doCleanup(svr *http.Server) {

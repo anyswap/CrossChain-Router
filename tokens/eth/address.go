@@ -64,7 +64,7 @@ func (b *Bridge) GetEIP1167Master(proxy common.Address) (master common.Address) 
 		eip1167Proxies = make(map[common.Address]common.Address) // clear
 	}
 
-	proxyAddr := proxy.String()
+	proxyAddr := proxy.LowerHex()
 
 	code, err := b.getContractCode(proxyAddr)
 	if err != nil || len(code) != eip1167ProxyCodeLen {
@@ -109,6 +109,21 @@ func (b *Bridge) getContractCode(contract string) (code []byte, err error) {
 		time.Sleep(retryRPCInterval)
 	}
 	return code, err
+}
+
+// PublicKeyToAddress public key to address
+func (b *Bridge) PublicKeyToAddress(pubKey string) (string, error) {
+	pkBytes := common.FromHex(pubKey)
+	if len(pkBytes) != 65 || pkBytes[0] != 4 {
+		return "", fmt.Errorf("wrong mpc public key '%v'", pubKey)
+	}
+	ecPubKey := ecdsa.PublicKey{
+		Curve: crypto.S256(),
+		X:     new(big.Int).SetBytes(pkBytes[1:33]),
+		Y:     new(big.Int).SetBytes(pkBytes[33:65]),
+	}
+	pubAddr := crypto.PubkeyToAddress(ecPubKey)
+	return pubAddr.String(), nil
 }
 
 // VerifyMPCPubKey verify mpc address and public key is matching

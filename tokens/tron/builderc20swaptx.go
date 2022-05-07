@@ -59,12 +59,12 @@ func GetSwapInFuncHash(tokenCfg *tokens.TokenConfig, forUnderlying bool) []byte 
 	case ForceAnySwapInNativeTokenVersion:
 		return AnySwapInNativeFuncHash
 	case 0:
-		if tokenCfg.GetUnderlying() == (common.Address{}) {
+		if tokenCfg.GetUnderlying() == "" {
 			// without underlying
 			return AnySwapInFuncHash
 		}
 	default:
-		if tokenCfg.GetUnderlying() == (common.Address{}) && !params.IsForceAnySwapInAuto() {
+		if tokenCfg.GetUnderlying() == "" && !params.IsForceAnySwapInAuto() {
 			// without underlying, and not force swapinAuto
 			return AnySwapInFuncHash
 		}
@@ -80,7 +80,7 @@ func GetSwapInAndExecFuncHash(tokenCfg *tokens.TokenConfig) []byte {
 	case ForceAnySwapInUnerlyingAndCallTokenVersion:
 		return AnySwapInUnderlyingAndExecFuncHash
 	default:
-		if tokenCfg.GetUnderlying() == (common.Address{}) {
+		if tokenCfg.GetUnderlying() == "" {
 			return AnySwapInAndExecFuncHash
 		}
 	}

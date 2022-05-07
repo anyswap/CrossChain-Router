@@ -19,8 +19,13 @@ const (
 var IsTestMode bool
 
 var (
-	routerConfig = &RouterConfig{}
-	locDataDir   string
+	routerConfig = &RouterConfig{Extra: &ExtraConfig{}}
+
+	routerConfigFile string
+	locDataDir       string
+
+	// IsSwapServer is swap server
+	IsSwapServer bool
 
 	chainIDBlacklistMap = make(map[string]struct{})
 	tokenIDBlacklistMap = make(map[string]struct{})
@@ -38,6 +43,7 @@ var (
 	enableCheckTxBlockHashChains         map[string]struct{}
 	enableCheckTxBlockIndexChains        map[string]struct{}
 	disableUseFromChainIDInReceiptChains map[string]struct{}
+	dontCheckReceivedTokenIDs            map[string]struct{}
 
 	isDebugMode           *bool
 	isNFTSwapWithData     *bool
@@ -87,7 +93,8 @@ type RouterServerConfig struct {
 
 // RouterOracleConfig only for oracle
 type RouterOracleConfig struct {
-	ServerAPIAddress string
+	ServerAPIAddress        string
+	NoCheckServerConnection bool
 }
 
 // RouterConfig config
@@ -107,13 +114,14 @@ type RouterConfig struct {
 
 // ExtraConfig extra config
 type ExtraConfig struct {
-	IsDebugMode          bool `toml:",omitempty" json:",omitempty"`
-	EnableSwapTrade      bool `toml:",omitempty" json:",omitempty"`
-	EnableSwapWithPermit bool `toml:",omitempty" json:",omitempty"`
-	ForceAnySwapInAuto   bool `toml:",omitempty" json:",omitempty"`
-	IsNFTSwapWithData    bool `toml:",omitempty" json:",omitempty"`
-	EnableParallelSwap   bool `toml:",omitempty" json:",omitempty"`
-	UsePendingBalance    bool `toml:",omitempty" json:",omitempty"`
+	IsDebugMode           bool `toml:",omitempty" json:",omitempty"`
+	EnableSwapTrade       bool `toml:",omitempty" json:",omitempty"`
+	EnableSwapWithPermit  bool `toml:",omitempty" json:",omitempty"`
+	ForceAnySwapInAuto    bool `toml:",omitempty" json:",omitempty"`
+	IsNFTSwapWithData     bool `toml:",omitempty" json:",omitempty"`
+	EnableParallelSwap    bool `toml:",omitempty" json:",omitempty"`
+	UsePendingBalance     bool `toml:",omitempty" json:",omitempty"`
+	DontPanicInInitRouter bool `toml:",omitempty" json:",omitempty"`
 
 	MinReserveFee    map[string]uint64 `toml:",omitempty" json:",omitempty"`
 	BaseFeePercent   map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID
@@ -133,6 +141,7 @@ type ExtraConfig struct {
 	EnableCheckTxBlockHashChains         []string `toml:",omitempty" json:",omitempty"`
 	EnableCheckTxBlockIndexChains        []string `toml:",omitempty" json:",omitempty"`
 	DisableUseFromChainIDInReceiptChains []string `toml:",omitempty" json:",omitempty"`
+	DontCheckReceivedTokenIDs            []string `toml:",omitempty" json:",omitempty"`
 
 	RPCClientTimeout map[string]int `toml:",omitempty" json:",omitempty"` // key is chainID
 	// chainID,customKey => customValue
@@ -149,7 +158,6 @@ type OnchainConfig struct {
 
 // MPCConfig mpc related config
 type MPCConfig struct {
-	SignType                  string
 	APIPrefix                 string
 	RPCTimeout                uint64 `toml:",omitempty" json:",omitempty"`
 	SignTimeout               uint64 `toml:",omitempty" json:",omitempty"`
@@ -491,6 +499,38 @@ func IsInCallByContractWhitelist(chainID, caller string) bool {
 	return exist
 }
 
+// AddOrRemoveCallByContractWhitelist add or remove call by contract whitelist
+//nolint:dupl // allow duplicate
+func AddOrRemoveCallByContractWhitelist(chainID string, callers []string, isAdd bool) {
+	whitelist, exist := callByContractWhitelist[chainID]
+	if !exist {
+		if !isAdd {
+			return
+		}
+		callByContractWhitelist = make(map[string]map[string]struct{})
+		callByContractWhitelist[chainID] = make(map[string]struct{})
+		whitelist = callByContractWhitelist[chainID]
+	}
+	for _, caller := range callers {
+		key := strings.ToLower(caller)
+		if isAdd {
+			whitelist[key] = struct{}{}
+		} else {
+			delete(whitelist, key)
+		}
+	}
+	if GetExtraConfig() != nil {
+		chainWhitelist := make([]string, 0, len(whitelist))
+		for caller := range whitelist {
+			chainWhitelist = append(chainWhitelist, caller)
+		}
+		if GetExtraConfig().CallByContractWhitelist == nil {
+			GetExtraConfig().CallByContractWhitelist = make(map[string][]string)
+		}
+		GetExtraConfig().CallByContractWhitelist[chainID] = chainWhitelist
+	}
+}
+
 func initCallByContractCodeHashWhitelist() {
 	callByContractCodeHashWhitelist = make(map[string]map[string]struct{})
 	if GetExtraConfig() == nil || len(GetExtraConfig().CallByContractCodeHashWhitelist) == 0 {
@@ -528,6 +568,37 @@ func IsInCallByContractCodeHashWhitelist(chainID, codehash string) bool {
 	return exist
 }
 
+// AddOrRemoveCallByContractCodeHashWhitelist add or remove call by contract code hash whitelist
+func AddOrRemoveCallByContractCodeHashWhitelist(chainID string, codehashes []string, isAdd bool) {
+	whitelist, exist := callByContractCodeHashWhitelist[chainID]
+	if !exist {
+		if !isAdd {
+			return
+		}
+		callByContractCodeHashWhitelist = make(map[string]map[string]struct{})
+		callByContractCodeHashWhitelist[chainID] = make(map[string]struct{})
+		whitelist = callByContractCodeHashWhitelist[chainID]
+	}
+	for _, codehash := range codehashes {
+		key := codehash
+		if isAdd {
+			whitelist[key] = struct{}{}
+		} else {
+			delete(whitelist, key)
+		}
+	}
+	if GetExtraConfig() != nil {
+		chainWhitelist := make([]string, 0, len(whitelist))
+		for codehash := range whitelist {
+			chainWhitelist = append(chainWhitelist, codehash)
+		}
+		if GetExtraConfig().CallByContractCodeHashWhitelist == nil {
+			GetExtraConfig().CallByContractCodeHashWhitelist = make(map[string][]string)
+		}
+		GetExtraConfig().CallByContractCodeHashWhitelist[chainID] = chainWhitelist
+	}
+}
+
 func initBigValueWhitelist() {
 	bigValueWhitelist = make(map[string]map[string]struct{})
 	if GetExtraConfig() == nil || len(GetExtraConfig().BigValueWhitelist) == 0 {
@@ -554,6 +625,38 @@ func IsInBigValueWhitelist(tokenID, caller string) bool {
 	}
 	_, exist = whitelist[strings.ToLower(caller)]
 	return exist
+}
+
+// AddOrRemoveBigValueWhitelist add or remove big value whitelist
+//nolint:dupl // allow duplicate
+func AddOrRemoveBigValueWhitelist(tokenID string, callers []string, isAdd bool) {
+	whitelist, exist := bigValueWhitelist[tokenID]
+	if !exist {
+		if !isAdd {
+			return
+		}
+		bigValueWhitelist = make(map[string]map[string]struct{})
+		bigValueWhitelist[tokenID] = make(map[string]struct{})
+		whitelist = bigValueWhitelist[tokenID]
+	}
+	for _, caller := range callers {
+		key := strings.ToLower(caller)
+		if isAdd {
+			whitelist[key] = struct{}{}
+		} else {
+			delete(whitelist, key)
+		}
+	}
+	if GetExtraConfig() != nil {
+		tokenWhitelist := make([]string, 0, len(whitelist))
+		for caller := range whitelist {
+			tokenWhitelist = append(tokenWhitelist, caller)
+		}
+		if GetExtraConfig().BigValueWhitelist == nil {
+			GetExtraConfig().BigValueWhitelist = make(map[string][]string)
+		}
+		GetExtraConfig().BigValueWhitelist[tokenID] = tokenWhitelist
+	}
 }
 
 // IsMPCInitiator is initiator of mpc sign
@@ -637,16 +740,72 @@ func IsChainIDInBlackList(chainID string) bool {
 	return exist
 }
 
+// AddOrRemoveChainIDBlackList add or remove chainID blacklist
+func AddOrRemoveChainIDBlackList(chainIDs []string, isAdd bool) {
+	for _, chainID := range chainIDs {
+		if isAdd {
+			chainIDBlacklistMap[chainID] = struct{}{}
+		} else {
+			delete(chainIDBlacklistMap, chainID)
+		}
+	}
+	if GetRouterServerConfig() != nil {
+		blacklist := make([]string, 0, len(chainIDBlacklistMap))
+		for chainID := range chainIDBlacklistMap {
+			blacklist = append(blacklist, chainID)
+		}
+		GetRouterServerConfig().ChainIDBlackList = blacklist
+	}
+}
+
 // IsTokenIDInBlackList is token id in black list
 func IsTokenIDInBlackList(tokenID string) bool {
 	_, exist := tokenIDBlacklistMap[strings.ToLower(tokenID)]
 	return exist
 }
 
+// AddOrRemoveTokenIDBlackList add or remove tokenID blacklist
+func AddOrRemoveTokenIDBlackList(tokenIDs []string, isAdd bool) {
+	for _, tokenID := range tokenIDs {
+		key := strings.ToLower(tokenID)
+		if isAdd {
+			tokenIDBlacklistMap[key] = struct{}{}
+		} else {
+			delete(tokenIDBlacklistMap, key)
+		}
+	}
+	if GetRouterServerConfig() != nil {
+		blacklist := make([]string, 0, len(tokenIDBlacklistMap))
+		for tokenID := range tokenIDBlacklistMap {
+			blacklist = append(blacklist, tokenID)
+		}
+		GetRouterServerConfig().TokenIDBlackList = blacklist
+	}
+}
+
 // IsAccountInBlackList is account in black list
 func IsAccountInBlackList(account string) bool {
 	_, exist := accountBlacklistMap[strings.ToLower(account)]
 	return exist
+}
+
+// AddOrRemoveAccountBlackList add or remove account blacklist
+func AddOrRemoveAccountBlackList(accounts []string, isAdd bool) {
+	for _, account := range accounts {
+		key := strings.ToLower(account)
+		if isAdd {
+			accountBlacklistMap[key] = struct{}{}
+		} else {
+			delete(accountBlacklistMap, key)
+		}
+	}
+	if GetRouterServerConfig() != nil {
+		blacklist := make([]string, 0, len(accountBlacklistMap))
+		for account := range accountBlacklistMap {
+			blacklist = append(blacklist, account)
+		}
+		GetRouterServerConfig().AccountBlackList = blacklist
+	}
 }
 
 func initAutoSwapNonceEnabledChains() {
@@ -750,6 +909,23 @@ func IsUseFromChainIDInReceiptDisabled(chainID string) bool {
 	return exist
 }
 
+func initDontCheckReceivedTokenIDs() {
+	dontCheckReceivedTokenIDs = make(map[string]struct{})
+	if GetExtraConfig() == nil || len(GetExtraConfig().DontCheckReceivedTokenIDs) == 0 {
+		return
+	}
+	for _, tid := range GetExtraConfig().DontCheckReceivedTokenIDs {
+		dontCheckReceivedTokenIDs[strings.ToLower(tid)] = struct{}{}
+	}
+	log.Info("initDontCheckReceivedTokenIDs success")
+}
+
+// DontCheckTokenReceived do not check token received (a security enhance checking)
+func DontCheckTokenReceived(tokenID string) bool {
+	_, exist := dontCheckReceivedTokenIDs[strings.ToLower(tokenID)]
+	return exist
+}
+
 // GetDynamicFeeTxConfig get dynamic fee tx config (EIP-1559)
 func GetDynamicFeeTxConfig(chainID string) *DynamicFeeTxConfig {
 	if !IsDynamicFeeTxEnabled(chainID) {
@@ -801,7 +977,43 @@ func LoadRouterConfig(configFile string, isServer, check bool) *RouterConfig {
 		}
 	}
 
+	routerConfigFile = configFile
 	return routerConfig
+}
+
+// ReloadRouterConfig reload config
+func ReloadRouterConfig() {
+	configFile := routerConfigFile
+	isServer := IsSwapServer
+
+	log.Info("reload router config file", "configFile", configFile, "isServer", isServer)
+
+	config := &RouterConfig{}
+	if _, err := toml.DecodeFile(configFile, &config); err != nil {
+		log.Errorf("ReloadRouterConfig error (toml DecodeFile): %v", err)
+		return
+	}
+
+	if !isServer {
+		config.Server = nil
+	} else {
+		config.Oracle = nil
+	}
+
+	if err := config.CheckConfig(isServer); err != nil {
+		log.Errorf("ReloadRouterConfig check config failed. %v", err)
+		return
+	}
+
+	var bs []byte
+	if log.JSONFormat {
+		bs, _ = json.Marshal(config)
+	} else {
+		bs, _ = json.MarshalIndent(config, "", "  ")
+	}
+	log.Println("ReloadRouterConfig finished.", string(bs))
+
+	routerConfig = config
 }
 
 // SetDataDir set data dir

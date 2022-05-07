@@ -40,15 +40,19 @@ func (s *RouterSwapAPI) GetServerInfo(r *http.Request, args *RPCNullArgs, result
 	return nil
 }
 
+type getOracleInfoResult map[string]*swapapi.OracleInfo
+
 // GetOracleInfo api
-func (s *RouterSwapAPI) GetOracleInfo(r *http.Request, args *RPCNullArgs, result *map[string]*swapapi.OracleInfo) error {
+func (s *RouterSwapAPI) GetOracleInfo(r *http.Request, args *RPCNullArgs, result *getOracleInfoResult) error {
 	oracleInfo := swapapi.GetOracleInfo()
 	*result = oracleInfo
 	return nil
 }
 
+type getStatusInfoResult map[string]interface{}
+
 // GetStatusInfo api
-func (s *RouterSwapAPI) GetStatusInfo(r *http.Request, statuses *string, result *map[string]interface{}) error {
+func (s *RouterSwapAPI) GetStatusInfo(r *http.Request, statuses *string, result *getStatusInfoResult) error {
 	res, err := swapapi.GetStatusInfo(*statuses)
 	if err == nil && res != nil {
 		*result = res
@@ -131,7 +135,17 @@ func (s *RouterSwapAPI) GetAllTokenIDs(r *http.Request, args *RPCNullArgs, resul
 // nolint:gocritic // rpc need result of pointer type
 func (s *RouterSwapAPI) GetAllMultichainTokens(r *http.Request, args *string, result *map[string]string) error {
 	tokenID := *args
-	*result = router.GetCachedMultichainTokens(tokenID)
+	var m map[string]string
+	tokensMap := router.GetCachedMultichainTokens(tokenID)
+	if tokensMap != nil {
+		tokensMap.Range(func(k, v interface{}) bool {
+			key := k.(string)
+			val := v.(string)
+			m[key] = val
+			return true
+		})
+	}
+	*result = m
 	return nil
 }
 

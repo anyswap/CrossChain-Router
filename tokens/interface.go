@@ -24,22 +24,12 @@ type IBridgeConfg interface {
 	SetTokenConfig(token string, tokenCfg *TokenConfig)
 }
 
-// IBridgeConfigLoader interface
-type IBridgeConfigLoader interface {
-	InitGatewayConfig(chainID *big.Int)
-	InitChainConfig(chainID *big.Int)
-	InitTokenConfig(tokenID string, chainID *big.Int)
-
-	ReloadChainConfig(chainID *big.Int)
-	ReloadTokenConfig(tokenID string, chainID *big.Int)
-	RemoveTokenConfig(tokenAddr string)
-}
-
 // IBridge interface
 type IBridge interface {
 	IBridgeConfg
 	IMPCSign
 
+	InitRouterInfo(routerContract string) error
 	InitAfterConfig()
 
 	RegisterSwap(txHash string, args *RegisterArgs) ([]*SwapTxInfo, []error)
@@ -53,6 +43,7 @@ type IBridge interface {
 	GetLatestBlockNumberOf(url string) (uint64, error)
 
 	IsValidAddress(address string) bool
+	PublicKeyToAddress(pubKey string) (string, error)
 
 	// GetBalance get balance is used for checking budgets
 	// to prevent DOS attacking (used in any`call)

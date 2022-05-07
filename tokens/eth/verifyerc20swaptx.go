@@ -2,6 +2,8 @@ package eth
 
 import (
 	"bytes"
+	"fmt"
+	"math/big"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -46,6 +48,11 @@ func (b *Bridge) verifyERC20SwapTx(txHash string, logIndex int, allowUnstable bo
 	}
 
 	err = b.verifyERC20SwapTxLog(swapInfo, receipt.Logs[logIndex])
+	if err != nil {
+		return swapInfo, err
+	}
+
+	err = b.checkTokenReceived(swapInfo, receipt)
 	if err != nil {
 		return swapInfo, err
 	}
@@ -115,7 +122,7 @@ func (b *Bridge) checkERC20SwapInfo(swapInfo *tokens.SwapTxInfo) error {
 		log.Warn("get token config failed", "chainID", swapInfo.ToChainID, "token", multichainToken)
 		return tokens.ErrMissTokenConfig
 	}
-	if erc20SwapInfo.ForUnderlying && toTokenCfg.GetUnderlying() == (common.Address{}) {
+	if erc20SwapInfo.ForUnderlying && common.HexToAddress(toTokenCfg.GetUnderlying()) == (common.Address{}) {
 		return tokens.ErrNoUnderlyingToken
 	}
 	if !tokens.CheckTokenSwapValue(swapInfo, fromTokenCfg.Decimals, toTokenCfg.Decimals) {
@@ -174,7 +181,7 @@ func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable boo
 
 func (b *Bridge) checkCallByContract(swapInfo *tokens.SwapTxInfo) error {
 	txTo := swapInfo.TxTo
-	routerContract := b.GetRouterContract(swapInfo.ERC20SwapInfo.Token)
+	routerContract := b.GetRouterContract(swapInfo.GetToken())
 	if routerContract == "" {
 		return tokens.ErrMissRouterInfo
 	}
@@ -392,6 +399,7 @@ func (b *Bridge) parseERC20SwapTradeTxLog(swapInfo *tokens.SwapTxInfo, rlog *typ
 
 // amend trade path [0] if missing,
 // then check path exists in pairs of dest chain
+//nolint:gocyclo // allow long check trade path
 func checkSwapTradePath(swapInfo *tokens.SwapTxInfo) error {
 	dstChainID := swapInfo.ToChainID.String()
 	dstBridge := router.GetBridgeByChainID(dstChainID)
@@ -412,7 +420,8 @@ func checkSwapTradePath(swapInfo *tokens.SwapTxInfo) error {
 		return tokens.ErrTxWithWrongPath
 	}
 	srcToken := common.HexToAddress(path[0])
-	if !(srcToken == tokenCfg.GetUnderlying() || srcToken == common.HexToAddress(multichainToken)) {
+	if !(srcToken == common.HexToAddress(tokenCfg.GetUnderlying()) ||
+		srcToken == common.HexToAddress(multichainToken)) {
 		log.Warn("check swap trade path first element failed", "token", path[0])
 		return tokens.ErrTxWithWrongPath
 	}
@@ -488,5 +497,123 @@ func (b *Bridge) checkSwapWithPermit(swapInfo *tokens.SwapTxInfo) error {
 		return nil
 	}
 
+	return nil
+}
+
+// check underlying token is really received (or burned)
+// or anyToken is really burned by anySwapOut
+// anySwapOut burn anyToken from sender to zero address
+// anySwapOutUnderlying transfer underlying from sender to anyToken
+// anySwapOutNative transfer underlying from router to anyToken
+//nolint:funlen,gocyclo // allow long method
+func (b *Bridge) checkTokenReceived(swapInfo *tokens.SwapTxInfo, receipt *types.RPCTxReceipt) error {
+	erc20SwapInfo := swapInfo.ERC20SwapInfo
+	token := erc20SwapInfo.Token
+	tokenID := erc20SwapInfo.TokenID
+	tokenCfg := b.GetTokenConfig(token)
+	if tokenCfg == nil || tokenID == "" {
+		return tokens.ErrMissTokenConfig
+	}
+	if params.DontCheckTokenReceived(tokenID) {
+		return nil
+	}
+	tokenAddr := common.HexToAddress(token)
+	underlyingAddr := tokenCfg.GetUnderlying()
+	if common.HexToAddress(underlyingAddr) == (common.Address{}) {
+		return nil
+	}
+	routerContract := b.GetRouterContract(token)
+	if routerContract == "" {
+		return tokens.ErrMissRouterInfo
+	}
+	swapFromAddr := common.HexToAddress(swapInfo.From)
+
+	log.Info("start check token received",
+		"token", token, "tokenID", tokenID, "logIndex", swapInfo.LogIndex,
+		"underlying", underlyingAddr, "router", routerContract,
+		"swapFrom", swapInfo.From, "swapValue", swapInfo.Value, "swapID", swapInfo.Hash)
+
+	transferTopic := erc20CodeParts["LogTransfer"]
+
+	var recvAmount *big.Int
+	var isBurn bool
+	// find in reverse order
+	for i := swapInfo.LogIndex - 1; i >= 0; i-- {
+		rlog := receipt.Logs[i]
+		if common.IsEqualIgnoreCase(rlog.Address.LowerHex(), routerContract) {
+			log.Info("check token received prevent reentrance", "index", i, "logAddress", rlog.Address.LowerHex(), "logTopic", rlog.Topics[0].Hex(), "swapID", swapInfo.Hash)
+			break // prevent re-entrance
+		}
+		if rlog.Removed != nil && *rlog.Removed {
+			log.Info("check token received ignore removed log", "index", i, "swapID", swapInfo.Hash)
+			continue
+		}
+		if len(rlog.Topics) != 3 || rlog.Data == nil {
+			continue
+		}
+		if !bytes.Equal(rlog.Topics[0][:], transferTopic) {
+			continue
+		}
+		from := common.BytesToAddress(rlog.Topics[1][:]).LowerHex()
+		toAddr := common.BytesToAddress(rlog.Topics[2][:])
+		isBurn = toAddr == (common.Address{})
+
+		log.Info("check token received found transfer log", "index", i, "logAddress", rlog.Address.LowerHex(), "from", from, "to", toAddr.LowerHex(), "swapID", swapInfo.Hash)
+
+		if *rlog.Address == common.HexToAddress(underlyingAddr) {
+			if isBurn {
+				if common.IsEqualIgnoreCase(from, swapInfo.From) {
+					recvAmount = common.GetBigInt(*rlog.Data, 0, 32)
+				}
+				log.Info("check token received found underlying.burn", "index", i, "amount", recvAmount, "from", from, "swapID", swapInfo.Hash)
+				break
+			} else if toAddr == tokenAddr {
+				if common.IsEqualIgnoreCase(from, swapInfo.From) ||
+					common.IsEqualIgnoreCase(from, routerContract) {
+					recvAmount = common.GetBigInt(*rlog.Data, 0, 32)
+				}
+				log.Info("check token received found underlying.transfer", "index", i, "amount", recvAmount, "from", from, "swapID", swapInfo.Hash)
+				break
+			}
+			log.Warn("check token received unexpected underlying transfer", "index", i, "from", from, "to", toAddr.LowerHex(), "swapID", swapInfo.Hash)
+		} else if *rlog.Address == tokenAddr {
+			// anySwapout token with underlying, but calling anyToken.burn
+			if !isBurn {
+				continue
+			}
+			if !common.IsEqualIgnoreCase(from, swapInfo.From) {
+				log.Info("check token received ingore mismatched burner", "index", i, "swapID", swapInfo.Hash)
+				continue
+			}
+			if i >= 2 {
+				pLog := receipt.Logs[i-1]
+				// if the prvious log is token mint, ignore this log
+				// v5 and previous router mode
+				if *pLog.Address == tokenAddr &&
+					bytes.Equal(pLog.Topics[0][:], transferTopic) &&
+					common.BytesToAddress(pLog.Topics[1][:]) == (common.Address{}) &&
+					common.BytesToAddress(pLog.Topics[2][:]) == swapFromAddr {
+					log.Info("check token received ingore anytoken mint and burn", "index", i, "swapID", swapInfo.Hash)
+					i--
+					continue
+				}
+			}
+			recvAmount = common.GetBigInt(*rlog.Data, 0, 32)
+			log.Info("check token received found anyToken.burn", "index", i, "amount", recvAmount, "swapID", swapInfo.Hash)
+			break
+		}
+	}
+	if recvAmount == nil {
+		log.Warn("check token received found none", "swapID", swapInfo.Hash)
+		return fmt.Errorf("no underlying token received")
+	}
+	// at least receive 80% (consider fees and deflation burning)
+	minRecvAmount := new(big.Int).Mul(swapInfo.Value, big.NewInt(4))
+	minRecvAmount.Div(minRecvAmount, big.NewInt(5))
+	if recvAmount.Cmp(minRecvAmount) < 0 {
+		log.Warn("check token received failed", "isBurn", isBurn, "received", recvAmount, "swapValue", swapInfo.Value, "minRecvAmount", minRecvAmount, "swapID", swapInfo.Hash)
+		return fmt.Errorf("check underlying token received failed")
+	}
+	log.Info("check token received success", "isBurn", isBurn, "received", recvAmount, "swapValue", swapInfo.Value, "swapID", swapInfo.Hash)
 	return nil
 }

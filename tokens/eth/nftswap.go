@@ -22,7 +22,7 @@ var (
 	LogNFT721SwapOutTopic = common.FromHex("0x0d45b0b9f5add3e1bb841982f1fa9303628b0b619b000cb1f9f1c3903329a4c7")
 	// LogNFT1155SwapOut(addressindexedtoken,address,address,uint256,uint256,uint256,uint256)
 	LogNFT1155SwapOutTopic = common.FromHex("0x5058b8684cf36ffd9f66bc623fbc617a44dd65cf2273306d03d3104af0995cb0")
-	//LogNFT1155SwapOutBatch(address,address,address,uint256[],uint256[],uint256,uint256)
+	// LogNFT1155SwapOutBatch(address,address,address,uint256[],uint256[],uint256,uint256)
 	LogNFT1155SwapOutBatchTopic = common.FromHex("0xaa428a5ab688b49b415401782c170d216b33b15711d30cf69482f570eca8db38")
 
 	// nft721SwapIn(bytes32,address,address,uint256,uint256)
@@ -309,6 +309,7 @@ func (b *Bridge) parseNFT1155SwapOutBatchTxLog(swapInfo *tokens.SwapTxInfo, rlog
 	return nil
 }
 
+//nolint:gocyclo // allow long checking method
 func (b *Bridge) checkNFTSwapInfo(swapInfo *tokens.SwapTxInfo) error {
 	err := b.checkCallByContract(swapInfo)
 	if err != nil {
@@ -355,6 +356,7 @@ func (b *Bridge) checkNFTSwapInfo(swapInfo *tokens.SwapTxInfo) error {
 	return nil
 }
 
+//nolint:gocyclo // allow long buildtx method
 func (b *Bridge) buildNFTSwapTxInput(args *tokens.BuildTxArgs) (err error) {
 	nftSwapInfo := args.NFTSwapInfo
 	if nftSwapInfo == nil {
