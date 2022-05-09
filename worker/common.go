@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
@@ -165,14 +166,18 @@ func markSwapResultFailed(fromChainID, txid string, logIndex int) (err error) {
 
 func sendSignedTransaction(bridge tokens.IBridge, signedTx interface{}, args *tokens.BuildTxArgs) (txHash string, err error) {
 	var (
-		retrySendTxCount = 3
-		swapTxNonce      = args.GetTxNonce()
-		replaceNum       = args.GetReplaceNum()
+		swapTxNonce = args.GetTxNonce()
+		replaceNum  = args.GetReplaceNum()
 	)
 
+	retrySendTxLoops := params.GetRouterServerConfig().RetrySendTxLoopCount[args.ToChainID.String()]
+	if retrySendTxLoops == 0 {
+		retrySendTxLoops = 2
+	}
+
 SENDTX_LOOP:
-	for {
-		for i := 0; i < retrySendTxCount; i++ {
+	for loop := 0; loop < retrySendTxLoops; loop++ {
+		for i := 0; i < 3; i++ {
 			txHash, err = bridge.SendTransaction(signedTx)
 			if err == nil {
 				logWorker("sendtx", "send tx success", "txHash", txHash, "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "swapNonce", swapTxNonce, "replaceNum", replaceNum)
@@ -182,11 +187,15 @@ SENDTX_LOOP:
 		}
 
 		// prevent sendtx failed cause many same swap nonce allocation
-		if err == nil || !needRetrySendTx(err) {
-			break
+		if !needRetrySendTx(err) || loop+1 == retrySendTxLoops {
+			break SENDTX_LOOP
 		}
-		logWorkerWarn("sendtx", "send tx failed and will retry", "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "swapNonce", swapTxNonce, "replaceNum", replaceNum, "err", err)
-		sleepSeconds(10)
+		logWorkerWarn("sendtx", "send tx failed and will retry",
+			"fromChainID", args.FromChainID, "toChainID", args.ToChainID,
+			"txid", args.SwapID, "logIndex", args.LogIndex,
+			"swapNonce", swapTxNonce, "replaceNum", replaceNum,
+			"loop", loop, "err", err)
+		sleepSeconds(3)
 	}
 
 	if err != nil {
@@ -194,28 +203,46 @@ SENDTX_LOOP:
 		return txHash, err
 	}
 
-	// update swap result tx height in goroutine
-	go func() {
-		var txStatus *tokens.TxStatus
-		var errt error
-		for i := int64(0); i < 10; i++ {
-			txStatus, errt = bridge.GetTransactionStatus(txHash)
-			if errt == nil && txStatus.BlockHeight > 0 {
-				break
-			}
-			sleepSeconds(5)
-		}
-		if errt == nil && txStatus.BlockHeight > 0 {
+	if params.GetRouterServerConfig().SendTxLoopCount[args.ToChainID.String()] >= 0 {
+		go sendTxLoopUntilSuccess(bridge, txHash, signedTx, args)
+	}
+
+	return txHash, nil
+}
+
+func sendTxLoopUntilSuccess(bridge tokens.IBridge, txHash string, signedTx interface{}, args *tokens.BuildTxArgs) {
+	toChainID := args.ToChainID.String()
+	severCfg := params.GetRouterServerConfig()
+	sendTxLoopCount := severCfg.SendTxLoopCount[toChainID]
+	if sendTxLoopCount == 0 {
+		sendTxLoopCount = 30
+	}
+	sendTxLoopInterval := severCfg.SendTxLoopInterval[toChainID]
+	if sendTxLoopInterval == 0 {
+		sendTxLoopInterval = 10
+	}
+	for loop := 1; loop <= sendTxLoopCount; loop++ {
+		sleepSeconds(sendTxLoopInterval)
+
+		txStatus, err := bridge.GetTransactionStatus(txHash)
+		if err == nil && txStatus.BlockHeight > 0 {
+			logWorker("sendtx", "send tx in loop success", "txHash", txHash, "loop", loop, "blockNumber", txStatus.BlockHeight)
 			matchTx := &MatchTx{
 				SwapTx:     txHash,
 				SwapHeight: txStatus.BlockHeight,
 				SwapTime:   txStatus.BlockTime,
 			}
 			_ = updateRouterSwapResult(args.FromChainID.String(), args.SwapID, args.LogIndex, matchTx)
+			break
 		}
-	}()
 
-	return txHash, err
+		txHash, err = bridge.SendTransaction(signedTx)
+		if err != nil {
+			logWorkerError("sendtx", "send tx in loop failed", err, "swapID", args.SwapID, "txHash", txHash, "loop", loop)
+		} else {
+			logWorker("sendtx", "send tx in loop done", "swapID", args.SwapID, "txHash", txHash, "loop", loop)
+		}
+	}
 }
 
 func needRetrySendTx(err error) bool {
@@ -223,6 +250,7 @@ func needRetrySendTx(err error) bool {
 	switch {
 	case strings.Contains(errMsg, "Client.Timeout exceeded while awaiting headers"): // timeout
 	case strings.Contains(errMsg, "json-rpc error -32000, internal"): // cronos specific
+	case strings.EqualFold(errMsg, "json-rpc error -32000, "): // cronos specific
 	default:
 		return false
 	}

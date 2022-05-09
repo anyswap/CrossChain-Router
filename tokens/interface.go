@@ -12,25 +12,25 @@ type IMPCSign interface {
 }
 
 // IBridgeConfg interface
+// implemented by 'CrossChainBridgeBase'
 type IBridgeConfg interface {
 	GetGatewayConfig() *GatewayConfig
 	GetChainConfig() *ChainConfig
 	GetTokenConfig(tokenAddr string) *TokenConfig
 	GetRouterContract(token string) string
 
-	InitGatewayConfig(chainID *big.Int)
-	InitChainConfig(chainID *big.Int)
-	InitTokenConfig(tokenID string, chainID *big.Int)
-
-	ReloadChainConfig(chainID *big.Int)
-	ReloadTokenConfig(tokenID string, chainID *big.Int)
-	RemoveTokenConfig(tokenAddr string)
+	SetChainConfig(chainCfg *ChainConfig)
+	SetGatewayConfig(gatewayCfg *GatewayConfig)
+	SetTokenConfig(token string, tokenCfg *TokenConfig)
 }
 
 // IBridge interface
 type IBridge interface {
 	IBridgeConfg
 	IMPCSign
+
+	InitRouterInfo(routerContract string) error
+	InitAfterConfig()
 
 	RegisterSwap(txHash string, args *RegisterArgs) ([]*SwapTxInfo, []error)
 	VerifyTransaction(txHash string, ars *VerifyArgs) (*SwapTxInfo, error)
@@ -43,6 +43,11 @@ type IBridge interface {
 	GetLatestBlockNumberOf(url string) (uint64, error)
 
 	IsValidAddress(address string) bool
+	PublicKeyToAddress(pubKey string) (string, error)
+
+	// GetBalance get balance is used for checking budgets
+	// to prevent DOS attacking (used in anycall)
+	GetBalance(account string) (*big.Int, error)
 }
 
 // ISwapTrade interface

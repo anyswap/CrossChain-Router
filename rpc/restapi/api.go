@@ -12,6 +12,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/tests/config"
 	"github.com/gorilla/mux"
 )
 
@@ -94,6 +95,25 @@ func RegisterRouterSwapHandler(w http.ResponseWriter, r *http.Request) {
 	chainID, txid, logIndex := getRouterSwapKeys(r)
 	res, err := swapapi.RegisterRouterSwap(chainID, txid, logIndex)
 	writeResponse(w, res, err)
+}
+
+// TestRouterSwapHandler handler
+func TestRouterSwapHandler(w http.ResponseWriter, r *http.Request) {
+	args := make(map[string]string)
+
+	vars := mux.Vars(r)
+	args["txid"] = vars["txid"]
+
+	vals := r.URL.Query()
+	for k, v := range vals {
+		if len(v) > 0 {
+			args[k] = v[0]
+		}
+	}
+
+	config.ChanIn <- args
+	res := <-config.ChanOut
+	writeResponse(w, res, nil)
 }
 
 // GetRouterSwapHandler handler

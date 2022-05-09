@@ -15,8 +15,9 @@ type ServerInfo struct {
 	Identifier     string
 	Version        string
 	ConfigContract string
-	ExtraConfig    *params.ExtraConfig
+	ExtraConfig    *params.ExtraConfig `json:",omitempty"`
 	AllChainIDs    []*big.Int
+	PausedChainIDs []*big.Int `json:",omitempty"`
 }
 
 // OracleInfo oracle info
@@ -29,7 +30,7 @@ type OracleInfo struct {
 type SwapInfo struct {
 	SwapType      uint32             `json:"swaptype"`
 	TxID          string             `json:"txid"`
-	TxTo          string             `json:"txto"`
+	TxTo          string             `json:"txto,omitempty"`
 	TxHeight      uint64             `json:"txheight"`
 	From          string             `json:"from"`
 	To            string             `json:"to"`
@@ -48,7 +49,7 @@ type SwapInfo struct {
 	InitTime      int64              `json:"inittime"`
 	Timestamp     int64              `json:"timestamp"`
 	Memo          string             `json:"memo,omitempty"`
-	ReplaceCount  int                `json:"replaceCount"`
+	ReplaceCount  int                `json:"replaceCount,omitempty"`
 	Confirmations uint64             `json:"confirmations"`
 }
 

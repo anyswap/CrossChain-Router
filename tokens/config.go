@@ -1,15 +1,11 @@
 package tokens
 
 import (
-	"crypto/ecdsa"
 	"errors"
 	"fmt"
 	"math/big"
-	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
-	"github.com/anyswap/CrossChain-Router/v3/log"
-	"github.com/anyswap/CrossChain-Router/v3/tools/crypto"
 )
 
 // ChainConfig struct
@@ -33,7 +29,7 @@ type TokenConfig struct {
 	RouterContract  string
 
 	// calced value
-	underlying common.Address
+	underlying string
 }
 
 // SwapConfig struct
@@ -67,6 +63,9 @@ func (c *ChainConfig) CheckConfig() (err error) {
 	if c.Confirmations == 0 {
 		return errors.New("chain must config nonzero 'Confirmations'")
 	}
+	if c.RouterContract == "" {
+		return errors.New("chain must config 'RouterContract'")
+	}
 	return nil
 }
 
@@ -83,27 +82,29 @@ func (c *TokenConfig) CheckConfig() error {
 	if c.ContractAddress == "" {
 		return errors.New("token must config 'ContractAddress'")
 	}
-	if IsERC20Router() {
-		if c.ContractVersion == 0 {
-			log.Warn("token 'ContractVersion' is 0", "tokenID", c.TokenID, "address", c.ContractAddress)
-		}
-	} else if c.Decimals != 0 {
+	if !IsERC20Router() && c.Decimals != 0 {
 		return errors.New("non ERC20 token must config 'Decimals' to 0")
 	}
 	return nil
 }
 
+// IsStandardTokenVersion is standard token version
+func (c *TokenConfig) IsStandardTokenVersion() bool {
+	return c.ContractVersion > 0 && c.ContractVersion <= 10000
+}
+
 // SetUnderlying set underlying
-func (c *TokenConfig) SetUnderlying(underlying common.Address) {
+func (c *TokenConfig) SetUnderlying(underlying string) {
 	c.underlying = underlying
 }
 
 // GetUnderlying get underlying
-func (c *TokenConfig) GetUnderlying() common.Address {
+func (c *TokenConfig) GetUnderlying() string {
 	return c.underlying
 }
 
 // CheckConfig check swap config
+//nolint:funlen,gocyclo // ok
 func (c *SwapConfig) CheckConfig() error {
 	if c.MaximumSwap == nil || c.MaximumSwap.Sign() <= 0 {
 		return errors.New("token must config 'MaximumSwap' (positive)")
@@ -134,27 +135,6 @@ func (c *SwapConfig) CheckConfig() error {
 	}
 	if c.SwapFeeRatePerMillion == 0 && c.MinimumSwapFee.Sign() > 0.0 {
 		return errors.New("wrong token config, MinimumSwapFee should be 0 if SwapFeeRatePerMillion is 0")
-	}
-	return nil
-}
-
-// VerifyMPCPubKey verify mpc address and public key is matching
-func VerifyMPCPubKey(mpcAddress, mpcPubkey string) error {
-	if !common.IsHexAddress(mpcAddress) {
-		return fmt.Errorf("wrong mpc address '%v'", mpcAddress)
-	}
-	pkBytes := common.FromHex(mpcPubkey)
-	if len(pkBytes) != 65 || pkBytes[0] != 4 {
-		return fmt.Errorf("wrong mpc public key '%v'", mpcPubkey)
-	}
-	pubKey := ecdsa.PublicKey{
-		Curve: crypto.S256(),
-		X:     new(big.Int).SetBytes(pkBytes[1:33]),
-		Y:     new(big.Int).SetBytes(pkBytes[33:65]),
-	}
-	pubAddr := crypto.PubkeyToAddress(pubKey)
-	if !strings.EqualFold(pubAddr.String(), mpcAddress) {
-		return fmt.Errorf("mpc address %v and public key address %v is not match", mpcAddress, pubAddr.String())
 	}
 	return nil
 }

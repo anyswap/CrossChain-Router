@@ -26,8 +26,6 @@ AccountBlackList = []
 EnableReplaceSwap = true
 # enable pass big value swap job
 EnablePassBigValueSwap = true
-# enable auto increase swap nonce, do not query from onchain
-EnableAutoSwapNonce = false
 # replace plus gas price percentage
 ReplacePlusGasPricePercent = 1
 # wait time to replace swap
@@ -42,6 +40,22 @@ MaxPlusGasPricePercentage = 100
 MaxGasPriceFluctPercent = 10
 # swap deadline offset for trading
 SwapDeadlineOffset = 36000
+# apecify auto swap nonce enabled chainids
+AutoSwapNonceEnabledChains = ["25"]
+
+# retry send tx loop count, key is chainID. (in main thread)
+[Server.RetrySendTxLoopCount]
+43114 = 2
+25    = 10
+# send tx loop count until success in child routines (after retry loop)
+# key is chainID. use negative to disable loop
+[Server.SendTxLoopCount]
+43114 = 30
+25    = -1
+# send tx until success in child routines loop interval of seconds, key is chainID.
+[Server.SendTxLoopInterval]
+43114 = 10
+25    = 10
 # default gas limit. key is chainID. if not set, use 90000 as default.
 [Server.DefaultGasLimit]
 4     = 90000
@@ -65,6 +79,9 @@ PlusGasFeeCapPercent = 10
 BlockCountFeeHistory = 3
 MaxGasTipCap         = "5000000000"
 MaxGasFeeCap         = "10000000000"
+# how to calc gas price, eg. median (default), first, max, etc.
+[Server.CalcGasPriceMethod]
+43114 = "first"
 
 # modgodb database connection config
 [Server.MongoDB]
@@ -88,6 +105,8 @@ MaxRequestsLimit = 10
 [Oracle]
 # report oracle status to this server
 ServerAPIAddress = "http://127.0.0.1:11556/rpc"
+# don't check server connection
+NoCheckServerConnection = false
 
 [Extra]
 # is swap trade enabled
@@ -102,6 +121,8 @@ IsNFTSwapWithData = false
 EnableParallelSwap = false
 # use pending balace to prevent sending tx under not enough balance situation
 UsePendingBalance = false
+# dont panic in init router
+DontPanicInInitRouter = false
 # getting accept list interval (seconds) in accept job
 GetAcceptListInterval = 5
 # when meet invalid accept, ignore it instead of disagree it immediately
@@ -114,23 +135,34 @@ EnableCheckTxBlockHashChains = ["1285"]
 EnableCheckTxBlockIndexChains = ["1", "56"]
 # chains don't use fromChainID from receipt log
 DisableUseFromChainIDInReceiptChains = ["1666600000"]
+DontCheckReceivedTokenIDs = ["USDC", "MIM"]
 # allow call into router from contract's constructor
 AllowCallByConstructor = false
 # allow call into router from contract
 AllowCallByContract = false
 # whether check eip1167 master call by contract
 CheckEIP1167Master = false
-# min reserve fee. key is chainID. defaults to 1e16 wei
+# min reserve fee. key is chainID. defaults to 1e17 wei
 [Extra.MinReserveFee]
 4     = 100000000000000000
 46688 = 100000000000000000
+# min reserve budget. key is chainID. defaults to 1e16 wei
+[Extra.MinReserveBudget]
+4     = 10000000000000000
+46688 = 10000000000000000
 # base fee percent, must be in range [-90, 500]. key is dest chainID
 [Extra.BaseFeePercent]
 4     = 100
 46688 = 50
+# RPC timeout, key is chainID, value is of seconds (deafults to 5)
+[Extra.RPCClientTimeout]
+1313161554 = 60
+25 = 60
 # customs, key is chainID. value is a mapping.
 [Extra.Customs.1313161554]
 sendtxTimeout = "60"
+[Extra.Customs.30]
+dontCheckAddressMixedCase = "true"
 # big value whitelist, key is tokenID
 [Extra.BigValueWhitelist]
 USDC = ["0x1111111111111111111111111111111111111111"]
@@ -140,6 +172,11 @@ MIM  = ["0x2222222222222222222222222222222222222222"]
 4 = [
 	"0x1111111111111111111111111111111111111111",
 	"0x2222222222222222222222222222222222222222"
+]
+# call by contract whitelist of code hash, key is chainID
+[Extra.CallByContractCodeHashWhitelist]
+4 = [
+	"0x1111111111111111111111111111111111111111111111111111111111111111"
 ]
 
 
@@ -166,6 +203,7 @@ APIAddress = ["http://127.0.0.1:8711", "http://127.0.0.1:8722"]
 
 # MPC config
 [MPC]
+# mpc rpc api prefix
 APIPrefix = "smpc_"
 # RPC timeout
 RPCTimeout = 10
@@ -175,6 +213,9 @@ SignTimeout = 120
 MaxSignGroupFailures = 5
 # min interval to add back sign group (seconds)
 MinIntervalToAddSignGroup = 3600
+# verify signature in accept sign info
+VerifySignatureInAccept = false
+
 # mpc group ID
 GroupID = "74245ef03937fa75b979bdaa6a5952a93f53e021e0832fca4c2ad8952572c9b70f49e291de7e024b0f7fc54ec5875210db2ac775dba44448b3972b75af074d17"
 
@@ -189,6 +230,13 @@ Mode = 0
 Initiators = [
 	"0x897a9980808a2cae0d09ff693f02a4f80abb2233"
 ]
+
+# use private key instead (use for testing)
+SignWithPrivateKey = false
+# set signer's private key, key is chain ID (use for testing)
+[MPC.SignerPrivateKeys]
+4     = "0x1111111111111111111111111111111111111111111111111111111111111111"
+46688 = "0x2222222222222222222222222222222222222222222222222222222222222222"
 
 # MPC default node config
 [MPC.DefaultNode]

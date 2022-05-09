@@ -67,7 +67,7 @@ func swaprouter(ctx *cli.Context) error {
 
 	params.SetDataDir(utils.GetDataDir(ctx), isServer)
 	configFile := utils.GetConfigFilePath(ctx)
-	config := params.LoadRouterConfig(configFile, isServer)
+	config := params.LoadRouterConfig(configFile, isServer, true)
 
 	tokens.InitRouterSwapType(config.SwapType)
 

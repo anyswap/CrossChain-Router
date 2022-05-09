@@ -1,0 +1,56 @@
+# router swap identifier, must have prefix 'routerswap'
+Identifier = "routerswap#test"
+
+# router swap type (eg. erc20swap, nftswap, anycallswap)
+SwapType = "erc20swap"
+
+# test module name
+Module = "eth"
+
+# rpc listen port
+Port = 11556
+
+# use private key instead of mpc signing
+SignWithPrivateKey = "0x1111111111111111111111111111111111111111111111111111111111111111"
+SignerAddress = "0x1111111111111111111111111111111111111111"
+
+# allow call into router from contract
+AllowCallByContract = false
+
+# is debug mode (print more logs)
+IsDebugMode = true
+
+# all chain ids (pass 'miss token config' checking)
+AllChainIDs = ["56", "25"]
+
+
+[Gateway]
+APIAddress = ["http://127.0.0.1:6711"]
+
+
+# chain config
+[Chain]
+ChainID = "56"
+BlockChain = "bsc"
+RouterContract = "0x92c079d3155c2722dbf7e65017a5baf9cd15561c"
+Confirmations  = 1
+InitialHeight  = 0
+
+
+# token config
+[Token]
+TokenID         = "anyBNB"
+Decimals        = 18
+ContractVersion = 6
+ContractAddress = "0x49974c3c99f4e74d08845c31d3f4f16fdc264ebd"
+Underlying      = "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c"
+RouterContract  = "0x92c079d3155c2722dbf7e65017a5baf9cd15561c"
+
+
+[Swap]
+SwapFeeRatePerMillion = 0
+MaximumSwapFee    = "0"
+MinimumSwapFee    = "0"
+MaximumSwap       = "10000000000000000000000000"
+BigValueThreshold = "10000000000000000000000000"
+MinimumSwap       = "1"

@@ -6,6 +6,7 @@ import (
 
 // common errors
 var (
+	ErrNotImplemented        = errors.New("not implemented")
 	ErrSwapTypeNotSupported  = errors.New("swap type not supported")
 	ErrNoBridgeForChainID    = errors.New("no bridge for chain id")
 	ErrSwapTradeNotSupport   = errors.New("swap trade not support")
@@ -14,6 +15,7 @@ var (
 	ErrTxNotStable           = errors.New("tx not stable")
 	ErrLogIndexOutOfRange    = errors.New("log index out of range")
 	ErrTxWithWrongReceipt    = errors.New("tx with wrong receipt")
+	ErrTxWithWrongReceiver   = errors.New("tx with wrong receiver")
 	ErrTxWithWrongContract   = errors.New("tx with wrong contract")
 	ErrTxWithWrongTopics     = errors.New("tx with wrong log topics")
 	ErrSwapoutLogNotFound    = errors.New("swapout log not found or removed")
@@ -33,6 +35,14 @@ var (
 	ErrMissRouterInfo        = errors.New("miss router info")
 	ErrSenderMismatch        = errors.New("sender mismatch")
 	ErrTxWithWrongSender     = errors.New("tx with wrong sender")
+	ErrToChainIDMismatch     = errors.New("to chainID mismatch")
+	ErrTxWithWrongStatus     = errors.New("tx with wrong status")
+	ErrUnknownSwapoutType    = errors.New("unknown swapout type")
+	ErrEmptyTokenID          = errors.New("empty tokenID")
+	ErrNoEnoughReserveBudget = errors.New("no enough reserve budget")
+	ErrTxWithNoPayment       = errors.New("tx with no payment")
+	ErrTxIsNotValidated      = errors.New("tx is not validated")
+
 	// errors should register in router swap
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")
 	ErrTxWithWrongPath   = errors.New("swap trade tx with wrong path")

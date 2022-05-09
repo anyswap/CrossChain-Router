@@ -38,11 +38,11 @@ func StartReplaceJob() {
 	allChainIDs := router.AllChainIDs
 	mongodb.MgoWaitGroup.Add(len(allChainIDs))
 	for _, toChainID := range allChainIDs {
-		go doReplaceJob(toChainID)
+		go doReplaceJob(toChainID.String())
 	}
 }
 
-func doReplaceJob(toChainID *big.Int) {
+func doReplaceJob(toChainID string) {
 	defer mongodb.MgoWaitGroup.Done()
 	logWorker("replace", "start router swap replace job", "toChainID", toChainID)
 	for {
@@ -68,7 +68,7 @@ func doReplaceJob(toChainID *big.Int) {
 	}
 }
 
-func findRouterSwapResultToReplace(toChainID *big.Int) ([]*mongodb.MgoSwapResult, error) {
+func findRouterSwapResultToReplace(toChainID string) ([]*mongodb.MgoSwapResult, error) {
 	septime := getSepTimeInFind(maxReplaceSwapLifetime)
 	return mongodb.FindRouterSwapResultsToReplace(toChainID, septime)
 }
@@ -126,7 +126,7 @@ func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int, isManual b
 	if resBridge == nil {
 		return tokens.ErrNoBridgeForChainID
 	}
-	routerMPC, err := router.GetRouterMPC(resBridge, swap.GetTokenID(), res.ToChainID)
+	routerMPC, err := router.GetRouterMPC(swap.GetTokenID(), res.ToChainID)
 	if err != nil {
 		return err
 	}
@@ -167,6 +167,7 @@ func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int, isManual b
 				GasPrice: gasPrice,
 				Nonce:    &nonce,
 			},
+			Sequence:   &nonce,
 			ReplaceNum: replaceNum,
 		},
 	}
@@ -204,7 +205,9 @@ func signAndSendReplaceTx(resBridge tokens.IBridge, rawTx interface{}, args *tok
 
 	sentTxHash, err := sendSignedTransaction(resBridge, signedTx, args)
 	if err == nil && txHash != sentTxHash {
-		logWorkerError("replaceSwap", "send tx success but with different hash", errSendTxWithDiffHash, "fromChainID", fromChainID, "toChainID", res.ToChainID, "txid", txid, "nonce", res.SwapNonce, "logIndex", logIndex, "txHash", txHash, "sentTxHash", sentTxHash)
+		logWorkerError("replaceSwap", "send tx success but with different hash", errSendTxWithDiffHash,
+			"fromChainID", fromChainID, "toChainID", res.ToChainID, "txid", txid, "nonce", res.SwapNonce,
+			"logIndex", logIndex, "txHash", txHash, "sentTxHash", sentTxHash)
 		_ = mongodb.UpdateRouterOldSwapTxs(fromChainID, txid, logIndex, sentTxHash)
 	}
 }
@@ -238,6 +241,7 @@ func verifyReplaceSwap(res *mongodb.MgoSwapResult, isManual bool) (*mongodb.MgoS
 	return swap, nil
 }
 
+//nolint:gocyclo // ok
 func checkIfSwapNonceHasPassed(bridge tokens.IBridge, res *mongodb.MgoSwapResult, isReplace bool) error {
 	nonceSetter, ok := bridge.(tokens.NonceSetter)
 	if !ok {
@@ -275,6 +279,13 @@ func checkIfSwapNonceHasPassed(bridge tokens.IBridge, res *mongodb.MgoSwapResult
 					}
 					return nil
 				}
+			}
+			oldRes, errf := mongodb.FindRouterSwapResult(fromChainID, txid, logIndex)
+			if errf != nil {
+				return errf
+			}
+			if oldRes.Status == mongodb.Reswapping {
+				return errors.New("forbid mark reswaping result to failed status")
 			}
 			logWorker(iden, "mark swap result nonce passed",
 				"fromChainID", fromChainID, "txid", txid, "logIndex", logIndex,

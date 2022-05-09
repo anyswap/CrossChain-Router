@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
+// Package build - build tools
+//nolint
 package build
 
 import (
@@ -48,7 +50,7 @@ func MustRun(cmd *exec.Cmd) {
 
 // MustRunCommand wrap MustRun
 func MustRunCommand(cmd string, args ...string) {
-	MustRun(exec.Command(cmd, args...)) // nolint:gosec // ok
+	MustRun(exec.Command(cmd, args...))
 }
 
 var warnedAboutGit bool
@@ -56,7 +58,7 @@ var warnedAboutGit bool
 // RunGit runs a git subcommand and returns its output.
 // The command must complete successfully.
 func RunGit(args ...string) string {
-	cmd := exec.Command("git", args...) // nolint:gosec // ok
+	cmd := exec.Command("git", args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Run(); err != nil {
@@ -74,7 +76,7 @@ func RunGit(args ...string) string {
 
 // readGitFile returns content of file in .git directory.
 func readGitFile(file string) string {
-	content, err := ioutil.ReadFile(path.Join(".git", file)) // nolint:gosec // ok
+	content, err := ioutil.ReadFile(path.Join(".git", file))
 	if err != nil {
 		return ""
 	}
@@ -91,5 +93,5 @@ func readGitFile(file string) string {
 // because runtime.Version checks on the host should match the tools that are run.
 func GoTool(tool string, args ...string) *exec.Cmd {
 	args = append([]string{tool}, args...)
-	return exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), args...) //nolint:gosec // any better way?
+	return exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), args...)
 }

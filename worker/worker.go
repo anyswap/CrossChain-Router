@@ -13,6 +13,7 @@ func StartRouterSwapWork(isServer bool) {
 	logWorker("worker", "start router swap worker")
 
 	bridge.InitRouterBridges(isServer)
+	bridge.StartReloadRouterConfigTask()
 
 	bridge.StartAdjustGatewayOrderJob()
 	time.Sleep(interval)

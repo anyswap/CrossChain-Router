@@ -1,8 +1,11 @@
 package bridge
 
 import (
-	"strings"
+	"math/big"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -13,21 +16,24 @@ import (
 
 var reloadRouterConfigLock sync.Mutex
 
-func startReloadRouterConfigTask() {
-	log.Info("start reload router config task")
-	go doReloadRouterConfigTask()
-}
-
-func doReloadRouterConfigTask() {
+// StartReloadRouterConfigTask start reload config
+func StartReloadRouterConfigTask() {
 	// method 1: use web socket event subscriber
-	router.SubscribeUpdateConfig(ReloadRouterConfig)
+	go router.SubscribeUpdateConfig(ReloadRouterConfig)
 
 	// method 2: use fix period timer
+	go doReloadRouterConfigPeriodly()
+
+	// method 3: trigger manually by signals
+	go doReloadRouterConfigManually()
+}
+
+func doReloadRouterConfigPeriodly() {
 	reloadCycle := params.GetRouterConfig().Onchain.ReloadCycle
 	if reloadCycle == 0 {
-		log.Info("stop reload router config task as it's disabled")
 		return
 	}
+	log.Info("start reload router config task periodly", "reloadCycle", reloadCycle)
 	reloadInterval := time.Duration(reloadCycle) * time.Second
 	reloadTimer := time.NewTimer(reloadInterval)
 	for {
@@ -42,29 +48,148 @@ func doReloadRouterConfigTask() {
 	}
 }
 
+func doReloadRouterConfigManually() {
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGUSR1)
+	for {
+		sig := <-signalChan
+		if router.IsReloading {
+			log.Info("ignore signal to reload router config in reloading", "signal", sig)
+			continue
+		}
+		log.Info("receive signal to reload router config", "signal", sig)
+		go ReloadRouterConfig()
+	}
+}
+
 // ReloadRouterConfig reload router config
-// support modify exist chain config
+// support add/remove/modify chain config
 // support add/remove/modify token config
-func ReloadRouterConfig() bool {
+//nolint:funlen,gocyclo // ok
+func ReloadRouterConfig() (success bool) {
 	log.Info("[reload] start reload router config")
 	reloadRouterConfigLock.Lock()
-	defer reloadRouterConfigLock.Unlock()
+	router.IsIniting = true
+	router.IsReloading = true
+	defer func() {
+		router.IsIniting = false
+		router.IsReloading = false
+		routerInfoIsLoaded = new(sync.Map)
+		log.Info("[reload] reload router config finished", "success", success)
+		reloadRouterConfigLock.Unlock()
+	}()
 
-	chainIDs := router.AllChainIDs
+	// reload local config
+	params.ReloadRouterConfig()
+
+	allChainIDs, err := router.GetAllChainIDs()
+	if err != nil {
+		log.Error("[reload] call GetAllChainIDs failed", "err", err)
+		return false
+	}
+
+	// get rid of blacked chainIDs
+	chainIDs := make([]*big.Int, 0, len(allChainIDs))
+	for _, chainID := range allChainIDs {
+		if params.IsChainIDInBlackList(chainID.String()) {
+			log.Debugf("[reload] ingore chainID %v in black list", chainID)
+			continue
+		}
+		chainIDs = append(chainIDs, chainID)
+	}
 	log.Info("[reload] get all chain ids success", "chainIDs", chainIDs)
+	if len(chainIDs) == 0 {
+		log.Error("[reload] empty chain IDs")
+	}
 
-	tokenIDs, err := router.GetAllTokenIDs()
+	allTokenIDs, err := router.GetAllTokenIDs()
 	if err != nil {
 		log.Error("[reload] call GetAllTokenIDs failed", "err", err)
 		return false
 	}
+
+	// get rid of blacked tokenIDs
+	tokenIDs := make([]string, 0, len(allTokenIDs))
+	for _, tokenID := range allTokenIDs {
+		if params.IsTokenIDInBlackList(tokenID) {
+			log.Debugf("[reload] ingore tokenID %v in black list", tokenID)
+			continue
+		}
+		tokenIDs = append(tokenIDs, tokenID)
+	}
 	log.Info("[reload] get all token ids success", "tokenIDs", tokenIDs)
+	if len(tokenIDs) == 0 && !tokens.IsAnyCallRouter() {
+		log.Error("[reload] empty token IDs")
+	}
+
+	wg := new(sync.WaitGroup)
+	wg.Add(len(chainIDs))
+	for _, chainID := range chainIDs {
+		go func(wg *sync.WaitGroup, chainID *big.Int) {
+			defer wg.Done()
+
+			isNewBridge := false
+			bridge := router.GetBridgeByChainID(chainID.String())
+			if bridge == nil {
+				log.Info("[reload] add new bridge", "chainID", chainID)
+				bridge = NewCrossChainBridge(chainID)
+				isNewBridge = true
+			}
+
+			log.Info("[reload] set chain config", "chainID", chainID)
+			InitGatewayConfig(bridge, chainID)
+			AdjustGatewayOrder(bridge, chainID.String())
+			InitChainConfig(bridge, chainID)
+
+			if isNewBridge {
+				bridge.InitAfterConfig()
+				router.SetBridge(chainID.String(), bridge)
+			}
+
+			wg2 := new(sync.WaitGroup)
+			wg2.Add(len(tokenIDs))
+			for _, tokenID := range tokenIDs {
+				go func(wg2 *sync.WaitGroup, tokenID string, chainID *big.Int) {
+					defer wg2.Done()
+					log.Info("[reload] start load token config", "tokenID", tokenID, "chainID", chainID)
+					InitTokenConfig(bridge, tokenID, chainID)
+				}(wg2, tokenID, chainID)
+			}
+			wg2.Wait()
+		}(wg, chainID)
+	}
+	wg.Wait()
+
+	oldChainIDs := router.AllChainIDs
+	router.AllChainIDs = chainIDs
+
+	oldTokenIDs := router.AllTokenIDs
+	router.AllTokenIDs = tokenIDs
+
+	loadSwapConfigs(true)
+
+	removedChainIDs := make([]string, 0)
+	for _, chainID := range oldChainIDs {
+		exist := false
+		for _, newChainID := range chainIDs {
+			if chainID.Cmp(newChainID) == 0 {
+				exist = true
+				break
+			}
+		}
+		if !exist {
+			removedChainIDs = append(removedChainIDs, chainID.String())
+		}
+	}
+	if len(removedChainIDs) > 0 {
+		log.Info("[reload] remove chain ids", "removedChainIDs", removedChainIDs)
+	}
 
 	removedTokenIDs := make([]string, 0)
-	for _, tokenID := range router.AllTokenIDs {
+	for _, tokenID := range oldTokenIDs {
 		exist := false
-		for _, newTokenIDs := range tokenIDs {
-			if tokenID == newTokenIDs {
+		for _, newTokenID := range tokenIDs {
+			if tokenID == newTokenID {
 				exist = true
 				break
 			}
@@ -76,49 +201,33 @@ func ReloadRouterConfig() bool {
 	if len(removedTokenIDs) > 0 {
 		log.Info("[reload] remove token ids", "removedTokenIDs", removedTokenIDs)
 	}
-	// get rid of blacked tokenIDs
-	for i, tokenID := range tokenIDs {
-		if params.IsTokenIDInBlackList(tokenID) {
-			tokenIDs = append(tokenIDs[:i], tokenIDs[i+1:]...)
-		}
-	}
-	router.AllTokenIDs = tokenIDs
-	if len(router.AllTokenIDs) == 0 && !tokens.IsAnyCallRouter() {
-		log.Error("[reload] empty token IDs")
-	}
 
-	for _, chainID := range chainIDs {
-		chainIDStr := chainID.String()
-		bridge := router.GetBridgeByChainID(chainIDStr)
+	// get rid of removed token configs
+	for _, chainID := range oldChainIDs {
+		bridge := router.GetBridgeByChainID(chainID.String())
 		if bridge == nil {
-			log.Warn("[reload] do not support new chainID", "chainID", chainID)
 			continue
 		}
-
-		log.Info("[reload] set chain config", "chainID", chainID)
-		bridge.ReloadChainConfig(chainID)
-
 		for _, tokenID := range removedTokenIDs {
-			tokenAddr := router.GetCachedMultichainToken(tokenID, chainIDStr)
-			if tokenAddr != "" {
-				log.Info("[reload] remove token config", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr)
-				bridge.RemoveTokenConfig(tokenAddr)
+			tokenAddr := router.GetCachedMultichainToken(tokenID, chainID.String())
+			if tokenAddr == "" {
+				continue
 			}
-			router.MultichainTokens[strings.ToLower(tokenID)] = nil
-		}
-
-		for _, tokenID := range tokenIDs {
-			log.Info("[reload] set token config", "tokenID", tokenID, "chainID", chainID)
-			bridge.ReloadTokenConfig(tokenID, chainID)
+			log.Info("[reload] remove token config", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr)
+			bridge.SetTokenConfig(tokenAddr, nil)
 		}
 	}
 
-	err = loadSwapConfigs()
-	if err != nil {
-		log.Error("[reload] load swap configs failed", "err", err)
-		return false
+	// get rid of removed tokenIDs
+	for _, tokenID := range removedTokenIDs {
+		router.SetMultichainTokens(tokenID, nil)
 	}
 
-	log.Info("[reload] reload router config success")
-	return true
+	// get rid of removed chainIDs
+	for _, chainID := range removedChainIDs {
+		router.SetBridge(chainID, nil)
+	}
+
+	success = true
+	return success
 }

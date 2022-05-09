@@ -1,11 +1,16 @@
 package eth
 
 import (
+	"crypto/ecdsa"
+	"fmt"
+	"math/big"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/tools/crypto"
 )
 
 var (
@@ -14,6 +19,9 @@ var (
 
 	eip1167ProxyCodePattern = regexp.MustCompile("^0x363d3d373d3d3d363d73([0-9a-fA-F]{40})5af43d82803e903d91602b57fd5bf3$")
 	eip1167ProxyCodeLen     = 45 // bytes
+
+	contractCodeHashes    = make(map[common.Address]common.Hash)
+	maxContractCodeHashes = 2000
 )
 
 // IsValidAddress check address
@@ -26,6 +34,9 @@ func (b *Bridge) IsValidAddress(address string) bool {
 	}
 	unprefixedHex, ok, hasUpperChar := common.GetUnprefixedHex(address)
 	if hasUpperChar {
+		if strings.ToUpper(address) == address {
+			return true
+		}
 		// valid checksum
 		if unprefixedHex != common.HexToAddress(address).Hex()[2:] {
 			return false
@@ -36,14 +47,9 @@ func (b *Bridge) IsValidAddress(address string) bool {
 
 // IsContractAddress is contract address
 func (b *Bridge) IsContractAddress(address string) (bool, error) {
-	var code []byte
-	var err error
-	for i := 0; i < retryRPCCount; i++ {
-		code, err = b.GetCode(address)
-		if err == nil {
-			return len(code) > 1, nil // unexpect RSK getCode return 0x00
-		}
-		time.Sleep(retryRPCInterval)
+	code, err := b.getContractCode(address)
+	if err == nil {
+		return len(code) > 1, nil // unexpect RSK getCode return 0x00
 	}
 	return false, err
 }
@@ -55,22 +61,13 @@ func (b *Bridge) GetEIP1167Master(proxy common.Address) (master common.Address) 
 		return master
 	}
 	if len(eip1167Proxies) > maxEip1167ProxiesSize {
-		eip1167Proxies = nil
+		eip1167Proxies = make(map[common.Address]common.Address) // clear
 	}
 
-	proxyAddr := proxy.String()
+	proxyAddr := proxy.LowerHex()
 
-	var code []byte
-	var err error
-	for i := 0; i < retryRPCCount; i++ {
-		code, err = b.GetCode(proxyAddr)
-		if err == nil && len(code) > 1 {
-			break
-		}
-		log.Warn("GetEIP1167Master call getCode failed", "address", proxy, "err", err)
-		time.Sleep(retryRPCInterval)
-	}
-	if len(code) != eip1167ProxyCodeLen {
+	code, err := b.getContractCode(proxyAddr)
+	if err != nil || len(code) != eip1167ProxyCodeLen {
 		return master
 	}
 
@@ -80,4 +77,72 @@ func (b *Bridge) GetEIP1167Master(proxy common.Address) (master common.Address) 
 		eip1167Proxies[proxy] = master
 	}
 	return master
+}
+
+// GetContractCodeHash get contract code hash
+func (b *Bridge) GetContractCodeHash(contract common.Address) common.Hash {
+	codeHash, exist := contractCodeHashes[contract]
+	if exist {
+		return codeHash
+	}
+	if len(contractCodeHashes) > maxContractCodeHashes {
+		contractCodeHashes = make(map[common.Address]common.Hash) // clear
+	}
+
+	code, err := b.getContractCode(contract.String())
+	if err == nil && len(code) > 1 {
+		codeHash = common.Keccak256Hash(code)
+		contractCodeHashes[contract] = codeHash
+	}
+	return codeHash
+}
+
+func (b *Bridge) getContractCode(contract string) (code []byte, err error) {
+	for i := 0; i < retryRPCCount; i++ {
+		code, err = b.GetCode(contract)
+		if err == nil && len(code) > 1 {
+			return code, nil
+		}
+		if err != nil {
+			log.Warn("get contract code failed", "contract", contract, "err", err)
+		}
+		time.Sleep(retryRPCInterval)
+	}
+	return code, err
+}
+
+// PublicKeyToAddress public key to address
+func (b *Bridge) PublicKeyToAddress(pubKey string) (string, error) {
+	pkBytes := common.FromHex(pubKey)
+	if len(pkBytes) != 65 || pkBytes[0] != 4 {
+		return "", fmt.Errorf("wrong mpc public key '%v'", pubKey)
+	}
+	ecPubKey := ecdsa.PublicKey{
+		Curve: crypto.S256(),
+		X:     new(big.Int).SetBytes(pkBytes[1:33]),
+		Y:     new(big.Int).SetBytes(pkBytes[33:65]),
+	}
+	pubAddr := crypto.PubkeyToAddress(ecPubKey)
+	return pubAddr.String(), nil
+}
+
+// VerifyMPCPubKey verify mpc address and public key is matching
+func VerifyMPCPubKey(mpcAddress, mpcPubkey string) error {
+	if !common.IsHexAddress(mpcAddress) {
+		return fmt.Errorf("wrong mpc address '%v'", mpcAddress)
+	}
+	pkBytes := common.FromHex(mpcPubkey)
+	if len(pkBytes) != 65 || pkBytes[0] != 4 {
+		return fmt.Errorf("wrong mpc public key '%v'", mpcPubkey)
+	}
+	pubKey := ecdsa.PublicKey{
+		Curve: crypto.S256(),
+		X:     new(big.Int).SetBytes(pkBytes[1:33]),
+		Y:     new(big.Int).SetBytes(pkBytes[33:65]),
+	}
+	pubAddr := crypto.PubkeyToAddress(pubKey)
+	if !strings.EqualFold(pubAddr.String(), mpcAddress) {
+		return fmt.Errorf("mpc address %v and public key address %v is not match", mpcAddress, pubAddr.String())
+	}
+	return nil
 }

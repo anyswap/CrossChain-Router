@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -221,9 +222,6 @@ func processAcceptInfo(info *mpc.SignInfoData) {
 func verifySignInfo(signInfo *mpc.SignInfoData) (*tokens.BuildTxArgs, error) {
 	msgHash := signInfo.MsgHash
 	msgContext := signInfo.MsgContext
-	if len(msgContext) != 1 {
-		return nil, errWrongMsgContext
-	}
 	var args tokens.BuildTxArgs
 	err := json.Unmarshal([]byte(msgContext[0]), &args)
 	if err != nil {
@@ -289,9 +287,25 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 		logWorkerError("accept", "verifySignInfo failed", err, ctx...)
 		return err
 	}
+	if !strings.EqualFold(args.Bind, swapInfo.Bind) {
+		return fmt.Errorf("bind mismatch: '%v' != '%v'", args.Bind, swapInfo.Bind)
+	}
+	if args.ToChainID.Cmp(swapInfo.ToChainID) != 0 {
+		return fmt.Errorf("toChainID mismatch: '%v' != '%v'", args.ToChainID, swapInfo.ToChainID)
+	}
 
 	buildTxArgs := &tokens.BuildTxArgs{
-		SwapArgs:    args.SwapArgs,
+		SwapArgs: tokens.SwapArgs{
+			SwapInfo:    swapInfo.SwapInfo,
+			Identifier:  params.GetIdentifier(),
+			SwapID:      swapInfo.Hash,
+			SwapType:    swapInfo.SwapType,
+			Bind:        swapInfo.Bind,
+			LogIndex:    swapInfo.LogIndex,
+			FromChainID: swapInfo.FromChainID,
+			ToChainID:   swapInfo.ToChainID,
+			Reswapping:  args.Reswapping,
+		},
 		From:        args.From,
 		OriginFrom:  swapInfo.From,
 		OriginTxTo:  swapInfo.TxTo,

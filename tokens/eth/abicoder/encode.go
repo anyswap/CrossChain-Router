@@ -22,7 +22,7 @@ func PackDataWithFuncHash(funcHash []byte, args ...interface{}) []byte {
 }
 
 // PackData pack data
-// nolint:gocyclo,makezero // allow big switch
+// nolint:funlen,gocyclo // allow big switch
 func PackData(args ...interface{}) []byte {
 	lenArgs := len(args)
 	bs := make([]byte, lenArgs*32)
@@ -131,7 +131,6 @@ func packAddressSlice(addrs []common.Address) []byte {
 	return bs
 }
 
-// nolint:makezero // keep it
 func packStringSlice(strSlice []string) []byte {
 	length := len(strSlice)
 	bsLen := packBigInt(big.NewInt(int64(length)))
@@ -153,7 +152,6 @@ func packBigIntSlice(biSlice []*big.Int) []byte {
 	return bs
 }
 
-// nolint:makezero // keep it
 func packHexBytesSlice(bsSlice []hexutil.Bytes) []byte {
 	length := len(bsSlice)
 	bsLen := packBigInt(big.NewInt(int64(length)))
@@ -165,7 +163,6 @@ func packHexBytesSlice(bsSlice []hexutil.Bytes) []byte {
 	return append(bsLen, bsInner...)
 }
 
-// nolint:makezero // keep it
 func packBytesSlice(bsSlice [][]byte) []byte {
 	length := len(bsSlice)
 	bsLen := packBigInt(big.NewInt(int64(length)))

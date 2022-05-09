@@ -87,6 +87,9 @@ func (c *RouterOracleConfig) CheckConfig() (err error) {
 	if c.ServerAPIAddress == "" {
 		return errors.New("oracle must config 'ServerAPIAddress'")
 	}
+	if c.NoCheckServerConnection {
+		return nil
+	}
 	var version string
 	for i := 0; i < 3; i++ {
 		err = client.RPCPostWithTimeout(60, &version, c.ServerAPIAddress, "swap.GetVersionInfo")
@@ -103,6 +106,7 @@ func (c *RouterOracleConfig) CheckConfig() (err error) {
 }
 
 // CheckConfig of router server
+//nolint:funlen,gocyclo // ok
 func (s *RouterServerConfig) CheckConfig() error {
 	if s == nil {
 		return errors.New("router server must config 'Server'")
@@ -116,6 +120,7 @@ func (s *RouterServerConfig) CheckConfig() error {
 	if err := s.MongoDB.CheckConfig(); err != nil {
 		return err
 	}
+	initAutoSwapNonceEnabledChains()
 	for _, chainID := range s.ChainIDBlackList {
 		biChainID, ok := new(big.Int).SetString(chainID, 0)
 		if !ok {
@@ -127,6 +132,9 @@ func (s *RouterServerConfig) CheckConfig() error {
 		}
 		chainIDBlacklistMap[key] = struct{}{}
 	}
+	if len(chainIDBlacklistMap) > 0 {
+		log.Infof("chainID blacklist is %v", chainIDBlacklistMap)
+	}
 	for _, tokenID := range s.TokenIDBlackList {
 		if tokenID == "" {
 			return errors.New("empty token id in black list")
@@ -137,6 +145,9 @@ func (s *RouterServerConfig) CheckConfig() error {
 		}
 		tokenIDBlacklistMap[key] = struct{}{}
 	}
+	if len(tokenIDBlacklistMap) > 0 {
+		log.Infof("tokenID blacklist is %v", tokenIDBlacklistMap)
+	}
 	for _, account := range s.AccountBlackList {
 		if account == "" {
 			return errors.New("empty account in black list")
@@ -146,6 +157,9 @@ func (s *RouterServerConfig) CheckConfig() error {
 			return fmt.Errorf("duplicate account '%v' in black list", key)
 		}
 		accountBlacklistMap[key] = struct{}{}
+	}
+	if len(accountBlacklistMap) > 0 {
+		log.Infof("account blacklist is %v", accountBlacklistMap)
 	}
 	for chainID, fixedGasPriceStr := range s.FixedGasPrice {
 		biChainID, ok := new(big.Int).SetString(chainID, 0)
@@ -301,7 +315,11 @@ func (c *OnchainConfig) CheckConfig() error {
 }
 
 // CheckConfig check mpc config
+//nolint:funlen,gocyclo // ok
 func (c *MPCConfig) CheckConfig(isServer bool) (err error) {
+	if c.SignWithPrivateKey {
+		return nil
+	}
 	if c.GroupID == nil {
 		return errors.New("mpc must config 'GroupID'")
 	}
@@ -354,11 +372,13 @@ func (c *MPCNodeConfig) CheckConfig(isServer bool) (err error) {
 // CheckConfig check extra config
 func (c *ExtraConfig) CheckConfig() (err error) {
 	initCallByContractWhitelist()
+	initCallByContractCodeHashWhitelist()
 	initBigValueWhitelist()
 	initDynamicFeeTxEnabledChains()
 	initEnableCheckTxBlockHashChains()
 	initEnableCheckTxBlockIndexChains()
 	initDisableUseFromChainIDInReceiptChains()
+	initDontCheckReceivedTokenIDs()
 
 	if c.UsePendingBalance {
 		GetBalanceBlockNumberOpt = "pending"
@@ -377,6 +397,7 @@ func (c *ExtraConfig) CheckConfig() (err error) {
 		"minReserveFee", c.MinReserveFee,
 		"allowCallByContract", c.AllowCallByContract,
 		"callByContractWhitelist", c.CallByContractWhitelist,
+		"callByContractCodeHashWhitelist", c.CallByContractCodeHashWhitelist,
 		"bigValueWhitelist", c.BigValueWhitelist,
 		"dynamicFeeTxEnabledChains", c.DynamicFeeTxEnabledChains,
 		"enableCheckTxBlockHashChains", c.EnableCheckTxBlockHashChains,

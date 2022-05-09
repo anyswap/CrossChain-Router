@@ -5,13 +5,16 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
+	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/base"
 	"github.com/anyswap/CrossChain-Router/v3/types"
 )
 
@@ -24,76 +27,89 @@ var (
 
 // Bridge eth bridge
 type Bridge struct {
-	*tokens.CrossChainBridgeBase
-	*NonceSetterBase
+	CustomConfig
+	*base.NonceSetterBase
 	Signer        types.Signer
 	SignerChainID *big.Int
-
-	// eg. RSK chain do not check mixed case or not same as eth
-	DontCheckAddressMixedCase bool
 }
 
 // NewCrossChainBridge new bridge
 func NewCrossChainBridge() *Bridge {
 	return &Bridge{
-		CrossChainBridgeBase: tokens.NewCrossChainBridgeBase(),
-		NonceSetterBase:      NewNonceSetterBase(),
+		CustomConfig:    NewCustomConfig(),
+		NonceSetterBase: base.NewNonceSetterBase(),
 	}
 }
 
-// InitGatewayConfig impl
-func (b *Bridge) InitGatewayConfig(chainID *big.Int) {
-	if chainID.Sign() == 0 {
-		log.Fatal("zero chain ID")
+// CustomConfig custom config
+type CustomConfig struct {
+	// some chain's rpc is slow and need config a longer rpc timeout
+	RPCClientTimeout int
+	// eg. RSK chain do not check mixed case or not same as eth
+	DontCheckAddressMixedCase bool
+}
+
+// NewCustomConfig new custom config
+func NewCustomConfig() CustomConfig {
+	return CustomConfig{
+		RPCClientTimeout:          client.GetDefaultTimeout(false),
+		DontCheckAddressMixedCase: false,
 	}
-	cfg := params.GetRouterConfig()
-	apiAddrs := cfg.Gateways[chainID.String()]
-	if len(apiAddrs) == 0 {
-		log.Fatal("gateway not found for chain ID", "chainID", chainID)
-	}
-	apiAddrsExt := cfg.GatewaysExt[chainID.String()]
-	b.SetGatewayConfig(&tokens.GatewayConfig{
-		APIAddress:    apiAddrs,
-		APIAddressExt: apiAddrsExt,
-	})
-	latestBlock, err := b.GetLatestBlockNumber()
+}
+
+// InitAfterConfig init variables (ie. extra members) after loading config
+func (b *Bridge) InitAfterConfig() {
+	isReload := router.IsReloading
+	logErrFunc := log.GetLogFuncOr(isReload, log.Error, log.Fatal)
+	chainID, err := common.GetBigIntFromStr(b.ChainConfig.ChainID)
 	if err != nil {
-		log.Fatal("get lastest block number failed", "chainID", chainID, "err", err)
+		logErrFunc("wrong chainID",
+			"chainID", b.ChainConfig.ChainID,
+			"blockChain", b.ChainConfig.BlockChain,
+			"err", err)
+		if isReload {
+			return
+		}
 	}
-	log.Infof("[%5v] lastest block number is %v", chainID, latestBlock)
-	log.Infof("[%5v] init gateway config success", chainID)
-}
-
-// InitChainConfig impl
-func (b *Bridge) InitChainConfig(chainID *big.Int) {
-	chainCfg, err := router.GetChainConfig(chainID)
+	err = b.InitExtraCustoms()
 	if err != nil {
-		log.Fatal("get chain config failed", "chainID", chainID, "err", err)
+		logErrFunc("init extra custons failed",
+			"chainID", b.ChainConfig.ChainID,
+			"blockChain", b.ChainConfig.BlockChain,
+			"err", err)
+		if isReload {
+			return
+		}
 	}
-	if chainCfg == nil {
-		log.Fatal("chain config not found", "chainID", chainID)
+	err = b.initSigner(chainID)
+	if err != nil {
+		logErrFunc("init signer failed",
+			"chainID", b.ChainConfig.ChainID,
+			"blockChain", b.ChainConfig.BlockChain,
+			"err", err)
+		if isReload {
+			return
+		}
 	}
-	if chainID.String() != chainCfg.ChainID {
-		log.Fatal("verify chain ID mismatch", "inconfig", chainCfg.ChainID, "inchainids", chainID)
-	}
-	if err = chainCfg.CheckConfig(); err != nil {
-		log.Fatal("check chain config failed", "chainID", chainID, "err", err)
-	}
-	if err = b.InitRouterInfo(chainID, chainCfg.RouterContract); err != nil {
-		log.Fatal("init chain router info failed", "routerContract", chainCfg.RouterContract, "err", err)
-	}
-	b.SetChainConfig(chainCfg)
-	b.initSigner(chainID)
-	log.Info("init chain config success", "blockChain", chainCfg.BlockChain, "chainID", chainID)
 }
 
-func (b *Bridge) initSigner(chainID *big.Int) {
+func (b *Bridge) initSigner(chainID *big.Int) (err error) {
 	signerChainID, err := b.GetSignerChainID()
+	if err != nil && router.IsIniting {
+		for i := 0; i < router.RetryRPCCountInInit; i++ {
+			if signerChainID, err = b.GetSignerChainID(); err == nil {
+				break
+			}
+			time.Sleep(router.RetryRPCIntervalInInit)
+		}
+	}
 	if err != nil {
-		log.Fatal("get signer chain ID failed", "chainID", chainID, "err", err)
+		log.Error("get signer chain ID failed", "chainID", chainID, "err", err)
+		return err
 	}
 	if chainID.Cmp(signerChainID) != 0 {
-		log.Fatal("chain ID mismatch", "inconfig", chainID, "inbridge", signerChainID)
+		log.Error("chain ID mismatch", "inconfig", chainID, "inbridge", signerChainID)
+		return err
 	}
 	b.SignerChainID = signerChainID
 	if params.IsDynamicFeeTxEnabled(signerChainID.String()) {
@@ -101,13 +117,17 @@ func (b *Bridge) initSigner(chainID *big.Int) {
 	} else {
 		b.Signer = types.MakeSigner("EIP155", signerChainID)
 	}
+	return nil
 }
 
 // InitRouterInfo init router info
-func (b *Bridge) InitRouterInfo(biChainID *big.Int, routerContract string) (err error) {
+func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 	if routerContract == "" {
 		return nil
 	}
+
+	chainID := b.ChainConfig.ChainID
+	log.Info(fmt.Sprintf("[%5v] start init router info", chainID), "routerContract", routerContract)
 	var routerFactory, routerWNative string
 	if tokens.IsERC20Router() {
 		routerFactory, err = b.GetFactoryAddress(routerContract)
@@ -134,14 +154,19 @@ func (b *Bridge) InitRouterInfo(biChainID *big.Int, routerContract string) (err 
 		log.Warn("get mpc public key failed", "mpc", routerMPC, "err", err)
 		return err
 	}
-	if err = tokens.VerifyMPCPubKey(routerMPC, routerMPCPubkey); err != nil {
+	if err = VerifyMPCPubKey(routerMPC, routerMPCPubkey); err != nil {
 		log.Warn("verify mpc public key failed", "mpc", routerMPC, "mpcPubkey", routerMPCPubkey, "err", err)
 		return err
 	}
-	router.SetRouterInfo(routerContract, routerMPC, routerFactory, routerWNative)
+	router.SetRouterInfo(
+		routerContract,
+		&router.SwapRouterInfo{
+			RouterMPC:     routerMPC,
+			RouterFactory: routerFactory,
+			RouterWNative: routerWNative,
+		},
+	)
 	router.SetMPCPublicKey(routerMPC, routerMPCPubkey)
-
-	chainID := biChainID.String()
 
 	log.Info(fmt.Sprintf("[%5v] init router info success", chainID),
 		"routerContract", routerContract, "routerMPC", routerMPC,
@@ -151,214 +176,68 @@ func (b *Bridge) InitRouterInfo(biChainID *big.Int, routerContract string) (err 
 		nextSwapNonce, err := mongodb.FindNextSwapNonce(chainID, strings.ToLower(routerMPC))
 		if err == nil {
 			log.Info("init next swap nonce from db", "chainID", chainID, "mpc", routerMPC, "nonce", nextSwapNonce)
-			b.InitSwapNonce(routerMPC, nextSwapNonce)
+			b.InitSwapNonce(b, routerMPC, nextSwapNonce)
 		}
 	}
 
 	return nil
 }
 
-// InitTokenConfig impl
-func (b *Bridge) InitTokenConfig(tokenID string, chainID *big.Int) {
-	if tokenID == "" {
-		log.Fatal("empty token ID")
-	}
-	tokenAddr, err := router.GetMultichainToken(tokenID, chainID)
-	if err != nil {
-		log.Fatal("get token address failed", "tokenID", tokenID, "chainID", chainID, "err", err)
-	}
-	if common.HexToAddress(tokenAddr) == (common.Address{}) {
-		log.Debugf("[%5v] '%v' token address is empty", chainID, tokenID)
+// SetTokenConfig set token config
+func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) {
+	b.CrossChainBridgeBase.SetTokenConfig(tokenAddr, tokenCfg)
+
+	if tokenCfg == nil || !tokens.IsERC20Router() {
 		return
 	}
-	tokenCfg, err := router.GetTokenConfig(chainID, tokenID)
-	if err != nil {
-		log.Fatal("get token config failed", "chainID", chainID, "tokenID", tokenID, "err", err)
+
+	isReload := router.IsReloading
+	logErrFunc := log.GetLogFuncOr(isReload, log.Error, log.Fatal)
+
+	tokenID := tokenCfg.TokenID
+
+	decimals, errt := b.GetErc20Decimals(tokenAddr)
+	if errt != nil {
+		logErrFunc("get token decimals failed", "tokenID", tokenID, "tokenAddr", tokenAddr, "err", errt)
+		if isReload {
+			return
+		}
 	}
-	if tokenCfg == nil {
-		log.Debug("token config not found", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr)
-		return
+	if decimals != tokenCfg.Decimals {
+		logErrFunc("token decimals mismatch", "tokenID", tokenID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract", decimals)
+		if isReload {
+			return
+		}
 	}
-	if common.HexToAddress(tokenAddr) != common.HexToAddress(tokenCfg.ContractAddress) {
-		log.Fatal("verify token address mismach", "tokenID", tokenID, "chainID", chainID, "inconfig", tokenCfg.ContractAddress, "inmultichain", tokenAddr)
-	}
-	if tokenID != tokenCfg.TokenID {
-		log.Fatal("verify token ID mismatch", "chainID", chainID, "inconfig", tokenCfg.TokenID, "intokenids", tokenID)
-	}
-	if err = tokenCfg.CheckConfig(); err != nil {
-		log.Fatal("check token config failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
-	}
-	routerContract, err := router.GetCustomConfig(chainID, tokenAddr)
-	if err != nil {
-		log.Fatal("get custome config failed", "chainID", chainID, "key", tokenAddr, "err", err)
-	}
-	tokenCfg.RouterContract = routerContract
+	routerContract := tokenCfg.RouterContract
 	if routerContract == "" {
-		routerContract = b.ChainConfig.RouterContract
+		routerContract = b.GetChainConfig().RouterContract
 	}
-	if err = b.InitRouterInfo(chainID, tokenCfg.RouterContract); err != nil {
-		log.Fatal("init token router info failed", "routerContract", tokenCfg.RouterContract, "err", err)
-	}
-
-	var underlying string
-	if tokens.IsERC20Router() {
-		decimals, errt := b.GetErc20Decimals(tokenAddr)
-		if errt != nil {
-			log.Fatal("get token decimals failed", "tokenAddr", tokenAddr, "err", errt)
-		}
-		if decimals != tokenCfg.Decimals {
-			log.Fatal("token decimals mismatch", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract", decimals)
-		}
-		err = b.checkTokenMinter(routerContract, tokenAddr, tokenCfg.ContractVersion)
-		if err != nil && isStandardTokenVersion(tokenCfg.ContractVersion) {
-			log.Fatal("check token minter failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
-		}
-		underlying, err = b.GetUnderlyingAddress(tokenAddr)
-		if err != nil && isStandardTokenVersion(tokenCfg.ContractVersion) {
-			log.Fatal("get underlying address failed", "err", err)
-		}
-		tokenCfg.SetUnderlying(common.HexToAddress(underlying)) // init underlying address
-	}
-
-	b.SetTokenConfig(tokenAddr, tokenCfg)
-
-	tokenIDKey := strings.ToLower(tokenID)
-	tokensMap := router.MultichainTokens[tokenIDKey]
-	if tokensMap == nil {
-		tokensMap = make(map[string]string)
-		router.MultichainTokens[tokenIDKey] = tokensMap
-	}
-	tokensMap[chainID.String()] = tokenAddr
-
-	log.Info(fmt.Sprintf("[%5v] init '%v' token config success", chainID, tokenID),
-		"tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "underlying", underlying)
-}
-
-// ReloadChainConfig reload chain config
-func (b *Bridge) ReloadChainConfig(chainID *big.Int) {
-	chainCfg, err := router.GetChainConfig(chainID)
-	if err != nil {
-		log.Error("[reload] get chain config failed", "chainID", chainID, "err", err)
-		return
-	}
-	if chainCfg == nil {
-		log.Error("[reload] chain config not found", "chainID", chainID)
-		return
-	}
-	if chainID.String() != chainCfg.ChainID {
-		log.Error("[reload] verify chain ID mismatch", "inconfig", chainCfg.ChainID, "inchainids", chainID)
-		return
-	}
-	if err = chainCfg.CheckConfig(); err != nil {
-		log.Error("[reload] check chain config failed", "chainID", chainID, "err", err)
-		return
-	}
-	if err = b.InitRouterInfo(chainID, chainCfg.RouterContract); err != nil {
-		log.Error("init chain router info failed", "routerContract", chainCfg.RouterContract, "err", err)
-		return
-	}
-	b.SetChainConfig(chainCfg)
-	log.Info("reload chain config success", "blockChain", chainCfg.BlockChain, "chainID", chainID)
-}
-
-// ReloadTokenConfig reload token config
-func (b *Bridge) ReloadTokenConfig(tokenID string, chainID *big.Int) {
-	if tokenID == "" {
-		return
-	}
-	tokenAddr, err := router.GetMultichainToken(tokenID, chainID)
-	if err != nil {
-		log.Error("[reload] get token address failed", "tokenID", tokenID, "chainID", chainID, "err", err)
-		return
-	}
-	if common.HexToAddress(tokenAddr) == (common.Address{}) {
-		log.Debug("[reload] multichain token address is empty", "tokenID", tokenID, "chainID", chainID)
-		return
-	}
-	tokenCfg, err := router.GetTokenConfig(chainID, tokenID)
-	if err != nil {
-		log.Error("[reload] get token config failed", "chainID", chainID, "tokenID", tokenID, "err", err)
-		return
-	}
-	if tokenCfg == nil {
-		log.Debug("[reload] token config not found", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr)
-		return
-	}
-	if common.HexToAddress(tokenAddr) != common.HexToAddress(tokenCfg.ContractAddress) {
-		log.Error("[reload] verify token address mismach", "tokenID", tokenID, "chainID", chainID, "inconfig", tokenCfg.ContractAddress, "inmultichain", tokenAddr)
-		return
-	}
-	if tokenID != tokenCfg.TokenID {
-		log.Error("[reload] verify token ID mismatch", "chainID", chainID, "inconfig", tokenCfg.TokenID, "intokenids", tokenID)
-		return
-	}
-	if err = tokenCfg.CheckConfig(); err != nil {
-		log.Error("[reload] check token config failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
-		return
-	}
-	routerContract, err := router.GetCustomConfig(chainID, tokenAddr)
-	if err != nil {
-		log.Error("get custome config failed", "chainID", chainID, "key", tokenAddr, "err", err)
-		return
-	}
-	tokenCfg.RouterContract = routerContract
-	if routerContract == "" {
-		routerContract = b.ChainConfig.RouterContract
-	}
-	if err = b.InitRouterInfo(chainID, tokenCfg.RouterContract); err != nil {
-		log.Error("init token router info failed", "routerContract", tokenCfg.RouterContract, "err", err)
-		return
-	}
-
-	var underlying string
-	if tokens.IsERC20Router() {
-		decimals, errt := b.GetErc20Decimals(tokenAddr)
-		if errt != nil {
-			log.Error("[reload] get token decimals failed", "tokenAddr", tokenAddr, "err", errt)
+	err := b.checkTokenMinter(routerContract, tokenCfg)
+	if err != nil && tokenCfg.IsStandardTokenVersion() {
+		logErrFunc("check token minter failed", "tokenID", tokenID, "tokenAddr", tokenAddr, "err", err)
+		if isReload {
 			return
 		}
-		if decimals != tokenCfg.Decimals {
-			log.Error("[reload] token decimals mismatch", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract", decimals)
-			return
-		}
-		err = b.checkTokenMinter(routerContract, tokenAddr, tokenCfg.ContractVersion)
-		if err != nil && isStandardTokenVersion(tokenCfg.ContractVersion) {
-			log.Error("[reload] check token minter failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
-			return
-		}
-		underlying, err = b.GetUnderlyingAddress(tokenAddr)
-		if err != nil && isStandardTokenVersion(tokenCfg.ContractVersion) {
-			log.Error("[reload] get underlying address failed", "err", err)
-			return
-		}
-		tokenCfg.SetUnderlying(common.HexToAddress(underlying)) // init underlying address
 	}
-
-	b.SetTokenConfig(tokenAddr, tokenCfg)
-
-	tokenIDKey := strings.ToLower(tokenID)
-	tokensMap := router.MultichainTokens[tokenIDKey]
-	if tokensMap == nil {
-		tokensMap = make(map[string]string)
-		router.MultichainTokens[tokenIDKey] = tokensMap
+	underlying, err := b.GetUnderlyingAddress(tokenAddr)
+	if err != nil && tokenCfg.IsStandardTokenVersion() {
+		logErrFunc("get underlying address failed", "tokenID", tokenID, "tokenAddr", tokenAddr, "err", err)
+		if isReload {
+			return
+		}
 	}
-	tokensMap[chainID.String()] = tokenAddr
-
-	log.Info("reload token config success", "chainID", chainID, "tokenID", tokenID,
-		"tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "underlying", underlying)
+	tokenCfg.SetUnderlying(underlying) // init underlying address
 }
 
-func isStandardTokenVersion(tokenVer uint64) bool {
-	return tokenVer > 0 && tokenVer <= 10000
-}
-
-func (b *Bridge) checkTokenMinter(routerContract, tokenAddr string, tokenVer uint64) (err error) {
-	if !isStandardTokenVersion(tokenVer) {
+func (b *Bridge) checkTokenMinter(routerContract string, tokenCfg *tokens.TokenConfig) (err error) {
+	if !tokenCfg.IsStandardTokenVersion() {
 		return nil
 	}
+	tokenAddr := tokenCfg.ContractAddress
 	var minterAddr string
 	var isMinter bool
-	switch tokenVer {
+	switch tokenCfg.ContractVersion {
 	default:
 		isMinter, err = b.IsMinter(tokenAddr, routerContract)
 		if err != nil {
@@ -421,4 +300,29 @@ func (b *Bridge) getETCSignerChainID() (*big.Int, error) {
 		return nil, errors.New("unsupported etc network id")
 	}
 	return new(big.Int).SetUint64(chainID), nil
+}
+
+// InitExtraCustoms init extra customs
+func (b *Bridge) InitExtraCustoms() error {
+	clientTimeout := params.GetRPCClientTimeout(b.ChainConfig.ChainID)
+	if clientTimeout != 0 {
+		b.RPCClientTimeout = clientTimeout
+	} else {
+		timeoutStr := params.GetCustom(b.ChainConfig.ChainID, "sendtxTimeout")
+		if timeoutStr != "" {
+			timeout, err := common.GetUint64FromStr(timeoutStr)
+			if err != nil {
+				log.Error("get sendtxTimeout failed", "err", err)
+				return err
+			}
+			if timeout != 0 {
+				b.RPCClientTimeout = int(timeout)
+			}
+		}
+	}
+
+	flag := params.GetCustom(b.ChainConfig.ChainID, "dontCheckAddressMixedCase")
+	b.DontCheckAddressMixedCase = strings.EqualFold(flag, "true")
+
+	return nil
 }

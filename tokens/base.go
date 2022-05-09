@@ -1,8 +1,11 @@
 package tokens
 
 import (
+	"fmt"
 	"math/big"
 	"strings"
+	"sync"
+	"time"
 
 	cmath "github.com/anyswap/CrossChain-Router/v3/common/math"
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -11,10 +14,16 @@ import (
 
 var (
 	routerSwapType SwapType
-	swapConfigMap  = make(map[string]map[string]*SwapConfig) // key is tokenID,toChainID
+	swapConfigMap  = new(sync.Map) // key is tokenID,toChainID
 )
 
+// IsNativeCoin is native coin
+func IsNativeCoin(name string) bool {
+	return strings.EqualFold(name, "native")
+}
+
 // InitRouterSwapType init router swap type
+//nolint:goconst // allow dupl constant string
 func InitRouterSwapType(swapTypeStr string) {
 	switch strings.ToLower(swapTypeStr) {
 	case "erc20swap":
@@ -53,14 +62,28 @@ func IsAnyCallRouter() bool {
 type CrossChainBridgeBase struct {
 	ChainConfig    *ChainConfig
 	GatewayConfig  *GatewayConfig
-	TokenConfigMap map[string]*TokenConfig // key is token address
+	TokenConfigMap *sync.Map // key is token address
 }
 
 // NewCrossChainBridgeBase new base bridge
 func NewCrossChainBridgeBase() *CrossChainBridgeBase {
 	return &CrossChainBridgeBase{
-		TokenConfigMap: make(map[string]*TokenConfig),
+		TokenConfigMap: new(sync.Map),
 	}
+}
+
+// InitRouterInfo init router info
+func (b *CrossChainBridgeBase) InitRouterInfo(routerContract string) error {
+	return ErrNotImplemented
+}
+
+// InitAfterConfig init variables (ie. extra members) after loading config
+func (b *CrossChainBridgeBase) InitAfterConfig() {
+}
+
+// GetBalance get balance is used for checking budgets to prevent DOS attacking
+func (b *CrossChainBridgeBase) GetBalance(account string) (*big.Int, error) {
+	return nil, ErrNotImplemented
 }
 
 // SetChainConfig set chain config
@@ -70,17 +93,20 @@ func (b *CrossChainBridgeBase) SetChainConfig(chainCfg *ChainConfig) {
 
 // SetGatewayConfig set gateway config
 func (b *CrossChainBridgeBase) SetGatewayConfig(gatewayCfg *GatewayConfig) {
+	if len(gatewayCfg.APIAddress) == 0 {
+		log.Fatal("empty gateway 'APIAddress'")
+	}
 	b.GatewayConfig = gatewayCfg
 }
 
 // SetTokenConfig set token config
 func (b *CrossChainBridgeBase) SetTokenConfig(token string, tokenCfg *TokenConfig) {
-	b.TokenConfigMap[strings.ToLower(token)] = tokenCfg
-}
-
-// RemoveTokenConfig remove token config
-func (b *CrossChainBridgeBase) RemoveTokenConfig(token string) {
-	b.TokenConfigMap[strings.ToLower(token)] = nil
+	key := strings.ToLower(token)
+	if tokenCfg != nil {
+		b.TokenConfigMap.Store(key, tokenCfg)
+	} else {
+		b.TokenConfigMap.Delete(key)
+	}
 }
 
 // GetChainConfig get chain config
@@ -95,7 +121,10 @@ func (b *CrossChainBridgeBase) GetGatewayConfig() *GatewayConfig {
 
 // GetTokenConfig get token config
 func (b *CrossChainBridgeBase) GetTokenConfig(token string) *TokenConfig {
-	return b.TokenConfigMap[strings.ToLower(token)]
+	if config, exist := b.TokenConfigMap.Load(strings.ToLower(token)); exist {
+		return config.(*TokenConfig)
+	}
+	return nil
 }
 
 // GetRouterContract get router contract
@@ -113,17 +142,19 @@ func (b *CrossChainBridgeBase) GetRouterContract(token string) string {
 }
 
 // SetSwapConfigs set swap configs
-func SetSwapConfigs(swapCfgs map[string]map[string]*SwapConfig) {
+func SetSwapConfigs(swapCfgs *sync.Map) {
 	swapConfigMap = swapCfgs
 }
 
 // GetSwapConfig get swap config
 func GetSwapConfig(tokenID, toChainID string) *SwapConfig {
-	cfgs := swapConfigMap[tokenID]
-	if cfgs == nil {
-		return nil
+	if m, exist := swapConfigMap.Load(tokenID); exist {
+		cfgs := m.(*sync.Map)
+		if cfg, ok := cfgs.Load(toChainID); ok {
+			return cfg.(*SwapConfig)
+		}
 	}
-	return cfgs[toChainID]
+	return nil
 }
 
 // GetBigValueThreshold get big value threshold
@@ -256,4 +287,23 @@ func ConvertTokenValue(fromValue *big.Int, fromDecimals, toDecimals uint8) *big.
 		return new(big.Int).Div(fromValue, cmath.BigPow(10, int64(fromDecimals-toDecimals)))
 	}
 	return new(big.Int).Mul(fromValue, cmath.BigPow(10, int64(toDecimals-fromDecimals)))
+}
+
+// CheckNativeBalance check native balance
+func CheckNativeBalance(b IBridge, account string, needValue *big.Int) (err error) {
+	var balance *big.Int
+	for i := 0; i < 3; i++ {
+		balance, err = b.GetBalance(account)
+		if err == nil {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+	if err == nil && balance.Cmp(needValue) < 0 {
+		return fmt.Errorf("not enough coin balance. %v is lower than %v needed", balance, needValue)
+	}
+	if err != nil {
+		log.Warn("get balance error", "account", account, "err", err)
+	}
+	return err
 }

@@ -21,6 +21,12 @@ const (
 	mpcWalletServiceID = 30400
 )
 
+// sign type constants
+const (
+	SignTypeEC256K1 = "ECDSA"
+	SignTypeED25519 = "ED25519"
+)
+
 var (
 	mpcSigner = types.MakeSigner("EIP155", big.NewInt(mpcWalletServiceID))
 	mpcToAddr = common.HexToAddress(mpcToAddress)
@@ -32,6 +38,8 @@ var (
 	mpcNeededOracles uint32
 	mpcTotalOracles  uint32
 
+	verifySignatureInAccept bool
+
 	mpcRPCTimeout  = 10                // default to 10 seconds
 	mpcSignTimeout = 120 * time.Second // default to 120 seconds
 
@@ -41,6 +49,10 @@ var (
 	selfEnode string
 	allEnodes []string
 )
+
+func isEC(signType string) bool {
+	return strings.HasPrefix(signType, "EC")
+}
 
 // NodeInfo mpc node info
 type NodeInfo struct {
@@ -69,6 +81,8 @@ func Init(mpcConfig *params.MPCConfig, isServer bool) {
 	if mpcConfig.MinIntervalToAddSignGroup > 0 {
 		minIntervalToAddSignGroup = mpcConfig.MinIntervalToAddSignGroup
 	}
+
+	verifySignatureInAccept = mpcConfig.VerifySignatureInAccept
 
 	setMPCGroup(*mpcConfig.GroupID, mpcConfig.Mode, *mpcConfig.NeededOracles, *mpcConfig.TotalOracles)
 	setDefaultMPCNodeInfo(initMPCNodeInfo(mpcConfig.DefaultNode, isServer))

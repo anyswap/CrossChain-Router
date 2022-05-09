@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/big"
 	"strings"
 	"sync"
 	"time"
@@ -43,11 +42,12 @@ func AddRouterSwap(ms *MgoSwap) error {
 	ms.Key = GetRouterSwapKey(ms.FromChainID, ms.TxID, ms.LogIndex)
 	ms.InitTime = common.NowMilli()
 	_, err := collRouterSwap.InsertOne(clientCtx, ms)
-	if err == nil {
+	switch {
+	case err == nil:
 		log.Info("mongodb add router swap success", "chainid", ms.FromChainID, "txid", ms.TxID, "logindex", ms.LogIndex)
-	} else if !mongo.IsDuplicateKeyError(err) {
+	case !mongo.IsDuplicateKeyError(err):
 		log.Error("mongodb add router swap failed", "chainid", ms.FromChainID, "txid", ms.TxID, "logindex", ms.LogIndex, "err", err)
-	} else {
+	default:
 		swap := &MgoSwap{}
 		errt := collRouterSwap.FindOne(clientCtx, bson.M{"_id": ms.Key}).Decode(swap)
 		if errt == nil && swap.Status == TxNotSwapped {
@@ -214,6 +214,7 @@ func FindRouterSwapsWithStatus(status SwapStatus, septime int64) ([]*MgoSwap, er
 }
 
 // FindRouterSwapsWithChainIDAndStatus find router swap with chainid and status in the past septime
+//nolint:dupl // allow duplicate
 func FindRouterSwapsWithChainIDAndStatus(fromChainID string, status SwapStatus, septime int64) ([]*MgoSwap, error) {
 	query := getStatusQueryWithChainID(fromChainID, status, septime)
 	opts := &options.FindOptions{
@@ -270,9 +271,11 @@ func AllocateRouterSwapNonce(args *tokens.BuildTxArgs, nonceptr *uint64, isRecyc
 	resUpdates := bson.M{
 		"mpc":       args.From,
 		"status":    MatchTxNotStable,
-		"swapvalue": args.SwapValue.String(),
 		"swapnonce": swapnonce,
 		"timestamp": nowTime,
+	}
+	if args.SwapValue != nil {
+		resUpdates["swapvalue"] = args.SwapValue.String()
 	}
 	_, err = collRouterSwapResult.UpdateByID(clientCtx, key, bson.M{"$set": resUpdates})
 	if err != nil {
@@ -418,6 +421,7 @@ func FindRouterSwapResultsWithStatus(status SwapStatus, septime int64) ([]*MgoSw
 }
 
 // FindRouterSwapResultsWithChainIDAndStatus find router swap result with chainid and status in the past septime
+//nolint:dupl // allow duplicate
 func FindRouterSwapResultsWithChainIDAndStatus(fromChainID string, status SwapStatus, septime int64) ([]*MgoSwapResult, error) {
 	query := getStatusQueryWithChainID(fromChainID, status, septime)
 	opts := &options.FindOptions{
@@ -452,11 +456,35 @@ func FindNextSwapNonce(chainID, mpc string) (uint64, error) {
 	return result.SwapNonce + 1, nil
 }
 
-// FindRouterSwapResultsToReplace find router swap result with status
-func FindRouterSwapResultsToReplace(chainID *big.Int, septime int64) ([]*MgoSwapResult, error) {
+// FindRouterSwapResultsToStable find swap results to stable
+func FindRouterSwapResultsToStable(chainID string, septime int64) ([]*MgoSwapResult, error) {
 	qtime := bson.M{"inittime": bson.M{"$gte": septime}}
 	qstatus := bson.M{"status": MatchTxNotStable}
-	qchainid := bson.M{"toChainID": chainID.String()}
+	qchainid := bson.M{"toChainID": chainID}
+	queries := []bson.M{qtime, qstatus, qchainid}
+
+	limit := int64(100)
+	opts := &options.FindOptions{
+		Sort:  bson.D{{Key: "swapnonce", Value: 1}},
+		Limit: &limit,
+	}
+	cur, err := collRouterSwapResult.Find(clientCtx, bson.M{"$and": queries}, opts)
+	if err != nil {
+		return nil, mgoError(err)
+	}
+	result := make([]*MgoSwapResult, 0, limit)
+	err = cur.All(clientCtx, &result)
+	if err != nil {
+		return nil, mgoError(err)
+	}
+	return result, nil
+}
+
+// FindRouterSwapResultsToReplace find router swap result with status
+func FindRouterSwapResultsToReplace(chainID string, septime int64) ([]*MgoSwapResult, error) {
+	qtime := bson.M{"inittime": bson.M{"$gte": septime}}
+	qstatus := bson.M{"status": MatchTxNotStable}
+	qchainid := bson.M{"toChainID": chainID}
 	qheight := bson.M{"swapheight": 0}
 	queries := []bson.M{qtime, qstatus, qchainid, qheight}
 
@@ -499,6 +527,7 @@ func getStatusesFromStr(status string) (registerStatuses, resultStatuses []SwapS
 }
 
 // FindRouterSwapResults find router swap results with chainid and address
+//nolint:gocyclo // allow long method
 func FindRouterSwapResults(fromChainID, address string, offset, limit int, status string) ([]*MgoSwapResult, error) {
 	var queries []bson.M
 

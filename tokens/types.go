@@ -4,7 +4,6 @@ import (
 	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
-	"github.com/anyswap/CrossChain-Router/v3/types"
 )
 
 // SwapType type
@@ -45,12 +44,16 @@ func (s SwapType) IsValidType() bool {
 
 // ERC20SwapInfo struct
 type ERC20SwapInfo struct {
+	Token   string `json:"token"`
+	TokenID string `json:"tokenID"`
+
 	ForNative     bool     `json:"forNative,omitempty"`
 	ForUnderlying bool     `json:"forUnderlying,omitempty"`
-	Token         string   `json:"token"`
-	TokenID       string   `json:"tokenID"`
 	Path          []string `json:"path,omitempty"`
 	AmountOutMin  *big.Int `json:"amountOutMin,omitempty"`
+
+	CallProxy string        `json:"callProxy,omitempty"`
+	CallData  hexutil.Bytes `json:"callData,omitempty"`
 }
 
 // NFTSwapInfo struct
@@ -129,6 +132,7 @@ type SwapTxInfo struct {
 
 // TxStatus struct
 type TxStatus struct {
+	Sender        string      `json:"sender,omitempty"`
 	Receipt       interface{} `json:"receipt,omitempty"`
 	Confirmations uint64      `json:"confirmations"`
 	BlockHeight   uint64      `json:"blockHeight"`
@@ -136,14 +140,18 @@ type TxStatus struct {
 	BlockTime     uint64      `json:"blockTime"`
 }
 
+// StatusInterface interface
+type StatusInterface interface {
+	IsStatusOk() bool
+}
+
 // IsSwapTxOnChainAndFailed to make failed of swaptx
 func (s *TxStatus) IsSwapTxOnChainAndFailed() bool {
 	if s == nil || s.BlockHeight == 0 {
 		return false // not on chain
 	}
-	if s.Receipt != nil { // for eth-like blockchain
-		receipt, ok := s.Receipt.(*types.RPCTxReceipt)
-		if !ok || !receipt.IsStatusOk() || len(receipt.Logs) == 0 {
+	if status, ok := s.Receipt.(StatusInterface); ok {
+		if !status.IsStatusOk() {
 			return true
 		}
 	}
@@ -195,6 +203,8 @@ type BuildTxArgs struct {
 type AllExtras struct {
 	EthExtra   *EthExtraArgs `json:"ethExtra,omitempty"`
 	ReplaceNum uint64        `json:"replaceNum,omitempty"`
+	Sequence   *uint64       `json:"sequence,omitempty"`
+	Fee        *string       `json:"fee,omitempty"`
 }
 
 // EthExtraArgs struct
@@ -226,20 +236,14 @@ func (args *BuildTxArgs) GetExtraArgs() *BuildTxArgs {
 
 // GetTxNonce get tx nonce
 func (args *BuildTxArgs) GetTxNonce() uint64 {
-	if args.Extra != nil && args.Extra.EthExtra != nil && args.Extra.EthExtra.Nonce != nil {
-		return *args.Extra.EthExtra.Nonce
+	if args.Extra != nil {
+		if args.Extra.EthExtra != nil {
+			if args.Extra.EthExtra.Nonce != nil {
+				return *args.Extra.EthExtra.Nonce
+			}
+		} else if args.Extra.Sequence != nil {
+			return *args.Extra.Sequence
+		}
 	}
 	return 0
-}
-
-// SetTxNonce set tx nonce
-func (args *BuildTxArgs) SetTxNonce(nonce uint64) {
-	var extra *EthExtraArgs
-	if args.Extra == nil || args.Extra.EthExtra == nil {
-		extra = &EthExtraArgs{}
-		args.Extra = &AllExtras{EthExtra: extra}
-	} else {
-		extra = args.Extra.EthExtra
-	}
-	extra.Nonce = &nonce
 }

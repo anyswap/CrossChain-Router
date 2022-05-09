@@ -81,9 +81,8 @@ func CheckAcceptRecord(args *tokens.BuildTxArgs) (err error) {
 		log.Info("[accept] check saved record", "key", key, "value", value)
 		txStatus, errt := toBridge.GetTransactionStatus(oldSwapTx)
 		if errt == nil && txStatus != nil && txStatus.BlockHeight > 0 { // on chain
-			if txStatus.Receipt != nil { // for eth like chain
-				receipt, ok := txStatus.Receipt.(*types.RPCTxReceipt)
-				if ok && receipt.IsStatusOk() {
+			if status, ok := txStatus.Receipt.(tokens.StatusInterface); ok {
+				if status.IsStatusOk() {
 					log.Warn("[accept] found already swapped tx", "key", key, "value", value)
 					alreadySwapped = true
 					break

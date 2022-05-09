@@ -22,13 +22,16 @@ var (
 
 // BuildRawTransaction build raw tx
 func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{}, err error) {
+	if !params.IsTestMode && args.ToChainID.String() != b.ChainConfig.ChainID {
+		return nil, tokens.ErrToChainIDMismatch
+	}
 	if args.Input != nil {
 		return nil, fmt.Errorf("forbid build raw swap tx with input data")
 	}
 	if args.From == "" {
 		return nil, fmt.Errorf("forbid empty sender")
 	}
-	routerMPC, err := router.GetRouterMPC(b, args.GetTokenID(), b.ChainConfig.ChainID)
+	routerMPC, err := router.GetRouterMPC(args.GetTokenID(), b.ChainConfig.ChainID)
 	if err != nil {
 		return nil, err
 	}
@@ -74,23 +77,27 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 		isDynamicFeeTx = params.IsDynamicFeeTxEnabled(b.ChainConfig.ChainID)
 	)
 
-	// swap need value = tx value + min reserve + 5 * gas fee
-	needValue := big.NewInt(0)
-	if value != nil && value.Sign() > 0 {
-		needValue.Add(needValue, value)
-	}
-	needValue.Add(needValue, b.getMinReserveFee())
-	var gasFee *big.Int
-	if isDynamicFeeTx {
-		gasFee = new(big.Int).Mul(gasFeeCap, new(big.Int).SetUint64(gasLimit))
-	} else {
-		gasFee = new(big.Int).Mul(gasPrice, new(big.Int).SetUint64(gasLimit))
-	}
-	needValue.Add(needValue, new(big.Int).Mul(big.NewInt(5), gasFee))
+	minReserveFee := b.getMinReserveFee()
+	// if min reserve fee is zero, then do not check balance
+	if minReserveFee.Sign() > 0 {
+		// swap need value = tx value + min reserve + 5 * gas fee
+		needValue := big.NewInt(0)
+		if value != nil && value.Sign() > 0 {
+			needValue.Add(needValue, value)
+		}
+		needValue.Add(needValue, minReserveFee)
+		var gasFee *big.Int
+		if isDynamicFeeTx {
+			gasFee = new(big.Int).Mul(gasFeeCap, new(big.Int).SetUint64(gasLimit))
+		} else {
+			gasFee = new(big.Int).Mul(gasPrice, new(big.Int).SetUint64(gasLimit))
+		}
+		needValue.Add(needValue, new(big.Int).Mul(big.NewInt(5), gasFee))
 
-	err = b.checkCoinBalance(args.From, needValue)
-	if err != nil {
-		return nil, err
+		err = b.checkCoinBalance(args.From, needValue)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// assign nonce immediately before construct tx
@@ -224,6 +231,10 @@ func (b *Bridge) getGasPrice(args *tokens.BuildTxArgs) (price *big.Int, err erro
 		}
 	}
 
+	if params.IsTestMode {
+		return price, nil
+	}
+
 	price, err = b.adjustSwapGasPrice(args, price)
 	if err != nil {
 		return nil, err
@@ -285,10 +296,9 @@ func (b *Bridge) getAccountNonce(args *tokens.BuildTxArgs) (nonceptr *uint64, er
 		return &nonce, err
 	}
 
-	if params.IsAutoSwapNonceEnabled() { // increase automatically
+	if params.IsAutoSwapNonceEnabled(b.ChainConfig.ChainID) { // increase automatically
 		nonce = b.GetSwapNonce(args.From)
 		return &nonce, nil
-
 	}
 
 	for i := 0; i < retryRPCCount; i++ {

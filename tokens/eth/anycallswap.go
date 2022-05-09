@@ -25,9 +25,10 @@ var (
 	// LogAnyCall(address,address,bytes,address,uint256)
 	LogCurveAnyCallTopic = common.FromHex("0x9ca1de98ebed0a9c38ace93d3ca529edacbbe199cf1b6f0f416ae9b724d4a81c")
 	CurveAnyExecFuncHash = common.FromHex("0xb4c5dbd0")
+
+	defMinReserveBudget = big.NewInt(1e16)
 )
 
-// nolint:dupl // ok
 func (b *Bridge) registerAnyCallSwapTx(txHash string, logIndex int) ([]*tokens.SwapTxInfo, []error) {
 	commonInfo := &tokens.SwapTxInfo{}
 	commonInfo.SwapType = tokens.AnyCallSwapType // SwapType
@@ -58,6 +59,7 @@ func (b *Bridge) registerAnyCallSwapTx(txHash string, logIndex int) ([]*tokens.S
 		err := b.verifyAnyCallSwapTxLog(swapInfo, receipt.Logs[i])
 		switch {
 		case errors.Is(err, tokens.ErrSwapoutLogNotFound),
+			errors.Is(err, tokens.ErrTxWithWrongTopics),
 			errors.Is(err, tokens.ErrTxWithWrongContract):
 			continue
 		case err == nil:
@@ -233,6 +235,17 @@ func (b *Bridge) checkAnyCallSwapInfo(swapInfo *tokens.SwapTxInfo) error {
 	dstBridge := router.GetBridgeByChainID(swapInfo.ToChainID.String())
 	if dstBridge == nil {
 		return tokens.ErrNoBridgeForChainID
+	}
+	// check budget on dest chain to prvent DOS attack
+	if params.HasMinReserveBudgetConfig() {
+		minReserveBudget := params.GetMinReserveBudget(dstBridge.GetChainConfig().ChainID)
+		if minReserveBudget == nil {
+			minReserveBudget = defMinReserveBudget
+		}
+		callFrom := getCallFrom(swapInfo)
+		if err := tokens.CheckNativeBalance(dstBridge, callFrom, minReserveBudget); err != nil {
+			return tokens.ErrNoEnoughReserveBudget
+		}
 	}
 	return nil
 }
