@@ -213,7 +213,7 @@ func IsBigValueSwap(swapInfo *tokens.SwapTxInfo) bool {
 		return false
 	}
 	fromDecimals := tokenCfg.Decimals
-	bigValueThreshold := tokens.GetBigValueThreshold(tokenID, swapInfo.ToChainID.String(), fromDecimals)
+	bigValueThreshold := tokens.GetBigValueThreshold(tokenID, swapInfo.FromChainID.String(), swapInfo.ToChainID.String(), fromDecimals)
 	return swapInfo.Value.Cmp(bigValueThreshold) > 0
 }
 

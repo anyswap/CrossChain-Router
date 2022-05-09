@@ -113,7 +113,7 @@ func InitRouterBridges(isServer bool) {
 
 	router.PrintMultichainTokens()
 
-	loadSwapConfigs(dontPanic)
+	loadSwapAndFeeConfigs(dontPanic)
 
 	if params.SignWithPrivateKey() {
 		for _, chainID := range chainIDs {
@@ -129,44 +129,109 @@ func InitRouterBridges(isServer bool) {
 	success = true
 }
 
-func loadSwapConfigs(dontPanic bool) {
+func loadSwapAndFeeConfigs(dontPanic bool) {
 	if !tokens.IsERC20Router() {
 		return
 	}
-	logErrFunc := log.GetLogFuncOr(dontPanic, log.Error, log.Fatal)
+
 	swapConfigs := new(sync.Map)
+	feeConfigs := new(sync.Map)
+
 	wg := new(sync.WaitGroup)
 	for _, tokenID := range router.AllTokenIDs {
-		swapConfig := new(sync.Map)
-		swapConfigs.Store(tokenID, swapConfig)
+		supportChainIDs := make([]*big.Int, 0, len(router.AllChainIDs))
 		for _, chainID := range router.AllChainIDs {
-			wg.Add(1)
-			go func(wg *sync.WaitGroup, tokenID string, chainID *big.Int) {
-				defer wg.Done()
+			multichainToken := router.GetCachedMultichainToken(tokenID, chainID.String())
+			if multichainToken != "" {
+				supportChainIDs = append(supportChainIDs, chainID)
+			}
+		}
+		if len(supportChainIDs) == 0 {
+			continue
+		}
 
-				multichainToken := router.GetCachedMultichainToken(tokenID, chainID.String())
-				if multichainToken == "" {
-					log.Debug("ignore swap config as no multichain token exist", "tokenID", tokenID, "chainID", chainID)
-					return
-				}
-				swapCfg, err := router.GetSwapConfig(tokenID, chainID)
+		tokenIDSwapConfig := new(sync.Map)
+		swapConfigs.Store(tokenID, tokenIDSwapConfig)
+
+		tokenIDFeeConfig := new(sync.Map)
+		feeConfigs.Store(tokenID, tokenIDFeeConfig)
+
+		wg.Add(2)
+		go loadSwapConfigs(wg, tokenIDSwapConfig, tokenID, supportChainIDs, dontPanic)
+		go loadFeeConfigs(wg, tokenIDFeeConfig, tokenID, supportChainIDs, dontPanic)
+	}
+	wg.Wait()
+
+	tokens.SetSwapConfigs(swapConfigs)
+	tokens.SetFeeConfigs(feeConfigs)
+
+	log.Info("load all swap and fee config success")
+}
+
+//nolint:dupl // allow duplicate
+func loadSwapConfigs(wg *sync.WaitGroup, swapConfigs *sync.Map, tokenID string, supportChainIDs []*big.Int, dontPanic bool) {
+	defer wg.Done()
+
+	logErrFunc := log.GetLogFuncOr(dontPanic, log.Error, log.Fatal)
+
+	wg2 := new(sync.WaitGroup)
+	for i, fromChainID := range supportChainIDs {
+		fmap := new(sync.Map)
+		swapConfigs.Store(fromChainID.String(), fmap)
+		for j, toChainID := range supportChainIDs {
+			if i == j {
+				continue
+			}
+			wg2.Add(1)
+			go func(wg *sync.WaitGroup, tokenID string, fromChainID, toChainID *big.Int) {
+				defer wg.Done()
+				swapCfg, err := router.GetActualSwapConfig(tokenID, fromChainID, toChainID)
 				if err != nil {
-					logErrFunc("get swap config failed", "tokenID", tokenID, "chainID", chainID, "err", err)
-					return
+					logErrFunc("get swap config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "err", err)
 				}
 				err = swapCfg.CheckConfig()
 				if err != nil {
-					logErrFunc("check swap config failed", "tokenID", tokenID, "chainID", chainID, "err", err)
-					return
+					logErrFunc("check swap config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "err", err)
 				}
-				swapConfig.Store(chainID.String(), swapCfg)
-				log.Info("load swap config success", "tokenID", tokenID, "chainID", chainID, "multichainToken", multichainToken)
-			}(wg, tokenID, chainID)
+				fmap.Store(toChainID.String(), swapCfg)
+				log.Info("load swap config success", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID)
+			}(wg2, tokenID, fromChainID, toChainID)
 		}
 	}
-	wg.Wait()
-	tokens.SetSwapConfigs(swapConfigs)
-	log.Info("load all swap config success")
+	wg2.Wait()
+}
+
+//nolint:dupl // allow duplicate
+func loadFeeConfigs(wg *sync.WaitGroup, feeConfigs *sync.Map, tokenID string, supportChainIDs []*big.Int, dontPanic bool) {
+	defer wg.Done()
+
+	logErrFunc := log.GetLogFuncOr(dontPanic, log.Error, log.Fatal)
+
+	wg2 := new(sync.WaitGroup)
+	for i, fromChainID := range supportChainIDs {
+		fmap := new(sync.Map)
+		feeConfigs.Store(fromChainID.String(), fmap)
+		for j, toChainID := range supportChainIDs {
+			if i == j {
+				continue
+			}
+			wg2.Add(1)
+			go func(wg *sync.WaitGroup, tokenID string, fromChainID, toChainID *big.Int) {
+				defer wg.Done()
+				feeCfg, err := router.GetActualFeeConfig(tokenID, fromChainID, toChainID)
+				if err != nil {
+					logErrFunc("get fee config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "err", err)
+				}
+				err = feeCfg.CheckConfig()
+				if err != nil {
+					logErrFunc("check fee config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "err", err)
+				}
+				fmap.Store(toChainID.String(), feeCfg)
+				log.Info("load fee config success", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID)
+			}(wg2, tokenID, fromChainID, toChainID)
+		}
+	}
+	wg2.Wait()
 }
 
 // InitGatewayConfig impl
@@ -246,7 +311,7 @@ func InitChainConfig(b tokens.IBridge, chainID *big.Int) {
 	log.Info("init chain config success", "blockChain", chainCfg.BlockChain, "chainID", chainID, "isReload", isReload)
 
 	routerContract := chainCfg.RouterContract
-	if !isRouterInfoLoaded(routerContract) {
+	if routerContract != "" && !isRouterInfoLoaded(routerContract) {
 		err = b.InitRouterInfo(routerContract)
 		if err == nil {
 			routerInfoIsLoaded.Store(routerContract, struct{}{})
@@ -310,22 +375,14 @@ func InitTokenConfig(b tokens.IBridge, tokenID string, chainID *big.Int) {
 			return
 		}
 	}
-	routerContract, err := router.GetCustomConfig(chainID, tokenAddr)
-	if err != nil {
-		logErrFunc("get custom config failed", "chainID", chainID, "key", tokenAddr, "err", err)
-		if isReload {
-			return
-		}
-	}
-
-	tokenCfg.RouterContract = routerContract
 	b.SetTokenConfig(tokenAddr, tokenCfg)
 
 	router.SetMultichainToken(tokenID, chainID.String(), tokenAddr)
 
 	log.Info(fmt.Sprintf("[%5v] init '%v' token config success", chainID, tokenID), "tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals)
 
-	if !isRouterInfoLoaded(routerContract) {
+	routerContract := tokenCfg.RouterContract
+	if routerContract != "" && !isRouterInfoLoaded(routerContract) {
 		err = b.InitRouterInfo(routerContract)
 		if err == nil {
 			routerInfoIsLoaded.Store(routerContract, struct{}{})

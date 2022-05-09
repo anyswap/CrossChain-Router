@@ -215,10 +215,25 @@ func GetTokenConfigHandler(w http.ResponseWriter, r *http.Request) {
 func GetSwapConfigHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	tokenID := vars["tokenid"]
-	chainID := vars["chainid"]
-	swapConfig := swapapi.ConvertSwapConfig(tokens.GetSwapConfig(tokenID, chainID))
+	fromChainID := vars["fromchainid"]
+	toChainID := vars["tochainid"]
+	swapConfig := swapapi.ConvertSwapConfig(tokens.GetSwapConfig(tokenID, fromChainID, toChainID))
 	if swapConfig == nil {
 		writeResponse(w, nil, fmt.Errorf("swap config not found"))
+	} else {
+		writeResponse(w, swapConfig, nil)
+	}
+}
+
+// GetFeeConfigHandler handler
+func GetFeeConfigHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	tokenID := vars["tokenid"]
+	fromChainID := vars["fromchainid"]
+	toChainID := vars["tochainid"]
+	swapConfig := swapapi.ConvertFeeConfig(tokens.GetFeeConfig(tokenID, fromChainID, toChainID))
+	if swapConfig == nil {
+		writeResponse(w, nil, fmt.Errorf("fee config not found"))
 	} else {
 		writeResponse(w, swapConfig, nil)
 	}

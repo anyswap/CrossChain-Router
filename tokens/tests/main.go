@@ -110,17 +110,25 @@ func initRouter() {
 	swapConfigs := new(sync.Map)
 	swapConfig := new(sync.Map)
 	swapConfigs.Store(testCfg.Token.TokenID, swapConfig)
+
+	feeConfigs := new(sync.Map)
+	feeConfig := new(sync.Map)
+	feeConfigs.Store(testCfg.Token.TokenID, feeConfig)
+
 	swapCfg := testCfg.GetSwapConfig()
+	feeCfg := testCfg.GetFeeConfig()
 
 	for _, chainID := range router.AllChainIDs {
 		router.SetBridge(chainID.String(), bridge)
 		tokensMap.Store(chainID.String(), testCfg.Token.ContractAddress)
-		swapConfig.Store(chainID.String(), swapCfg)
+		swapConfig.Store("0", swapCfg)
+		feeConfig.Store("0", feeCfg)
 		params.SetSignerPrivateKey(chainID.String(), testCfg.SignWithPrivateKey)
 	}
 	router.PrintMultichainTokens()
 
 	tokens.SetSwapConfigs(swapConfigs)
+	tokens.SetFeeConfigs(feeConfigs)
 }
 
 func startWork() {
