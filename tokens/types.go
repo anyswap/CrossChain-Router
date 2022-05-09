@@ -22,7 +22,19 @@ const (
 // SwapSubType constants
 const (
 	CurveAnycallSubType = "curve"
+	AnycallSubTypeV5    = "v5" // for curve
+	AnycallSubTypeV6    = "v6" // for hundred
 )
+
+// IsValidAnycallSubType is valid anycall subType
+func IsValidAnycallSubType(subType string) bool {
+	switch subType {
+	case CurveAnycallSubType, AnycallSubTypeV5, AnycallSubTypeV6:
+		return true
+	default:
+		return false
+	}
+}
 
 func (s SwapType) String() string {
 	switch s {
@@ -68,27 +80,20 @@ type NFTSwapInfo struct {
 
 // AnyCallSwapInfo struct
 type AnyCallSwapInfo struct {
-	CallFrom   string          `json:"callFrom"`
-	CallTo     []string        `json:"callTo"`
-	CallData   []hexutil.Bytes `json:"callData"`
-	Callbacks  []string        `json:"callbacks"`
-	CallNonces []*big.Int      `json:"callNonces"`
-}
-
-// CurveAnyCallSwapInfo struct
-type CurveAnyCallSwapInfo struct {
 	CallFrom string        `json:"callFrom"`
 	CallTo   string        `json:"callTo"`
 	CallData hexutil.Bytes `json:"callData"`
 	Fallback string        `json:"fallback"`
+	Flags    string        `json:"flags,omitempty"`
+	AppID    string        `json:"appid,omitempty"`
+	Nonce    string        `json:"nonce,omitempty"`
 }
 
 // SwapInfo struct
 type SwapInfo struct {
-	ERC20SwapInfo        *ERC20SwapInfo        `json:"routerSwapInfo,omitempty"`
-	NFTSwapInfo          *NFTSwapInfo          `json:"nftSwapInfo,omitempty"`
-	AnyCallSwapInfo      *AnyCallSwapInfo      `json:"anycallSwapInfo,omitempty"`
-	CurveAnyCallSwapInfo *CurveAnyCallSwapInfo `json:"anycallSwapInfo2,omitempty"`
+	ERC20SwapInfo   *ERC20SwapInfo   `json:"routerSwapInfo,omitempty"`
+	NFTSwapInfo     *NFTSwapInfo     `json:"nftSwapInfo,omitempty"`
+	AnyCallSwapInfo *AnyCallSwapInfo `json:"anycallSwapInfo2,omitempty"`
 }
 
 // GetTokenID get tokenID
