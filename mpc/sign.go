@@ -37,15 +37,10 @@ var (
 	signGroupFailuresMap      = make(map[string]signFailures) // key is groupID
 )
 
-type signFailures struct {
-	count    int
-	lastTime int64
-}
-
-func pingMPCNode(nodeInfo *NodeInfo) (err error) {
+func (c *Config) pingMPCNode(nodeInfo *NodeInfo) (err error) {
 	rpcAddr := nodeInfo.mpcRPCAddress
 	for j := 0; j < pingCount; j++ {
-		_, err = GetEnode(rpcAddr)
+		_, err = c.GetEnode(rpcAddr)
 		if err == nil {
 			return nil
 		}
@@ -56,29 +51,29 @@ func pingMPCNode(nodeInfo *NodeInfo) (err error) {
 }
 
 // DoSignOneEC mpc sign single msgHash with context msgContext
-func DoSignOneEC(signPubkey, msgHash, msgContext string) (keyID string, rsvs []string, err error) {
-	return DoSign(SignTypeEC256K1, signPubkey, []string{msgHash}, []string{msgContext})
+func (c *Config) DoSignOneEC(signPubkey, msgHash, msgContext string) (keyID string, rsvs []string, err error) {
+	return c.DoSign(c.signTypeEC256K1, signPubkey, []string{msgHash}, []string{msgContext})
 }
 
 // DoSignOneED mpc sign single msgHash with context msgContext
-func DoSignOneED(signPubkey, msgHash, msgContext string) (keyID string, rsvs []string, err error) {
-	return DoSign(SignTypeED25519, signPubkey, []string{msgHash}, []string{msgContext})
+func (c *Config) DoSignOneED(signPubkey, msgHash, msgContext string) (keyID string, rsvs []string, err error) {
+	return c.DoSign(signTypeED25519, signPubkey, []string{msgHash}, []string{msgContext})
 }
 
 // DoSignOne mpc sign single msgHash with context msgContext
-func DoSignOne(signType, signPubkey, msgHash, msgContext string) (keyID string, rsvs []string, err error) {
-	return DoSign(signType, signPubkey, []string{msgHash}, []string{msgContext})
+func (c *Config) DoSignOne(signType, signPubkey, msgHash, msgContext string) (keyID string, rsvs []string, err error) {
+	return c.DoSign(signType, signPubkey, []string{msgHash}, []string{msgContext})
 }
 
 // DoSign mpc sign msgHash with context msgContext
-func DoSign(signType, signPubkey string, msgHash, msgContext []string) (keyID string, rsvs []string, err error) {
+func (c *Config) DoSign(signType, signPubkey string, msgHash, msgContext []string) (keyID string, rsvs []string, err error) {
 	log.Debug("mpc DoSign", "msgHash", msgHash, "msgContext", msgContext, "signType", signType)
 	if signPubkey == "" {
 		return "", nil, errSignWithoutPublickey
 	}
 	for i := 0; i < retrySignLoop; i++ {
-		for _, mpcNode := range allInitiatorNodes {
-			if err = pingMPCNode(mpcNode); err != nil {
+		for _, mpcNode := range c.allInitiatorNodes {
+			if err = c.pingMPCNode(mpcNode); err != nil {
 				continue
 			}
 			signGroupIndexes := mpcNode.getUsableSignGroupIndexes()
@@ -92,7 +87,7 @@ func DoSign(signType, signPubkey string, msgHash, msgContext []string) (keyID st
 			startIndex := randIndex.Int64()
 			i := startIndex
 			for {
-				keyID, rsvs, err = doSignImpl(mpcNode, signGroupIndexes[i], signType, signPubkey, msgHash, msgContext)
+				keyID, rsvs, err = c.doSignImpl(mpcNode, signGroupIndexes[i], signType, signPubkey, msgHash, msgContext)
 				if err == nil {
 					return keyID, rsvs, nil
 				}
@@ -105,11 +100,11 @@ func DoSign(signType, signPubkey string, msgHash, msgContext []string) (keyID st
 		time.Sleep(2 * time.Second)
 	}
 	log.Warn("mpc DoSign failed", "keyID", keyID, "msgHash", msgHash, "msgContext", msgContext, "signType", signType, "err", err)
-	return keyID, nil, errDoSignFailed
+	return "", nil, errDoSignFailed
 }
 
-func doSignImpl(mpcNode *NodeInfo, signGroupIndex int, signType, signPubkey string, msgHash, msgContext []string) (keyID string, rsvs []string, err error) {
-	nonce, err := GetSignNonce(mpcNode.mpcUser.String(), mpcNode.mpcRPCAddress)
+func (c *Config) doSignImpl(mpcNode *NodeInfo, signGroupIndex int, signType, signPubkey string, msgHash, msgContext []string) (keyID string, rsvs []string, err error) {
+	nonce, err := c.GetSignNonce(mpcNode.mpcUser.String(), mpcNode.mpcRPCAddress)
 	if err != nil {
 		return "", nil, err
 	}
@@ -121,15 +116,15 @@ func doSignImpl(mpcNode *NodeInfo, signGroupIndex int, signType, signPubkey stri
 		MsgContext: msgContext,
 		Keytype:    signType,
 		GroupID:    signGroup,
-		ThresHold:  mpcThreshold,
-		Mode:       mpcMode,
+		ThresHold:  c.mpcThreshold,
+		Mode:       c.mpcMode,
 		TimeStamp:  common.NowMilliStr(),
 	}
 	payload, err := json.Marshal(txdata)
 	if err != nil {
 		return "", nil, err
 	}
-	if verifySignatureInAccept {
+	if c.verifySignatureInAccept {
 		// append payload signature into the end of message context
 		sighash := common.Keccak256Hash(payload)
 		signature, errf := crypto.Sign(sighash[:], mpcNode.keyWrapper.PrivateKey)
@@ -146,7 +141,7 @@ func doSignImpl(mpcNode *NodeInfo, signGroupIndex int, signType, signPubkey stri
 	}
 
 	rpcAddr := mpcNode.mpcRPCAddress
-	keyID, err = Sign(rawTX, rpcAddr)
+	keyID, err = c.Sign(rawTX, rpcAddr)
 	if err != nil {
 		return "", nil, err
 	}
@@ -154,24 +149,24 @@ func doSignImpl(mpcNode *NodeInfo, signGroupIndex int, signType, signPubkey stri
 		return "", nil, errEmptyKeyID
 	}
 
-	rsvs, err = getSignResult(keyID, rpcAddr, msgContext)
+	rsvs, err = c.getSignResult(keyID, rpcAddr)
 	if err != nil {
-		if maxSignGroupFailures > 0 {
-			old := signGroupFailuresMap[signGroup]
-			signGroupFailuresMap[signGroup] = signFailures{
+		if c.maxSignGroupFailures > 0 {
+			old := c.signGroupFailuresMap[signGroup]
+			c.signGroupFailuresMap[signGroup] = signFailures{
 				count:    old.count + 1,
 				lastTime: time.Now().Unix(),
 			}
-			if old.count+1 >= maxSignGroupFailures {
+			if old.count+1 >= c.maxSignGroupFailures {
 				log.Error("delete sign group as consecutive failures", "signGroup", signGroup)
 				mpcNode.deleteSignGroup(signGroupIndex)
 			}
 		}
-		return keyID, nil, err
+		return "", nil, err
 	}
-	if maxSignGroupFailures > 0 {
+	if c.maxSignGroupFailures > 0 {
 		// reset when succeed
-		signGroupFailuresMap[signGroup] = signFailures{
+		c.signGroupFailuresMap[signGroup] = signFailures{
 			count:    0,
 			lastTime: time.Now().Unix(),
 		}
@@ -180,12 +175,12 @@ func doSignImpl(mpcNode *NodeInfo, signGroupIndex int, signType, signPubkey stri
 		for _, rsv := range rsvs {
 			signature := common.FromHex(rsv)
 			if len(signature) != crypto.SignatureLength {
-				return keyID, nil, errWrongSignatureLength
+				return "", nil, errWrongSignatureLength
 			}
 			r := common.ToHex(signature[:32])
 			err = mongodb.AddUsedRValue(signPubkey, r)
 			if err != nil {
-				return keyID, nil, errRValueIsUsed
+				return "", nil, errRValueIsUsed
 			}
 		}
 	}
@@ -193,15 +188,15 @@ func doSignImpl(mpcNode *NodeInfo, signGroupIndex int, signType, signPubkey stri
 }
 
 // GetSignStatusByKeyID get sign status by keyID
-func GetSignStatusByKeyID(keyID string) (rsvs []string, err error) {
-	return getSignResult(keyID, defaultMPCNode.mpcRPCAddress, nil)
+func (c *Config) GetSignStatusByKeyID(keyID string) (rsvs []string, err error) {
+	return c.getSignResult(keyID, c.defaultMPCNode.mpcRPCAddress)
 }
 
-func getSignResult(keyID, rpcAddr string, msgContext []string) (rsvs []string, err error) {
+func (c *Config) getSignResult(keyID, rpcAddr string) (rsvs []string, err error) {
 	log.Info("start get sign status", "keyID", keyID)
 	var signStatus *SignStatus
 	i := 0
-	signTimer := time.NewTimer(mpcSignTimeout)
+	signTimer := time.NewTimer(c.mpcSignTimeout)
 	defer signTimer.Stop()
 LOOP_GET_SIGN_STATUS:
 	for {
@@ -213,7 +208,7 @@ LOOP_GET_SIGN_STATUS:
 			}
 			break LOOP_GET_SIGN_STATUS
 		default:
-			signStatus, err = GetSignStatus(keyID, rpcAddr)
+			signStatus, err = c.GetSignStatus(keyID, rpcAddr)
 			if err == nil {
 				rsvs = signStatus.Rsv
 				break LOOP_GET_SIGN_STATUS
@@ -264,25 +259,18 @@ func BuildMPCRawTx(nonce uint64, payload []byte, keyWrapper *keystore.Key) (stri
 // HasValidSignature has valid signature
 func (s *SignInfoData) HasValidSignature() bool {
 	msgContextLen := len(s.MsgContext)
-	if !verifySignatureInAccept {
-		return msgContextLen == 1
-	}
-
-	if msgContextLen != 2 {
-		return false
+	if msgContextLen == 1 {
+		return true
 	}
 	msgContext := s.MsgContext[:msgContextLen-1]
 	msgSig := common.FromHex(s.MsgContext[msgContextLen-1])
-	if len(msgSig) != crypto.SignatureLength {
-		return false
-	}
 
 	txdata := SignData{
 		TxType:     "SIGN",
 		PubKey:     s.PubKey,
 		MsgHash:    s.MsgHash,
 		MsgContext: msgContext,
-		Keytype:    SignTypeEC256K1,
+		Keytype:    s.KeyType,
 		GroupID:    s.GroupID,
 		ThresHold:  s.ThresHold,
 		Mode:       s.Mode,

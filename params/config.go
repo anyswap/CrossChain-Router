@@ -54,6 +54,7 @@ var (
 	dontCheckTotalSupplyTokenIDs         = make(map[string]struct{})
 	checkTokenBalanceEnabledChains       = make(map[string]struct{})
 	ignoreAnycallFallbackAppIDs          = make(map[string]struct{})
+	useFastMPCChains                     map[string]struct{}
 
 	isDebugMode           *bool
 	isNFTSwapWithData     *bool
@@ -82,6 +83,10 @@ type RouterServerConfig struct {
 	Assistants []string
 	MongoDB    *MongoDBConfig
 	APIServer  *APIServerConfig
+
+	ChainIDBlackList []string `toml:",omitempty" json:",omitempty"`
+	TokenIDBlackList []string `toml:",omitempty" json:",omitempty"`
+	AccountBlackList []string `toml:",omitempty" json:",omitempty"`
 
 	AutoSwapNonceEnabledChains []string `toml:",omitempty" json:",omitempty"`
 
@@ -125,12 +130,12 @@ type RouterConfig struct {
 	Identifier  string
 	SwapType    string
 	SwapSubType string
-
-	Onchain *OnchainConfig
+	Onchain     *OnchainConfig
 	*GatewayConfigs
 
-	MPC   *MPCConfig
-	Extra *ExtraConfig `toml:",omitempty" json:",omitempty"`
+	MPC         *MPCConfig
+	FastMPC     *MPCConfig   `toml:",omitempty" json:",omitempty"`
+	Extra       *ExtraConfig `toml:",omitempty" json:",omitempty"`
 
 	*Blacklists
 }
@@ -180,6 +185,7 @@ type ExtraConfig struct {
 	EnableCheckTxBlockHashChains         []string `toml:",omitempty" json:",omitempty"`
 	EnableCheckTxBlockIndexChains        []string `toml:",omitempty" json:",omitempty"`
 	DisableUseFromChainIDInReceiptChains []string `toml:",omitempty" json:",omitempty"`
+	UseFastMPCChains                     []string `toml:",omitempty" json:",omitempty"`
 	DontCheckReceivedTokenIDs            []string `toml:",omitempty" json:",omitempty"`
 	DontCheckBalanceTokenIDs             []string `toml:",omitempty" json:",omitempty"`
 	DontCheckTotalSupplyTokenIDs         []string `toml:",omitempty" json:",omitempty"`
@@ -228,6 +234,11 @@ type MPCConfig struct {
 	MinIntervalToAddSignGroup int64  `toml:",omitempty" json:",omitempty"`
 
 	VerifySignatureInAccept bool `toml:",omitempty" json:",omitempty"`
+
+	GetAcceptListLoopInterval  uint64 `toml:",omitempty" json:",omitempty"`
+	GetAcceptListRetryInterval uint64 `toml:",omitempty" json:",omitempty"`
+	MaxAcceptSignTimeInterval  int64  `toml:",omitempty" json:",omitempty"`
+	PendingInvalidAccept       bool   `toml:",omitempty" json:",omitempty"`
 
 	GroupID       *string
 	NeededOracles *uint32
@@ -478,16 +489,20 @@ func EnableSignWithPrivateKey() {
 }
 
 // GetSignerPrivateKey get signer private key (use for testing)
-func GetSignerPrivateKey(chainID string) string {
-	if prikey, exist := routerConfig.MPC.SignerPrivateKeys[chainID]; exist {
+func (c *MPCConfig) GetSignerPrivateKey(chainID string) string {
+	if prikey, exist := c.SignerPrivateKeys[chainID]; exist {
 		return prikey
 	}
 	return ""
 }
 
 // SetSignerPrivateKey set signer private key (use for testing)
-func SetSignerPrivateKey(chainID, prikey string) {
-	routerConfig.MPC.SignerPrivateKeys[chainID] = prikey
+func (c *MPCConfig) SetSignerPrivateKey(chainID, prikey string) {
+	c.SignWithPrivateKey = true
+	if len(c.SignerPrivateKeys) == 0 {
+		c.SignerPrivateKeys = make(map[string]string)
+	}
+	c.SignerPrivateKeys[chainID] = prikey
 }
 
 // IsDebugMode is debug mode, add more debugging log infos
@@ -767,7 +782,10 @@ func GetRouterOracleConfig() *RouterOracleConfig {
 }
 
 // GetMPCConfig get mpc config
-func GetMPCConfig() *MPCConfig {
+func GetMPCConfig(isFastMPC bool) *MPCConfig {
+	if isFastMPC {
+		return routerConfig.FastMPC
+	}
 	return routerConfig.MPC
 }
 
@@ -1020,6 +1038,23 @@ func IsUseFromChainIDInReceiptDisabled(chainID string) bool {
 	return exist
 }
 
+func initUseFastMPCChains() {
+	useFastMPCChains = make(map[string]struct{})
+	if GetExtraConfig() == nil || len(GetExtraConfig().UseFastMPCChains) == 0 {
+		return
+	}
+	for _, cid := range GetExtraConfig().UseFastMPCChains {
+		useFastMPCChains[cid] = struct{}{}
+	}
+	log.Info("initUseFastMPCChains success")
+}
+
+// IsUseFastMPC is use fast mpc
+func IsUseFastMPC(chainID string) bool {
+	_, exist := useFastMPCChains[chainID]
+	return exist
+}
+
 func initDontCheckReceivedTokenIDs() {
 	if GetExtraConfig() == nil || len(GetExtraConfig().DontCheckReceivedTokenIDs) == 0 {
 		return
@@ -1252,6 +1287,9 @@ func LoadGatewayConfigs() (*GatewayConfigs, error) {
 // SetDataDir set data dir
 func SetDataDir(dir string, isServer bool) {
 	if dir == "" {
+		if !isServer {
+			log.Warn("suggest specify '--datadir' to enhance accept job")
+		}
 		return
 	}
 	currDir, err := common.CurrentDir()

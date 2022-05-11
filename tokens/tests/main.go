@@ -106,11 +106,13 @@ func initRouter() {
 	swapConfigs.Store(testCfg.Token.TokenID, swapConfig)
 	swapCfg := testCfg.GetSwapConfig()
 
+	mpcConfig := params.GetMPCConfig(false)
+
 	for _, chainID := range router.AllChainIDs {
 		router.SetBridge(chainID.String(), bridge)
 		tokensMap.Store(chainID.String(), testCfg.Token.ContractAddress)
 		swapConfig.Store(chainID.String(), swapCfg)
-		params.SetSignerPrivateKey(chainID.String(), testCfg.SignWithPrivateKey)
+		mpcConfig.SetSignerPrivateKey(chainID.String(), testCfg.SignWithPrivateKey)
 		router.SetRouterInfo(
 			testCfg.Token.RouterContract,
 			chainID.String(),

@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	routerInfoIsLoaded = new(sync.Map) // key is chainID and router contract address
+	routerInfoIsLoaded = new(sync.Map) // key is router contract address
 )
 
 func getRouterInfoLoadedKey(chainID, routerContract string) string {
@@ -147,17 +147,7 @@ func InitRouterBridges(isServer bool) {
 
 	loadSwapConfigs()
 
-	if params.SignWithPrivateKey() {
-		for _, chainID := range chainIDs {
-			priKey := params.GetSignerPrivateKey(chainID.String())
-			if priKey == "" {
-				logErrFunc("missing config private key", "chainID", chainID)
-				return
-			}
-		}
-	} else {
-		mpc.Init(params.GetMPCConfig(), isServer)
-	}
+	mpc.Init(isServer)
 
 	success = true
 
