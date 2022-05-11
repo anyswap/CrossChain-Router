@@ -115,16 +115,7 @@ func InitRouterBridges(isServer bool) {
 
 	loadSwapAndFeeConfigs(dontPanic)
 
-	if params.SignWithPrivateKey() {
-		for _, chainID := range chainIDs {
-			priKey := params.GetSignerPrivateKey(chainID.String())
-			if priKey == "" {
-				logErrFunc("missing config private key", "chainID", chainID)
-			}
-		}
-	} else {
-		mpc.Init(params.GetMPCConfig(), isServer)
-	}
+	mpc.Init(isServer)
 
 	success = true
 }

@@ -378,6 +378,7 @@ func (c *ExtraConfig) CheckConfig() (err error) {
 	initEnableCheckTxBlockHashChains()
 	initEnableCheckTxBlockIndexChains()
 	initDisableUseFromChainIDInReceiptChains()
+	initUseFastMPCChains()
 	initDontCheckReceivedTokenIDs()
 
 	if c.UsePendingBalance {

@@ -38,7 +38,7 @@ func doReport() {
 	method := "swap.ReportOracleInfo"
 	timestamp := time.Now().Unix()
 	args := map[string]interface{}{
-		"enode":     mpc.GetSelfEnode(),
+		"enode":     mpc.GetMPCConfig(false).GetSelfEnode(),
 		"timestamp": timestamp,
 	}
 	url := params.GetRouterOracleConfig().ServerAPIAddress

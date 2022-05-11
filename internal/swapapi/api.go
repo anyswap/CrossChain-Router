@@ -69,10 +69,11 @@ func GetStatusInfo(status string) (map[string]interface{}, error) {
 
 // ReportOracleInfo report oracle info
 func ReportOracleInfo(oracle string, info *OracleInfo) error {
+	mpcConfig := mpc.GetMPCConfig(false)
 	var exist bool
-	for _, enode := range mpc.GetAllEnodes() {
+	for _, enode := range mpcConfig.GetAllEnodes() {
 		if strings.EqualFold(oracle, enode) {
-			if !strings.EqualFold(oracle, mpc.GetSelfEnode()) {
+			if !strings.EqualFold(oracle, mpcConfig.GetSelfEnode()) {
 				exist = true
 			}
 			break
