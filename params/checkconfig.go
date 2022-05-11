@@ -76,6 +76,13 @@ func (config *RouterConfig) CheckConfig(isServer bool) (err error) {
 		return err
 	}
 
+	if config.FastMPC != nil {
+		err = config.FastMPC.CheckConfig(isServer)
+		if err != nil {
+			return err
+		}
+	}
+
 	if config.Onchain == nil {
 		return errors.New("server must config 'Onchain'")
 	}

@@ -118,8 +118,10 @@ type NodeInfo struct {
 func Init(isServer bool) {
 	mpcConfig = initConfig(params.GetRouterConfig().MPC, isServer)
 
-	fastmpcConfig = initConfig(params.GetRouterConfig().FastMPC, isServer)
-	fastmpcConfig.IsFastMPC = true
+	if params.GetRouterConfig().FastMPC != nil {
+		fastmpcConfig = initConfig(params.GetRouterConfig().FastMPC, isServer)
+		fastmpcConfig.IsFastMPC = true
+	}
 }
 
 func initConfig(mpcParams *params.MPCConfig, isServer bool) *Config {
