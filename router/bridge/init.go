@@ -4,6 +4,7 @@ package bridge
 import (
 	"fmt"
 	"math/big"
+	"strings"
 	"sync"
 	"time"
 
@@ -20,9 +21,19 @@ var (
 	routerInfoIsLoaded = new(sync.Map) // key is router contract address
 )
 
-func isRouterInfoLoaded(routerContract string) bool {
-	_, exist := routerInfoIsLoaded.Load(routerContract)
+func getRouterInfoLoadedKey(chainID, routerContract string) string {
+	return strings.ToLower(fmt.Sprintf("%s:%s", chainID, routerContract))
+}
+
+func isRouterInfoLoaded(chainID, routerContract string) bool {
+	key := getRouterInfoLoadedKey(chainID, routerContract)
+	_, exist := routerInfoIsLoaded.Load(key)
 	return exist
+}
+
+func setRouterInfoLoaded(chainID, routerContract string) {
+	key := getRouterInfoLoadedKey(chainID, routerContract)
+	routerInfoIsLoaded.Store(key, struct{}{})
 }
 
 // InitRouterBridges init router bridges
@@ -246,10 +257,10 @@ func InitChainConfig(b tokens.IBridge, chainID *big.Int) {
 	log.Info("init chain config success", "blockChain", chainCfg.BlockChain, "chainID", chainID, "isReload", isReload)
 
 	routerContract := chainCfg.RouterContract
-	if !isRouterInfoLoaded(routerContract) {
+	if !isRouterInfoLoaded(chainID.String(), routerContract) {
 		err = b.InitRouterInfo(routerContract)
 		if err == nil {
-			routerInfoIsLoaded.Store(routerContract, struct{}{})
+			setRouterInfoLoaded(chainID.String(), routerContract)
 		} else {
 			logErrFunc("init chain router info failed", "routerContract", routerContract, "err", err)
 			if isReload {
@@ -325,10 +336,10 @@ func InitTokenConfig(b tokens.IBridge, tokenID string, chainID *big.Int) {
 
 	log.Info(fmt.Sprintf("[%5v] init '%v' token config success", chainID, tokenID), "tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals)
 
-	if !isRouterInfoLoaded(routerContract) {
+	if !isRouterInfoLoaded(chainID.String(), routerContract) {
 		err = b.InitRouterInfo(routerContract)
 		if err == nil {
-			routerInfoIsLoaded.Store(routerContract, struct{}{})
+			setRouterInfoLoaded(chainID.String(), routerContract)
 		} else {
 			logErrFunc("init token router info failed", "routerContract", routerContract, "err", err)
 			if isReload {
