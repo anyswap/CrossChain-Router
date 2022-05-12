@@ -109,7 +109,7 @@ func ConvertTokenConfig(c *tokens.TokenConfig) *TokenConfig {
 		ContractAddress: c.ContractAddress,
 		ContractVersion: c.ContractVersion,
 		RouterContract:  c.RouterContract,
-		Underlying:      c.GetUnderlying().String(),
+		Underlying:      c.GetUnderlying(),
 	}
 }
 
@@ -119,9 +119,18 @@ func ConvertSwapConfig(c *tokens.SwapConfig) *SwapConfig {
 		return nil
 	}
 	return &SwapConfig{
-		MaximumSwap:           c.MaximumSwap.String(),
-		MinimumSwap:           c.MinimumSwap.String(),
-		BigValueThreshold:     c.BigValueThreshold.String(),
+		MaximumSwap:       c.MaximumSwap.String(),
+		MinimumSwap:       c.MinimumSwap.String(),
+		BigValueThreshold: c.BigValueThreshold.String(),
+	}
+}
+
+// ConvertFeeConfig convert fee config
+func ConvertFeeConfig(c *tokens.FeeConfig) *FeeConfig {
+	if c == nil {
+		return nil
+	}
+	return &FeeConfig{
 		SwapFeeRatePerMillion: c.SwapFeeRatePerMillion,
 		MaximumSwapFee:        c.MaximumSwapFee.String(),
 		MinimumSwapFee:        c.MinimumSwapFee.String(),

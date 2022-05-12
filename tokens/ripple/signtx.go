@@ -1,7 +1,6 @@
 package ripple
 
 import (
-	"crypto/ecdsa"
 	"crypto/ed25519"
 	"encoding/hex"
 	"encoding/json"
@@ -55,13 +54,10 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 		return nil, "", err
 	}
 
-	if params.SignWithPrivateKey() {
-		privKey := params.GetSignerPrivateKey(b.ChainConfig.ChainID)
-		ecPrikey, errf := crypto.HexToECDSA(privKey)
-		if errf != nil {
-			return nil, "", errf
-		}
-		return b.SignTransactionWithPrivateKey(rawTx, ecPrikey)
+	mpcParams := params.GetMPCConfig(b.UseFastMPC)
+	if mpcParams.SignWithPrivateKey {
+		priKey := mpcParams.GetSignerPrivateKey(b.ChainConfig.ChainID)
+		return b.SignTransactionWithPrivateKey(rawTx, priKey)
 	}
 
 	jsondata, _ := json.Marshal(args.GetExtraArgs())
@@ -76,26 +72,27 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 	pubkey := common.FromHex(pubkeyStr)
 	isEd := isEd25519Pubkey(pubkey)
 
-	var signContent string
-	var signType string
+	var keyID string
+	var rsvs []string
 
+	mpcConfig := mpc.GetMPCConfig(b.UseFastMPC)
 	if isEd {
 		// mpc ed public key has no 0xed prefix
-		pubkeyStr = pubkeyStr[2:]
+		signPubKey := pubkeyStr[2:]
 		// the real sign content is (signing prefix + msg)
 		// when we hex encoding here, the mpc should do hex decoding there.
-		signContent = common.ToHex(msg)
-		signType = mpc.SignTypeEC256K1
+		signContent := common.ToHex(msg)
+		keyID, rsvs, err = mpcConfig.DoSignOneED(signPubKey, signContent, msgContext)
 	} else {
-		signContent = msgHash.String()
-		signType = mpc.SignTypeED25519
+		signPubKey := pubkeyStr
+		signContent := msgHash.String()
+		keyID, rsvs, err = mpcConfig.DoSignOneEC(signPubKey, signContent, msgContext)
 	}
 
-	keyID, rsvs, err := mpc.DoSignOne(signType, pubkeyStr, signContent, msgContext)
 	if err != nil {
 		return nil, "", err
 	}
-	log.Info(b.ChainConfig.BlockChain+" MPCSignTransaction finished", "keyID", keyID, "signContent", signContent, "txid", args.SwapID)
+	log.Info(b.ChainConfig.BlockChain+" MPCSignTransaction finished", "keyID", keyID, "txid", args.SwapID)
 
 	if len(rsvs) != 1 {
 		return nil, "", fmt.Errorf("get sign status require one rsv but have %v (keyID = %v)", len(rsvs), keyID)
@@ -121,8 +118,12 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 }
 
 // SignTransactionWithPrivateKey sign tx with ECDSA private key
-func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, privKey *ecdsa.PrivateKey) (signTx interface{}, txHash string, err error) {
-	return b.SignTransactionWithRippleKey(rawTx, rcrypto.NewECDSAKeyFromPrivKeyBytes(privKey.D.Bytes()), nil)
+func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, privKey string) (signTx interface{}, txHash string, err error) {
+	ecPrikey, err := crypto.HexToECDSA(privKey)
+	if err != nil {
+		return nil, "", err
+	}
+	return b.SignTransactionWithRippleKey(rawTx, rcrypto.NewECDSAKeyFromPrivKeyBytes(ecPrikey.D.Bytes()), nil)
 }
 
 // SignTransactionWithRippleKey sign tx with ripple key

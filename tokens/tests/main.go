@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
+	"sync"
 
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -71,7 +71,6 @@ func initRouter() {
 	testCfg := config.TestConfig
 
 	params.IsTestMode = true
-	params.EnableSignWithPrivateKey()
 	params.SetDebugMode(testCfg.IsDebugMode)
 
 	switch testCfg.Module {
@@ -86,7 +85,7 @@ func initRouter() {
 	bridge.SetGatewayConfig(testCfg.Gateway)
 	bridge.SetChainConfig(testCfg.Chain)
 	bridge.SetTokenConfig(testCfg.Token.ContractAddress, testCfg.Token)
-	bridge.InitAfterConfig(false)
+	bridge.InitAfterConfig()
 
 	_ = params.SetExtraConfig(
 		&params.ExtraConfig{
@@ -104,22 +103,33 @@ func initRouter() {
 		},
 	)
 
-	tokensMap := make(map[string]string)
-	router.MultichainTokens[strings.ToLower(testCfg.Token.TokenID)] = tokensMap
+	tokensMap := new(sync.Map)
+	router.SetMultichainTokens(testCfg.Token.TokenID, tokensMap)
 
-	swapConfigs := make(map[string]map[string]*tokens.SwapConfig)
-	swapConfigs[testCfg.Token.TokenID] = make(map[string]*tokens.SwapConfig)
+	swapConfigs := new(sync.Map)
+	swapConfig := new(sync.Map)
+	swapConfigs.Store(testCfg.Token.TokenID, swapConfig)
+
+	feeConfigs := new(sync.Map)
+	feeConfig := new(sync.Map)
+	feeConfigs.Store(testCfg.Token.TokenID, feeConfig)
+
 	swapCfg := testCfg.GetSwapConfig()
+	feeCfg := testCfg.GetFeeConfig()
+
+	mpcConfig := params.GetMPCConfig(false)
 
 	for _, chainID := range router.AllChainIDs {
-		router.RouterBridges[chainID.String()] = bridge
-		tokensMap[chainID.String()] = testCfg.Token.ContractAddress
-		swapConfigs[testCfg.Token.TokenID][chainID.String()] = swapCfg
-		params.SetSignerPrivateKey(chainID.String(), testCfg.SignWithPrivateKey)
+		router.SetBridge(chainID.String(), bridge)
+		tokensMap.Store(chainID.String(), testCfg.Token.ContractAddress)
+		swapConfig.Store("0", swapCfg)
+		feeConfig.Store("0", feeCfg)
+		mpcConfig.SetSignerPrivateKey(chainID.String(), testCfg.SignWithPrivateKey)
 	}
 	router.PrintMultichainTokens()
 
 	tokens.SetSwapConfigs(swapConfigs)
+	tokens.SetFeeConfigs(feeConfigs)
 }
 
 func startWork() {

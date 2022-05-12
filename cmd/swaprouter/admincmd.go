@@ -26,8 +26,18 @@ admin router swap
 				ArgsUsage: "<action> [comma separated arguments]",
 				Description: `
 maintain router.
-example:
+
+examples:
+
 <pause|unpause> <chainID[,chainID]...>
+
+<whitelist|unwhitelist> callbycontract,<chainID>,<address[,address]...>
+<whitelist|unwhitelist> callbycontractcodehash,<chainID>,<codehash[,codehash]...>
+<whitelist|unwhitelist> bigvalue,<tokenID>,<address[,address]...>
+
+<blacklist|unblacklist> chainid,<chainID[,chainID]...>
+<blacklist|unblacklist> tokenid,<tokenID[,tokenID]...>
+<blacklist|unblacklist> account,<address[,address]...>
 `,
 			},
 			{

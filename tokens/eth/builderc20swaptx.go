@@ -59,12 +59,13 @@ func GetSwapInFuncHash(tokenCfg *tokens.TokenConfig, forUnderlying bool) []byte 
 	case ForceAnySwapInNativeTokenVersion:
 		return AnySwapInNativeFuncHash
 	case 0:
-		if tokenCfg.GetUnderlying() == (common.Address{}) {
+		if common.HexToAddress(tokenCfg.GetUnderlying()) == (common.Address{}) {
 			// without underlying
 			return AnySwapInFuncHash
 		}
 	default:
-		if tokenCfg.GetUnderlying() == (common.Address{}) && !params.IsForceAnySwapInAuto() {
+		if common.HexToAddress(tokenCfg.GetUnderlying()) == (common.Address{}) &&
+			!params.IsForceAnySwapInAuto() {
 			// without underlying, and not force swapinAuto
 			return AnySwapInFuncHash
 		}
@@ -80,7 +81,7 @@ func GetSwapInAndExecFuncHash(tokenCfg *tokens.TokenConfig) []byte {
 	case ForceAnySwapInUnerlyingAndCallTokenVersion:
 		return AnySwapInUnderlyingAndExecFuncHash
 	default:
-		if tokenCfg.GetUnderlying() == (common.Address{}) {
+		if common.HexToAddress(tokenCfg.GetUnderlying()) == (common.Address{}) {
 			return AnySwapInAndExecFuncHash
 		}
 	}
@@ -230,7 +231,7 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 	if toTokenCfg == nil {
 		return receiver, amount, tokens.ErrMissTokenConfig
 	}
-	amount = tokens.CalcSwapValue(erc20SwapInfo.TokenID, b.ChainConfig.ChainID, args.OriginValue, fromTokenCfg.Decimals, toTokenCfg.Decimals, args.OriginFrom, args.OriginTxTo)
+	amount = tokens.CalcSwapValue(erc20SwapInfo.TokenID, args.FromChainID.String(), b.ChainConfig.ChainID, args.OriginValue, fromTokenCfg.Decimals, toTokenCfg.Decimals, args.OriginFrom, args.OriginTxTo)
 	return receiver, amount, err
 }
 

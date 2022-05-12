@@ -7,7 +7,7 @@ import (
 )
 
 // DoAcceptSign accept sign
-func DoAcceptSign(keyID, agreeResult string, msgHash, msgContext []string) (string, error) {
+func (c *Config) DoAcceptSign(keyID, agreeResult string, msgHash, msgContext []string) (string, error) {
 	nonce := uint64(0)
 	data := AcceptData{
 		TxType:     "ACCEPTSIGN",
@@ -21,9 +21,9 @@ func DoAcceptSign(keyID, agreeResult string, msgHash, msgContext []string) (stri
 	if err != nil {
 		return "", err
 	}
-	rawTX, err := BuildMPCRawTx(nonce, payload, defaultMPCNode.keyWrapper)
+	rawTX, err := BuildMPCRawTx(nonce, payload, c.defaultMPCNode.keyWrapper)
 	if err != nil {
 		return "", err
 	}
-	return AcceptSign(rawTX)
+	return c.AcceptSign(rawTX)
 }

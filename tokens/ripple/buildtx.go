@@ -138,7 +138,7 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 	if toTokenCfg == nil {
 		return receiver, amount, tokens.ErrMissTokenConfig
 	}
-	amount = tokens.CalcSwapValue(erc20SwapInfo.TokenID, b.ChainConfig.ChainID, args.OriginValue, fromTokenCfg.Decimals, toTokenCfg.Decimals, args.OriginFrom, args.OriginTxTo)
+	amount = tokens.CalcSwapValue(erc20SwapInfo.TokenID, args.FromChainID.String(), b.ChainConfig.ChainID, args.OriginValue, fromTokenCfg.Decimals, toTokenCfg.Decimals, args.OriginFrom, args.OriginTxTo)
 	return receiver, amount, err
 }
 
@@ -286,7 +286,7 @@ func (b *Bridge) GetSeq(args *tokens.BuildTxArgs) (nonceptr *uint64, err error) 
 // Partial and limit must be false
 func NewUnsignedPaymentTransaction(
 	key crypto.Key, keyseq *uint32, txseq uint32, dest string, destinationTag *uint32,
-	amt string, fee string, memo, path string, nodirect, partial, limit bool,
+	amt, fee, memo, path string, nodirect, partial, limit bool,
 ) (data.Transaction, data.Hash256, []byte) {
 	if partial {
 		log.Warn("Building tx with partial")

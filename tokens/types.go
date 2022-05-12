@@ -205,6 +205,7 @@ type AllExtras struct {
 	ReplaceNum uint64        `json:"replaceNum,omitempty"`
 	Sequence   *uint64       `json:"sequence,omitempty"`
 	Fee        *string       `json:"fee,omitempty"`
+	Gas        *uint64       `json:"gas,omitempty"`
 }
 
 // EthExtraArgs struct

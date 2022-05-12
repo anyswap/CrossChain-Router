@@ -6,7 +6,6 @@ import (
 	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
-	"github.com/anyswap/CrossChain-Router/v3/log"
 )
 
 // ChainConfig struct
@@ -16,6 +15,7 @@ type ChainConfig struct {
 	RouterContract string
 	Confirmations  uint64
 	InitialHeight  uint64
+	Extra          string
 
 	// cached value
 	chainID *big.Int
@@ -28,11 +28,12 @@ type TokenConfig struct {
 	ContractAddress string
 	ContractVersion uint64
 	RouterContract  string
+	Extra           string
 
 	RippleExtra *RippleTokenExtra
 
 	// calced value
-	underlying common.Address
+	underlying string
 }
 
 // RippleTokenExtra ripple extra
@@ -48,9 +49,13 @@ func (e *RippleTokenExtra) IsNative() bool {
 
 // SwapConfig struct
 type SwapConfig struct {
-	MaximumSwap           *big.Int
-	MinimumSwap           *big.Int
-	BigValueThreshold     *big.Int
+	MaximumSwap       *big.Int
+	MinimumSwap       *big.Int
+	BigValueThreshold *big.Int
+}
+
+// FeeConfig struct
+type FeeConfig struct {
 	SwapFeeRatePerMillion uint64
 	MaximumSwapFee        *big.Int
 	MinimumSwapFee        *big.Int
@@ -96,11 +101,7 @@ func (c *TokenConfig) CheckConfig() error {
 	if c.ContractAddress == "" {
 		return errors.New("token must config 'ContractAddress'")
 	}
-	if IsERC20Router() {
-		if c.ContractVersion == 0 {
-			log.Warn("token 'ContractVersion' is 0", "tokenID", c.TokenID, "address", c.ContractAddress)
-		}
-	} else if c.Decimals != 0 {
+	if !IsERC20Router() && c.Decimals != 0 {
 		return errors.New("non ERC20 token must config 'Decimals' to 0")
 	}
 	return nil
@@ -112,12 +113,12 @@ func (c *TokenConfig) IsStandardTokenVersion() bool {
 }
 
 // SetUnderlying set underlying
-func (c *TokenConfig) SetUnderlying(underlying common.Address) {
+func (c *TokenConfig) SetUnderlying(underlying string) {
 	c.underlying = underlying
 }
 
 // GetUnderlying get underlying
-func (c *TokenConfig) GetUnderlying() common.Address {
+func (c *TokenConfig) GetUnderlying() string {
 	return c.underlying
 }
 
@@ -127,15 +128,23 @@ func (c *SwapConfig) CheckConfig() error {
 	if c.MaximumSwap == nil || c.MaximumSwap.Sign() <= 0 {
 		return errors.New("token must config 'MaximumSwap' (positive)")
 	}
-	if c.MinimumSwap == nil || c.MinimumSwap.Sign() <= 0 {
-		return errors.New("token must config 'MinimumSwap' (positive)")
-	}
-	if c.MinimumSwap.Cmp(c.MaximumSwap) > 0 {
-		return errors.New("wrong token config, MinimumSwap > MaximumSwap")
+	if c.MinimumSwap == nil || c.MinimumSwap.Sign() < 0 {
+		return errors.New("token must config 'MinimumSwap' (non-negative)")
 	}
 	if c.BigValueThreshold == nil || c.BigValueThreshold.Sign() <= 0 {
 		return errors.New("token must config 'BigValueThreshold' (positive)")
 	}
+	if c.BigValueThreshold.Cmp(c.MaximumSwap) > 0 {
+		return errors.New("wrong token config, BigValueThreshold > MaximumSwap")
+	}
+	if c.MinimumSwap.Cmp(c.BigValueThreshold) > 0 {
+		return errors.New("wrong token config, MinimumSwap > BigValueThreshold")
+	}
+	return nil
+}
+
+// CheckConfig check fee config
+func (c *FeeConfig) CheckConfig() error {
 	if c.SwapFeeRatePerMillion >= 1000000 {
 		return errors.New("token must config 'SwapFeeRatePerMillion' (< 1000000)")
 	}
@@ -147,9 +156,6 @@ func (c *SwapConfig) CheckConfig() error {
 	}
 	if c.MinimumSwapFee.Cmp(c.MaximumSwapFee) > 0 {
 		return errors.New("wrong token config, MinimumSwapFee > MaximumSwapFee")
-	}
-	if c.MinimumSwap.Cmp(c.MinimumSwapFee) < 0 {
-		return errors.New("wrong token config, MinimumSwap < MinimumSwapFee")
 	}
 	if c.SwapFeeRatePerMillion == 0 && c.MinimumSwapFee.Sign() > 0.0 {
 		return errors.New("wrong token config, MinimumSwapFee should be 0 if SwapFeeRatePerMillion is 0")

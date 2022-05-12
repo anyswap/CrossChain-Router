@@ -29,7 +29,7 @@ func NewCrossChainBridge() *Bridge {
 }
 
 // InitAfterConfig init variables (ie. extra members) after loading config
-func (b *Bridge) InitAfterConfig(isReload bool) {
+func (b *Bridge) InitAfterConfig() {
 	b.Signer = types.MakeSigner("EIP155", b.ChainConfig.GetChainID())
 }
 

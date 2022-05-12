@@ -111,23 +111,37 @@ func (b *Bridge) getContractCode(contract string) (code []byte, err error) {
 	return code, err
 }
 
+// PublicKeyToAddress impl
+func (b *Bridge) PublicKeyToAddress(pubKey string) (string, error) {
+	return PublicKeyToAddress(pubKey)
+}
+
+// PublicKeyToAddress public key to address
+func PublicKeyToAddress(pubKey string) (string, error) {
+	pkBytes := common.FromHex(pubKey)
+	if len(pkBytes) != 65 || pkBytes[0] != 4 {
+		return "", fmt.Errorf("wrong mpc public key '%v'", pubKey)
+	}
+	ecPubKey := ecdsa.PublicKey{
+		Curve: crypto.S256(),
+		X:     new(big.Int).SetBytes(pkBytes[1:33]),
+		Y:     new(big.Int).SetBytes(pkBytes[33:65]),
+	}
+	pubAddr := crypto.PubkeyToAddress(ecPubKey)
+	return pubAddr.String(), nil
+}
+
 // VerifyMPCPubKey verify mpc address and public key is matching
 func VerifyMPCPubKey(mpcAddress, mpcPubkey string) error {
 	if !common.IsHexAddress(mpcAddress) {
 		return fmt.Errorf("wrong mpc address '%v'", mpcAddress)
 	}
-	pkBytes := common.FromHex(mpcPubkey)
-	if len(pkBytes) != 65 || pkBytes[0] != 4 {
-		return fmt.Errorf("wrong mpc public key '%v'", mpcPubkey)
+	pubkeyAddr, err := PublicKeyToAddress(mpcPubkey)
+	if err != nil {
+		return err
 	}
-	pubKey := ecdsa.PublicKey{
-		Curve: crypto.S256(),
-		X:     new(big.Int).SetBytes(pkBytes[1:33]),
-		Y:     new(big.Int).SetBytes(pkBytes[33:65]),
-	}
-	pubAddr := crypto.PubkeyToAddress(pubKey)
-	if !strings.EqualFold(pubAddr.String(), mpcAddress) {
-		return fmt.Errorf("mpc address %v and public key address %v is not match", mpcAddress, pubAddr.String())
+	if !strings.EqualFold(pubkeyAddr, mpcAddress) {
+		return fmt.Errorf("mpc address %v and public key address %v is not match", mpcAddress, pubkeyAddr)
 	}
 	return nil
 }

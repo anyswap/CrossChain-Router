@@ -22,7 +22,12 @@ func NewCrossChainBridge() *Bridge {
 }
 
 // InitAfterConfig init variables (ie. extra members) after loading config
-func (b *Bridge) InitAfterConfig(isReload bool) {
+func (b *Bridge) InitAfterConfig() {
+}
+
+// PublicKeyToAddress public key to address
+func (b *Bridge) PublicKeyToAddress(pubKey string) (string, error) {
+	return "", tokens.ErrNotImplemented
 }
 
 // RegisterSwap register swap.

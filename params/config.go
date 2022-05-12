@@ -19,7 +19,7 @@ const (
 var IsTestMode bool
 
 var (
-	routerConfig = &RouterConfig{Extra: &ExtraConfig{}}
+	routerConfig = &RouterConfig{Extra: &ExtraConfig{}, MPC: &MPCConfig{}}
 
 	routerConfigFile string
 	locDataDir       string
@@ -43,6 +43,7 @@ var (
 	enableCheckTxBlockHashChains         map[string]struct{}
 	enableCheckTxBlockIndexChains        map[string]struct{}
 	disableUseFromChainIDInReceiptChains map[string]struct{}
+	useFastMPCChains                     map[string]struct{}
 	dontCheckReceivedTokenIDs            map[string]struct{}
 
 	isDebugMode           *bool
@@ -109,6 +110,7 @@ type RouterConfig struct {
 	Gateways    map[string][]string // key is chain ID
 	GatewaysExt map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	MPC         *MPCConfig
+	FastMPC     *MPCConfig   `toml:",omitempty" json:",omitempty"`
 	Extra       *ExtraConfig `toml:",omitempty" json:",omitempty"`
 }
 
@@ -127,9 +129,6 @@ type ExtraConfig struct {
 	BaseFeePercent   map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID
 	MinReserveBudget map[string]uint64 `toml:",omitempty" json:",omitempty"`
 
-	GetAcceptListInterval uint64 `toml:",omitempty" json:",omitempty"`
-	PendingInvalidAccept  bool   `toml:",omitempty" json:",omitempty"`
-
 	AllowCallByConstructor          bool                `toml:",omitempty" json:",omitempty"`
 	AllowCallByContract             bool                `toml:",omitempty" json:",omitempty"`
 	CheckEIP1167Master              bool                `toml:",omitempty" json:",omitempty"`
@@ -141,6 +140,7 @@ type ExtraConfig struct {
 	EnableCheckTxBlockHashChains         []string `toml:",omitempty" json:",omitempty"`
 	EnableCheckTxBlockIndexChains        []string `toml:",omitempty" json:",omitempty"`
 	DisableUseFromChainIDInReceiptChains []string `toml:",omitempty" json:",omitempty"`
+	UseFastMPCChains                     []string `toml:",omitempty" json:",omitempty"`
 	DontCheckReceivedTokenIDs            []string `toml:",omitempty" json:",omitempty"`
 
 	RPCClientTimeout map[string]int `toml:",omitempty" json:",omitempty"` // key is chainID
@@ -158,6 +158,8 @@ type OnchainConfig struct {
 
 // MPCConfig mpc related config
 type MPCConfig struct {
+	SignTypeEC256K1 string `toml:",omitempty" json:",omitempty"`
+
 	APIPrefix                 string
 	RPCTimeout                uint64 `toml:",omitempty" json:",omitempty"`
 	SignTimeout               uint64 `toml:",omitempty" json:",omitempty"`
@@ -165,6 +167,11 @@ type MPCConfig struct {
 	MinIntervalToAddSignGroup int64  `toml:",omitempty" json:",omitempty"`
 
 	VerifySignatureInAccept bool `toml:",omitempty" json:",omitempty"`
+
+	GetAcceptListLoopInterval  uint64 `toml:",omitempty" json:",omitempty"`
+	GetAcceptListRetryInterval uint64 `toml:",omitempty" json:",omitempty"`
+	MaxAcceptSignTimeInterval  int64  `toml:",omitempty" json:",omitempty"`
+	PendingInvalidAccept       bool   `toml:",omitempty" json:",omitempty"`
 
 	GroupID       *string
 	NeededOracles *uint32
@@ -258,19 +265,6 @@ func IsForceAnySwapInAuto() bool {
 // IsParallelSwapEnabled is parallel swap enabled
 func IsParallelSwapEnabled() bool {
 	return GetExtraConfig() != nil && GetExtraConfig().EnableParallelSwap
-}
-
-// IsPendingInvalidAccept ignore invalid accept instead of disagree it immediately
-func IsPendingInvalidAccept() bool {
-	return GetExtraConfig() != nil && GetExtraConfig().PendingInvalidAccept
-}
-
-// GetAcceptListInterval get accept list interval (seconds)
-func GetAcceptListInterval() uint64 {
-	if GetExtraConfig() != nil {
-		return GetExtraConfig().GetAcceptListInterval
-	}
-	return 0
 }
 
 // IsFixedGasPrice is fixed gas price of specified chain
@@ -382,31 +376,21 @@ func GetCustom(chainID, key string) string {
 	return ""
 }
 
-// SignWithPrivateKey sign with private key (use for testing)
-func SignWithPrivateKey() bool {
-	return routerConfig.MPC.SignWithPrivateKey
-}
-
-// EnableSignWithPrivateKey enable sign with private key (use for testing)
-func EnableSignWithPrivateKey() {
-	if routerConfig.MPC == nil {
-		routerConfig.MPC = &MPCConfig{}
-	}
-	routerConfig.MPC.SignWithPrivateKey = true
-	routerConfig.MPC.SignerPrivateKeys = make(map[string]string)
-}
-
 // GetSignerPrivateKey get signer private key (use for testing)
-func GetSignerPrivateKey(chainID string) string {
-	if prikey, exist := routerConfig.MPC.SignerPrivateKeys[chainID]; exist {
+func (c *MPCConfig) GetSignerPrivateKey(chainID string) string {
+	if prikey, exist := c.SignerPrivateKeys[chainID]; exist {
 		return prikey
 	}
 	return ""
 }
 
 // SetSignerPrivateKey set signer private key (use for testing)
-func SetSignerPrivateKey(chainID, prikey string) {
-	routerConfig.MPC.SignerPrivateKeys[chainID] = prikey
+func (c *MPCConfig) SetSignerPrivateKey(chainID, prikey string) {
+	c.SignWithPrivateKey = true
+	if len(c.SignerPrivateKeys) == 0 {
+		c.SignerPrivateKeys = make(map[string]string)
+	}
+	c.SignerPrivateKeys[chainID] = prikey
 }
 
 // IsDebugMode is debug mode, add more debugging log infos
@@ -499,6 +483,38 @@ func IsInCallByContractWhitelist(chainID, caller string) bool {
 	return exist
 }
 
+// AddOrRemoveCallByContractWhitelist add or remove call by contract whitelist
+//nolint:dupl // allow duplicate
+func AddOrRemoveCallByContractWhitelist(chainID string, callers []string, isAdd bool) {
+	whitelist, exist := callByContractWhitelist[chainID]
+	if !exist {
+		if !isAdd {
+			return
+		}
+		callByContractWhitelist = make(map[string]map[string]struct{})
+		callByContractWhitelist[chainID] = make(map[string]struct{})
+		whitelist = callByContractWhitelist[chainID]
+	}
+	for _, caller := range callers {
+		key := strings.ToLower(caller)
+		if isAdd {
+			whitelist[key] = struct{}{}
+		} else {
+			delete(whitelist, key)
+		}
+	}
+	if GetExtraConfig() != nil {
+		chainWhitelist := make([]string, 0, len(whitelist))
+		for caller := range whitelist {
+			chainWhitelist = append(chainWhitelist, caller)
+		}
+		if GetExtraConfig().CallByContractWhitelist == nil {
+			GetExtraConfig().CallByContractWhitelist = make(map[string][]string)
+		}
+		GetExtraConfig().CallByContractWhitelist[chainID] = chainWhitelist
+	}
+}
+
 func initCallByContractCodeHashWhitelist() {
 	callByContractCodeHashWhitelist = make(map[string]map[string]struct{})
 	if GetExtraConfig() == nil || len(GetExtraConfig().CallByContractCodeHashWhitelist) == 0 {
@@ -536,6 +552,37 @@ func IsInCallByContractCodeHashWhitelist(chainID, codehash string) bool {
 	return exist
 }
 
+// AddOrRemoveCallByContractCodeHashWhitelist add or remove call by contract code hash whitelist
+func AddOrRemoveCallByContractCodeHashWhitelist(chainID string, codehashes []string, isAdd bool) {
+	whitelist, exist := callByContractCodeHashWhitelist[chainID]
+	if !exist {
+		if !isAdd {
+			return
+		}
+		callByContractCodeHashWhitelist = make(map[string]map[string]struct{})
+		callByContractCodeHashWhitelist[chainID] = make(map[string]struct{})
+		whitelist = callByContractCodeHashWhitelist[chainID]
+	}
+	for _, codehash := range codehashes {
+		key := codehash
+		if isAdd {
+			whitelist[key] = struct{}{}
+		} else {
+			delete(whitelist, key)
+		}
+	}
+	if GetExtraConfig() != nil {
+		chainWhitelist := make([]string, 0, len(whitelist))
+		for codehash := range whitelist {
+			chainWhitelist = append(chainWhitelist, codehash)
+		}
+		if GetExtraConfig().CallByContractCodeHashWhitelist == nil {
+			GetExtraConfig().CallByContractCodeHashWhitelist = make(map[string][]string)
+		}
+		GetExtraConfig().CallByContractCodeHashWhitelist[chainID] = chainWhitelist
+	}
+}
+
 func initBigValueWhitelist() {
 	bigValueWhitelist = make(map[string]map[string]struct{})
 	if GetExtraConfig() == nil || len(GetExtraConfig().BigValueWhitelist) == 0 {
@@ -564,15 +611,36 @@ func IsInBigValueWhitelist(tokenID, caller string) bool {
 	return exist
 }
 
-// IsMPCInitiator is initiator of mpc sign
-func IsMPCInitiator(account string) bool {
-	initiators := GetRouterConfig().MPC.Initiators
-	for _, initiator := range initiators {
-		if strings.EqualFold(account, initiator) {
-			return true
+// AddOrRemoveBigValueWhitelist add or remove big value whitelist
+//nolint:dupl // allow duplicate
+func AddOrRemoveBigValueWhitelist(tokenID string, callers []string, isAdd bool) {
+	whitelist, exist := bigValueWhitelist[tokenID]
+	if !exist {
+		if !isAdd {
+			return
+		}
+		bigValueWhitelist = make(map[string]map[string]struct{})
+		bigValueWhitelist[tokenID] = make(map[string]struct{})
+		whitelist = bigValueWhitelist[tokenID]
+	}
+	for _, caller := range callers {
+		key := strings.ToLower(caller)
+		if isAdd {
+			whitelist[key] = struct{}{}
+		} else {
+			delete(whitelist, key)
 		}
 	}
-	return false
+	if GetExtraConfig() != nil {
+		tokenWhitelist := make([]string, 0, len(whitelist))
+		for caller := range whitelist {
+			tokenWhitelist = append(tokenWhitelist, caller)
+		}
+		if GetExtraConfig().BigValueWhitelist == nil {
+			GetExtraConfig().BigValueWhitelist = make(map[string][]string)
+		}
+		GetExtraConfig().BigValueWhitelist[tokenID] = tokenWhitelist
+	}
 }
 
 // GetRouterConfig get router config
@@ -591,7 +659,10 @@ func GetRouterOracleConfig() *RouterOracleConfig {
 }
 
 // GetMPCConfig get mpc config
-func GetMPCConfig() *MPCConfig {
+func GetMPCConfig(isFastMPC bool) *MPCConfig {
+	if isFastMPC {
+		return routerConfig.FastMPC
+	}
 	return routerConfig.MPC
 }
 
@@ -645,16 +716,72 @@ func IsChainIDInBlackList(chainID string) bool {
 	return exist
 }
 
+// AddOrRemoveChainIDBlackList add or remove chainID blacklist
+func AddOrRemoveChainIDBlackList(chainIDs []string, isAdd bool) {
+	for _, chainID := range chainIDs {
+		if isAdd {
+			chainIDBlacklistMap[chainID] = struct{}{}
+		} else {
+			delete(chainIDBlacklistMap, chainID)
+		}
+	}
+	if GetRouterServerConfig() != nil {
+		blacklist := make([]string, 0, len(chainIDBlacklistMap))
+		for chainID := range chainIDBlacklistMap {
+			blacklist = append(blacklist, chainID)
+		}
+		GetRouterServerConfig().ChainIDBlackList = blacklist
+	}
+}
+
 // IsTokenIDInBlackList is token id in black list
 func IsTokenIDInBlackList(tokenID string) bool {
 	_, exist := tokenIDBlacklistMap[strings.ToLower(tokenID)]
 	return exist
 }
 
+// AddOrRemoveTokenIDBlackList add or remove tokenID blacklist
+func AddOrRemoveTokenIDBlackList(tokenIDs []string, isAdd bool) {
+	for _, tokenID := range tokenIDs {
+		key := strings.ToLower(tokenID)
+		if isAdd {
+			tokenIDBlacklistMap[key] = struct{}{}
+		} else {
+			delete(tokenIDBlacklistMap, key)
+		}
+	}
+	if GetRouterServerConfig() != nil {
+		blacklist := make([]string, 0, len(tokenIDBlacklistMap))
+		for tokenID := range tokenIDBlacklistMap {
+			blacklist = append(blacklist, tokenID)
+		}
+		GetRouterServerConfig().TokenIDBlackList = blacklist
+	}
+}
+
 // IsAccountInBlackList is account in black list
 func IsAccountInBlackList(account string) bool {
 	_, exist := accountBlacklistMap[strings.ToLower(account)]
 	return exist
+}
+
+// AddOrRemoveAccountBlackList add or remove account blacklist
+func AddOrRemoveAccountBlackList(accounts []string, isAdd bool) {
+	for _, account := range accounts {
+		key := strings.ToLower(account)
+		if isAdd {
+			accountBlacklistMap[key] = struct{}{}
+		} else {
+			delete(accountBlacklistMap, key)
+		}
+	}
+	if GetRouterServerConfig() != nil {
+		blacklist := make([]string, 0, len(accountBlacklistMap))
+		for account := range accountBlacklistMap {
+			blacklist = append(blacklist, account)
+		}
+		GetRouterServerConfig().AccountBlackList = blacklist
+	}
 }
 
 func initAutoSwapNonceEnabledChains() {
@@ -755,6 +882,23 @@ func initDisableUseFromChainIDInReceiptChains() {
 // IsUseFromChainIDInReceiptDisabled if use fromChainID from receipt log
 func IsUseFromChainIDInReceiptDisabled(chainID string) bool {
 	_, exist := disableUseFromChainIDInReceiptChains[chainID]
+	return exist
+}
+
+func initUseFastMPCChains() {
+	useFastMPCChains = make(map[string]struct{})
+	if GetExtraConfig() == nil || len(GetExtraConfig().UseFastMPCChains) == 0 {
+		return
+	}
+	for _, cid := range GetExtraConfig().UseFastMPCChains {
+		useFastMPCChains[cid] = struct{}{}
+	}
+	log.Info("initUseFastMPCChains success")
+}
+
+// IsUseFastMPC is use fast mpc
+func IsUseFastMPC(chainID string) bool {
+	_, exist := useFastMPCChains[chainID]
 	return exist
 }
 
@@ -868,9 +1012,6 @@ func ReloadRouterConfig() {
 // SetDataDir set data dir
 func SetDataDir(dir string, isServer bool) {
 	if dir == "" {
-		if !isServer {
-			log.Warn("suggest specify '--datadir' to enhance accept job")
-		}
 		return
 	}
 	currDir, err := common.CurrentDir()

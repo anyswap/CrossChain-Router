@@ -122,7 +122,7 @@ func (b *Bridge) checkERC20SwapInfo(swapInfo *tokens.SwapTxInfo) error {
 		log.Warn("get token config failed", "chainID", swapInfo.ToChainID, "token", multichainToken)
 		return tokens.ErrMissTokenConfig
 	}
-	if erc20SwapInfo.ForUnderlying && toTokenCfg.GetUnderlying() == (common.Address{}) {
+	if erc20SwapInfo.ForUnderlying && common.HexToAddress(toTokenCfg.GetUnderlying()) == (common.Address{}) {
 		return tokens.ErrNoUnderlyingToken
 	}
 	if !tokens.CheckTokenSwapValue(swapInfo, fromTokenCfg.Decimals, toTokenCfg.Decimals) {
@@ -420,7 +420,8 @@ func checkSwapTradePath(swapInfo *tokens.SwapTxInfo) error {
 		return tokens.ErrTxWithWrongPath
 	}
 	srcToken := common.HexToAddress(path[0])
-	if !(srcToken == tokenCfg.GetUnderlying() || srcToken == common.HexToAddress(multichainToken)) {
+	if !(srcToken == common.HexToAddress(tokenCfg.GetUnderlying()) ||
+		srcToken == common.HexToAddress(multichainToken)) {
 		log.Warn("check swap trade path first element failed", "token", path[0])
 		return tokens.ErrTxWithWrongPath
 	}
@@ -518,7 +519,7 @@ func (b *Bridge) checkTokenReceived(swapInfo *tokens.SwapTxInfo, receipt *types.
 	}
 	tokenAddr := common.HexToAddress(token)
 	underlyingAddr := tokenCfg.GetUnderlying()
-	if underlyingAddr == (common.Address{}) {
+	if common.HexToAddress(underlyingAddr) == (common.Address{}) {
 		return nil
 	}
 	routerContract := b.GetRouterContract(token)
@@ -529,7 +530,7 @@ func (b *Bridge) checkTokenReceived(swapInfo *tokens.SwapTxInfo, receipt *types.
 
 	log.Info("start check token received",
 		"token", token, "tokenID", tokenID, "logIndex", swapInfo.LogIndex,
-		"underlying", underlyingAddr.LowerHex(), "router", routerContract,
+		"underlying", underlyingAddr, "router", routerContract,
 		"swapFrom", swapInfo.From, "swapValue", swapInfo.Value, "swapID", swapInfo.Hash)
 
 	transferTopic := erc20CodeParts["LogTransfer"]
@@ -559,7 +560,7 @@ func (b *Bridge) checkTokenReceived(swapInfo *tokens.SwapTxInfo, receipt *types.
 
 		log.Info("check token received found transfer log", "index", i, "logAddress", rlog.Address.LowerHex(), "from", from, "to", toAddr.LowerHex(), "swapID", swapInfo.Hash)
 
-		if *rlog.Address == underlyingAddr {
+		if *rlog.Address == common.HexToAddress(underlyingAddr) {
 			if isBurn {
 				if common.IsEqualIgnoreCase(from, swapInfo.From) {
 					recvAmount = common.GetBigInt(*rlog.Data, 0, 32)

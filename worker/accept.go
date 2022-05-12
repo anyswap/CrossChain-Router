@@ -25,15 +25,14 @@ var (
 	cachedAcceptInfos    = mapset.NewSet()
 	maxCachedAcceptInfos = 500
 
-	isPendingInvalidAccept    bool
-	maxAcceptSignTimeInterval = int64(600) // seconds
-
-	retryInterval = 3 * time.Second
-	waitInterval  = 5 * time.Second
-
 	acceptInfoCh      = make(chan *mpc.SignInfoData, 10)
 	maxAcceptRoutines = int64(10)
 	curAcceptRoutines = int64(0)
+
+	// for fast mpc
+	acceptInfoCh2      = make(chan *mpc.SignInfoData, 10)
+	maxAcceptRoutines2 = int64(10)
+	curAcceptRoutines2 = int64(0)
 
 	// those errors will be ignored in accepting
 	errIdentifierMismatch = errors.New("cross chain bridge identifier mismatch")
@@ -41,34 +40,55 @@ var (
 	errWrongMsgContext    = errors.New("wrong msg context")
 )
 
+func getAcceptInfoCh(isFastMPC bool) chan *mpc.SignInfoData {
+	if isFastMPC {
+		return acceptInfoCh2
+	}
+	return acceptInfoCh
+}
+
+func getAcceptRoutines(isFastMPC bool) (cur, max int64) {
+	if isFastMPC {
+		return curAcceptRoutines2, maxAcceptRoutines2
+	}
+	return curAcceptRoutines, maxAcceptRoutines
+}
+
 // StartAcceptSignJob accept job
 func StartAcceptSignJob() {
 	logWorker("accept", "start accept sign job")
 
-	isPendingInvalidAccept = params.IsPendingInvalidAccept()
-	getAcceptListInterval := params.GetAcceptListInterval()
-	if getAcceptListInterval > 0 {
-		waitInterval = time.Duration(getAcceptListInterval) * time.Second
-		if retryInterval > waitInterval {
-			retryInterval = waitInterval
-		}
-	}
-
 	openLeveldb()
 
-	go startAcceptProducer()
+	if mpcConfig := mpc.GetMPCConfig(false); mpcConfig != nil {
+		go startAcceptProducer(mpcConfig)
 
-	utils.TopWaitGroup.Add(1)
-	go startAcceptConsumer()
+		utils.TopWaitGroup.Add(1)
+		go startAcceptConsumer(mpcConfig)
+	}
+
+	if mpcConfig := mpc.GetMPCConfig(true); mpcConfig != nil {
+		go startAcceptProducer(mpcConfig)
+
+		utils.TopWaitGroup.Add(1)
+		go startAcceptConsumer(mpcConfig)
+	}
 }
 
-func startAcceptProducer() {
+func startAcceptProducer(mpcConfig *mpc.Config) {
+	maxAcceptSignTimeInterval := mpcConfig.MaxAcceptSignTimeInterval
+	waitInterval := time.Duration(mpcConfig.GetAcceptListLoopInterval) * time.Second
+	retryInterval := time.Duration(mpcConfig.GetAcceptListRetryInterval) * time.Second
+	if retryInterval > waitInterval {
+		retryInterval = waitInterval
+	}
+
 	i := 0
 	for {
 		if utils.IsCleanuping() {
 			return
 		}
-		signInfo, err := mpc.GetCurNodeSignInfo(maxAcceptSignTimeInterval)
+		signInfo, err := mpcConfig.GetCurNodeSignInfo(maxAcceptSignTimeInterval)
 		if err != nil {
 			logWorkerError("accept", "getCurNodeSignInfo failed", err)
 			time.Sleep(retryInterval)
@@ -91,17 +111,20 @@ func startAcceptProducer() {
 				continue
 			}
 			logWorker("accept", "dispatch accept sign info", "keyID", keyID)
-			acceptInfoCh <- info // produce
+			getAcceptInfoCh(mpcConfig.IsFastMPC) <- info // produce
 		}
 		time.Sleep(waitInterval)
 	}
 }
 
-func startAcceptConsumer() {
+func startAcceptConsumer(mpcConfig *mpc.Config) {
 	defer func() {
 		closeLeveldb()
 		utils.TopWaitGroup.Done()
 	}()
+
+	cur, max := getAcceptRoutines(mpcConfig.IsFastMPC)
+
 	for {
 		select {
 		case <-utils.CleanupChan:
@@ -110,14 +133,14 @@ func startAcceptConsumer() {
 		case info := <-acceptInfoCh: // consume
 			// loop and check, break if free worker exist
 			for {
-				if atomic.LoadInt64(&curAcceptRoutines) < maxAcceptRoutines {
+				if atomic.LoadInt64(&cur) < max {
 					break
 				}
 				time.Sleep(1 * time.Second)
 			}
 
-			atomic.AddInt64(&curAcceptRoutines, 1)
-			go processAcceptInfo(info)
+			atomic.AddInt64(&cur, 1)
+			go processAcceptInfo(mpcConfig, info)
 		}
 	}
 }
@@ -134,7 +157,7 @@ func checkAndUpdateCachedAcceptInfoMap(keyID string) (ok bool) {
 	return true
 }
 
-func processAcceptInfo(info *mpc.SignInfoData) {
+func processAcceptInfo(mpcConfig *mpc.Config, info *mpc.SignInfoData) {
 	defer atomic.AddInt64(&curAcceptRoutines, -1)
 
 	keyID := info.Key
@@ -148,7 +171,7 @@ func processAcceptInfo(info *mpc.SignInfoData) {
 		}
 	}()
 
-	args, err := verifySignInfo(info)
+	args, err := verifySignInfo(mpcConfig, info)
 
 	ctx := []interface{}{
 		"keyID", keyID,
@@ -164,6 +187,8 @@ func processAcceptInfo(info *mpc.SignInfoData) {
 			"tokenID", args.GetTokenID(),
 		)
 	}
+
+	isPendingInvalidAccept := mpcConfig.PendingInvalidAccept
 
 	switch {
 	case // these maybe accepts of other bridges or routers, always discard them
@@ -209,7 +234,7 @@ func processAcceptInfo(info *mpc.SignInfoData) {
 	}
 	ctx = append(ctx, "result", agreeResult)
 
-	res, err := mpc.DoAcceptSign(keyID, agreeResult, info.MsgHash, aggreeMsgContext)
+	res, err := mpcConfig.DoAcceptSign(keyID, agreeResult, info.MsgHash, aggreeMsgContext)
 	if err != nil {
 		ctx = append(ctx, "rpcResult", res)
 		logWorkerError("accept", "accept sign job failed", err, ctx...)
@@ -219,7 +244,7 @@ func processAcceptInfo(info *mpc.SignInfoData) {
 	}
 }
 
-func verifySignInfo(signInfo *mpc.SignInfoData) (*tokens.BuildTxArgs, error) {
+func verifySignInfo(mpcConfig *mpc.Config, signInfo *mpc.SignInfoData) (*tokens.BuildTxArgs, error) {
 	msgHash := signInfo.MsgHash
 	msgContext := signInfo.MsgContext
 	var args tokens.BuildTxArgs
@@ -232,7 +257,7 @@ func verifySignInfo(signInfo *mpc.SignInfoData) (*tokens.BuildTxArgs, error) {
 	default:
 		return nil, errIdentifierMismatch
 	}
-	if !params.IsMPCInitiator(signInfo.Account) {
+	if !mpcConfig.IsMPCInitiator(signInfo.Account) {
 		return nil, errInitiatorMismatch
 	}
 	logWorker("accept", "verifySignInfo", "keyID", signInfo.Key, "msgHash", msgHash, "msgContext", msgContext)
