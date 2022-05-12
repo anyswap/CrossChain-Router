@@ -17,6 +17,9 @@ var (
 
 	swapConfigMap = new(sync.Map) // key is tokenID,fromChainID,toChainID
 	feeConfigMap  = new(sync.Map) // key is tokenID,fromChainID,toChainID
+
+	// StubChainIDBase stub chainID base value
+	StubChainIDBase = big.NewInt(1000000000000)
 )
 
 // IsNativeCoin is native coin
