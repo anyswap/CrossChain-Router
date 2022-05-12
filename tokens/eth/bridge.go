@@ -173,11 +173,14 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 		"routerFactory", routerFactory, "routerWNative", routerWNative)
 
 	if mongodb.HasClient() {
-		nextSwapNonce, err := mongodb.FindNextSwapNonce(chainID, strings.ToLower(routerMPC))
-		if err == nil {
-			log.Info("init next swap nonce from db", "chainID", chainID, "mpc", routerMPC, "nonce", nextSwapNonce)
-			b.InitSwapNonce(b, routerMPC, nextSwapNonce)
+		var nextSwapNonce uint64
+		for i := 0; i < 3; i++ {
+			nextSwapNonce, err = mongodb.FindNextSwapNonce(chainID, strings.ToLower(routerMPC))
+			if err == nil {
+				break
+			}
 		}
+		b.InitSwapNonce(b, routerMPC, nextSwapNonce)
 	}
 
 	return nil
