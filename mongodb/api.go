@@ -451,8 +451,10 @@ func FindNextSwapNonce(chainID, mpc string) (uint64, error) {
 	result := &MgoSwapResult{}
 	err := collRouterSwapResult.FindOne(clientCtx, bson.M{"$and": queries}, opts).Decode(result)
 	if err != nil {
+		log.Error("FindNextSwapNonce failed", "chainID", chainID, "mpc", mpc, "err", err)
 		return 0, mgoError(err)
 	}
+	log.Info("FindNextSwapNonce success", "chainID", chainID, "mpc", mpc, "nonce", result.SwapNonce)
 	return result.SwapNonce + 1, nil
 }
 
