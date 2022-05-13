@@ -1,36 +1,48 @@
 package ripple
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/ripple/rubblelabs/ripple/data"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/ripple/rubblelabs/ripple/websockets"
 )
 
 // SendTransaction send signed tx
 func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error) {
 	tx, ok := signedTx.(*data.Payment)
 	if !ok {
-		return "", fmt.Errorf("send transaction type assertion error")
+		return "", tokens.ErrWrongRawTx
 	}
+	var success bool
+	var resp *websockets.SubmitResult
 	for i := 0; i < rpcRetryTimes; i++ {
 		for _, r := range b.Remotes {
-			resp, err1 := r.Submit(tx)
-			if err1 != nil || resp == nil {
-				log.Warn("Try sending transaction failed", "error", err1)
-				err = err1
+			resp, err = r.Submit(tx)
+			if err != nil || resp == nil {
+				log.Warn("Try sending transaction failed", "error", err)
 				continue
 			}
 			if !resp.EngineResult.Success() {
 				log.Warn("send tx with error result", "result", resp.EngineResult, "message", resp.EngineResultMessage)
 			}
-			return tx.GetBase().Hash.String(), nil
+			txHash = tx.GetBase().Hash.String()
+			success = true
 		}
-		time.Sleep(rpcRetryInterval)
+		if !success {
+			time.Sleep(rpcRetryInterval)
+		}
 	}
-	return
+	if success {
+		if !params.IsParallelSwapEnabled() {
+			b.SetNonce(tx.Account.String(), uint64(tx.Sequence)+1)
+		}
+		return txHash, nil
+	}
+	return "", err
 }
 
 // DoPostRequest only for test

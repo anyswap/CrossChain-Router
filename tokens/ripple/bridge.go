@@ -18,8 +18,8 @@ var (
 	// ensure Bridge impl tokens.NonceSetter
 	_ tokens.NonceSetter = &Bridge{}
 
-	currencyMap = make(map[string]data.Currency)
-	issuerMap   = make(map[string]*data.Account)
+	rpcRetryTimes    = 3
+	rpcRetryInterval = 1 * time.Second
 )
 
 // Bridge block bridge inherit from btc bridge
@@ -35,65 +35,6 @@ func NewCrossChainBridge() *Bridge {
 		Remotes:         make(map[string]*websockets.Remote),
 	}
 }
-
-// InitRemotes set ripple remotes
-func (b *Bridge) InitRemotes() {
-	log.Info("XRP init remotes")
-	for _, r := range b.Remotes {
-		if r != nil {
-			r.Close()
-		}
-	}
-	b.Remotes = make(map[string]*websockets.Remote)
-	for _, apiAddress := range b.GetGatewayConfig().APIAddress {
-		remote, err := websockets.NewRemote(apiAddress)
-		if err != nil || remote == nil {
-			log.Warn("Cannot connect to ripple", "address", apiAddress, "error", err)
-			continue
-		}
-		log.Info("Connected to remote api", "", apiAddress)
-		b.Remotes[apiAddress] = remote
-	}
-	if len(b.Remotes) < 1 {
-		log.Error("No available remote api")
-	}
-}
-
-// VerifyTokenConfig verify token config
-func (b *Bridge) VerifyTokenConfig(tokenCfg *tokens.TokenConfig) error {
-	if tokenCfg.RippleExtra == nil {
-		return fmt.Errorf("must config 'RippleExtra'")
-	}
-	currency, err := data.NewCurrency(tokenCfg.RippleExtra.Currency)
-	if err != nil {
-		return fmt.Errorf("invalid currency '%v', %w", tokenCfg.RippleExtra.Currency, err)
-	}
-	currencyMap[tokenCfg.RippleExtra.Currency] = currency
-	configedDecimals := tokenCfg.Decimals
-	if currency.IsNative() {
-		if configedDecimals != 6 {
-			return fmt.Errorf("invalid native decimals: want 6 but have %v", configedDecimals)
-		}
-		if tokenCfg.RippleExtra.Issuer != "" {
-			return fmt.Errorf("must config empty 'RippleExtra.Issuer' for native")
-		}
-	} else {
-		if tokenCfg.RippleExtra.Issuer == "" {
-			return fmt.Errorf("must config 'RippleExtra.Issuer' for non native")
-		}
-		issuer, errf := data.NewAccountFromAddress(tokenCfg.RippleExtra.Issuer)
-		if errf != nil {
-			return fmt.Errorf("invalid Issuer '%v', %w", tokenCfg.RippleExtra.Issuer, errf)
-		}
-		issuerMap[tokenCfg.RippleExtra.Issuer] = issuer
-	}
-	return nil
-}
-
-var (
-	rpcRetryTimes    = 3
-	rpcRetryInterval = 1 * time.Second
-)
 
 // SetRPCRetryTimes set rpc retry times (used in cmd tools)
 func SetRPCRetryTimes(times int) {
@@ -231,11 +172,6 @@ func (b *Bridge) GetBlockTxids(num uint64) (txs []string, err error) {
 	return
 }
 
-// GetPoolTxidList not supported
-func (b *Bridge) GetPoolTxidList() ([]string, error) {
-	return nil, nil
-}
-
 // GetBalance gets balance
 func (b *Bridge) GetBalance(accountAddress string) (*big.Int, error) {
 	acct, err := b.GetAccount(accountAddress)
@@ -245,16 +181,6 @@ func (b *Bridge) GetBalance(accountAddress string) (*big.Int, error) {
 	}
 	bal := big.NewInt(int64(acct.AccountData.Balance.Float() * 1000000))
 	return bal, nil
-}
-
-// GetTokenBalance not supported
-func (b *Bridge) GetTokenBalance(tokenType, tokenAddress, accountAddress string) (*big.Int, error) {
-	return nil, nil
-}
-
-// GetTokenSupply not supported
-func (b *Bridge) GetTokenSupply(tokenType, tokenAddress string) (*big.Int, error) {
-	return nil, nil
 }
 
 // GetAccount returns account

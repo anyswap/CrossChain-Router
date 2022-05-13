@@ -27,7 +27,7 @@ func (b *Bridge) verifyTransactionWithArgs(tx data.Transaction, args *tokens.Bui
 
 	payment, ok := tx.(*data.Payment)
 	if !ok {
-		return fmt.Errorf("type assertion error, transaction is not a payment")
+		return tokens.ErrWrongRawTx
 	}
 
 	to := payment.Destination.String()
@@ -41,11 +41,9 @@ func (b *Bridge) verifyTransactionWithArgs(tx data.Transaction, args *tokens.Bui
 
 // MPCSignTransaction mpc sign raw tx
 func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs) (signedTx interface{}, txHash string, err error) {
-	log.Debug("Ripple MPCSignTransaction")
-
 	tx, ok := rawTx.(*data.Payment)
 	if !ok {
-		return nil, "", fmt.Errorf("type assertion error, transaction is not a payment")
+		return nil, "", tokens.ErrWrongRawTx
 	}
 
 	err = b.verifyTransactionWithArgs(tx, args)
@@ -130,7 +128,7 @@ func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, privKey string
 func (b *Bridge) SignTransactionWithRippleKey(rawTx interface{}, key rcrypto.Key, keyseq *uint32) (signTx interface{}, txHash string, err error) {
 	tx, ok := rawTx.(*data.Payment)
 	if !ok {
-		return nil, "", fmt.Errorf("sign transaction type assertion error")
+		return nil, "", tokens.ErrWrongRawTx
 	}
 
 	msgHash, msg, err := data.SigningHash(tx)
@@ -175,7 +173,7 @@ func (b *Bridge) MakeSignedTransaction(pubkey []byte, rsv string, transaction in
 	sig := rsvToSig(rsv, isEd25519Pubkey(pubkey))
 	tx, ok := transaction.(*data.Payment)
 	if !ok {
-		return nil, fmt.Errorf("type assertion error, transaction is not a payment")
+		return nil, tokens.ErrWrongRawTx
 	}
 	*tx.GetSignature() = data.VariableLength(sig)
 	hash, _, err := data.Raw(tx)

@@ -271,15 +271,24 @@ func (b *Bridge) GetPoolNonce(address, _height string) (uint64, error) {
 
 // GetSeq returns account tx sequence
 func (b *Bridge) GetSeq(args *tokens.BuildTxArgs) (nonceptr *uint64, err error) {
-	nonceVal, err := b.GetPoolNonce(args.From, "")
+	var nonce uint64
+
+	if params.IsParallelSwapEnabled() {
+		nonce, err = b.AllocateNonce(args)
+		return &nonce, err
+	}
+
+	if params.IsAutoSwapNonceEnabled(b.ChainConfig.ChainID) { // increase automatically
+		nonce = b.GetSwapNonce(args.From)
+		return &nonce, nil
+	}
+
+	nonce, err = b.GetPoolNonce(args.From, "pending")
 	if err != nil {
 		return nil, err
 	}
-	if args == nil {
-		return &nonceVal, nil
-	}
-	nonceVal = b.AdjustNonce(args.From, nonceVal)
-	return &nonceVal, nil
+	nonce = b.AdjustNonce(args.From, nonce)
+	return &nonce, nil
 }
 
 // NewUnsignedPaymentTransaction build ripple payment tx
@@ -288,13 +297,6 @@ func NewUnsignedPaymentTransaction(
 	key crypto.Key, keyseq *uint32, txseq uint32, dest string, destinationTag *uint32,
 	amt, fee, memo, path string, nodirect, partial, limit bool,
 ) (data.Transaction, data.Hash256, []byte) {
-	if partial {
-		log.Warn("Building tx with partial")
-	}
-	if limit {
-		log.Warn("Building tx with limit")
-	}
-
 	destination, amount := parseAccount(dest), parseAmount(amt)
 	payment := &data.Payment{
 		Destination:    *destination,
@@ -319,9 +321,11 @@ func NewUnsignedPaymentTransaction(
 	}
 	if partial {
 		*payment.Flags |= data.TxPartialPayment
+		log.Warn("Building tx with partial")
 	}
 	if limit {
 		*payment.Flags |= data.TxLimitQuality
+		log.Warn("Building tx with limit")
 	}
 
 	base := payment.GetBase()
