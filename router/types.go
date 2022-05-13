@@ -33,6 +33,11 @@ var (
 	RetryRPCIntervalInInit = 1 * time.Second
 )
 
+// DontPanicInLoading don't panic in loading
+func DontPanicInLoading() bool {
+	return params.GetExtraConfig().DontPanicInInitRouter || IsReloading
+}
+
 // SwapRouterInfo swap router info
 type SwapRouterInfo struct {
 	RouterMPC     string
