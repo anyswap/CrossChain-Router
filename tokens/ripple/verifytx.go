@@ -160,10 +160,11 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 }
 
 func (b *Bridge) checkToken(token *tokens.TokenConfig, txmeta *data.TransactionWithMetaData) error {
-	asset, exist := assetMap[token.ContractAddress]
+	assetI, exist := assetMap.Load(token.ContractAddress)
 	if !exist {
 		return fmt.Errorf("non exist asset %v", token.ContractAddress)
 	}
+	asset := assetI.(*data.Asset)
 	if !strings.EqualFold(asset.Currency, txmeta.MetaData.DeliveredAmount.Currency.Machine()) {
 		return fmt.Errorf("ripple currency not match")
 	}

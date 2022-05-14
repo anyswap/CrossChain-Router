@@ -32,7 +32,6 @@ type Bridge struct {
 func NewCrossChainBridge() *Bridge {
 	return &Bridge{
 		NonceSetterBase: base.NewNonceSetterBase(),
-		Remotes:         make(map[string]*websockets.Remote),
 	}
 }
 

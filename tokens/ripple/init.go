@@ -3,6 +3,7 @@ package ripple
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
@@ -13,9 +14,9 @@ import (
 )
 
 var (
-	currencyMap = make(map[string]*data.Currency)
-	issuerMap   = make(map[string]*data.Account)
-	assetMap    = make(map[string]*data.Asset)
+	currencyMap = new(sync.Map)
+	issuerMap   = new(sync.Map)
+	assetMap    = new(sync.Map)
 )
 
 // ripple token address format is "XRP" or "Currency/Issuser"
@@ -32,7 +33,7 @@ func (b *Bridge) SetGatewayConfig(gatewayCfg *tokens.GatewayConfig) {
 // InitRemotes set ripple remotes
 func (b *Bridge) InitRemotes() {
 	logErrFunc := log.GetLogFuncOr(router.DontPanicInLoading(), log.Error, log.Fatal)
-	b.Remotes = make(map[string]*websockets.Remote)
+	remotes := make(map[string]*websockets.Remote)
 	for _, apiAddress := range b.GetGatewayConfig().APIAddress {
 		remote, err := websockets.NewRemote(apiAddress)
 		if err != nil || remote == nil {
@@ -40,12 +41,13 @@ func (b *Bridge) InitRemotes() {
 			continue
 		}
 		log.Info("Connected to remote api success", "api", apiAddress)
-		b.Remotes[apiAddress] = remote
+		remotes[apiAddress] = remote
 	}
-	if len(b.Remotes) < 1 {
+	if len(remotes) < 1 {
 		logErrFunc("No available remote api")
 		return
 	}
+	b.Remotes = remotes
 }
 
 // SetTokenConfig set token config
@@ -77,7 +79,7 @@ func (b *Bridge) VerifyTokenConfig(tokenCfg *tokens.TokenConfig) error {
 	if err != nil {
 		return fmt.Errorf("invalid currency '%v', %w", asset.Currency, err)
 	}
-	currencyMap[asset.Currency] = &currency
+	currencyMap.Store(asset.Currency, &currency)
 	configedDecimals := tokenCfg.Decimals
 	if currency.IsNative() {
 		if configedDecimals != 6 {
@@ -94,9 +96,9 @@ func (b *Bridge) VerifyTokenConfig(tokenCfg *tokens.TokenConfig) error {
 		if errf != nil {
 			return fmt.Errorf("invalid issuer '%v', %w", asset.Issuer, errf)
 		}
-		issuerMap[asset.Issuer] = issuer
+		issuerMap.Store(asset.Issuer, issuer)
 	}
-	assetMap[tokenCfg.ContractAddress] = asset
+	assetMap.Store(tokenCfg.ContractAddress, asset)
 	return nil
 }
 

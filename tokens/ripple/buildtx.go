@@ -60,10 +60,11 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, tokens.ErrMissTokenConfig
 	}
 
-	asset, exist := assetMap[token.ContractAddress]
+	assetI, exist := assetMap.Load(token.ContractAddress)
 	if !exist {
 		return nil, fmt.Errorf("non exist asset %v", token.ContractAddress)
 	}
+	asset := assetI.(*data.Asset)
 
 	receiver, amount, err := b.getReceiverAndAmount(args, multichainToken)
 	if err != nil {
@@ -149,14 +150,17 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 }
 
 func getPaymentAmount(amount *big.Int, token *tokens.TokenConfig) (*data.Amount, error) {
-	asset, exist := assetMap[token.ContractAddress]
+	assetI, exist := assetMap.Load(token.ContractAddress)
 	if !exist {
 		return nil, fmt.Errorf("non exist asset %v", token.ContractAddress)
 	}
-	currency, exist := currencyMap[asset.Currency]
+	asset := assetI.(*data.Asset)
+
+	currencyI, exist := currencyMap.Load(asset.Currency)
 	if !exist {
 		return nil, fmt.Errorf("non exist currency %v", asset.Currency)
 	}
+	currency := currencyI.(*data.Currency)
 
 	if !amount.IsInt64() {
 		return nil, fmt.Errorf("amount value %v is overflow of type int64", amount)
@@ -166,10 +170,11 @@ func getPaymentAmount(amount *big.Int, token *tokens.TokenConfig) (*data.Amount,
 		return data.NewAmount(amount.Int64())
 	}
 
-	issuer, exist := issuerMap[asset.Issuer]
+	issuerI, exist := issuerMap.Load(asset.Issuer)
 	if !exist {
 		return nil, fmt.Errorf("non exist issuer %v", asset.Issuer)
 	}
+	issuer := issuerI.(*data.Account)
 
 	// get a Value of amount*10^(-decimals)
 	value, err := data.NewNonNativeValue(amount.Int64(), -int64(token.Decimals))
