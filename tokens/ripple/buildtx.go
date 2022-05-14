@@ -113,7 +113,8 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	}
 
 	ripplePubKey := ImportPublicKey(common.FromHex(mpcPubkey))
-	rawtx, _, _ := NewUnsignedPaymentTransaction(ripplePubKey, nil, uint32(sequence), receiver, toTag, amt.String(), fee, "", "", false, false, false)
+	memo := fmt.Sprintf("%v:%v:%v", args.FromChainID, args.SwapID, args.LogIndex)
+	rawtx, _, _ := NewUnsignedPaymentTransaction(ripplePubKey, nil, uint32(sequence), receiver, toTag, amt.String(), fee, memo, "", false, false, false)
 
 	return rawtx, err
 }
@@ -307,7 +308,6 @@ func NewUnsignedPaymentTransaction(
 
 	if memo != "" {
 		memoStr := new(data.Memo)
-		memoStr.Memo.MemoType = []byte("BIND")
 		memoStr.Memo.MemoData = []byte(memo)
 		payment.Memos = append(payment.Memos, *memoStr)
 	}
