@@ -14,6 +14,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -174,7 +175,7 @@ func findFirstRouterSwap(fromChainID, txid string) (*MgoSwap, error) {
 }
 
 func getChainAndTxIDQuery(fromChainID, txid string) bson.M {
-	qtxid := bson.M{"txid": strings.ToLower(txid)}
+	qtxid := bson.M{"txid": bson.M{"$regex": primitive.Regex{Pattern: txid, Options: "i"}}}
 	qchainid := bson.M{"fromChainID": fromChainID}
 	return bson.M{"$and": []bson.M{qtxid, qchainid}}
 }
@@ -443,7 +444,7 @@ func FindRouterSwapResultsWithChainIDAndStatus(fromChainID string, status SwapSt
 // FindNextSwapNonce find next swap nonce
 func FindNextSwapNonce(chainID, mpc string) (uint64, error) {
 	qchainid := bson.M{"toChainID": chainID}
-	qmpc := bson.M{"mpc": strings.ToLower(mpc)}
+	qmpc := bson.M{"mpc": bson.M{"$regex": primitive.Regex{Pattern: mpc, Options: "i"}}}
 	queries := []bson.M{qchainid, qmpc}
 	opts := &options.FindOneOptions{
 		Sort: bson.D{{Key: "swapnonce", Value: -1}},
@@ -451,8 +452,10 @@ func FindNextSwapNonce(chainID, mpc string) (uint64, error) {
 	result := &MgoSwapResult{}
 	err := collRouterSwapResult.FindOne(clientCtx, bson.M{"$and": queries}, opts).Decode(result)
 	if err != nil {
+		log.Error("FindNextSwapNonce failed", "chainID", chainID, "mpc", mpc, "err", err)
 		return 0, mgoError(err)
 	}
+	log.Info("FindNextSwapNonce success", "chainID", chainID, "mpc", mpc, "nonce", result.SwapNonce)
 	return result.SwapNonce + 1, nil
 }
 
@@ -532,10 +535,8 @@ func FindRouterSwapResults(fromChainID, address string, offset, limit int, statu
 	var queries []bson.M
 
 	if address != "" && address != allAddresses {
-		if common.IsHexAddress(address) {
-			address = strings.ToLower(address)
-		}
-		queries = append(queries, bson.M{"from": address})
+		qaddress := bson.M{"from": bson.M{"$regex": primitive.Regex{Pattern: address, Options: "i"}}}
+		queries = append(queries, qaddress)
 	}
 
 	if fromChainID != "" && fromChainID != allChainIDs {
