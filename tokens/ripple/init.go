@@ -13,9 +13,15 @@ import (
 )
 
 var (
-	currencyMap = make(map[string]data.Currency)
+	currencyMap = make(map[string]*data.Currency)
 	issuerMap   = make(map[string]*data.Account)
+	assetMap    = make(map[string]*data.Asset)
 )
+
+// ripple token address format is "XRP" or "Currency/Issuser"
+func convertToAsset(tokenAddr string) (*data.Asset, error) {
+	return data.NewAsset(tokenAddr)
+}
 
 // SetGatewayConfig set gateway config
 func (b *Bridge) SetGatewayConfig(gatewayCfg *tokens.GatewayConfig) {
@@ -45,7 +51,6 @@ func (b *Bridge) InitRemotes() {
 // SetTokenConfig set token config
 func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) {
 	b.CrossChainBridgeBase.SetTokenConfig(tokenAddr, tokenCfg)
-
 	if tokenCfg == nil {
 		return
 	}
@@ -56,7 +61,7 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 
 	err := b.VerifyTokenConfig(tokenCfg)
 	if err != nil {
-		logErrFunc("verify token config failed", "tokenID", tokenID, "tokenAddr", tokenAddr, "err", err)
+		logErrFunc("verify token config failed", "chainID", b.ChainConfig.ChainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "err", err)
 		return
 	}
 	log.Info("verify token config success", "chainID", b.ChainConfig.ChainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals)
@@ -64,32 +69,34 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 
 // VerifyTokenConfig verify token config
 func (b *Bridge) VerifyTokenConfig(tokenCfg *tokens.TokenConfig) error {
-	if tokenCfg.RippleExtra == nil {
-		return fmt.Errorf("must config 'RippleExtra'")
-	}
-	currency, err := data.NewCurrency(tokenCfg.RippleExtra.Currency)
+	asset, err := convertToAsset(tokenCfg.ContractAddress)
 	if err != nil {
-		return fmt.Errorf("invalid currency '%v', %w", tokenCfg.RippleExtra.Currency, err)
+		return err
 	}
-	currencyMap[tokenCfg.RippleExtra.Currency] = currency
+	currency, err := data.NewCurrency(asset.Currency)
+	if err != nil {
+		return fmt.Errorf("invalid currency '%v', %w", asset.Currency, err)
+	}
+	currencyMap[asset.Currency] = &currency
 	configedDecimals := tokenCfg.Decimals
 	if currency.IsNative() {
 		if configedDecimals != 6 {
 			return fmt.Errorf("invalid native decimals: want 6 but have %v", configedDecimals)
 		}
-		if tokenCfg.RippleExtra.Issuer != "" {
-			return fmt.Errorf("must config empty 'RippleExtra.Issuer' for native")
+		if asset.Issuer != "" {
+			return fmt.Errorf("native currency should not have issuer")
 		}
 	} else {
-		if tokenCfg.RippleExtra.Issuer == "" {
-			return fmt.Errorf("must config 'RippleExtra.Issuer' for non native")
+		if asset.Issuer == "" {
+			return fmt.Errorf("non native currency must have issuer")
 		}
-		issuer, errf := data.NewAccountFromAddress(tokenCfg.RippleExtra.Issuer)
+		issuer, errf := data.NewAccountFromAddress(asset.Issuer)
 		if errf != nil {
-			return fmt.Errorf("invalid Issuer '%v', %w", tokenCfg.RippleExtra.Issuer, errf)
+			return fmt.Errorf("invalid issuer '%v', %w", asset.Issuer, errf)
 		}
-		issuerMap[tokenCfg.RippleExtra.Issuer] = issuer
+		issuerMap[asset.Issuer] = issuer
 	}
+	assetMap[tokenCfg.ContractAddress] = asset
 	return nil
 }
 

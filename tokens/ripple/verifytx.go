@@ -131,8 +131,7 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 		return swapInfo, err
 	}
 
-	bind, ok := GetBindAddressFromMemos(swapInfo, payment)
-	if !ok {
+	if success := parseSwapMemos(swapInfo, payment.Memos); !success {
 		log.Debug("wrong memos", "memos", payment.Memos)
 		return swapInfo, tokens.ErrWrongBindAddress
 	}
@@ -144,7 +143,6 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 
 	swapInfo.To = depositAddress                              // To
 	swapInfo.From = strings.ToLower(payment.Account.String()) // From
-	swapInfo.Bind = bind                                      // Bind
 	swapInfo.Value = amt
 
 	err = b.checkSwapoutInfo(swapInfo)
@@ -162,11 +160,15 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 }
 
 func (b *Bridge) checkToken(token *tokens.TokenConfig, txmeta *data.TransactionWithMetaData) error {
-	if !strings.EqualFold(token.RippleExtra.Currency, txmeta.MetaData.DeliveredAmount.Currency.Machine()) {
+	asset, exist := assetMap[token.ContractAddress]
+	if !exist {
+		return fmt.Errorf("non exist asset %v", token.ContractAddress)
+	}
+	if !strings.EqualFold(asset.Currency, txmeta.MetaData.DeliveredAmount.Currency.Machine()) {
 		return fmt.Errorf("ripple currency not match")
 	}
 	if !txmeta.MetaData.DeliveredAmount.Currency.IsNative() {
-		if !strings.EqualFold(token.RippleExtra.Issuer, txmeta.MetaData.DeliveredAmount.Issuer.String()) {
+		if !strings.EqualFold(asset.Issuer, txmeta.MetaData.DeliveredAmount.Issuer.String()) {
 			return fmt.Errorf("ripple currency issuer not match")
 		}
 	} else if !txmeta.MetaData.DeliveredAmount.Issuer.IsZero() {
@@ -175,32 +177,30 @@ func (b *Bridge) checkToken(token *tokens.TokenConfig, txmeta *data.TransactionW
 	return nil
 }
 
-// GetBindAddressFromMemos get bind address
-func GetBindAddressFromMemos(swapInfo *tokens.SwapTxInfo, tx data.Transaction) (bind string, ok bool) {
-	for _, memo := range tx.GetBase().Memos {
+func parseSwapMemos(swapInfo *tokens.SwapTxInfo, memos data.Memos) bool {
+	for _, memo := range memos {
 		memoStr := memo.Memo.MemoData.String()
 		parts := strings.Split(memoStr, ":")
 		if len(parts) < 2 {
 			continue
 		}
 		bindStr := parts[0]
-		toChainID := parts[1]
-		biToChainID, err := common.GetBigIntFromStr(toChainID)
+		toChainIDStr := parts[1]
+		biToChainID, err := common.GetBigIntFromStr(toChainIDStr)
 		if err != nil {
 			continue
 		}
-		dstBridge := router.GetBridgeByChainID(toChainID)
+		dstBridge := router.GetBridgeByChainID(toChainIDStr)
 		if dstBridge == nil {
 			continue
 		}
 		if dstBridge.IsValidAddress(bindStr) {
-			swapInfo.ToChainID = biToChainID
-			bind = bindStr
-			ok = true
-			return
+			swapInfo.Bind = bindStr          // Bind
+			swapInfo.ToChainID = biToChainID // ToChainID
+			return true
 		}
 	}
-	return "", false
+	return false
 }
 
 func (b *Bridge) checkSwapoutInfo(swapInfo *tokens.SwapTxInfo) error {

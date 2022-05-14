@@ -1,0 +1,26 @@
+# ripple router specials
+
+## ripple token config ContractAddress item
+
+`ContractAddress` is `XRP` or format of `Currency/Issuser`
+
+`XRP` stands for native
+
+## ripple chain and token config RouterContract item
+
+`RouterContract` is the `mpc` address
+
+## router mechanism
+
+user send asset to `mpc` address with memo of the following format
+
+```
+bindAddress:toChainID
+
+example:
+
+0x1111111111111111111111111111111111111111:4
+```
+
+to specify route asset to which address (`bindAddress`)
+and to which destination blockchain (`toChainID`)

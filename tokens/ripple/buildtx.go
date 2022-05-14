@@ -20,7 +20,7 @@ var (
 )
 
 // BuildRawTransaction build raw tx
-//nolint:gocyclo // ok
+//nolint:funlen,gocyclo // ok
 func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{}, err error) {
 	if !params.IsTestMode && args.ToChainID.String() != b.ChainConfig.ChainID {
 		return nil, tokens.ErrToChainIDMismatch
@@ -60,6 +60,11 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, tokens.ErrMissTokenConfig
 	}
 
+	asset, exist := assetMap[token.ContractAddress]
+	if !exist {
+		return nil, fmt.Errorf("non exist asset %v", token.ContractAddress)
+	}
+
 	receiver, amount, err := b.getReceiverAndAmount(args, multichainToken)
 	if err != nil {
 		return nil, err
@@ -91,7 +96,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, err
 	}
 
-	if token.RippleExtra.IsNative() {
+	if asset.IsNative() {
 		needAmount := new(big.Int).Add(amount, b.getMinReserveFee())
 		err = b.checkNativeBalance(args.From, needAmount, true)
 		if err != nil {
@@ -106,7 +111,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		if err != nil {
 			return nil, err
 		}
-		err = b.checkNonNativeBalance(token.RippleExtra.Currency, token.RippleExtra.Issuer, args.From, amt)
+		err = b.checkNonNativeBalance(asset.Currency, asset.Issuer, args.From, amt)
 		if err != nil {
 			return nil, err
 		}
@@ -144,9 +149,13 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 }
 
 func getPaymentAmount(amount *big.Int, token *tokens.TokenConfig) (*data.Amount, error) {
-	currency, exist := currencyMap[token.RippleExtra.Currency]
+	asset, exist := assetMap[token.ContractAddress]
 	if !exist {
-		return nil, fmt.Errorf("non exist currency %v", token.RippleExtra.Currency)
+		return nil, fmt.Errorf("non exist asset %v", token.ContractAddress)
+	}
+	currency, exist := currencyMap[asset.Currency]
+	if !exist {
+		return nil, fmt.Errorf("non exist currency %v", asset.Currency)
 	}
 
 	if !amount.IsInt64() {
@@ -157,21 +166,21 @@ func getPaymentAmount(amount *big.Int, token *tokens.TokenConfig) (*data.Amount,
 		return data.NewAmount(amount.Int64())
 	}
 
-	issuer, exist := issuerMap[token.RippleExtra.Issuer]
+	issuer, exist := issuerMap[asset.Issuer]
 	if !exist {
-		return nil, fmt.Errorf("non exist issuer %v", token.RippleExtra.Issuer)
+		return nil, fmt.Errorf("non exist issuer %v", asset.Issuer)
 	}
 
 	// get a Value of amount*10^(-decimals)
 	value, err := data.NewNonNativeValue(amount.Int64(), -int64(token.Decimals))
 	if err != nil {
-		log.Error("getPaymentAmount failed", "currency", token.RippleExtra.Currency, "issuer", token.RippleExtra.Issuer, "amount", amount, "decimals", token.Decimals, "err", err)
+		log.Error("getPaymentAmount failed", "currency", asset.Currency, "issuer", asset.Issuer, "amount", amount, "decimals", token.Decimals, "err", err)
 		return nil, err
 	}
 
 	return &data.Amount{
 		Value:    value,
-		Currency: currency,
+		Currency: *currency,
 		Issuer:   *issuer,
 	}, nil
 }
