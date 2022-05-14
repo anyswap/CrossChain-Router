@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mpc"
 	"github.com/anyswap/CrossChain-Router/v3/params"
@@ -331,7 +330,7 @@ func InitTokenConfig(b tokens.IBridge, tokenID string, chainID *big.Int) {
 		logErrFunc("get token address failed", "tokenID", tokenID, "chainID", chainID, "err", err)
 		return
 	}
-	if common.HexToAddress(tokenAddr) == (common.Address{}) {
+	if tokenAddr == "" {
 		log.Debugf("[%5v] '%v' token address is empty", chainID, tokenID)
 		return
 	}
@@ -344,7 +343,7 @@ func InitTokenConfig(b tokens.IBridge, tokenID string, chainID *big.Int) {
 		log.Debug("token config not found", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr)
 		return
 	}
-	if common.HexToAddress(tokenAddr) != common.HexToAddress(tokenCfg.ContractAddress) {
+	if !strings.EqualFold(tokenAddr, tokenCfg.ContractAddress) {
 		logErrFunc("verify token address mismach", "tokenID", tokenID, "chainID", chainID, "inconfig", tokenCfg.ContractAddress, "inmultichain", tokenAddr)
 		return
 	}
