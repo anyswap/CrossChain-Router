@@ -178,7 +178,7 @@ func (b *Bridge) GetBalance(accountAddress string) (*big.Int, error) {
 		log.Warn("get balance failed", "account", accountAddress, "err", err)
 		return nil, err
 	}
-	bal := big.NewInt(int64(acct.AccountData.Balance.Float() * 1000000))
+	bal := big.NewInt(acct.AccountData.Balance.Drops())
 	return bal, nil
 }
 
@@ -228,4 +228,20 @@ func (b *Bridge) GetAccountLine(currency, issuer, accountAddress string) (*data.
 		}
 	}
 	return nil, fmt.Errorf("account line not found")
+}
+
+// GetFee get fee
+func (b *Bridge) GetFee() (*websockets.FeeResult, error) {
+	var feeRes *websockets.FeeResult
+	var err error
+	for i := 0; i < rpcRetryTimes; i++ {
+		for _, r := range b.Remotes {
+			feeRes, err = r.Fee()
+			if err == nil && feeRes != nil {
+				return feeRes, nil
+			}
+		}
+		time.Sleep(rpcRetryInterval)
+	}
+	return nil, err
 }

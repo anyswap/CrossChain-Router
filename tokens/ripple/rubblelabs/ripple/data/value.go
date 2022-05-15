@@ -453,6 +453,16 @@ func (v Value) Rat() *big.Rat {
 	return res
 }
 
+func (v Value) Drops() int64 {
+	if !v.native {
+		panic("Value::Drops is only available for native currency")
+	}
+	if v.negative {
+		return -int64(v.num)
+	}
+	return int64(v.num)
+}
+
 func (v Value) Float() float64 {
 	switch {
 	case v.negative && v.native:
