@@ -123,9 +123,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 
 	ripplePubKey := ImportPublicKey(common.FromHex(mpcPubkey))
 	memo := fmt.Sprintf("%v:%v:%v", args.FromChainID, args.SwapID, args.LogIndex)
-	rawtx, _, _ := NewUnsignedPaymentTransaction(ripplePubKey, nil, uint32(sequence), receiver, toTag, amt.String(), fee, memo, "", false, false, false)
-
-	return rawtx, err
+	return NewUnsignedPaymentTransaction(ripplePubKey, nil, uint32(sequence), receiver, toTag, amt.String(), fee, memo, "", 0)
 }
 
 func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken string) (receiver string, amount *big.Int, err error) {
@@ -319,61 +317,64 @@ func (b *Bridge) GetSeq(args *tokens.BuildTxArgs) (nonceptr *uint64, err error) 
 }
 
 // NewUnsignedPaymentTransaction build ripple payment tx
-// Partial and limit must be false
 func NewUnsignedPaymentTransaction(
-	key crypto.Key, keyseq *uint32, txseq uint32, dest string, destinationTag *uint32,
-	amt, fee, memo, path string, nodirect, partial, limit bool,
-) (data.Transaction, data.Hash256, []byte) {
-	destination, amount := parseAccount(dest), parseAmount(amt)
-	payment := &data.Payment{
+	key crypto.Key, keyseq *uint32, txseq uint32,
+	dest string, destinationTag *uint32,
+	amt, fee, memo, path string, flags uint32,
+) (data.Transaction, error) {
+	destination, err := data.NewAccountFromAddress(dest)
+	if err != nil {
+		return nil, err
+	}
+	amount, err := data.NewAmount(amt)
+	if err != nil {
+		return nil, err
+	}
+	tx := &data.Payment{
 		Destination:    *destination,
 		Amount:         *amount,
 		DestinationTag: destinationTag,
 	}
-	payment.TransactionType = data.PAYMENT
+	tx.TransactionType = data.PAYMENT
+
+	txFlags := data.TransactionFlag(flags)
+	tx.Flags = &txFlags
 
 	if memo != "" {
 		memoStr := new(data.Memo)
 		memoStr.Memo.MemoData = []byte(memo)
-		payment.Memos = append(payment.Memos, *memoStr)
+		tx.Memos = append(tx.Memos, *memoStr)
 	}
 
 	if path != "" {
-		payment.Paths = parsePaths(path)
-	}
-	payment.Flags = new(data.TransactionFlag)
-	if nodirect {
-		*payment.Flags |= data.TxNoDirectRipple
-	}
-	if partial {
-		*payment.Flags |= data.TxPartialPayment
-		log.Warn("Building tx with partial")
-	}
-	if limit {
-		*payment.Flags |= data.TxLimitQuality
-		log.Warn("Building tx with limit")
+		tx.Paths, err = ParsePaths(path)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	base := payment.GetBase()
+	base := tx.GetBase()
 
 	base.Sequence = txseq
 
 	fei, err := data.NewValue(fee, true)
 	if err != nil {
-		return nil, data.Hash256{}, nil
+		return nil, err
 	}
 	base.Fee = *fei
 
 	copy(base.Account[:], key.Id(keyseq))
 
-	payment.InitialiseForSigning()
-	copy(payment.GetPublicKey().Bytes(), key.Public(keyseq))
-	hash, msg, err := data.SigningHash(payment)
+	tx.InitialiseForSigning()
+	copy(tx.GetPublicKey().Bytes(), key.Public(keyseq))
+	hash, msg, err := data.SigningHash(tx)
 	if err != nil {
-		log.Warn("Generate ripple tx signing hash error", "error", err)
-		return nil, data.Hash256{}, nil
+		return nil, err
 	}
-	log.Info("Build unsigned tx success", "signing hash", hash.String(), "blob", fmt.Sprintf("%X", msg))
+	log.Info("Build unsigned payment tx success",
+		"destination", dest, "amount", amt, "memo", memo,
+		"fee", fee, "sequence", txseq, "txflags", txFlags.String(),
+		"signing hash", hash.String(), "blob", fmt.Sprintf("%X", msg))
 
-	return payment, hash, msg
+	return tx, nil
 }

@@ -40,7 +40,7 @@ func (b *Bridge) verifyTransactionWithArgs(tx data.Transaction, args *tokens.Bui
 }
 
 // MPCSignTransaction mpc sign raw tx
-func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs) (signedTx interface{}, txHash string, err error) {
+func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs) (signTx interface{}, txHash string, err error) {
 	tx, ok := rawTx.(*data.Payment)
 	if !ok {
 		return nil, "", tokens.ErrWrongRawTx
@@ -105,12 +105,12 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 		return nil, "", fmt.Errorf("verify signature error (valid: %v): %v", valid, err)
 	}
 
-	signedTx, err = b.MakeSignedTransaction(pubkey, rsv, rawTx)
+	signedTx, err := MakeSignedTransaction(pubkey, rsv, rawTx)
 	if err != nil {
 		return signedTx, "", err
 	}
 
-	txhash := signedTx.(data.Transaction).GetHash().String()
+	txhash := signedTx.GetHash().String()
 
 	return signedTx, txhash, nil
 }
@@ -161,7 +161,7 @@ func (b *Bridge) SignTransactionWithRippleKey(rawTx interface{}, key rcrypto.Key
 		rsv = fmt.Sprintf("%064X%064X00", signature.R, signature.S)
 	}
 
-	stx, err := b.MakeSignedTransaction(pubkey, rsv, tx)
+	stx, err := MakeSignedTransaction(pubkey, rsv, tx)
 	if err != nil {
 		return nil, "", err
 	}
@@ -169,9 +169,9 @@ func (b *Bridge) SignTransactionWithRippleKey(rawTx interface{}, key rcrypto.Key
 }
 
 // MakeSignedTransaction make signed transaction
-func (b *Bridge) MakeSignedTransaction(pubkey []byte, rsv string, transaction interface{}) (signedTransaction interface{}, err error) {
+func MakeSignedTransaction(pubkey []byte, rsv string, transaction interface{}) (signedTx data.Transaction, err error) {
 	sig := rsvToSig(rsv, isEd25519Pubkey(pubkey))
-	tx, ok := transaction.(*data.Payment)
+	tx, ok := transaction.(data.Transaction)
 	if !ok {
 		return nil, tokens.ErrWrongRawTx
 	}

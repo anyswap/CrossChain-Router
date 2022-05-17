@@ -6,30 +6,15 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens/ripple/rubblelabs/ripple/data"
 )
 
-func parseAccount(s string) *data.Account {
-	account, err := data.NewAccountFromAddress(s)
-	if err != nil {
-		return nil
-	}
-	return account
-}
-
-func parseAmount(s string) *data.Amount {
-	amount, err := data.NewAmount(s)
-	if err != nil {
-		return nil
-	}
-	return amount
-}
-
-func parsePaths(s string) *data.PathSet {
+// ParsePaths parse paths
+func ParsePaths(s string) (*data.PathSet, error) {
 	ps := data.PathSet{}
 	for _, pathStr := range strings.Split(s, ",") {
 		path, err := data.NewPath(pathStr)
 		if err != nil {
-			return nil
+			return nil, err
 		}
 		ps = append(ps, path)
 	}
-	return &ps
+	return &ps, nil
 }
