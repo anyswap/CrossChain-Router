@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
@@ -8,15 +9,30 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens/ripple"
 )
 
+var (
+	paramPubKey string
+)
+
+func initFlags() {
+	flag.StringVar(&paramPubKey, "p", "", "public key string")
+
+	flag.Parse()
+}
+
 func main() {
 	log.SetLogger(6, false, true)
-	if len(os.Args) < 2 {
-		log.Fatal("must provide a public key hex string argument")
+
+	initFlags()
+
+	pubkey := paramPubKey
+	if pubkey == "" && len(os.Args) > 1 {
+		pubkey = os.Args[1]
+	}
+	if pubkey == "" {
+		log.Fatal("miss public key argument")
 	}
 
-	pubkeyHex := os.Args[1]
-
-	addr, err := ripple.PublicKeyHexToAddress(pubkeyHex)
+	addr, err := ripple.PublicKeyHexToAddress(pubkey)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}

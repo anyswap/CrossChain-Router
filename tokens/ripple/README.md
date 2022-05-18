@@ -32,3 +32,29 @@ example:
 
 to specify route asset to which address (`bindAddress`)
 and to which destination blockchain (`toChainID`)
+
+## ripple tools
+
+use `-h` option to get help info for each tool
+
+example:
+
+```shell
+go run tokens/ripple/tools/publicKeyToAddress/main.go -h
+```
+
+for transaction flags, please refer `tokens/ripple/rubblelabs/ripple/data/flags.go`
+
+```text
+publicKeyToAddress
+	convert ripple public key to ripple address
+
+sendPaymentTx
+	send mpc signed Payment tx
+
+sendAccountSetTx
+	send mpc signed AccountSet tx
+
+sendTrustSetTx
+	send mpc signed TrustSet tx
+```
