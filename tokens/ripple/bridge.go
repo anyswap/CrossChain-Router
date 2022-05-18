@@ -18,8 +18,16 @@ var (
 	// ensure Bridge impl tokens.NonceSetter
 	_ tokens.NonceSetter = &Bridge{}
 
+	supportedChainIDs = make(map[string]bool)
+
 	rpcRetryTimes    = 3
 	rpcRetryInterval = 1 * time.Second
+)
+
+const (
+	mainnetNetWork = "mainnet"
+	testnetNetWork = "testnet"
+	devnetNetWork  = "devnet"
 )
 
 // Bridge block bridge inherit from btc bridge
@@ -33,6 +41,33 @@ func NewCrossChainBridge() *Bridge {
 	return &Bridge{
 		NonceSetterBase: base.NewNonceSetterBase(),
 	}
+}
+
+// SupportsChainID supports chainID
+func SupportsChainID(chainID *big.Int) bool {
+	if len(supportedChainIDs) == 0 {
+		supportedChainIDs[GetStubChainID(mainnetNetWork).String()] = true
+		supportedChainIDs[GetStubChainID(testnetNetWork).String()] = true
+		supportedChainIDs[GetStubChainID(devnetNetWork).String()] = true
+	}
+	return supportedChainIDs[chainID.String()]
+}
+
+// GetStubChainID get stub chainID
+func GetStubChainID(network string) *big.Int {
+	stubChainID := new(big.Int).SetBytes([]byte("XRP"))
+	switch network {
+	case mainnetNetWork:
+	case testnetNetWork:
+		stubChainID.Add(stubChainID, big.NewInt(1))
+	case devnetNetWork:
+		stubChainID.Add(stubChainID, big.NewInt(2))
+	default:
+		log.Fatalf("unknown network %v", network)
+	}
+	stubChainID.Mod(stubChainID, tokens.StubChainIDBase)
+	stubChainID.Add(stubChainID, tokens.StubChainIDBase)
+	return stubChainID
 }
 
 // SetRPCRetryTimes set rpc retry times (used in cmd tools)
