@@ -3,6 +3,7 @@ package ripple
 import (
 	"fmt"
 	"math/big"
+	"sync"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -18,7 +19,8 @@ var (
 	// ensure Bridge impl tokens.NonceSetter
 	_ tokens.NonceSetter = &Bridge{}
 
-	supportedChainIDs = make(map[string]bool)
+	supportedChainIDs     = make(map[string]bool)
+	supportedChainIDsInit sync.Once
 
 	rpcRetryTimes    = 3
 	rpcRetryInterval = 1 * time.Second
@@ -45,11 +47,11 @@ func NewCrossChainBridge() *Bridge {
 
 // SupportsChainID supports chainID
 func SupportsChainID(chainID *big.Int) bool {
-	if len(supportedChainIDs) == 0 {
+	supportedChainIDsInit.Do(func() {
 		supportedChainIDs[GetStubChainID(mainnetNetWork).String()] = true
 		supportedChainIDs[GetStubChainID(testnetNetWork).String()] = true
 		supportedChainIDs[GetStubChainID(devnetNetWork).String()] = true
-	}
+	})
 	return supportedChainIDs[chainID.String()]
 }
 
