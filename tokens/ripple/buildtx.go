@@ -114,7 +114,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		if err != nil {
 			return nil, err
 		}
-		err = b.checkNonNativeBalance(asset.Currency, asset.Issuer, args.From, amt)
+		err = b.checkNonNativeBalance(asset.Currency, asset.Issuer, args.From, receiver, amt)
 		if err != nil {
 			return nil, err
 		}
@@ -260,17 +260,24 @@ func (b *Bridge) checkNativeBalance(account string, amount *big.Int, isPay bool)
 	return nil
 }
 
-func (b *Bridge) checkNonNativeBalance(currency, issuer, account string, amount *data.Amount) error {
+func (b *Bridge) checkNonNativeBalance(currency, issuer, account, receiver string, amount *data.Amount) error {
+	_, err := b.GetAccountLine(currency, issuer, receiver)
+	if err != nil {
+		return fmt.Errorf("receiver account line: %w", err)
+	}
+
 	if issuer == account {
 		return nil
 	}
+
 	accl, err := b.GetAccountLine(currency, issuer, account)
 	if err != nil {
-		return err
+		return fmt.Errorf("sender account line: %w", err)
 	}
 	if accl.Balance.Value.Compare(*amount.Value) < 0 {
 		return fmt.Errorf("insufficient %v balance, issuer: %v, account: %v", currency, issuer, account)
 	}
+
 	return nil
 }
 
