@@ -23,6 +23,7 @@ var (
 
 	paramConfigFile string
 	paramChainID    string
+	paramPrivateKey string
 	paramPublicKey  string
 	paramSequence   string
 	paraFee         string
@@ -96,6 +97,7 @@ func initAll() {
 func initFlags() {
 	flag.StringVar(&paramConfigFile, "config", "", "config file to init mpc and gateway")
 	flag.StringVar(&paramChainID, "chainID", "", "chain id")
+	flag.StringVar(&paramPrivateKey, "priKey", "", "(optinal) signer private key")
 	flag.StringVar(&paramPublicKey, "pubkey", "", "signer public key")
 	flag.StringVar(&paramSequence, "sequence", "", "(optional) signer sequence")
 	flag.StringVar(&paraFee, "fee", "10", "(optional) fee amount")
@@ -212,6 +214,10 @@ func buildPaymentTx(
 }
 
 func signPaymentTx(tx *data.Payment, pubkeyStr string) (signedTx interface{}, txHash string, err error) {
+	if paramPrivateKey != "" {
+		return bridge.SignTransactionWithPrivateKey(tx, paramPrivateKey)
+	}
+
 	msgContext := "signPaymentTx"
 	msgHash, msg, err := data.SigningHash(tx)
 	if err != nil {
