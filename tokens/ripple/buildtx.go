@@ -66,7 +66,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	}
 	asset := assetI.(*data.Asset)
 
-	receiver, amount, err := b.getReceiverAndAmount(args, multichainToken)
+	receiver, toTag, amount, err := b.getReceiverAndAmount(args, multichainToken)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,6 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	var (
 		sequence uint64
 		fee      string
-		toTag    *uint32
 	)
 
 	extra := args.Extra
@@ -126,28 +125,31 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	return NewUnsignedPaymentTransaction(ripplePubKey, nil, uint32(sequence), receiver, toTag, amt.String(), fee, memo, "", 0)
 }
 
-func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken string) (receiver string, amount *big.Int, err error) {
-	erc20SwapInfo := args.ERC20SwapInfo
-	receiver = args.Bind
+func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken string) (receiver string, destTag *uint32, amount *big.Int, err error) {
+	receiver, destTag, err = GetAddressAndTag(args.Bind)
+	if err != nil {
+		return receiver, destTag, amount, err
+	}
 	if receiver == "" || !b.IsValidAddress(args.Bind) {
 		log.Warn("swapout to wrong receiver", "receiver", args.Bind)
-		return receiver, amount, errors.New("can not swapout to empty or invalid receiver")
+		return receiver, destTag, amount, errors.New("can not swapout to empty or invalid receiver")
 	}
 	fromBridge := router.GetBridgeByChainID(args.FromChainID.String())
 	if fromBridge == nil {
-		return receiver, amount, tokens.ErrNoBridgeForChainID
+		return receiver, destTag, amount, tokens.ErrNoBridgeForChainID
 	}
+	erc20SwapInfo := args.ERC20SwapInfo
 	fromTokenCfg := fromBridge.GetTokenConfig(erc20SwapInfo.Token)
 	if fromTokenCfg == nil {
 		log.Warn("get token config failed", "chainID", args.FromChainID, "token", erc20SwapInfo.Token)
-		return receiver, amount, tokens.ErrMissTokenConfig
+		return receiver, destTag, amount, tokens.ErrMissTokenConfig
 	}
 	toTokenCfg := b.GetTokenConfig(multichainToken)
 	if toTokenCfg == nil {
-		return receiver, amount, tokens.ErrMissTokenConfig
+		return receiver, destTag, amount, tokens.ErrMissTokenConfig
 	}
 	amount = tokens.CalcSwapValue(erc20SwapInfo.TokenID, args.FromChainID.String(), b.ChainConfig.ChainID, args.OriginValue, fromTokenCfg.Decimals, toTokenCfg.Decimals, args.OriginFrom, args.OriginTxTo)
-	return receiver, amount, err
+	return receiver, destTag, amount, err
 }
 
 func getPaymentAmount(amount *big.Int, token *tokens.TokenConfig) (*data.Amount, error) {

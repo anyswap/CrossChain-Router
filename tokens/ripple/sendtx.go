@@ -13,7 +13,7 @@ import (
 
 // SendTransaction send signed tx
 func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error) {
-	tx, ok := signedTx.(*data.Payment)
+	tx, ok := signedTx.(data.Transaction)
 	if !ok {
 		return "", tokens.ErrWrongRawTx
 	}
@@ -38,7 +38,7 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error
 	}
 	if success {
 		if !params.IsParallelSwapEnabled() {
-			b.SetNonce(tx.Account.String(), uint64(tx.Sequence)+1)
+			b.SetNonce(tx.GetBase().Account.String(), uint64(tx.GetBase().Sequence)+1)
 		}
 		return txHash, nil
 	}

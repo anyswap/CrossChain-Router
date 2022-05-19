@@ -22,7 +22,7 @@ import (
 
 func (b *Bridge) verifyTransactionWithArgs(tx data.Transaction, args *tokens.BuildTxArgs) error {
 	if tx.GetTransactionType() != data.PAYMENT {
-		return fmt.Errorf("not a payment transaction")
+		return nil
 	}
 
 	payment, ok := tx.(*data.Payment)
@@ -31,17 +31,27 @@ func (b *Bridge) verifyTransactionWithArgs(tx data.Transaction, args *tokens.Bui
 	}
 
 	to := payment.Destination.String()
+	toTag := payment.DestinationTag
 
-	checkReceiver := args.Bind
-	if !strings.EqualFold(to, checkReceiver) {
-		return fmt.Errorf("[sign] verify tx receiver failed")
+	checkReceiver, checkTag, err := GetAddressAndTag(args.Bind)
+	if err != nil {
+		return err
 	}
+
+	if !strings.EqualFold(to, checkReceiver) {
+		return fmt.Errorf("[sign] verify payment tx receiver failed")
+	}
+
+	if ((toTag == nil) != (checkTag == nil)) || (toTag != nil && *toTag != *checkTag) {
+		return fmt.Errorf("[sign] verify payment tx destination tag failed")
+	}
+
 	return nil
 }
 
 // MPCSignTransaction mpc sign raw tx
 func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs) (signTx interface{}, txHash string, err error) {
-	tx, ok := rawTx.(*data.Payment)
+	tx, ok := rawTx.(data.Transaction)
 	if !ok {
 		return nil, "", tokens.ErrWrongRawTx
 	}
@@ -126,7 +136,7 @@ func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, privKey string
 
 // SignTransactionWithRippleKey sign tx with ripple key
 func (b *Bridge) SignTransactionWithRippleKey(rawTx interface{}, key rcrypto.Key, keyseq *uint32) (signTx interface{}, txHash string, err error) {
-	tx, ok := rawTx.(*data.Payment)
+	tx, ok := rawTx.(data.Transaction)
 	if !ok {
 		return nil, "", tokens.ErrWrongRawTx
 	}
@@ -165,7 +175,7 @@ func (b *Bridge) SignTransactionWithRippleKey(rawTx interface{}, key rcrypto.Key
 	if err != nil {
 		return nil, "", err
 	}
-	return stx, tx.Hash.String(), nil
+	return stx, tx.GetHash().String(), nil
 }
 
 // MakeSignedTransaction make signed transaction

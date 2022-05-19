@@ -20,6 +20,8 @@ address: rDsvn6aJG4YMQdHnuJtP9NLrFp18JYTJUf
 
 ## router mechanism
 
+1. Swapout from ripple to other chain
+
 user send asset to `mpc` address with memo of the following format
 
 ```
@@ -32,6 +34,16 @@ example:
 
 to specify route asset to which address (`bindAddress`)
 and to which destination blockchain (`toChainID`)
+
+
+2. Swapin from other chain to ripple
+
+```solidity
+function anySwapOut(address token, string memory to, uint amount, uint toChainID)
+```
+
+`to` is the destination on ripple, it can be an ripple address, or `ripple_address:destinationTag` for some address that require destination tag.
+
 
 ## ripple tools
 
