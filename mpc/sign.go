@@ -97,6 +97,7 @@ func (c *Config) DoSign(signType, signPubkey string, msgHash, msgContext []strin
 	return "", nil, errDoSignFailed
 }
 
+//nolint:gocyclo // ok
 func (c *Config) doSignImpl(mpcNode *NodeInfo, signGroupIndex int, signType, signPubkey string, msgHash, msgContext []string) (keyID string, rsvs []string, err error) {
 	nonce, err := c.GetSignNonce(mpcNode.mpcUser.String(), mpcNode.mpcRPCAddress)
 	if err != nil {
@@ -162,7 +163,7 @@ func (c *Config) doSignImpl(mpcNode *NodeInfo, signGroupIndex int, signType, sig
 			lastTime: time.Now().Unix(),
 		}
 	}
-	if isEC(signType) { // prevent multiple use of same r value
+	if mongodb.HasClient() && isEC(signType) { // prevent multiple use of same r value
 		for _, rsv := range rsvs {
 			signature := common.FromHex(rsv)
 			if len(signature) != crypto.SignatureLength {

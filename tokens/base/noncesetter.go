@@ -75,9 +75,8 @@ func (b *NonceSetterBase) InitSwapNonce(br tokens.NonceSetter, address string, n
 	defer swapNonceLock.Unlock()
 
 	dbNexNonce := nonce
-	account := strings.ToLower(address)
 	for i := 0; i < retryRPCCount; i++ {
-		pendingNonce, err := br.GetPoolNonce(account, "pending")
+		pendingNonce, err := br.GetPoolNonce(address, "pending")
 		if err == nil {
 			if pendingNonce > nonce {
 				log.Warn("init swap nonce with onchain account nonce", "chainID", b.ChainConfig.ChainID, "dbNonce", nonce, "accountNonce", pendingNonce)
@@ -86,12 +85,12 @@ func (b *NonceSetterBase) InitSwapNonce(br tokens.NonceSetter, address string, n
 			break
 		}
 		if i+1 == retryRPCCount {
-			log.Warn("init swap nonce get account nonce failed", "chainID", b.ChainConfig.ChainID, "account", account, "err", err)
+			log.Warn("init swap nonce get account nonce failed", "chainID", b.ChainConfig.ChainID, "account", address, "err", err)
 		}
 		time.Sleep(retryRPCInterval)
 	}
-	b.swapNonce[account] = &nonce
-	log.Info("init swap nonce success", "chainID", b.ChainConfig.ChainID, "account", account, "dbNexNonce", dbNexNonce, "nonce", nonce)
+	b.swapNonce[strings.ToLower(address)] = &nonce
+	log.Info("init swap nonce success", "chainID", b.ChainConfig.ChainID, "account", address, "dbNexNonce", dbNexNonce, "nonce", nonce)
 }
 
 // SetNonce set account nonce (eth like chain)

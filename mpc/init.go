@@ -116,16 +116,22 @@ type NodeInfo struct {
 
 // Init init mpc
 func Init(isServer bool) {
-	mpcConfig = initConfig(params.GetRouterConfig().MPC, isServer)
+	mpcConfig = InitConfig(params.GetRouterConfig().MPC, isServer)
 
 	if params.GetRouterConfig().FastMPC != nil {
-		fastmpcConfig = initConfig(params.GetRouterConfig().FastMPC, isServer)
+		fastmpcConfig = InitConfig(params.GetRouterConfig().FastMPC, isServer)
 		fastmpcConfig.IsFastMPC = true
 	}
 }
 
-func initConfig(mpcParams *params.MPCConfig, isServer bool) *Config {
+// InitConfig init mpc config
+func InitConfig(mpcParams *params.MPCConfig, isServer bool) *Config {
 	c := newConfig()
+
+	if mpcParams.SignWithPrivateKey {
+		log.Info("ignore mpc init as sign with private key")
+		return c
+	}
 
 	if mpcParams.SignTypeEC256K1 != "" {
 		c.signTypeEC256K1 = mpcParams.SignTypeEC256K1
