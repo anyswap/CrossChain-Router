@@ -122,6 +122,47 @@ function setMPCPubkey(address addr, string pubkey);
 
 please ref. [config-example.toml](https://github.com/anyswap/CrossChain-Router/blob/main/params/config-example.toml)
 
+the following is the major config items:
+
+| config item | description |
+| --------------- | --------------- |
+| Identifier | must have prefix 'routerswap' |
+| SwapType | eg. erc20swap, nftswap, anycallswap |
+| SwapSubType | anycall has subtype of v5 and v6 |
+| [Server] | only need by swap server |
+| [Server.MongoDB] | use mongodb database |
+| [Server.APIServer] | provide rpc service |
+| [Oracle] | only need by swap oracle |
+| [Extra] | extra configs |
+| [OnChain] | get onchain router configs in samrt contract |
+| [Gateways] | query block and tx info from full nodes' rpc |
+| [MPC] | use mpc to do threshold signing |
+
+**Notation**:
+
+the `MPC` is a security Multi-Party threshold Computation,
+for more info, please refer [FastMulThreshold-DSA](https://github.com/anyswap/FastMulThreshold-DSA)
+
+Because the complexity of `MPC`, we can use private key to sign tx for easy testing.
+
+add the following config items in the `[MPC]` section:
+
+```toml
+[MPC]
+#...... (ignores other items here)
+
+# use private key instead (use for testing)
+SignWithPrivateKey = true
+
+# set signer's private key, key is chain ID (use for testing)
+[MPC.SignerPrivateKeys]
+4  = "1111111111111111111111111111111111111111111111111111111111111111"
+97 = "2222222222222222222222222222222222222222222222222222222222222222"
+
+[MPC.DefaultNode]
+#...... (ignores concrete info here)
+```
+
 ## 6. run swaprouter
 
 ```shell
