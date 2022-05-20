@@ -2,7 +2,6 @@ package ripple
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -135,7 +134,7 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 	if mongodb.HasClient() {
 		var nextSwapNonce uint64
 		for i := 0; i < 3; i++ {
-			nextSwapNonce, err = mongodb.FindNextSwapNonce(chainID, strings.ToLower(routerMPC))
+			nextSwapNonce, err = mongodb.FindNextSwapNonce(chainID, routerMPC)
 			if err == nil {
 				break
 			}

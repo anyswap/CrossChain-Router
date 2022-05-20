@@ -64,7 +64,7 @@ func (b *Bridge) VerifyTransaction(txHash string, args *tokens.VerifyArgs) (*tok
 func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool) (*tokens.SwapTxInfo, error) {
 	swapInfo := &tokens.SwapTxInfo{}
 	swapInfo.SwapType = tokens.ERC20SwapType          // SwapType
-	swapInfo.Hash = strings.ToLower(txHash)           // Hash
+	swapInfo.Hash = txHash                            // Hash
 	swapInfo.LogIndex = logIndex                      // LogIndex
 	swapInfo.FromChainID = b.ChainConfig.GetChainID() // FromChainID
 
@@ -141,8 +141,8 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 	}
 	amt := tokens.ToBits(txres.TransactionWithMetaData.MetaData.DeliveredAmount.Value.String(), token.Decimals)
 
-	swapInfo.To = depositAddress                              // To
-	swapInfo.From = strings.ToLower(payment.Account.String()) // From
+	swapInfo.To = depositAddress             // To
+	swapInfo.From = payment.Account.String() // From
 	swapInfo.Value = amt
 
 	err = b.checkSwapoutInfo(swapInfo)
