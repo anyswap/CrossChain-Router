@@ -145,12 +145,10 @@ for more info, please refer [FastMulThreshold-DSA](https://github.com/anyswap/Fa
 
 Because the complexity of `MPC`, we can use private key to sign tx for easy testing.
 
-add the following config items in the `[MPC]` section:
+set the following config items in the `[MPC]` section:
 
 ```toml
 [MPC]
-#...... (ignores other items here)
-
 # use private key instead (use for testing)
 SignWithPrivateKey = true
 
@@ -158,10 +156,9 @@ SignWithPrivateKey = true
 [MPC.SignerPrivateKeys]
 4  = "1111111111111111111111111111111111111111111111111111111111111111"
 97 = "2222222222222222222222222222222222222222222222222222222222222222"
-
-[MPC.DefaultNode]
-#...... (ignores concrete info here)
 ```
+
+for more info, please ref. [config-sign-with-privatekey-example.toml](https://github.com/anyswap/CrossChain-Router/blob/main/params/config-sign-with-privatekey-example.toml)
 
 ## 6. run swaprouter
 

@@ -1,0 +1,43 @@
+# router swap identifier, must have prefix 'routerswap'
+Identifier = "routerswap-test"
+# router swap type (eg. erc20swap, nftswap, anycallswap)
+SwapType = "erc20swap"
+# default subtype is empty. anycall has subtype of 'curve'
+SwapSubType = ""
+
+
+# modgodb database connection config
+[Server.MongoDB]
+DBURLs = ["localhost:27917"]
+DBName = "testdb"
+UserName = "testuser"
+Password = "testpasswd"
+
+
+# bridge API service
+[Server.APIServer]
+# listen port
+Port = 11556
+
+
+# OnChain config
+[OnChain]
+Contract = "0xb89070887e2706cE35642ca430Bb26590B089Ced"
+APIAddress = ["https://data-seed-prebsc-1-s1.binance.org:8545"]
+
+
+# Gateways config. key is chainID
+[Gateways]
+97 = ["https://data-seed-prebsc-1-s1.binance.org:8545/"]
+1000005788241 = ["wss://s.altnet.rippletest.net:51233"]
+
+
+# MPC config
+[MPC]
+# use private key instead (use for testing)
+SignWithPrivateKey = true
+
+# set signer's private key, key is chain ID (use for testing)
+[MPC.SignerPrivateKeys]
+97            = "1111111111111111111111111111111111111111111111111111111111111111"
+1000005788241 = "1111111111111111111111111111111111111111111111111111111111111111"
