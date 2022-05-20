@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"math/big"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -345,6 +346,14 @@ func GetMPCPubkey(mpcAddress string) (pubkey string, err error) {
 	data := abicoder.PackDataWithFuncHash(funcHash, mpcAddress)
 	res, err := CallOnchainContract(data, "latest")
 	if err != nil {
+		if common.IsHexAddress(mpcAddress) && strings.ToLower(mpcAddress) == mpcAddress {
+			mixAddress := common.HexToAddress(mpcAddress).Hex()
+			data = abicoder.PackDataWithFuncHash(funcHash, mixAddress)
+			res, err = CallOnchainContract(data, "latest")
+			if err == nil {
+				return abicoder.ParseStringInData(res, 0)
+			}
+		}
 		return "", err
 	}
 	return abicoder.ParseStringInData(res, 0)
