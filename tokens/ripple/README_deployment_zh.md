@@ -33,7 +33,7 @@ https://testnet.xrpl.org/transactions/68FF1258F74709DAA6863C43C9827A13ECBD558D1D
 ***
 特别强调  
 >1)mpc公钥和ripple地址的关系  
-mpc申请ed公钥后，公钥本身经过地址转换就是ripple的地址，触发一笔交易后即激活  
+mpc申请ec公钥(65字节16进制编码字符串，非压缩公钥)后，公钥本身经过地址转换就是ripple的地址，触发一笔交易后即激活  
 另外，mpc获取的公钥，通过  https://github.com/anyswap/CrossChain-Router/blob/feature/ripple/tokens/ripple/tools/publicKeyToAddress/main.go  工具可获得ripple address  
 示例：  
 go run tokens/ripple/tools/publicKeyToAddress/main.go 04b4904f8a2ea01891678fec45c63fb1f221666e7d19cfeeb28f08a6d99cac91cbc12731f4c144aef501e34a6eaa0b5418ed5d138b192964bc5ccf4cde67246ca3  
