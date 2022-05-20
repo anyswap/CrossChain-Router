@@ -1,12 +1,12 @@
-## router
+# router
 合约仓库： https://github.com/anyswap/CrossChain-Router/tree/feature/ripple
 
-## ripple
+# ripple
 > 特别注意：ripple没有合约的概念，不需要部署合约，采用记账的方式替代token部署
 常用api文档：https://xrpl.org/public-servers.html
 
 > devnet  
-wss:  wss://s.devnet.rippletest.net/
+wss:  wss://s.devnet.rippletest.net/  
 chain_id:  1000005788242
 
 > testnet  
@@ -32,26 +32,22 @@ https://testnet.bscscan.com/tx/0x71157069393af79fc559e22003ff8ff8b346af9abfd22db
 https://testnet.xrpl.org/transactions/68FF1258F74709DAA6863C43C9827A13ECBD558D1D8B15CE995BC4F775AA451D
 ***
 特别强调  
->1) mpc公钥和ripple地址的关系  
+>1)mpc公钥和ripple地址的关系  
 mpc申请ed公钥后，公钥本身经过地址转换就是ripple的地址，触发一笔交易后即激活  
 另外，mpc获取的公钥，通过  https://github.com/anyswap/CrossChain-Router/blob/feature/ripple/tokens/ripple/tools/publicKeyToAddress/main.go  工具可获得ripple address  
 示例：  
 go run tokens/ripple/tools/publicKeyToAddress/main.go 04b4904f8a2ea01891678fec45c63fb1f221666e7d19cfeeb28f08a6d99cac91cbc12731f4c144aef501e34a6eaa0b5418ed5d138b192964bc5ccf4cde67246ca3  
 #output
 address: rDsvn6aJG4YMQdHnuJtP9NLrFp18JYTJUf  
->2) ripple转账注意事项  
-所有的token接收对象，都必须调用TrustSet方法对接受的token添加信任线授权
->3) config合约配置注意事项  
+>2)ripple转账注意事项  
+所有的token接收对象，都必须调用TrustSet方法对接受的token添加信任线授权  
+>3)config合约配置注意事项  
     3.1 ripple的router_contract都填写为mpc的ripple地址  
     3.2 ripple的token的contractaAddr填写格式为Current/issure  
     3.3 ripple的native(XRP)的contractAddress填写为XRP
->4) ripple调用方法  
-    4.1 golang: https://github.com/anyswap/CrossChain-Router/tree/feature/ripple/tokens/ripple/tools  
-    // 待测试,测试完更新文档  
-    4.2 nodejs: 待上传
 
 ## ripple测试步骤
-evm部署步骤这里不做赘述
+**evm部署步骤这里不做赘述**
 
 **// 所有的跨出memo写法统一为 bindAddr:toChainId**
 >1)ripple原生货币XRP
@@ -140,15 +136,32 @@ evm部署步骤这里不做赘述
     // 同原生token跨入流程
 ```
 
+## ripple调用方法
+>1)golang
+```shell
+脚本路径： https://github.com/anyswap/CrossChain-Router/tree/feature/ripple/tokens/ripple/tools
+
+1.1 payment Xrp/Token  
+    go run ./tokens/ripple/tools/sendPaymentTx/main.go -config config.toml -chainID chainid -priKey ecPriKey -pubkey ecPublicKey -destination receiptAddr -amount 100000000  
+    //mpc调用的话，去掉priKey参数
+    //amount只传数字代表发送xrp，传value/code/issure代表发送token
+    //(如100000000/FOO/rUFycYoMtiXcU25CC9v6SdGxDxYvgqxzxS)
+1.2 trustSet 
+    go run ./tokens/ripple/tools/sendTrustSetTx/main.go -config ./build/bin/config-example.toml -chainID chainid -priKey ecPriKey -pubkey ecPublicKey -limitAmount value  
+    //mpc调用的话，去掉priKey参数
+    //limitAmount传value/code/issure
+1.3 AccountSet
+    go run ./tokens/ripple/tools/sendAccountSetTx/main.go -config ./build/bin/config-example.toml -chainID chainid -priKey ecPriKey -pubkey ecPublicKey -setFlag 0x00000008  
+    //mpc调用的话，去掉priKey参数
+    //setFlag固定为0x00000008，代表TxDefaultRipple(允许自由流转)
+```
+
 ## 常见问题
 >1)tecPATH_DRY  
 ```shell
-接收地址没有调用TrustSet，无法接收token
+接收地址没有调用TrustSet，或者issure没有设置TxDefaultRipple，无法接收token
 ```
 >2)tecDST_TAG_NEEDED  
 ```shell
 接收对象设置了tfRequireDestTag，转账交易需要填写DestinationTag
 ```
-
-
-  
