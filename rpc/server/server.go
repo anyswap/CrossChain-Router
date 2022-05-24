@@ -133,7 +133,7 @@ func initRouterSwapRouter(r *mux.Router) {
 	r.HandleFunc("/alltokenids", restapi.GetAllTokenIDsHandler).Methods("GET")
 	r.HandleFunc("/allmultichaintokens/{tokenid}", restapi.GetAllMultichainTokensHandler).Methods("GET")
 	r.HandleFunc("/chainconfig/{chainid}", restapi.GetChainConfigHandler).Methods("GET")
-	r.HandleFunc("/tokenconfig/{chainid}/{address}", restapi.GetTokenConfigHandler).Methods("GET")
+	r.HandleFunc("/tokenconfig/{chainid}/{address:.*}", restapi.GetTokenConfigHandler).Methods("GET")
 	r.HandleFunc("/swapconfig/{tokenid}/{fromchainid}/{tochainid}", restapi.GetSwapConfigHandler).Methods("GET")
 	r.HandleFunc("/feeconfig/{tokenid}/{fromchainid}/{tochainid}", restapi.GetFeeConfigHandler).Methods("GET")
 }

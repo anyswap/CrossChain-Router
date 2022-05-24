@@ -135,17 +135,7 @@ func (s *RouterSwapAPI) GetAllTokenIDs(r *http.Request, args *RPCNullArgs, resul
 // nolint:gocritic // rpc need result of pointer type
 func (s *RouterSwapAPI) GetAllMultichainTokens(r *http.Request, args *string, result *map[string]string) error {
 	tokenID := *args
-	var m map[string]string
-	tokensMap := router.GetCachedMultichainTokens(tokenID)
-	if tokensMap != nil {
-		tokensMap.Range(func(k, v interface{}) bool {
-			key := k.(string)
-			val := v.(string)
-			m[key] = val
-			return true
-		})
-	}
-	*result = m
+	*result = swapapi.GetAllMultichainTokens(tokenID)
 	return nil
 }
 
