@@ -203,12 +203,12 @@ func signAndSendReplaceTx(resBridge tokens.IBridge, rawTx interface{}, args *tok
 		return
 	}
 
-	sentTxHash, err := sendSignedTransaction(resBridge, signedTx, args)
+	sentTxHash, sentTxKey err := sendSignedTransaction(resBridge, signedTx, args)
 	if err == nil && txHash != sentTxHash {
 		logWorkerError("replaceSwap", "send tx success but with different hash", errSendTxWithDiffHash,
 			"fromChainID", fromChainID, "toChainID", res.ToChainID, "txid", txid, "nonce", res.SwapNonce,
-			"logIndex", logIndex, "txHash", txHash, "sentTxHash", sentTxHash)
-		_ = mongodb.UpdateRouterOldSwapTxs(fromChainID, txid, logIndex, sentTxHash)
+			"logIndex", logIndex, "txHash", txHash, "sentTxHash", sentTxHash, "sentTxKey", sentTxKey)
+		_ = mongodb.UpdateRouterOldSwapTxs(fromChainID, txid, logIndex, sentTxHash, sentTxKey)
 	}
 }
 

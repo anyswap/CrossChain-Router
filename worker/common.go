@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
@@ -164,7 +165,7 @@ func markSwapResultFailed(fromChainID, txid string, logIndex int) (err error) {
 	return err
 }
 
-func sendSignedTransaction(bridge tokens.IBridge, signedTx interface{}, args *tokens.BuildTxArgs) (txHash string, err error) {
+func sendSignedTransaction(bridge tokens.IBridge, signedTx interface{}, args *tokens.BuildTxArgs) (txHash, txKey string, err error) {
 	var (
 		swapTxNonce = args.GetTxNonce()
 		replaceNum  = args.GetReplaceNum()
@@ -178,7 +179,16 @@ func sendSignedTransaction(bridge tokens.IBridge, signedTx interface{}, args *to
 SENDTX_LOOP:
 	for loop := 0; loop < retrySendTxLoops; loop++ {
 		for i := 0; i < 3; i++ {
-			txHash, err = bridge.SendTransaction(signedTx)
+			if bridge.IsSubstrate() {
+				sb, ok := bridge.(ISubstrateBridge)
+				if !ok {
+					return "", "", errors.New("assert substrate bridge error")
+				}
+				txHash, txKey, err = sb.SendExtrinsic(signedTx)
+			} else {
+				txHash, err = bridge.SendTransaction(signedTx)
+				txKey = ""
+			}
 			if err == nil {
 				logWorker("sendtx", "send tx success", "txHash", txHash, "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "swapNonce", swapTxNonce, "replaceNum", replaceNum)
 				break SENDTX_LOOP
@@ -200,14 +210,14 @@ SENDTX_LOOP:
 
 	if err != nil {
 		logWorkerError("sendtx", "send tx failed", err, "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "swapNonce", swapTxNonce, "replaceNum", replaceNum)
-		return txHash, err
+		return txHash, txKey, err
 	}
 
 	if params.GetRouterServerConfig().SendTxLoopCount[args.ToChainID.String()] >= 0 {
 		go sendTxLoopUntilSuccess(bridge, txHash, signedTx, args)
 	}
 
-	return txHash, nil
+	return txHash, txKey, nil
 }
 
 func sendTxLoopUntilSuccess(bridge tokens.IBridge, txHash string, signedTx interface{}, args *tokens.BuildTxArgs) {

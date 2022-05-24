@@ -57,7 +57,9 @@ type MgoSwapResult struct {
 	ToChainID   string `bson:"toChainID"`
 	SwapInfo    `bson:"swapinfo"`
 	SwapTx      string     `bson:"swaptx"`
+	SwapTxKey      string     `bson:"swaptxkey"`
 	OldSwapTxs  []string   `bson:"oldswaptxs,omitempty" json:"oldswaptxs,omitempty"`
+	OldSwapTxKeys  []string   `bson:"oldswaptxkeys,omitempty" json:"oldswaptxkeys,omitempty"`
 	SwapHeight  uint64     `bson:"swapheight"`
 	SwapTime    uint64     `bson:"swaptime"`
 	SwapValue   string     `bson:"swapvalue"`

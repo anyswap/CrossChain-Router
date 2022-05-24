@@ -48,6 +48,13 @@ type IBridge interface {
 	// GetBalance get balance is used for checking budgets
 	// to prevent DOS attacking (used in anycall)
 	GetBalance(account string) (*big.Int, error)
+
+	IsSubstrate() bool
+}
+
+type ISubstrateBridge interface {
+	IBridge
+	SendExtrinsic(signedTx interface{}) (string, string, error)
 }
 
 // ISwapTrade interface

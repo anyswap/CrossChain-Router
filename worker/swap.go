@@ -363,12 +363,12 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 		return err
 	}
 
-	sentTxHash, err := sendSignedTransaction(resBridge, signedTx, args)
+	sentTxHash, sentTxKey, err := sendSignedTransaction(resBridge, signedTx, args)
 	if err == nil && txHash != sentTxHash {
 		logWorkerError("doSwap", "send tx success but with different hash", errSendTxWithDiffHash,
 			"fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex,
-			"txHash", txHash, "sentTxHash", sentTxHash, "swapNonce", swapTxNonce)
-		_ = mongodb.UpdateRouterOldSwapTxs(fromChainID, txid, logIndex, sentTxHash)
+			"txHash", txHash, "sentTxHash", sentTxHash, "sentTxKey", sentTxKey, "swapNonce", swapTxNonce)
+		_ = mongodb.UpdateRouterOldSwapTxs(fromChainID, txid, logIndex, sentTxHash, sentTxKey)
 	}
 	return err
 }
@@ -435,12 +435,12 @@ func signAndSendTx(rawTx interface{}, args *tokens.BuildTxArgs) error {
 	addSwapHistory(fromChainID, txid, logIndex, txHash)
 	_ = updateSwapTx(fromChainID, txid, logIndex, txHash)
 
-	sentTxHash, err := sendSignedTransaction(resBridge, signedTx, args)
+	sentTxHash, sentTxKey, err := sendSignedTransaction(resBridge, signedTx, args)
 	if err == nil && txHash != sentTxHash {
 		logWorkerError("doSwap", "send tx success but with different hash", errSendTxWithDiffHash,
 			"fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex,
-			"txHash", txHash, "sentTxHash", sentTxHash, "swapNonce", swapTxNonce)
-		_ = mongodb.UpdateRouterOldSwapTxs(fromChainID, txid, logIndex, sentTxHash)
+			"txHash", txHash, "sentTxHash", sentTxHash, "sentTxKey", sentTxKey, "swapNonce", swapTxNonce)
+		_ = mongodb.UpdateRouterOldSwapTxs(fromChainID, txid, logIndex, sentTxHash, sentTxKey)
 	}
 	return err
 }

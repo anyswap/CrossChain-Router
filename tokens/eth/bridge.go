@@ -57,6 +57,10 @@ func NewCustomConfig() CustomConfig {
 	}
 }
 
+func (b *Bridge) IsSubstrate() bool {
+	return false
+}
+
 // InitAfterConfig init variables (ie. extra members) after loading config
 func (b *Bridge) InitAfterConfig() {
 	isReload := router.IsReloading

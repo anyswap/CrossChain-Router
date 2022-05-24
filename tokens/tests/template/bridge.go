@@ -25,6 +25,10 @@ func NewCrossChainBridge() *Bridge {
 func (b *Bridge) InitAfterConfig() {
 }
 
+func (b *Bridge) IsSubstrate() bool {
+	return false
+}
+
 // PublicKeyToAddress public key to address
 func (b *Bridge) PublicKeyToAddress(pubKey string) (string, error) {
 	return "", tokens.ErrNotImplemented

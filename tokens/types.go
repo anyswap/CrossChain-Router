@@ -187,6 +187,7 @@ type SwapArgs struct {
 // BuildTxArgs struct
 type BuildTxArgs struct {
 	SwapArgs    `json:"swapArgs,omitempty"`
+	EVMFrom     string         `json:"evmfrom,omitempty"`
 	From        string         `json:"from,omitempty"`
 	To          string         `json:"to,omitempty"`
 	OriginFrom  string         `json:"originFrom,omitempty"`

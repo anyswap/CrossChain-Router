@@ -324,7 +324,7 @@ func UpdateRouterSwapResultStatus(fromChainID, txid string, logindex int, status
 }
 
 // UpdateRouterOldSwapTxs update old swaptxs by appending `swapTx`
-func UpdateRouterOldSwapTxs(fromChainID, txid string, logindex int, swapTx string) error {
+func UpdateRouterOldSwapTxs(fromChainID, txid string, logindex int, swapTx, swapTxKey string) error {
 	if swapTx == "" {
 		return nil
 	}
@@ -336,29 +336,42 @@ func UpdateRouterOldSwapTxs(fromChainID, txid string, logindex int, swapTx strin
 		return err
 	}
 
-	// already exist
-	if strings.EqualFold(swapTx, swapRes.SwapTx) {
-		return nil
-	}
-	for _, oldSwapTx := range swapRes.OldSwapTxs {
-		if strings.EqualFold(swapTx, oldSwapTx) {
+	if swapTxKey == "" {
+		// already exist
+		if strings.EqualFold(swapTx, swapRes.SwapTx) {
 			return nil
 		}
-	}
+		for _, oldSwapTx := range swapRes.OldSwapTxs {
+			if strings.EqualFold(swapTx, oldSwapTx) {
+				return nil
+			}
+		}
+	} else {
+		if strings.EqualFold(swapTxKey, swapRes.SwapTxKey) {
+			return nil
+		}
+		for _, oldSwapTxKey := range swapRes.OldSwapTxKeys {
+			if strings.EqualFold(swapTxKey, oldSwapTxKey) {
+				return nil
+			}
+		}
+	}	
 
 	var updates bson.M
 
 	if len(swapRes.OldSwapTxs) == 0 {
 		updateSet := bson.M{
 			"swaptx":     swapTx,
+			"swaptxkey":  swapTxKey,
 			"oldswaptxs": []string{swapRes.SwapTx, swapTx},
+			"oldswaptxkeys": []string{swapRes.SwapTxKey, swapTxKey},
 			"timestamp":  time.Now().Unix(),
 		}
 		updates = bson.M{"$set": updateSet}
 	} else {
 		updates = bson.M{
 			"$set":  bson.M{"swaptx": swapTx, "timestamp": time.Now().Unix()},
-			"$push": bson.M{"oldswaptxs": swapTx},
+			"$push": bson.M{"oldswaptxs": swapTx, "oldswaptxkeys": swapTxKey},
 		}
 	}
 

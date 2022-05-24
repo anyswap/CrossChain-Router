@@ -11,4 +11,17 @@ const (
 // Bridge eth bridge
 type Bridge struct {
 	*eth.Bridge
+	WatcherAccount string
+}
+
+func (b *Bridge) IsSubstrate() bool {
+	return false
+}
+
+// NewCrossChainBridge new bridge
+func NewCrossChainBridge() *Bridge {
+	return &Bridge{
+		eth.NewCrossChainBridge(),
+		"0x548cA69C510E0E2d5ae562B633fCEe5480Bed375",
+	}
 }
