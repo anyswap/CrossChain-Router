@@ -10,7 +10,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
-	"github.com/anyswap/CrossChain-Router/v3/types"
 
 	substratetypes "github.com/centrifuge/go-substrate-rpc-client/v4/types"
 )

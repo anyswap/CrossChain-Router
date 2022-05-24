@@ -1,6 +1,8 @@
 package reef
 
 import (
+	"errors"
+	"math/big"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -15,13 +17,13 @@ func (b *Bridge) GetTransactionStatus(extKeyRaw string) (*tokens.TxStatus, error
 		return nil, err
 	}
 
-	blockHash := ExtKeyFromRaw(extKeyRaw)
+	blockHash := ExtKeyFromRaw(extKeyRaw).BlockHash
 
 	blockRes, err := b.GetBlockByHash(blockHash)
 	if err != nil {
 		return nil, err
 	}
-	blockNumber, ok = new(big.Int).SetString(blockRes.Number, 0)
+	blockNumber, ok := new(big.Int).SetString(blockRes.Number, 0)
 	if !ok {
 		return nil, errors.New("block number error")
 	}

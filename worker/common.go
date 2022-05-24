@@ -180,7 +180,7 @@ SENDTX_LOOP:
 	for loop := 0; loop < retrySendTxLoops; loop++ {
 		for i := 0; i < 3; i++ {
 			if bridge.IsSubstrate() {
-				sb, ok := bridge.(ISubstrateBridge)
+				sb, ok := bridge.(tokens.ISubstrateBridge)
 				if !ok {
 					return "", "", errors.New("assert substrate bridge error")
 				}
@@ -246,7 +246,14 @@ func sendTxLoopUntilSuccess(bridge tokens.IBridge, txHash string, signedTx inter
 			break
 		}
 
-		txHash, err = bridge.SendTransaction(signedTx)
+		if bridge.IsSubstrate() {
+			sb, ok := bridge.(tokens.ISubstrateBridge)
+			if ok {
+				_, txHash, err = sb.SendExtrinsic(signedTx)
+			}
+		} else {
+			txHash, err = bridge.SendTransaction(signedTx)
+		}
 		if err != nil {
 			logWorkerError("sendtx", "send tx in loop failed", err, "swapID", args.SwapID, "txHash", txHash, "loop", loop)
 		} else {

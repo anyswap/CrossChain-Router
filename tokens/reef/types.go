@@ -1,7 +1,10 @@
 package reef
 
 import (
+	"encoding/hex"
 	"errors"
+	"fmt"
+	"io/ioutil"
 	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -40,14 +43,14 @@ type Digest struct {
 type ExtrinsicInfo struct {
 	ExtrinsicLength int
 	ExtrinsicHash string
-	VersionInfo int
+	VersionInfo string
 	ContainTransaction bool
 	Nonce int
 	Era string
-	CallIndex int
+	CallIndex string
 	Params *ExtParams
 	Signature string
-	SignedExtensions []interface{}
+	SignedExtensions interface{}
 }
 
 type ExtParams struct {
@@ -70,14 +73,14 @@ type ExtrinsicResult struct {
 
 func (b *Bridge) MakeExtrinsicResult(blockRes *BlockResult, extIdx int, events string) (res *ExtrinsicResult, err error) {
 	defer func() { if r := recover(); r != nil {
-		err = r
+		err = fmt.Errorf("%v", r)
 	} }()
 
 	if len(blockRes.Extrinsics) < extIdx + 1 {
-		return nil, errors.Error("extrinsic index overflow")
+		return nil, errors.New("extrinsic index overflow")
 	}
 	m := scalecodec.MetadataDecoder{}
-	m.Init(utiles.HexToBytes(b.GetMetadata()))
+	m.Init(utiles.HexToBytes(*b.GetMetadata()))
 	_ = m.Process()
 	c, err := ioutil.ReadFile(fmt.Sprintf("reef.json"))
 	if err != nil {
@@ -105,26 +108,22 @@ func (b *Bridge) MakeExtrinsicResult(blockRes *BlockResult, extIdx int, events s
 	res.Params = new(ExtParams)
 	res.EvmLogs = make([]*types.RPCLog, 0)
 
-	params, _ := e.Params.([]interface{})
-	for _, param := range params {
-		p, ok := param.(map[string]interface{})
-		if !ok { continue }
-		name, _ := p["Name"].(string)
-		switch name {
+	for _, p := range e.Params {
+		switch p.Name {
 		case "target":
-			res.Params.Address, _ = p["Value"].(string)
+			res.Params.Address, _ = p.Value.(string)
 		case "input":
-			val, _ := p["Value"].(string)
+			val, _ := p.Value.(string)
 			res.Params.Input, _ = hex.DecodeString(val)
 		case "value":
-			val, _ := value.(uint64)
-			res.Value = new(big.Int).SetUint64(val)
+			val, _ := p.Value.(uint64)
+			res.Params.Value = new(big.Int).SetUint64(val)
 		case "gas_limit":
-			val, _ := value.(uint64)
-			res.GasLimit = val
+			val, _ := p.Value.(uint64)
+			res.Params.GasLimit = val
 		case "storage_limit":
-			val, _ := value.(uint64)
-			res.StorageLimit = val
+			val, _ := p.Value.(uint32)
+			res.Params.StorageLimit = val
 		default:
 			continue
 		}
@@ -133,8 +132,8 @@ func (b *Bridge) MakeExtrinsicResult(blockRes *BlockResult, extIdx int, events s
 	e2 := scalecodec.EventsDecoder{}
 	e2.Init(scaletypes.ScaleBytes{Data: utiles.HexToBytes(events)}, &option)
 	e2.Process()
-	events, _ := e2.Vec.Value.([]interface{})
-	for _, event := range events {
+	evts, _ := e2.Vec.Value.([]interface{})
+	for _, event := range evts {
 		evt, ok := event.(map[string]interface{})
 		if !ok { continue }
 		if evt["event_idx"] == extIdx && evt["module_id"] == "EVM" {
@@ -159,9 +158,9 @@ func (b *Bridge) MakeExtrinsicResult(blockRes *BlockResult, extIdx int, events s
 						rpclog.Topics = append(rpclog.Topics, common.HexToHash(topicStr))
 					}
 					dataStr, _ := evmlog["data"].(string)
-					*rpclog.Data = hexutil.HexToBytes(dataStr)
+					*rpclog.Data = utiles.HexToBytes(dataStr)
 					*rpclog.Removed = false
-					res.EvmLogs = res.EvmLogs.append(rpclog)
+					res.EvmLogs = append(res.EvmLogs, (rpclog))
 				}
 			}
 		}

@@ -484,11 +484,11 @@ func (b *Bridge) checkSwapWithPermit(swapInfo *tokens.SwapTxInfo) error {
 		if err != nil {
 			return err
 		}
-		if tx.Payload == nil || len(*tx.Payload) < 4 {
+		if tx.Params.Input == nil || len(tx.Params.Input) < 4 {
 			return tokens.ErrUnsupportedFuncHash
 		}
 
-		data := *tx.Payload
+		data := tx.Params.Input
 		funcHash := data[:4]
 		if bytes.Equal(funcHash, anySwapOutUnderlyingWithPermitFuncHash) ||
 			bytes.Equal(funcHash, anySwapOutUnderlyingWithTransferPermitFuncHash) {

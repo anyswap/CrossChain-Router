@@ -5,11 +5,10 @@ import (
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
-	"github.com/anyswap/CrossChain-Router/v3/types"
 )
 
-func (b *Bridge) SendTransaction(signedTx interface{}) (txHash, txKey string, err error) {
-	return "", "", nil
+func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error) {
+	return "", nil
 }
 
 // SendTransaction send signed tx
