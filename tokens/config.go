@@ -43,9 +43,9 @@ type SwapConfig struct {
 
 // FeeConfig struct
 type FeeConfig struct {
-	SwapFeeRatePerMillion uint64
 	MaximumSwapFee        *big.Int
 	MinimumSwapFee        *big.Int
+	SwapFeeRatePerMillion uint64
 }
 
 // GatewayConfig struct

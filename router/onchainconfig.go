@@ -460,3 +460,93 @@ func GetAllMultichainTokens(tokenID string) ([]MultichainToken, error) {
 	}
 	return parseMultichainTokens(res)
 }
+
+// SwapConfigInContract struct
+type SwapConfigInContract struct {
+	FromChainID       *big.Int
+	ToChainID         *big.Int
+	MaximumSwap       *big.Int
+	MinimumSwap       *big.Int
+	BigValueThreshold *big.Int
+}
+
+func parseSwapConfigs(data []byte) (configs []SwapConfigInContract, err error) {
+	offset, overflow := common.GetUint64(data, 0, 32)
+	if overflow {
+		return nil, abicoder.ErrParseDataError
+	}
+	length, overflow := common.GetUint64(data, offset, 32)
+	if overflow {
+		return nil, abicoder.ErrParseDataError
+	}
+	if uint64(len(data)) < offset+32+length*160 {
+		return nil, abicoder.ErrParseDataError
+	}
+	configs = make([]SwapConfigInContract, length)
+	arrData := data[offset+32:]
+	for i := uint64(0); i < length; i++ {
+		innerData := arrData[i*160:]
+		configs[i].FromChainID = common.GetBigInt(innerData, 0, 32)
+		configs[i].ToChainID = common.GetBigInt(innerData, 32, 32)
+		configs[i].MaximumSwap = common.GetBigInt(innerData, 64, 32)
+		configs[i].MinimumSwap = common.GetBigInt(innerData, 96, 32)
+		configs[i].BigValueThreshold = common.GetBigInt(innerData, 128, 32)
+	}
+	return configs, nil
+}
+
+// GetSwapConfigs get swap configs by tokenID
+func GetSwapConfigs(tokenID string) ([]SwapConfigInContract, error) {
+	funcHash := common.FromHex("0x3c6b1a8f")
+	data := abicoder.PackDataWithFuncHash(funcHash, tokenID)
+	res, err := CallOnchainContract(data, "latest")
+	if err != nil {
+		return nil, err
+	}
+	return parseSwapConfigs(res)
+}
+
+// FeeConfigInContract struct
+type FeeConfigInContract struct {
+	FromChainID           *big.Int
+	ToChainID             *big.Int
+	MaximumSwapFee        *big.Int
+	MinimumSwapFee        *big.Int
+	SwapFeeRatePerMillion uint64
+}
+
+func parseFeeConfigs(data []byte) (configs []FeeConfigInContract, err error) {
+	offset, overflow := common.GetUint64(data, 0, 32)
+	if overflow {
+		return nil, abicoder.ErrParseDataError
+	}
+	length, overflow := common.GetUint64(data, offset, 32)
+	if overflow {
+		return nil, abicoder.ErrParseDataError
+	}
+	if uint64(len(data)) < offset+32+length*160 {
+		return nil, abicoder.ErrParseDataError
+	}
+	configs = make([]FeeConfigInContract, length)
+	arrData := data[offset+32:]
+	for i := uint64(0); i < length; i++ {
+		innerData := arrData[i*160:]
+		configs[i].FromChainID = common.GetBigInt(innerData, 0, 32)
+		configs[i].ToChainID = common.GetBigInt(innerData, 32, 32)
+		configs[i].MaximumSwapFee = common.GetBigInt(innerData, 64, 32)
+		configs[i].MinimumSwapFee = common.GetBigInt(innerData, 96, 32)
+		configs[i].SwapFeeRatePerMillion = common.GetBigInt(data, 128, 32).Uint64()
+	}
+	return configs, nil
+}
+
+// GetFeeConfigs get fee configs by tokenID
+func GetFeeConfigs(tokenID string) ([]FeeConfigInContract, error) {
+	funcHash := common.FromHex("0x6a3ea04f")
+	data := abicoder.PackDataWithFuncHash(funcHash, tokenID)
+	res, err := CallOnchainContract(data, "latest")
+	if err != nil {
+		return nil, err
+	}
+	return parseFeeConfigs(res)
+}

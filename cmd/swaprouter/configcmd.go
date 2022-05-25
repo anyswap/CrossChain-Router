@@ -77,6 +77,26 @@ config router swap
 				},
 			},
 			{
+				Name:      "getSwapConfigs",
+				Usage:     "get swap configs by tokenID",
+				Action:    getSwapConfigs,
+				ArgsUsage: "<tokenID>",
+				Flags: []cli.Flag{
+					onchainContractFlag,
+					gatewaysFlag,
+				},
+			},
+			{
+				Name:      "getFeeConfigs",
+				Usage:     "get fee configs by tokenID",
+				Action:    getFeeConfigs,
+				ArgsUsage: "<tokenID>",
+				Flags: []cli.Flag{
+					onchainContractFlag,
+					gatewaysFlag,
+				},
+			},
+			{
 				Name:      "getSwapConfig",
 				Usage:     "get swap config by tokenID and source and dest chainID",
 				Action:    getSwapConfig,
@@ -209,6 +229,52 @@ func getTokenConfig(ctx *cli.Context) error {
 }
 
 //nolint:dupl // allow duplicate
+func getSwapConfigs(ctx *cli.Context) error {
+	if ctx.NArg() < 1 {
+		return fmt.Errorf("miss required position argument")
+	}
+	tokenID := ctx.Args().Get(0)
+	router.InitRouterConfigClientsWithArgs(
+		ctx.String(onchainContractFlag.Name),
+		ctx.StringSlice(gatewaysFlag.Name),
+	)
+	swapCfgs, err := router.GetSwapConfigs(tokenID)
+	if err != nil {
+		return err
+	}
+	jsdata, err := json.MarshalIndent(swapCfgs, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Println("swap configs are", string(jsdata))
+
+	return nil
+}
+
+//nolint:dupl // allow duplicate
+func getFeeConfigs(ctx *cli.Context) error {
+	if ctx.NArg() < 1 {
+		return fmt.Errorf("miss required position argument")
+	}
+	tokenID := ctx.Args().Get(0)
+	router.InitRouterConfigClientsWithArgs(
+		ctx.String(onchainContractFlag.Name),
+		ctx.StringSlice(gatewaysFlag.Name),
+	)
+	swapCfgs, err := router.GetFeeConfigs(tokenID)
+	if err != nil {
+		return err
+	}
+	jsdata, err := json.MarshalIndent(swapCfgs, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Println("swap configs are", string(jsdata))
+
+	return nil
+}
+
+//nolint:dupl // allow duplicate
 func getSwapConfig(ctx *cli.Context) error {
 	if ctx.NArg() < 3 {
 		return fmt.Errorf("miss required position argument")
@@ -307,6 +373,7 @@ func getMPCPubkey(ctx *cli.Context) error {
 	return nil
 }
 
+//nolint:dupl // allow duplicate
 func getAllMultichainTokens(ctx *cli.Context) error {
 	if ctx.NArg() < 1 {
 		return fmt.Errorf("miss required position argument")
