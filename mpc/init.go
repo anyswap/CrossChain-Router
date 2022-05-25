@@ -21,8 +21,8 @@ const (
 	mpcWalletServiceID = 30400
 )
 
-// sign type constants
-const (
+// sign key type
+var (
 	SignTypeEC256K1 = "ECDSA"
 	SignTypeED25519 = "ED25519"
 )
@@ -67,6 +67,9 @@ type NodeInfo struct {
 
 // Init init mpc
 func Init(mpcConfig *params.MPCConfig, isServer bool) {
+	if mpcConfig.SignTypeEC256K1 != "" {
+		SignTypeEC256K1 = mpcConfig.SignTypeEC256K1
+	}
 	if mpcConfig.APIPrefix != "" {
 		mpcAPIPrefix = mpcConfig.APIPrefix
 	}

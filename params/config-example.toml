@@ -203,6 +203,8 @@ APIAddress = ["http://127.0.0.1:8711", "http://127.0.0.1:8722"]
 
 # MPC config
 [MPC]
+# ec sign type key (ECDSA, EC256K1)
+SignTypeEC256K1 = "EC256K1"
 # mpc rpc api prefix
 APIPrefix = "smpc_"
 # RPC timeout
