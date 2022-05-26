@@ -57,6 +57,25 @@ config router swap
 				},
 			},
 			{
+				Name:   "getAllChainConfig",
+				Usage:  "get all chain config",
+				Action: getAllChainConfig,
+				Flags: []cli.Flag{
+					onchainContractFlag,
+					gatewaysFlag,
+				},
+			},
+			{
+				Name:      "getAllMultichainTokenConfig",
+				Usage:     "get all multichain token config",
+				Action:    getAllMultichainTokenConfig,
+				ArgsUsage: "<tokenID>",
+				Flags: []cli.Flag{
+					onchainContractFlag,
+					gatewaysFlag,
+				},
+			},
+			{
 				Name:      "getChainConfig",
 				Usage:     "get chain config",
 				Action:    getChainConfig,
@@ -127,6 +146,16 @@ config router swap
 				},
 			},
 			{
+				Name:      "getExtraConfig",
+				Usage:     "get extra config",
+				Action:    getExtraConfig,
+				ArgsUsage: "<key>",
+				Flags: []cli.Flag{
+					onchainContractFlag,
+					gatewaysFlag,
+				},
+			},
+			{
 				Name:      "getAllMultichainTokens",
 				Usage:     "get all multichain tokens",
 				Action:    getAllMultichainTokens,
@@ -169,6 +198,46 @@ config router swap
 		Usage: "gateway URL to connect",
 	}
 )
+
+func getAllChainConfig(ctx *cli.Context) error {
+	router.InitRouterConfigClientsWithArgs(
+		ctx.String(onchainContractFlag.Name),
+		ctx.StringSlice(gatewaysFlag.Name),
+	)
+	chainCfgs, err := router.GetAllChainConfig()
+	if err != nil {
+		return err
+	}
+	jsdata, err := json.MarshalIndent(chainCfgs, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Println("chain configs are", string(jsdata))
+	return nil
+}
+
+//nolint:dupl // allow duplicate
+func getAllMultichainTokenConfig(ctx *cli.Context) error {
+	if ctx.NArg() < 1 {
+		return fmt.Errorf("miss required position argument")
+	}
+	tokenID := ctx.Args().Get(0)
+	router.InitRouterConfigClientsWithArgs(
+		ctx.String(onchainContractFlag.Name),
+		ctx.StringSlice(gatewaysFlag.Name),
+	)
+	tokenCfgs, err := router.GetAllMultichainTokenConfig(tokenID)
+	if err != nil {
+		return err
+	}
+	jsdata, err := json.MarshalIndent(tokenCfgs, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Println("swap configs are", string(jsdata))
+
+	return nil
+}
 
 func getChainIDArgument(ctx *cli.Context, pos int) (chainID *big.Int, err error) {
 	chainIDStr := ctx.Args().Get(pos)
@@ -292,7 +361,7 @@ func getSwapConfig(ctx *cli.Context) error {
 		ctx.String(onchainContractFlag.Name),
 		ctx.StringSlice(gatewaysFlag.Name),
 	)
-	swapCfg, err := router.GetActualSwapConfig(tokenID, fromChainID, toChainID)
+	swapCfg, err := router.GetSwapConfig(tokenID, fromChainID, toChainID)
 	if err != nil {
 		return err
 	}
@@ -323,7 +392,7 @@ func getFeeConfig(ctx *cli.Context) error {
 		ctx.String(onchainContractFlag.Name),
 		ctx.StringSlice(gatewaysFlag.Name),
 	)
-	feeCfg, err := router.GetActualFeeConfig(tokenID, fromChainID, toChainID)
+	feeCfg, err := router.GetFeeConfig(tokenID, fromChainID, toChainID)
 	if err != nil {
 		return err
 	}
@@ -349,6 +418,23 @@ func getCustomConfig(ctx *cli.Context) error {
 		ctx.StringSlice(gatewaysFlag.Name),
 	)
 	data, err := router.GetCustomConfig(chainID, key)
+	if err != nil {
+		return err
+	}
+	fmt.Println(data)
+	return nil
+}
+
+func getExtraConfig(ctx *cli.Context) error {
+	if ctx.NArg() < 1 {
+		return fmt.Errorf("miss required position argument")
+	}
+	key := ctx.Args().Get(0)
+	router.InitRouterConfigClientsWithArgs(
+		ctx.String(onchainContractFlag.Name),
+		ctx.StringSlice(gatewaysFlag.Name),
+	)
+	data, err := router.GetExtraConfig(key)
 	if err != nil {
 		return err
 	}
