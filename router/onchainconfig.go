@@ -278,13 +278,6 @@ func GetSwapConfig(tokenID string, fromChainID, toChainID *big.Int) (*tokens.Swa
 	return callAndParseSwapConfigResult(data)
 }
 
-// GetActualSwapConfig abi
-func GetActualSwapConfig(tokenID string, fromChainID, toChainID *big.Int) (*tokens.SwapConfig, error) {
-	funcHash := common.FromHex("0xd5637235")
-	data := abicoder.PackDataWithFuncHash(funcHash, tokenID, fromChainID, toChainID)
-	return callAndParseSwapConfigResult(data)
-}
-
 func parseFeeConfig(data []byte) (config *tokens.FeeConfig, err error) {
 	if uint64(len(data)) < 3*32 {
 		return nil, abicoder.ErrParseDataError
@@ -319,17 +312,24 @@ func GetFeeConfig(tokenID string, fromChainID, toChainID *big.Int) (*tokens.FeeC
 	return callAndParseFeeConfigResult(data)
 }
 
-// GetActualFeeConfig abi
-func GetActualFeeConfig(tokenID string, fromChainID, toChainID *big.Int) (*tokens.FeeConfig, error) {
-	funcHash := common.FromHex("0xae409e9a")
-	data := abicoder.PackDataWithFuncHash(funcHash, tokenID, fromChainID, toChainID)
-	return callAndParseFeeConfigResult(data)
-}
-
 // GetCustomConfig abi
 func GetCustomConfig(chainID *big.Int, key string) (string, error) {
 	funcHash := common.FromHex("0x61387d61")
 	data := abicoder.PackDataWithFuncHash(funcHash, chainID, key)
+	res, err := CallOnchainContract(data, "latest")
+	if err != nil {
+		return "", err
+	}
+	if len(res) == 0 {
+		return "", nil
+	}
+	return abicoder.ParseStringInData(res, 0)
+}
+
+// GetExtraConfig abi
+func GetExtraConfig(key string) (string, error) {
+	funcHash := common.FromHex("0x340a5f2d")
+	data := abicoder.PackDataWithFuncHash(funcHash, key)
 	res, err := CallOnchainContract(data, "latest")
 	if err != nil {
 		return "", err
@@ -459,4 +459,260 @@ func GetAllMultichainTokens(tokenID string) ([]MultichainToken, error) {
 		return nil, err
 	}
 	return parseMultichainTokens(res)
+}
+
+// SwapConfigInContract struct
+type SwapConfigInContract struct {
+	FromChainID       *big.Int
+	ToChainID         *big.Int
+	MaximumSwap       *big.Int
+	MinimumSwap       *big.Int
+	BigValueThreshold *big.Int
+}
+
+func parseSwapConfigs(data []byte) (configs []SwapConfigInContract, err error) {
+	offset, overflow := common.GetUint64(data, 0, 32)
+	if overflow {
+		return nil, abicoder.ErrParseDataError
+	}
+	length, overflow := common.GetUint64(data, offset, 32)
+	if overflow {
+		return nil, abicoder.ErrParseDataError
+	}
+	if uint64(len(data)) < offset+32+length*160 {
+		return nil, abicoder.ErrParseDataError
+	}
+	configs = make([]SwapConfigInContract, length)
+	arrData := data[offset+32:]
+	for i := uint64(0); i < length; i++ {
+		innerData := arrData[i*160:]
+		configs[i].FromChainID = common.GetBigInt(innerData, 0, 32)
+		configs[i].ToChainID = common.GetBigInt(innerData, 32, 32)
+		configs[i].MaximumSwap = common.GetBigInt(innerData, 64, 32)
+		configs[i].MinimumSwap = common.GetBigInt(innerData, 96, 32)
+		configs[i].BigValueThreshold = common.GetBigInt(innerData, 128, 32)
+	}
+	return configs, nil
+}
+
+// GetSwapConfigs get swap configs by tokenID
+func GetSwapConfigs(tokenID string) ([]SwapConfigInContract, error) {
+	funcHash := common.FromHex("0x3c6b1a8f")
+	data := abicoder.PackDataWithFuncHash(funcHash, tokenID)
+	res, err := CallOnchainContract(data, "latest")
+	if err != nil {
+		return nil, err
+	}
+	return parseSwapConfigs(res)
+}
+
+// FeeConfigInContract struct
+type FeeConfigInContract struct {
+	FromChainID           *big.Int
+	ToChainID             *big.Int
+	MaximumSwapFee        *big.Int
+	MinimumSwapFee        *big.Int
+	SwapFeeRatePerMillion uint64
+}
+
+func parseFeeConfigs(data []byte) (configs []FeeConfigInContract, err error) {
+	offset, overflow := common.GetUint64(data, 0, 32)
+	if overflow {
+		return nil, abicoder.ErrParseDataError
+	}
+	length, overflow := common.GetUint64(data, offset, 32)
+	if overflow {
+		return nil, abicoder.ErrParseDataError
+	}
+	if uint64(len(data)) < offset+32+length*160 {
+		return nil, abicoder.ErrParseDataError
+	}
+	configs = make([]FeeConfigInContract, length)
+	arrData := data[offset+32:]
+	for i := uint64(0); i < length; i++ {
+		innerData := arrData[i*160:]
+		configs[i].FromChainID = common.GetBigInt(innerData, 0, 32)
+		configs[i].ToChainID = common.GetBigInt(innerData, 32, 32)
+		configs[i].MaximumSwapFee = common.GetBigInt(innerData, 64, 32)
+		configs[i].MinimumSwapFee = common.GetBigInt(innerData, 96, 32)
+		configs[i].SwapFeeRatePerMillion = common.GetBigInt(data, 128, 32).Uint64()
+	}
+	return configs, nil
+}
+
+// GetFeeConfigs get fee configs by tokenID
+func GetFeeConfigs(tokenID string) ([]FeeConfigInContract, error) {
+	funcHash := common.FromHex("0x6a3ea04f")
+	data := abicoder.PackDataWithFuncHash(funcHash, tokenID)
+	res, err := CallOnchainContract(data, "latest")
+	if err != nil {
+		return nil, err
+	}
+	return parseFeeConfigs(res)
+}
+
+// ChainConfigInContract struct
+type ChainConfigInContract struct {
+	ChainID        string
+	BlockChain     string
+	RouterContract string
+	Confirmations  uint64
+	InitialHeight  uint64
+	Extra          string
+}
+
+func parseChainConfig2(data []byte) (*ChainConfigInContract, error) {
+	if uint64(len(data)) < 288 {
+		return nil, abicoder.ErrParseDataError
+	}
+	chainID := common.GetBigInt(data, 0, 32).String()
+	blockChain, err := abicoder.ParseStringInData(data, 32)
+	if err != nil {
+		return nil, abicoder.ErrParseDataError
+	}
+	routerContract, err := abicoder.ParseStringInData(data, 64)
+	if err != nil {
+		return nil, abicoder.ErrParseDataError
+	}
+	confirmations := common.GetBigInt(data, 96, 32).Uint64()
+	initialHeight := common.GetBigInt(data, 128, 32).Uint64()
+	extra, err := abicoder.ParseStringInData(data, 160)
+	if err != nil {
+		return nil, abicoder.ErrParseDataError
+	}
+
+	return &ChainConfigInContract{
+		ChainID:        chainID,
+		BlockChain:     blockChain,
+		RouterContract: routerContract,
+		Confirmations:  confirmations,
+		InitialHeight:  initialHeight,
+		Extra:          extra,
+	}, nil
+}
+
+//nolint:dupl // allow duplicate
+func parseChainConfigs(data []byte) (configs []*ChainConfigInContract, err error) {
+	offset, overflow := common.GetUint64(data, 0, 32)
+	if overflow {
+		return nil, abicoder.ErrParseDataError
+	}
+	length, overflow := common.GetUint64(data, offset, 32)
+	if overflow {
+		return nil, abicoder.ErrParseDataError
+	}
+	if uint64(len(data)) < offset+32+length*288 {
+		return nil, abicoder.ErrParseDataError
+	}
+	configs = make([]*ChainConfigInContract, length)
+	arrData := data[offset+32:]
+	for i := uint64(0); i < length; i++ {
+		offset, overflow = common.GetUint64(arrData, i*32, 32)
+		if overflow {
+			return nil, abicoder.ErrParseDataError
+		}
+		configs[i], err = parseChainConfig2(arrData[offset:])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return configs, nil
+}
+
+// GetAllChainConfig abi
+func GetAllChainConfig() ([]*ChainConfigInContract, error) {
+	funcHash := common.FromHex("0x71a4a947")
+	data := funcHash
+	res, err := CallOnchainContract(data, "latest")
+	if err != nil {
+		return nil, err
+	}
+	configs, err := parseChainConfigs(res)
+	if err != nil {
+		return nil, err
+	}
+	return configs, nil
+}
+
+// TokenConfigInContract struct
+type TokenConfigInContract struct {
+	ChainID         string
+	Decimals        uint8
+	ContractAddress string
+	ContractVersion uint64
+	RouterContract  string
+	Extra           string
+}
+
+func parseTokenConfig2(data []byte) (*TokenConfigInContract, error) {
+	if uint64(len(data)) < 288 {
+		return nil, abicoder.ErrParseDataError
+	}
+	chainID := common.GetBigInt(data, 0, 32).String()
+	decimals := uint8(common.GetBigInt(data, 32, 32).Uint64())
+	contractAddress, err := abicoder.ParseStringInData(data, 64)
+	if err != nil {
+		return nil, abicoder.ErrParseDataError
+	}
+	contractVersion := common.GetBigInt(data, 96, 32).Uint64()
+	routerContract, err := abicoder.ParseStringInData(data, 128)
+	if err != nil {
+		return nil, abicoder.ErrParseDataError
+	}
+	extra, err := abicoder.ParseStringInData(data, 160)
+	if err != nil {
+		return nil, abicoder.ErrParseDataError
+	}
+
+	return &TokenConfigInContract{
+		ChainID:         chainID,
+		Decimals:        decimals,
+		ContractAddress: contractAddress,
+		ContractVersion: contractVersion,
+		RouterContract:  routerContract,
+		Extra:           extra,
+	}, nil
+}
+
+//nolint:dupl // allow duplicate
+func parseTokenConfigs(data []byte) (configs []*TokenConfigInContract, err error) {
+	offset, overflow := common.GetUint64(data, 0, 32)
+	if overflow {
+		return nil, abicoder.ErrParseDataError
+	}
+	length, overflow := common.GetUint64(data, offset, 32)
+	if overflow {
+		return nil, abicoder.ErrParseDataError
+	}
+	if uint64(len(data)) < offset+32+length*288 {
+		return nil, abicoder.ErrParseDataError
+	}
+	configs = make([]*TokenConfigInContract, length)
+	arrData := data[offset+32:]
+	for i := uint64(0); i < length; i++ {
+		offset, overflow = common.GetUint64(arrData, i*32, 32)
+		if overflow {
+			return nil, abicoder.ErrParseDataError
+		}
+		configs[i], err = parseTokenConfig2(arrData[offset:])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return configs, nil
+}
+
+// GetAllMultichainTokenConfig abi
+func GetAllMultichainTokenConfig(tokenID string) ([]*TokenConfigInContract, error) {
+	funcHash := common.FromHex("0x160dcc6f")
+	data := abicoder.PackDataWithFuncHash(funcHash, tokenID)
+	res, err := CallOnchainContract(data, "latest")
+	if err != nil {
+		return nil, err
+	}
+	configs, err := parseTokenConfigs(res)
+	if err != nil {
+		return nil, err
+	}
+	return configs, nil
 }

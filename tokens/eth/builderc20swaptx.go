@@ -38,9 +38,9 @@ var (
 	// anySwapInExactTokensForNative(bytes32 txs, uint amountIn, uint amountOutMin, address[] path, address to, uint deadline, uint fromChainID)
 	AnySwapInExactTokensForNativeFuncHash = common.FromHex("0x52a397d5")
 	// anySwapInAndExec(bytes32 txs, address token, address to, uint amount, uint fromChainID, address anycallProxy, bytes calldata data)
-	AnySwapInAndExecFuncHash = common.FromHex("0x22db7336")
+	AnySwapInAndExecFuncHash = common.FromHex("0x86377115")
 	// anySwapInUnderlyingAndExec(bytes32 txs, address token, address to, uint amount, uint fromChainID, address anycallProxy, bytes calldata data)
-	AnySwapInUnderlyingAndExecFuncHash = common.FromHex("0x302ef85a")
+	AnySwapInUnderlyingAndExecFuncHash = common.FromHex("0x3a4ff8dc")
 )
 
 // GetSwapInFuncHash get swapin func hash

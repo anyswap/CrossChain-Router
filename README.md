@@ -51,16 +51,8 @@ function setTokenConfig(string tokenID, uint256 chainID, string tokenAddr, uint8
 
 ### 4.3 set swap and fee config
 
-#### 4.3.1 set swap and fee config meantime
-
-call the following contract function:
-
-```solidity
-function setSwapAndFeeConfig(
-        string tokenID, uint256 srcChainID, uint256 dstChainID,
-        uint256 maxSwap, uint256 minSwap, uint256 bigSwap,
-        uint256 maxFee, uint256 minFee, uint256 feeRate)
-```
+we may not set swap and fee config between all fromChainIDs and toChainIDs,
+and we'll use the following logic to decide the actual config to use.
 
 ```text
 the actual swap config is decided by the following steps
@@ -76,6 +68,47 @@ the actual fee config is decided by the following steps
 2. else if _feeConfig[tokenID][srcChainID][0] exist, then use it.
 3. else if _feeConfig[tokenID][0][dstChainID] exist, then use it.
 4. else use _feeConfig[tokenID][0][0].
+```
+
+1. set swap and fee config in batch
+
+```solidity
+    struct SwapConfig2 {
+        uint256 FromChainID;
+        uint256 ToChainID;
+        uint256 MaximumSwap;
+        uint256 MinimumSwap;
+        uint256 BigValueThreshold;
+    }
+
+    struct FeeConfig2 {
+        uint256 FromChainID;
+        uint256 ToChainID;
+        uint256 MaximumSwapFee;
+        uint256 MinimumSwapFee;
+        uint256 SwapFeeRatePerMillion;
+    }
+
+    function setSwapConfigs(string memory tokenID, SwapConfig2[] calldata configs)
+    function setFeeConfigs(string memory tokenID, FeeConfig2[] calldata configs)
+```
+
+2. query swap and fee config in batch
+
+```solidity
+    function getAllSwapConfigs(string memory tokenID) external view returns (SwapConfig2[] memory)
+    function getAllFeeConfigs(string memory tokenID) external view returns (FeeConfig2[] memory)
+```
+
+#### 4.3.1 set swap and fee config meantime
+
+call the following contract function:
+
+```solidity
+function setSwapAndFeeConfig(
+        string tokenID, uint256 srcChainID, uint256 dstChainID,
+        uint256 maxSwap, uint256 minSwap, uint256 bigSwap,
+        uint256 maxFee, uint256 minFee, uint256 feeRate)
 ```
 
 #### 4.3.2 set swap config alone

@@ -252,3 +252,18 @@ func GetRouterSwapHistory(fromChainID, address string, offset, limit int, status
 	}
 	return ConvertMgoSwapResultsToSwapInfos(result), nil
 }
+
+// GetAllMultichainTokens impl
+func GetAllMultichainTokens(tokenID string) map[string]string {
+	m := make(map[string]string)
+	tokensMap := router.GetCachedMultichainTokens(tokenID)
+	if tokensMap != nil {
+		tokensMap.Range(func(k, v interface{}) bool {
+			key := k.(string)
+			val := v.(string)
+			m[key] = val
+			return true
+		})
+	}
+	return m
+}

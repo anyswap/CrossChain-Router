@@ -178,33 +178,69 @@ func loadSwapConfigs(wg *sync.WaitGroup, swapConfigs *sync.Map, tokenID string, 
 
 	logErrFunc := log.GetLogFuncOr(router.DontPanicInLoading(), log.Error, log.Fatal)
 
-	wg2 := new(sync.WaitGroup)
+	swapCfgs, err := router.GetSwapConfigs(tokenID)
+	if err != nil {
+		logErrFunc("get swap configs failed", "tokenID", tokenID, "err", err)
+		return
+	}
+
+	swapCfgMap := make(map[string]map[string]*tokens.SwapConfig)
+	for _, cfg := range swapCfgs {
+		fromChainID := cfg.FromChainID.String()
+		toChainID := cfg.ToChainID.String()
+		innerMap, exist := swapCfgMap[fromChainID]
+		if !exist {
+			innerMap = make(map[string]*tokens.SwapConfig)
+			swapCfgMap[fromChainID] = innerMap
+		}
+		swapCfg := &tokens.SwapConfig{
+			MaximumSwap:       cfg.MaximumSwap,
+			MinimumSwap:       cfg.MinimumSwap,
+			BigValueThreshold: cfg.BigValueThreshold,
+		}
+		err = swapCfg.CheckConfig()
+		if err != nil {
+			logErrFunc("check swap config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "err", err)
+			return
+		}
+		innerMap[toChainID] = swapCfg
+		log.Info("load swap config success", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "config", swapCfg)
+	}
+
 	for i, fromChainID := range supportChainIDs {
-		fmap := new(sync.Map)
-		swapConfigs.Store(fromChainID.String(), fmap)
+		innerMap := new(sync.Map)
+		swapConfigs.Store(fromChainID.String(), innerMap)
+		fmap, fexist := swapCfgMap[fromChainID.String()]
 		for j, toChainID := range supportChainIDs {
 			if i == j {
 				continue
 			}
-			wg2.Add(1)
-			go func(wg *sync.WaitGroup, tokenID string, fromChainID, toChainID *big.Int) {
-				defer wg.Done()
-				swapCfg, err := router.GetActualSwapConfig(tokenID, fromChainID, toChainID)
-				if err != nil {
-					logErrFunc("get swap config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "err", err)
-					return
+			var swapCfg *tokens.SwapConfig
+			var exist bool
+			if fexist {
+				// 1. if _swapConfig[tokenID][srcChainID][dstChainID] exist, then use it.
+				swapCfg, exist = fmap[toChainID.String()]
+				if !exist {
+					// 2. else if _swapConfig[tokenID][srcChainID][0] exist, then use it.
+					swapCfg, exist = fmap["0"]
 				}
-				err = swapCfg.CheckConfig()
-				if err != nil {
-					logErrFunc("check swap config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "err", err)
-					return
+			}
+			if !exist {
+				if zmap, zexist := swapCfgMap["0"]; zexist {
+					// 3. else if _swapConfig[tokenID][0][dstChainID] exist, then use it.
+					swapCfg, exist = zmap[toChainID.String()]
+					if !exist {
+						// 4. else use _swapConfig[tokenID][0][0].
+						swapCfg, exist = zmap["0"]
+					}
 				}
-				fmap.Store(toChainID.String(), swapCfg)
-				log.Info("load swap config success", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID)
-			}(wg2, tokenID, fromChainID, toChainID)
+			}
+			if !exist {
+				continue
+			}
+			innerMap.Store(toChainID.String(), swapCfg)
 		}
 	}
-	wg2.Wait()
 }
 
 //nolint:dupl // allow duplicate
@@ -213,33 +249,69 @@ func loadFeeConfigs(wg *sync.WaitGroup, feeConfigs *sync.Map, tokenID string, su
 
 	logErrFunc := log.GetLogFuncOr(router.DontPanicInLoading(), log.Error, log.Fatal)
 
-	wg2 := new(sync.WaitGroup)
+	feeCfgs, err := router.GetFeeConfigs(tokenID)
+	if err != nil {
+		logErrFunc("get fee configs failed", "tokenID", tokenID, "err", err)
+		return
+	}
+
+	feeCfgMap := make(map[string]map[string]*tokens.FeeConfig)
+	for _, cfg := range feeCfgs {
+		fromChainID := cfg.FromChainID.String()
+		toChainID := cfg.ToChainID.String()
+		innerMap, exist := feeCfgMap[fromChainID]
+		if !exist {
+			innerMap = make(map[string]*tokens.FeeConfig)
+			feeCfgMap[fromChainID] = innerMap
+		}
+		feeCfg := &tokens.FeeConfig{
+			MaximumSwapFee:        cfg.MaximumSwapFee,
+			MinimumSwapFee:        cfg.MinimumSwapFee,
+			SwapFeeRatePerMillion: cfg.SwapFeeRatePerMillion,
+		}
+		err = feeCfg.CheckConfig()
+		if err != nil {
+			logErrFunc("check fee config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "err", err)
+			return
+		}
+		innerMap[toChainID] = feeCfg
+		log.Info("load fee config success", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "config", feeCfg)
+	}
+
 	for i, fromChainID := range supportChainIDs {
-		fmap := new(sync.Map)
-		feeConfigs.Store(fromChainID.String(), fmap)
+		innerMap := new(sync.Map)
+		feeConfigs.Store(fromChainID.String(), innerMap)
+		fmap, fexist := feeCfgMap[fromChainID.String()]
 		for j, toChainID := range supportChainIDs {
 			if i == j {
 				continue
 			}
-			wg2.Add(1)
-			go func(wg *sync.WaitGroup, tokenID string, fromChainID, toChainID *big.Int) {
-				defer wg.Done()
-				feeCfg, err := router.GetActualFeeConfig(tokenID, fromChainID, toChainID)
-				if err != nil {
-					logErrFunc("get fee config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "err", err)
-					return
+			var feeCfg *tokens.FeeConfig
+			var exist bool
+			if fexist {
+				// 1. if _feeConfig[tokenID][srcChainID][dstChainID] exist, then use it.
+				feeCfg, exist = fmap[toChainID.String()]
+				if !exist {
+					// 2. else if _feeConfig[tokenID][srcChainID][0] exist, then use it.
+					feeCfg, exist = fmap["0"]
 				}
-				err = feeCfg.CheckConfig()
-				if err != nil {
-					logErrFunc("check fee config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "err", err)
-					return
+			}
+			if !exist {
+				if zmap, zexist := feeCfgMap["0"]; zexist {
+					// 3. else if _feeConfig[tokenID][0][dstChainID] exist, then use it.
+					feeCfg, exist = zmap[toChainID.String()]
+					if !exist {
+						// 4. else use _feeConfig[tokenID][0][0].
+						feeCfg, exist = zmap["0"]
+					}
 				}
-				fmap.Store(toChainID.String(), feeCfg)
-				log.Info("load fee config success", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID)
-			}(wg2, tokenID, fromChainID, toChainID)
+			}
+			if !exist {
+				continue
+			}
+			innerMap.Store(toChainID.String(), feeCfg)
 		}
 	}
-	wg2.Wait()
 }
 
 // InitGatewayConfig impl

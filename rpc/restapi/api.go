@@ -180,7 +180,7 @@ func GetAllTokenIDsHandler(w http.ResponseWriter, r *http.Request) {
 func GetAllMultichainTokensHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	tokenID := vars["tokenid"]
-	allMultichainTokens := router.GetCachedMultichainTokens(tokenID)
+	allMultichainTokens := swapapi.GetAllMultichainTokens(tokenID)
 	writeResponse(w, allMultichainTokens, nil)
 }
 
