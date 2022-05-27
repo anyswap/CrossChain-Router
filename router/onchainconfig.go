@@ -150,7 +150,7 @@ func parseChainConfig(data []byte) (config *tokens.ChainConfig, err error) {
 	if uint64(len(data)) < offset+224 {
 		return nil, abicoder.ErrParseDataError
 	}
-	data = data[32:]
+	data = data[offset:]
 	blockChain, err := abicoder.ParseStringInData(data, 0)
 	if err != nil {
 		return nil, abicoder.ErrParseDataError
@@ -535,7 +535,7 @@ func parseFeeConfigs(data []byte) (configs []FeeConfigInContract, err error) {
 		configs[i].ToChainID = common.GetBigInt(innerData, 32, 32)
 		configs[i].MaximumSwapFee = common.GetBigInt(innerData, 64, 32)
 		configs[i].MinimumSwapFee = common.GetBigInt(innerData, 96, 32)
-		configs[i].SwapFeeRatePerMillion = common.GetBigInt(data, 128, 32).Uint64()
+		configs[i].SwapFeeRatePerMillion = common.GetBigInt(innerData, 128, 32).Uint64()
 	}
 	return configs, nil
 }
