@@ -187,9 +187,16 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 		return
 	}
 
-	logErrFunc := log.GetLogFuncOr(router.DontPanicInLoading(), log.Error, log.Fatal)
-
 	tokenID := tokenCfg.TokenID
+
+	if tokenCfg.ContractVersion >= MintBurnWrapperTokenVersion {
+		log.Info("ignore wrapper token config checking",
+			"tokenID", tokenID, "tokenAddr", tokenAddr,
+			"decimals", tokenCfg.Decimals, "ContractVersion", tokenCfg.ContractVersion)
+		return
+	}
+
+	logErrFunc := log.GetLogFuncOr(router.DontPanicInLoading(), log.Error, log.Fatal)
 
 	decimals, errt := b.GetErc20Decimals(tokenAddr)
 	if errt != nil {
