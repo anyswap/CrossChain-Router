@@ -862,7 +862,7 @@ func getStatusInfo(coll *mongo.Collection, filterStatuses []SwapStatus) (result 
 		{"$group": bson.M{"_id": "$status", "count": bson.M{"$sum": 1}}},
 	}
 
-	ctx, cancel := context.WithDeadline(clientCtx, time.Now().Add(3*time.Second))
+	ctx, cancel := context.WithDeadline(clientCtx, time.Now().Add(60*time.Second))
 	defer cancel()
 
 	cur, err := coll.Aggregate(ctx, pipeOption)
