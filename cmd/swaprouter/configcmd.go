@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/urfave/cli/v2"
@@ -200,6 +201,7 @@ config router swap
 )
 
 func getAllChainConfig(ctx *cli.Context) error {
+	utils.SetLogger(ctx)
 	router.InitRouterConfigClientsWithArgs(
 		ctx.String(onchainContractFlag.Name),
 		ctx.StringSlice(gatewaysFlag.Name),
@@ -218,6 +220,7 @@ func getAllChainConfig(ctx *cli.Context) error {
 
 //nolint:dupl // allow duplicate
 func getAllMultichainTokenConfig(ctx *cli.Context) error {
+	utils.SetLogger(ctx)
 	if ctx.NArg() < 1 {
 		return fmt.Errorf("miss required position argument")
 	}
@@ -249,6 +252,7 @@ func getChainIDArgument(ctx *cli.Context, pos int) (chainID *big.Int, err error)
 }
 
 func getChainConfig(ctx *cli.Context) error {
+	utils.SetLogger(ctx)
 	if ctx.NArg() < 1 {
 		return fmt.Errorf("miss required position argument")
 	}
@@ -273,6 +277,7 @@ func getChainConfig(ctx *cli.Context) error {
 }
 
 func getTokenConfig(ctx *cli.Context) error {
+	utils.SetLogger(ctx)
 	if ctx.NArg() < 2 {
 		return fmt.Errorf("miss required position argument")
 	}
@@ -299,6 +304,7 @@ func getTokenConfig(ctx *cli.Context) error {
 
 //nolint:dupl // allow duplicate
 func getSwapConfigs(ctx *cli.Context) error {
+	utils.SetLogger(ctx)
 	if ctx.NArg() < 1 {
 		return fmt.Errorf("miss required position argument")
 	}
@@ -322,6 +328,7 @@ func getSwapConfigs(ctx *cli.Context) error {
 
 //nolint:dupl // allow duplicate
 func getFeeConfigs(ctx *cli.Context) error {
+	utils.SetLogger(ctx)
 	if ctx.NArg() < 1 {
 		return fmt.Errorf("miss required position argument")
 	}
@@ -345,6 +352,7 @@ func getFeeConfigs(ctx *cli.Context) error {
 
 //nolint:dupl // allow duplicate
 func getSwapConfig(ctx *cli.Context) error {
+	utils.SetLogger(ctx)
 	if ctx.NArg() < 3 {
 		return fmt.Errorf("miss required position argument")
 	}
@@ -376,6 +384,7 @@ func getSwapConfig(ctx *cli.Context) error {
 
 //nolint:dupl // allow duplicate
 func getFeeConfig(ctx *cli.Context) error {
+	utils.SetLogger(ctx)
 	if ctx.NArg() < 3 {
 		return fmt.Errorf("miss required position argument")
 	}
@@ -405,6 +414,7 @@ func getFeeConfig(ctx *cli.Context) error {
 }
 
 func getCustomConfig(ctx *cli.Context) error {
+	utils.SetLogger(ctx)
 	if ctx.NArg() < 2 {
 		return fmt.Errorf("miss required position argument")
 	}
@@ -426,6 +436,7 @@ func getCustomConfig(ctx *cli.Context) error {
 }
 
 func getExtraConfig(ctx *cli.Context) error {
+	utils.SetLogger(ctx)
 	if ctx.NArg() < 1 {
 		return fmt.Errorf("miss required position argument")
 	}
@@ -443,6 +454,7 @@ func getExtraConfig(ctx *cli.Context) error {
 }
 
 func getMPCPubkey(ctx *cli.Context) error {
+	utils.SetLogger(ctx)
 	if ctx.NArg() < 1 {
 		return fmt.Errorf("miss required position argument")
 	}
@@ -461,6 +473,7 @@ func getMPCPubkey(ctx *cli.Context) error {
 
 //nolint:dupl // allow duplicate
 func getAllMultichainTokens(ctx *cli.Context) error {
+	utils.SetLogger(ctx)
 	if ctx.NArg() < 1 {
 		return fmt.Errorf("miss required position argument")
 	}
@@ -482,6 +495,7 @@ func getAllMultichainTokens(ctx *cli.Context) error {
 }
 
 func getMultichainToken(ctx *cli.Context) error {
+	utils.SetLogger(ctx)
 	if ctx.NArg() < 2 {
 		return fmt.Errorf("miss required position argument")
 	}
@@ -503,6 +517,7 @@ func getMultichainToken(ctx *cli.Context) error {
 }
 
 func getAllChainIDs(ctx *cli.Context) error {
+	utils.SetLogger(ctx)
 	router.InitRouterConfigClientsWithArgs(
 		ctx.String(onchainContractFlag.Name),
 		ctx.StringSlice(gatewaysFlag.Name),
@@ -516,6 +531,7 @@ func getAllChainIDs(ctx *cli.Context) error {
 }
 
 func getAllTokenIDs(ctx *cli.Context) error {
+	utils.SetLogger(ctx)
 	router.InitRouterConfigClientsWithArgs(
 		ctx.String(onchainContractFlag.Name),
 		ctx.StringSlice(gatewaysFlag.Name),
@@ -529,6 +545,7 @@ func getAllTokenIDs(ctx *cli.Context) error {
 }
 
 func isChainIDExist(ctx *cli.Context) error {
+	utils.SetLogger(ctx)
 	if ctx.NArg() < 1 {
 		return fmt.Errorf("miss required position argument")
 	}
@@ -549,6 +566,7 @@ func isChainIDExist(ctx *cli.Context) error {
 }
 
 func isTokenIDExist(ctx *cli.Context) error {
+	utils.SetLogger(ctx)
 	if ctx.NArg() < 1 {
 		return fmt.Errorf("miss required position argument")
 	}

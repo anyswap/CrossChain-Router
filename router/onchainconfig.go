@@ -68,6 +68,10 @@ func InitRouterConfigClientsWithArgs(configContract string, gateways []string) {
 			log.Fatal("init router config clients failed", "gateway", gateway, "err", err)
 		}
 	}
+	log.Debug("init router config clients success", "gateway", gateways, "configContract", configContract)
+	if len(routerConfigClients) == 0 {
+		log.Fatal("no router config client")
+	}
 }
 
 // CallOnchainContract call onchain contract

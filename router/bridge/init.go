@@ -200,7 +200,7 @@ func loadSwapConfigs(wg *sync.WaitGroup, swapConfigs *sync.Map, tokenID string, 
 		}
 		err = swapCfg.CheckConfig()
 		if err != nil {
-			logErrFunc("check swap config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "err", err)
+			logErrFunc("check swap config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "config", swapCfg, "err", err)
 			return
 		}
 		innerMap[toChainID] = swapCfg
@@ -271,7 +271,7 @@ func loadFeeConfigs(wg *sync.WaitGroup, feeConfigs *sync.Map, tokenID string, su
 		}
 		err = feeCfg.CheckConfig()
 		if err != nil {
-			logErrFunc("check fee config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "err", err)
+			logErrFunc("check fee config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "config", feeCfg, "err", err)
 			return
 		}
 		innerMap[toChainID] = feeCfg
