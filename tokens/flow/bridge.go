@@ -7,6 +7,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/base"
+	sdk "github.com/onflow/flow-go-sdk"
 )
 
 var (
@@ -80,12 +81,31 @@ func (b *Bridge) GetLatestBlockNumberOf(apiAddress string) (uint64, error) {
 }
 
 func (b *Bridge) GetBlockNumberByHash(blockHash string) (uint64, error) {
-	return 0, nil
+	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	for _, url := range urls {
+		result, err := GetBlockNumberByHash(url, blockHash)
+		if err == nil {
+			return result, nil
+		}
+	}
+	return 0, tokens.ErrGetBlockNumberByID
 }
 
 // GetTransaction impl
 func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
-	return nil, nil
+	return b.GetTransactionByHash(txHash)
+}
+
+// GetTransactionByHash get tx response by hash
+func (b *Bridge) GetTransactionByHash(txHash string) (result *sdk.TransactionResult, err error) {
+	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	for _, url := range urls {
+		result, err = GetTransactionByHash(url, txHash)
+		if err == nil {
+			return result, nil
+		}
+	}
+	return nil, tokens.ErrTxNotFound
 }
 
 // GetTransactionStatus impl
