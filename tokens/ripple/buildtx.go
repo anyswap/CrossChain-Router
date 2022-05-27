@@ -70,6 +70,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	if err != nil {
 		return nil, err
 	}
+	args.SwapValue = amount // SwapValue
 
 	var (
 		sequence uint64
