@@ -57,10 +57,6 @@ func BroadcastTxCommit(url string, signedTx []byte) (string, error) {
 	return "", nil
 }
 
-func functionCall(url, accountID, methodName, args string) ([]byte, error) {
-	return nil, nil
-}
-
 // GetTransactionByHash get tx by hash
 func GetTransactionByHash(url, txHash string) (*sdk.TransactionResult, error) {
 	path := "/transaction_results/" + txHash

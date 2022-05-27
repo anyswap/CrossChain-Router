@@ -15,9 +15,6 @@ import (
 
 var (
 	errTxResultType = errors.New("tx type is not TransactionResult")
-	errTxLogParse   = errors.New("tx logs is not LogSwapOut")
-	tokenLogSymbol  = "LogSwapOut"
-	nativeLogSymbol = "LogSwapOutNative"
 	Success_Status  = "SEALED"
 	Event_Type      = "A.address.router.SwapOut"
 )
@@ -209,7 +206,7 @@ func (b *Bridge) fliterReceipts(receipt *sdk.Event) ([]string, error) {
 		}
 	}
 	for _, field := range eventMap.Value.Fields {
-		event = append(event, field.Value.value)
+		event = append(event, field.Value.Value)
 	}
 	return event, nil
 }

@@ -2,7 +2,7 @@ package flow
 
 type FieldValue struct {
 	Type  string `json:"type"`
-	value string `json:"value"`
+	Value string `json:"value"`
 }
 type Field struct {
 	Name  string     `json:"name"`
