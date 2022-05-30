@@ -15,6 +15,7 @@ require (
 	github.com/lestrrat-go/file-rotatelogs v2.4.0+incompatible
 	github.com/lestrrat-go/strftime v1.0.4 // indirect
 	github.com/mr-tron/base58 v1.2.0
+	github.com/onflow/cadence v0.23.4 // indirect
 	github.com/onflow/flow-go-sdk v0.25.0
 	github.com/pborman/uuid v1.2.1
 	github.com/sirupsen/logrus v1.8.1

@@ -15,7 +15,6 @@ import (
 
 var (
 	errTxResultType = errors.New("tx type is not TransactionResult")
-	Success_Status  = "SEALED"
 	Event_Type      = "A.address.router.SwapOut"
 )
 

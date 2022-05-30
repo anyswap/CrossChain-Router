@@ -2,27 +2,138 @@ package flow
 
 import (
 	"errors"
+	"fmt"
+	"io/ioutil"
 	"math/big"
 	"time"
 
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/onflow/cadence"
+	sdk "github.com/onflow/flow-go-sdk"
 )
 
 var (
-	retryRPCCount    = 3
-	retryRPCInterval = 1 * time.Second
+	retryRPCCount           = 3
+	retryRPCInterval        = 1 * time.Second
+	defaultGasLimit  uint64 = 1_000_000
 )
 
 // BuildRawTransaction build raw tx
 //nolint:gocyclo // ok
 func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{}, err error) {
+	if !params.IsTestMode && args.ToChainID.String() != b.ChainConfig.ChainID {
+		return nil, tokens.ErrToChainIDMismatch
+	}
+	if args.Input != nil {
+		return nil, fmt.Errorf("forbid build raw swap tx with input data")
+	}
+	if args.From == "" {
+		return nil, fmt.Errorf("forbid empty sender")
+	}
+	routerMPC, getMpcErr := router.GetRouterMPC(args.GetTokenID(), b.ChainConfig.ChainID)
+	if getMpcErr != nil {
+		return nil, getMpcErr
+	}
+	if !common.IsEqualIgnoreCase(args.From, routerMPC) {
+		log.Error("build tx mpc mismatch", "have", args.From, "want", routerMPC)
+		return nil, tokens.ErrSenderMismatch
+	}
+	switch args.SwapType {
+	case tokens.ERC20SwapType:
+	default:
+		return nil, tokens.ErrSwapTypeNotSupported
+	}
+
+	mpcPubkey := router.GetMPCPublicKey(args.From)
+	if mpcPubkey == "" {
+		return nil, tokens.ErrMissMPCPublicKey
+	}
+
+	erc20SwapInfo := args.ERC20SwapInfo
+	multichainToken := router.GetCachedMultichainToken(erc20SwapInfo.TokenID, args.ToChainID.String())
+	if multichainToken == "" {
+		log.Warn("get multichain token failed", "tokenID", erc20SwapInfo.TokenID, "chainID", args.ToChainID)
+		return nil, tokens.ErrMissTokenConfig
+	}
+
+	token := b.GetTokenConfig(multichainToken)
+	if token == nil {
+		return nil, tokens.ErrMissTokenConfig
+	}
+
+	extra, err := b.initExtra(args)
+
+	if err != nil {
+		return nil, err
+	}
+
+	receiver, amount, err := b.getReceiverAndAmount(args, multichainToken)
+	if err != nil {
+		return nil, err
+	}
+	args.SwapValue = amount // SwapValue
+
+	blockID, getBlockHashErr := b.GetLatestBlockID()
+	if getBlockHashErr != nil {
+		return nil, getBlockHashErr
+	}
+	rawTx = CreateTransaction(sdk.HexToAddress(args.From), 0, *extra.Sequence, *extra.Gas, blockID, sdk.HexToAddress(receiver), args.SwapValue)
 	return rawTx, nil
 }
 
+func CreateTransaction(
+	signerAddress sdk.Address,
+	signerIndex int,
+	signerSequence uint64,
+	gas uint64,
+	blockID sdk.Identifier,
+	receiver sdk.Address,
+	amount *big.Int,
+) *sdk.Transaction {
+	swapIn, err := ioutil.ReadFile("Greeting2.cdc")
+	if err != nil {
+		panic("failed to load Cadence script")
+	}
+
+	tx := sdk.NewTransaction().
+		SetScript(swapIn).
+		SetGasLimit(gas).
+		SetReferenceBlockID(blockID).
+		SetProposalKey(signerAddress, signerIndex, signerSequence).
+		SetPayer(signerAddress).
+		AddAuthorizer(signerAddress)
+
+	recipient := cadence.NewAddress(receiver)
+
+	value, err := cadence.NewUFix64(amount.String())
+	if err != nil {
+		panic(err)
+	}
+	tx.AddArgument(recipient)
+	tx.AddArgument(value)
+	return tx
+}
+
 func (b *Bridge) initExtra(args *tokens.BuildTxArgs) (extra *tokens.AllExtras, err error) {
+	extra = args.Extra
+	if extra == nil {
+		extra = &tokens.AllExtras{}
+		args.Extra = extra
+	}
+	if extra.Sequence == nil {
+		extra.Sequence, err = b.GetSeq(args)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if extra.Gas == nil {
+		gas := defaultGasLimit
+		extra.Gas = &gas
+	}
 	return extra, nil
 }
 

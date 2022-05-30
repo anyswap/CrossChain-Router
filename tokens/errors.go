@@ -49,6 +49,7 @@ var (
 	ErrMissTokenConfig    = errors.New("miss token config")
 	ErrNoUnderlyingToken  = errors.New("no underlying token")
 	ErrGetBlockNumberByID = errors.New("get block number by id error")
+	ErrSendTx             = errors.New("send tx fails")
 )
 
 // ShouldRegisterRouterSwapForError return true if this error should record in database

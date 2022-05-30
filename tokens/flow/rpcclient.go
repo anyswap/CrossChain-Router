@@ -30,16 +30,16 @@ func GetBlockNumberByHash(url, hash string) (uint64, error) {
 }
 
 // GetLatestBlockNumber get latest block height
-func GetLatestBlockNumber(url string) (uint64, error) {
+func GetLatestBlock(url string) (*sdk.Block, error) {
 	flowClient, err1 := http.NewClient(url)
 	if err1 != nil {
-		return 0, err1
+		return nil, err1
 	}
 	latestBlock, err2 := flowClient.GetLatestBlock(ctx, true)
 	if err2 != nil {
-		return 0, err2
+		return nil, err2
 	}
-	return latestBlock.Height, nil
+	return latestBlock, nil
 }
 
 // GetLatestBlockNumber get latest block height
@@ -53,8 +53,16 @@ func GetAccountNonce(url, account string) (uint64, error) {
 	return result.Keys[0].SequenceNumber, nil
 }
 
-func BroadcastTxCommit(url string, signedTx []byte) (string, error) {
-	return "", nil
+func sendTransaction(url string, signedTx *sdk.Transaction) (string, error) {
+	flowClient, err1 := http.NewClient(url)
+	if err1 != nil {
+		return "", err1
+	}
+	err2 := flowClient.SendTransaction(context.Background(), *signedTx)
+	if err2 != nil {
+		return "", err2
+	}
+	return signedTx.ID().String(), nil
 }
 
 // GetTransactionByHash get tx by hash

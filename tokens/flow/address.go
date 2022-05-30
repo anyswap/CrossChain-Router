@@ -6,6 +6,7 @@ func (b *Bridge) IsValidAddress(address string) bool {
 }
 
 func (b *Bridge) GetAccountNonce(account, publicKey string) (uint64, error) {
+
 	return 0, nil
 }
 
