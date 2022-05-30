@@ -81,7 +81,10 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	if getBlockHashErr != nil {
 		return nil, getBlockHashErr
 	}
-	rawTx = CreateTransaction(sdk.HexToAddress(args.From), 0, *extra.Sequence, *extra.Gas, blockID, sdk.HexToAddress(receiver), args.SwapValue)
+	rawTx, err = CreateTransaction(sdk.HexToAddress(args.From), 0, *extra.Sequence, *extra.Gas, blockID, sdk.HexToAddress(receiver), args.SwapValue)
+	if err != nil {
+		return nil, err
+	}
 	return rawTx, nil
 }
 
@@ -93,10 +96,10 @@ func CreateTransaction(
 	blockID sdk.Identifier,
 	receiver sdk.Address,
 	amount *big.Int,
-) *sdk.Transaction {
-	swapIn, err := ioutil.ReadFile("Greeting2.cdc")
-	if err != nil {
-		panic("failed to load Cadence script")
+) (*sdk.Transaction, error) {
+	swapIn, errf := ioutil.ReadFile("Greeting2.cdc")
+	if errf != nil {
+		return nil, errf
 	}
 
 	tx := sdk.NewTransaction().
@@ -111,11 +114,17 @@ func CreateTransaction(
 
 	value, err := cadence.NewUFix64(amount.String())
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	tx.AddArgument(recipient)
-	tx.AddArgument(value)
-	return tx
+	err = tx.AddArgument(recipient)
+	if err != nil {
+		return nil, err
+	}
+	err = tx.AddArgument(value)
+	if err != nil {
+		return nil, err
+	}
+	return tx, nil
 }
 
 func (b *Bridge) initExtra(args *tokens.BuildTxArgs) (extra *tokens.AllExtras, err error) {
