@@ -124,13 +124,14 @@ func startAcceptConsumer(mpcConfig *mpc.Config) {
 	}()
 
 	cur, max := getAcceptRoutines(mpcConfig.IsFastMPC)
+	acceptCh := getAcceptInfoCh(mpcConfig.IsFastMPC)
 
 	for {
 		select {
 		case <-utils.CleanupChan:
 			logWorker("accept", "stop accept sign job")
 			return
-		case info := <-acceptInfoCh: // consume
+		case info := <-acceptCh: // consume
 			// loop and check, break if free worker exist
 			for {
 				if atomic.LoadInt64(&cur) < max {
