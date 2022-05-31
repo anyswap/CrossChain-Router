@@ -5,7 +5,7 @@ Identifier = "routerswap#test"
 SwapType = "erc20swap"
 
 # test module name
-Module = "eth"
+Module = "flow"
 
 # rpc listen port
 Port = 11556
@@ -21,36 +21,32 @@ AllowCallByContract = false
 IsDebugMode = true
 
 # all chain ids (pass 'miss token config' checking)
-AllChainIDs = ["56", "25"]
-
+AllChainIDs = ["56", "97"]
 
 [Gateway]
-APIAddress = ["http://127.0.0.1:6711"]
-
+APIAddress = ["http://127.0.0.1:8888/v1"]
 
 # chain config
 [Chain]
-ChainID = "56"
 BlockChain = "bsc"
+ChainID = "56"
+Confirmations = 1
+InitialHeight = 0
 RouterContract = "0x92c079d3155c2722dbf7e65017a5baf9cd15561c"
-Confirmations  = 1
-InitialHeight  = 0
-
 
 # token config
 [Token]
-TokenID         = "anyBNB"
-Decimals        = 18
+ContractAddress = "((UFix64):A.f8d6e0586b0a20c7.AnyExampleToken.Vault)"
 ContractVersion = 6
-ContractAddress = "0x49974c3c99f4e74d08845c31d3f4f16fdc264ebd"
-Underlying      = "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c"
-RouterContract  = "0x92c079d3155c2722dbf7e65017a5baf9cd15561c"
-
+Decimals = 8
+RouterContract = "0x92c079d3155c2722dbf7e65017a5baf9cd15561c"
+TokenID = "((UFix64):A.f8d6e0586b0a20c7.AnyExampleToken.Vault)"
+Underlying = "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c"
 
 [Swap]
-SwapFeeRatePerMillion = 0
-MaximumSwapFee    = "0"
-MinimumSwapFee    = "0"
-MaximumSwap       = "10000000000000000000000000"
 BigValueThreshold = "10000000000000000000000000"
-MinimumSwap       = "1"
+MaximumSwap = "10000000000000000000000000"
+MaximumSwapFee = "0"
+MinimumSwap = "1"
+MinimumSwapFee = "0"
+SwapFeeRatePerMillion = 0

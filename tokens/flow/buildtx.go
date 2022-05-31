@@ -81,7 +81,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	if getBlockHashErr != nil {
 		return nil, getBlockHashErr
 	}
-	rawTx, err = CreateTransaction(sdk.HexToAddress(args.From), 0, *extra.Sequence, *extra.Gas, blockID, sdk.HexToAddress(receiver), args.SwapValue)
+	rawTx, err = CreateTransaction(sdk.HexToAddress(args.From), 0, *extra.Sequence, *extra.Gas, blockID, sdk.HexToAddress(receiver), args.FromChainID, args.SwapValue)
 	if err != nil {
 		return nil, err
 	}
@@ -95,6 +95,7 @@ func CreateTransaction(
 	gas uint64,
 	blockID sdk.Identifier,
 	receiver sdk.Address,
+	fromChainID *big.Int,
 	amount *big.Int,
 ) (*sdk.Transaction, error) {
 	swapIn, errf := ioutil.ReadFile("Greeting2.cdc")
@@ -112,11 +113,22 @@ func CreateTransaction(
 
 	recipient := cadence.NewAddress(receiver)
 
+	id, err := common.GetUint64FromStr(fromChainID.String())
+	if err != nil {
+		return nil, err
+	}
+	fromChainId := cadence.NewUInt64(id)
+
 	value, err := cadence.NewUFix64(amount.String())
 	if err != nil {
 		return nil, err
 	}
+
 	err = tx.AddArgument(recipient)
+	if err != nil {
+		return nil, err
+	}
+	err = tx.AddArgument(fromChainId)
 	if err != nil {
 		return nil, err
 	}

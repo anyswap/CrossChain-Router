@@ -1,9 +1,8 @@
 package flow
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -15,7 +14,7 @@ import (
 
 var (
 	errTxResultType = errors.New("tx type is not TransactionResult")
-	Event_Type      = "A.address.router.SwapOut"
+	Event_Type      = "A.f8d6e0586b0a20c7.Router.LogSwapOut"
 )
 
 // VerifyMsgHash verify msg hash
@@ -104,18 +103,17 @@ func (b *Bridge) checkTxStatus(txres *sdk.TransactionResult, allowUnstable bool)
 	return nil
 }
 
-func (b *Bridge) parseSwapoutTxEvent(swapInfo *tokens.SwapTxInfo, event []string) error {
+func (b *Bridge) parseSwapoutTxEvent(swapInfo *tokens.SwapTxInfo, event []interface{}) error {
+	swapInfo.ERC20SwapInfo.Token = event[0].(string)
+	swapInfo.Bind = event[1].(string)
 
-	swapInfo.ERC20SwapInfo.Token = event[0]
-	swapInfo.Bind = event[1]
-
-	amount, erra := common.GetBigIntFromStr(event[2])
+	amount, erra := common.GetBigIntFromStr(fmt.Sprint(event[2].(uint64)))
 	if erra != nil {
 		return erra
 	}
 	swapInfo.Value = amount
 
-	toChainID, errt := common.GetBigIntFromStr(event[4])
+	toChainID, errt := common.GetBigIntFromStr(fmt.Sprint(event[4].(uint64)))
 	if errt != nil {
 		return errt
 	}
@@ -133,6 +131,7 @@ func (b *Bridge) parseSwapoutTxEvent(swapInfo *tokens.SwapTxInfo, event []string
 }
 
 func (b *Bridge) checkSwapoutInfo(swapInfo *tokens.SwapTxInfo) error {
+	log.Warn("checkSwapoutInfo", "from", swapInfo.From, "to", swapInfo.To)
 	if strings.EqualFold(swapInfo.From, swapInfo.To) {
 		return tokens.ErrTxWithWrongSender
 	}
@@ -191,21 +190,10 @@ func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable boo
 	return txres.Events, nil
 }
 
-func (b *Bridge) fliterReceipts(receipt *sdk.Event) ([]string, error) {
-	var eventMap Event
-	var event []string
+func (b *Bridge) fliterReceipts(receipt *sdk.Event) ([]interface{}, error) {
 	if receipt.Type == Event_Type {
-		data, errd := base64.StdEncoding.DecodeString(string(receipt.Payload))
-		if errd != nil {
-			return nil, errd
-		}
-		errj := json.Unmarshal(data, &eventMap)
-		if errj != nil {
-			return nil, errj
-		}
+		valut := receipt.Value.ToGoValue()
+		return valut.([]interface{}), nil
 	}
-	for _, field := range eventMap.Value.Fields {
-		event = append(event, field.Value.Value)
-	}
-	return event, nil
+	return nil, tokens.ErrSwapoutLogNotFound
 }

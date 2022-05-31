@@ -58,7 +58,7 @@ func sendTransaction(url string, signedTx *sdk.Transaction) (string, error) {
 	if err1 != nil {
 		return "", err1
 	}
-	err2 := flowClient.SendTransaction(context.Background(), *signedTx)
+	err2 := flowClient.SendTransaction(ctx, *signedTx)
 	if err2 != nil {
 		return "", err2
 	}
@@ -67,13 +67,15 @@ func sendTransaction(url string, signedTx *sdk.Transaction) (string, error) {
 
 // GetTransactionByHash get tx by hash
 func GetTransactionByHash(url, txHash string) (*sdk.TransactionResult, error) {
-	path := "/transaction_results/" + txHash
-	var result sdk.TransactionResult
-	err := client.RPCGetWithTimeout(&result, joinURLPath(url, path), rpcTimeout)
-	if err != nil {
-		return nil, err
+	flowClient, err1 := http.NewClient(url)
+	if err1 != nil {
+		return nil, err1
 	}
-	return &result, nil
+	result, err2 := flowClient.GetTransactionResult(ctx, sdk.HexToID(txHash))
+	if err2 != nil {
+		return nil, err2
+	}
+	return result, nil
 }
 
 func joinURLPath(url, path string) string {
