@@ -87,7 +87,7 @@ func (b *Bridge) checkTxStatus(txres *sdk.TransactionResult, allowUnstable bool)
 			return errh1
 		}
 
-		txHeight, errh2 := b.GetBlockNumberByHash(txres.BlockID.Hex())
+		txHeight, errh2 := b.GetBlockNumberByHash(txres.BlockID)
 		if errh2 != nil {
 			return errh2
 		}
@@ -131,7 +131,6 @@ func (b *Bridge) parseSwapoutTxEvent(swapInfo *tokens.SwapTxInfo, event []interf
 }
 
 func (b *Bridge) checkSwapoutInfo(swapInfo *tokens.SwapTxInfo) error {
-	log.Warn("checkSwapoutInfo", "from", swapInfo.From, "to", swapInfo.To)
 	if strings.EqualFold(swapInfo.From, swapInfo.To) {
 		return tokens.ErrTxWithWrongSender
 	}
@@ -160,9 +159,9 @@ func (b *Bridge) checkSwapoutInfo(swapInfo *tokens.SwapTxInfo) error {
 		return tokens.ErrMissTokenConfig
 	}
 
-	if !tokens.CheckTokenSwapValue(swapInfo, fromTokenCfg.Decimals, toTokenCfg.Decimals) {
-		return tokens.ErrTxWithWrongValue
-	}
+	// if !tokens.CheckTokenSwapValue(swapInfo, fromTokenCfg.Decimals, toTokenCfg.Decimals) {
+	// 	return tokens.ErrTxWithWrongValue
+	// }
 
 	bindAddr := swapInfo.Bind
 	if !toBridge.IsValidAddress(bindAddr) {

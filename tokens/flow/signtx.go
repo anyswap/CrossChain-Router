@@ -20,12 +20,12 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 		return b.SignTransactionWithPrivateKey(rawTx, priKey)
 	}
 
-	return nil, txHash, nil
+	return signedTx, txHash, err
 }
 
 // SignTransactionWithPrivateKey sign tx with ECDSA private key string
 func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, privKey string) (signedTx interface{}, txHash string, err error) {
-	ecPrikey, err := crypto.DecodePrivateKeyHex(crypto.ECDSA_secp256k1, privKey)
+	ecPrikey, err := crypto.DecodePrivateKeyHex(crypto.ECDSA_P256, privKey)
 	if err != nil {
 		return nil, "", err
 	}
@@ -33,7 +33,7 @@ func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, privKey string
 }
 
 func signTransaction(tx interface{}, privKey crypto.PrivateKey) (signedTx interface{}, txHash string, err error) {
-	rawTx := tx.(sdk.Transaction)
+	rawTx := tx.(*sdk.Transaction)
 	key := sdk.NewAccountKey().
 		SetPublicKey(privKey.PublicKey()).
 		SetSigAlgo(privKey.Algorithm()).

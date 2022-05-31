@@ -11,8 +11,8 @@ Module = "flow"
 Port = 11556
 
 # use private key instead of mpc signing
-SignWithPrivateKey = "0x1111111111111111111111111111111111111111111111111111111111111111"
-SignerAddress = "0x1111111111111111111111111111111111111111"
+SignWithPrivateKey = "d095e6e001eece7b3451da0b7bd67984dc7bed2198cd4f903a1351da33259e45"
+SignerAddress = "0xf8d6e0586b0a20c7"
 
 # allow call into router from contract
 AllowCallByContract = false
@@ -21,7 +21,7 @@ AllowCallByContract = false
 IsDebugMode = true
 
 # all chain ids (pass 'miss token config' checking)
-AllChainIDs = ["56", "97"]
+AllChainIDs = ["1", "97"]
 
 [Gateway]
 APIAddress = ["http://127.0.0.1:8888/v1"]
@@ -29,7 +29,7 @@ APIAddress = ["http://127.0.0.1:8888/v1"]
 # chain config
 [Chain]
 BlockChain = "bsc"
-ChainID = "56"
+ChainID = "1"
 Confirmations = 1
 InitialHeight = 0
 RouterContract = "0x92c079d3155c2722dbf7e65017a5baf9cd15561c"

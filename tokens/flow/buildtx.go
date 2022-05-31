@@ -48,10 +48,10 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, tokens.ErrSwapTypeNotSupported
 	}
 
-	mpcPubkey := router.GetMPCPublicKey(args.From)
-	if mpcPubkey == "" {
-		return nil, tokens.ErrMissMPCPublicKey
-	}
+	// mpcPubkey := router.GetMPCPublicKey(args.From)
+	// if mpcPubkey == "" {
+	// 	return nil, tokens.ErrMissMPCPublicKey
+	// }
 
 	erc20SwapInfo := args.ERC20SwapInfo
 	multichainToken := router.GetCachedMultichainToken(erc20SwapInfo.TokenID, args.ToChainID.String())
@@ -71,6 +71,11 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, err
 	}
 
+	index, err := b.GetAccountIndex(args.From)
+	if err != nil {
+		return nil, err
+	}
+
 	receiver, amount, err := b.getReceiverAndAmount(args, multichainToken)
 	if err != nil {
 		return nil, err
@@ -81,7 +86,8 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	if getBlockHashErr != nil {
 		return nil, getBlockHashErr
 	}
-	rawTx, err = CreateTransaction(sdk.HexToAddress(args.From), 0, *extra.Sequence, *extra.Gas, blockID, sdk.HexToAddress(receiver), args.FromChainID, args.SwapValue)
+
+	rawTx, err = CreateTransaction(sdk.HexToAddress(args.From), index, *extra.Sequence, *extra.Gas, blockID, sdk.HexToAddress(receiver), args.FromChainID, args.SwapValue)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +104,7 @@ func CreateTransaction(
 	fromChainID *big.Int,
 	amount *big.Int,
 ) (*sdk.Transaction, error) {
-	swapIn, errf := ioutil.ReadFile("Greeting2.cdc")
+	swapIn, errf := ioutil.ReadFile("tokens/flow/swapIn.cdc")
 	if errf != nil {
 		return nil, errf
 	}
@@ -119,7 +125,12 @@ func CreateTransaction(
 	}
 	fromChainId := cadence.NewUInt64(id)
 
-	value, err := cadence.NewUFix64(amount.String())
+	realValue := amount.String()
+	if len(realValue) <= 8 {
+		return nil, tokens.ErrTxWithWrongValue
+	}
+	realValue = realValue[0:len(realValue)-8] + "." + realValue[len(realValue)-8:]
+	value, err := cadence.NewUFix64(realValue)
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +189,8 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 	if toTokenCfg == nil {
 		return receiver, amount, tokens.ErrMissTokenConfig
 	}
-	amount = tokens.CalcSwapValue(erc20SwapInfo.TokenID, args.FromChainID.String(), b.ChainConfig.ChainID, args.OriginValue, fromTokenCfg.Decimals, toTokenCfg.Decimals, args.OriginFrom, args.OriginTxTo)
+	// amount = tokens.CalcSwapValue(erc20SwapInfo.TokenID, args.FromChainID.String(), b.ChainConfig.ChainID, args.OriginValue, fromTokenCfg.Decimals, toTokenCfg.Decimals, args.OriginFrom, args.OriginTxTo)
+	amount = args.OriginValue
 	return receiver, amount, err
 }
 
@@ -193,8 +205,14 @@ func (b *Bridge) GetTxBlockInfo(txHash string) (blockHeight, blockTime uint64) {
 
 // GetPoolNonce impl NonceSetter interface
 func (b *Bridge) GetPoolNonce(address, _height string) (uint64, error) {
-	mpcPubkey := router.GetMPCPublicKey(address)
-	return b.GetAccountNonce(address, mpcPubkey)
+	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	for _, url := range urls {
+		result, err := GetAccount(url, address)
+		if err == nil {
+			return result.Keys[0].SequenceNumber, nil
+		}
+	}
+	return 0, tokens.ErrGetAccount
 }
 
 // GetSeq returns account tx sequence

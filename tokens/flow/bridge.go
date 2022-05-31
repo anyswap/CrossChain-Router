@@ -99,10 +99,10 @@ func (b *Bridge) GetLatestBlockNumberOf(apiAddress string) (uint64, error) {
 	return 0, tokens.ErrGetBlockNumberByID
 }
 
-func (b *Bridge) GetBlockNumberByHash(blockHash string) (uint64, error) {
+func (b *Bridge) GetBlockNumberByHash(blockId sdk.Identifier) (uint64, error) {
 	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
 	for _, url := range urls {
-		result, err := GetBlockNumberByHash(url, blockHash)
+		result, err := GetBlockNumberByHash(url, blockId)
 		if err == nil {
 			return result, nil
 		}
@@ -149,7 +149,7 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 	}
 
 	status.Receipt = nil
-	blockHeight, blockErr := b.GetBlockNumberByHash(txres.BlockID.Hex())
+	blockHeight, blockErr := b.GetBlockNumberByHash(txres.BlockID)
 	if blockErr != nil {
 		log.Warn("GetBlockNumberByHash", "error", blockErr)
 		return nil, errTxResultType
