@@ -8,14 +8,8 @@ import (
 )
 
 var (
-	rpcTimeout = 60
-	ctx        = context.Background()
+	ctx = context.Background()
 )
-
-// SetRPCTimeout set rpc timeout
-func SetRPCTimeout(timeout int) {
-	rpcTimeout = timeout
-}
 
 func GetBlockNumberByHash(url string, blockId sdk.Identifier) (uint64, error) {
 	flowClient, err1 := http.NewClient(url)
