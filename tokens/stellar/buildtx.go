@@ -83,12 +83,6 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 			fee = *extra.Fee
 		}
 	}
-
-	amt, err := getPaymentAmount(amount, token)
-	if err != nil {
-		return nil, err
-	}
-
 	// check trus line?
 
 	fromAccount, err := b.GetAccount(args.From)
@@ -145,47 +139,6 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 	}
 	amount = tokens.CalcSwapValue(erc20SwapInfo.TokenID, args.FromChainID.String(), b.ChainConfig.ChainID, args.OriginValue, fromTokenCfg.Decimals, toTokenCfg.Decimals, args.OriginFrom, args.OriginTxTo)
 	return receiver, amount, err
-}
-
-func getPaymentAmount(amount *big.Int, token *tokens.TokenConfig) (*big.Int, error) {
-	_, exist := assetMap.Load(token.ContractAddress)
-	if !exist {
-		return nil, fmt.Errorf("non exist asset %v", token.ContractAddress)
-	}
-	// asset := assetI.(*txnbuild.BasicAsset)
-
-	// currencyI, exist := currencyMap.Load(token.ContractAddress)
-	// if !exist {
-	// 	return nil, fmt.Errorf("non exist currency %v", asset)
-	// }
-	// currency := currencyI.(*data.Currency)
-
-	if !amount.IsInt64() {
-		return nil, fmt.Errorf("amount value %v is overflow of type int64", amount)
-	}
-
-	// if asset.IsNative() { // native XLM
-	return amount, nil
-	// }
-
-	// issuerI, exist := issuerMap.Load(asset.Issuer)
-	// if !exist {
-	// 	return nil, fmt.Errorf("non exist issuer %v", asset.Issuer)
-	// }
-	// issuer := issuerI.(*data.Account)
-
-	// // get a Value of amount*10^(-decimals)
-	// value, err := data.NewNonNativeValue(amount.Int64(), -int64(token.Decimals))
-	// if err != nil {
-	// 	log.Error("getPaymentAmount failed", "currency", asset.Currency, "issuer", asset.Issuer, "amount", amount, "decimals", token.Decimals, "err", err)
-	// 	return nil, err
-	// }
-
-	// return &data.Amount{
-	// 	Value:    value,
-	// 	Currency: *currency,
-	// 	Issuer:   *issuer,
-	// }, nil
 }
 
 func (b *Bridge) getMinReserveFee() *big.Int {
