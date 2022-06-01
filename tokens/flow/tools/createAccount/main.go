@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"flag"
-	"fmt"
 	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -30,9 +29,8 @@ var (
 	paramPublicKey  string
 	paramPrivKey    string
 	paramNewPrivKey string
-	chainID                = big.NewInt(0)
-	defaultGasLimit uint64 = 1_000_000
-	ctx                    = context.Background()
+	chainID         = big.NewInt(0)
+	ctx             = context.Background()
 	mpcConfig       *mpc.Config
 )
 
@@ -110,11 +108,23 @@ func main() {
 			log.Fatal("SendTransaction failed", "createAccountTx", createAccountTx, "index", index, "err", err)
 		}
 
-		fmt.Printf("SendTransaction success,txHash:%+v", createAccountTx.ID().Hex())
+		log.Info("SendTransaction success", "hash", createAccountTx.ID().Hex())
 		return
 	}
 
-	MPCSignTransaction(createAccountTx, paramPublicKey)
+	signedTx, txHash, err := MPCSignTransaction(createAccountTx, paramPublicKey)
+	if err != nil {
+		log.Fatal("MPCSignTransaction failed", "paramPublicKey", paramPublicKey)
+	}
+	log.Info("sign tx success", "hash", txHash)
+
+	// send tx
+	txHash, err = bridge.SendTransaction(signedTx)
+	if err != nil {
+		log.Fatal("SendTransaction failed", "signedTx", signedTx)
+	}
+	log.Info("SendTransaction success", "hash", txHash)
+
 }
 
 func MPCSignTransaction(rawTx interface{}, paramPublicKey string) (signedTx interface{}, txHash string, err error) {
