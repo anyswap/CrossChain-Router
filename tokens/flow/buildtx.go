@@ -161,7 +161,7 @@ func CreateTransaction(
 	blockID sdk.Identifier,
 	swapInArgs *SwapIn,
 ) (*sdk.Transaction, error) {
-	swapIn, errf := ioutil.ReadFile("tokens/flow/swapIn.cdc")
+	swapIn, errf := ioutil.ReadFile("tokens/flow/transaction/swapIn.cdc")
 	if errf != nil {
 		return nil, errf
 	}
