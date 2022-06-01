@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -48,11 +49,6 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, tokens.ErrSwapTypeNotSupported
 	}
 
-	// mpcPubkey := router.GetMPCPublicKey(args.From)
-	// if mpcPubkey == "" {
-	// 	return nil, tokens.ErrMissMPCPublicKey
-	// }
-
 	erc20SwapInfo := args.ERC20SwapInfo
 	multichainToken := router.GetCachedMultichainToken(erc20SwapInfo.TokenID, args.ToChainID.String())
 	if multichainToken == "" {
@@ -86,39 +82,30 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	if getBlockHashErr != nil {
 		return nil, getBlockHashErr
 	}
+	swapInArgs, err := CreateSwapInArgs(args.ERC20SwapInfo.TokenID, sdk.HexToAddress(receiver), args.FromChainID, args.OriginValue, token.Extra)
+	if err != nil {
+		return nil, err
+	}
 
-	rawTx, err = CreateTransaction(sdk.HexToAddress(args.From), index, *extra.Sequence, *extra.Gas, blockID, sdk.HexToAddress(receiver), args.FromChainID, args.SwapValue)
+	rawTx, err = CreateTransaction(sdk.HexToAddress(args.From), index, *extra.Sequence, *extra.Gas, blockID, swapInArgs)
 	if err != nil {
 		return nil, err
 	}
 	return rawTx, nil
 }
 
-func CreateTransaction(
-	signerAddress sdk.Address,
-	signerIndex int,
-	signerSequence uint64,
-	gas uint64,
-	blockID sdk.Identifier,
+func CreateSwapInArgs(
+	tokenIdentifier string,
 	receiver sdk.Address,
 	fromChainID *big.Int,
 	amount *big.Int,
-) (*sdk.Transaction, error) {
-	swapIn, errf := ioutil.ReadFile("tokens/flow/swapIn.cdc")
-	if errf != nil {
-		return nil, errf
+	path string,
+) (*SwapIn, error) {
+	token, err := cadence.NewString(tokenIdentifier)
+	if err != nil {
+		return nil, err
 	}
-
-	tx := sdk.NewTransaction().
-		SetScript(swapIn).
-		SetGasLimit(gas).
-		SetReferenceBlockID(blockID).
-		SetProposalKey(signerAddress, signerIndex, signerSequence).
-		SetPayer(signerAddress).
-		AddAuthorizer(signerAddress)
-
 	recipient := cadence.NewAddress(receiver)
-
 	id, err := common.GetUint64FromStr(fromChainID.String())
 	if err != nil {
 		return nil, err
@@ -135,15 +122,75 @@ func CreateTransaction(
 		return nil, err
 	}
 
-	err = tx.AddArgument(recipient)
+	receivePaths := strings.Split(path, ",")
+	// receivePaths := [2]string{
+	// 	"exampleTokenReceiver",
+	// 	"anyExampleTokenReceiver",
+	// }
+	if len(receivePaths) != 2 {
+		return nil, errors.New("receive path len error")
+	}
+
+	path_0 := cadence.Path{
+		Domain:     "public",
+		Identifier: receivePaths[0],
+	}
+
+	path_1 := cadence.Path{
+		Domain:     "public",
+		Identifier: receivePaths[1],
+	}
+	log.Warn("paths", "path-0", path_0.String(), "path-1", path_1.String())
+	realPaths := cadence.NewArray([]cadence.Value{path_0, path_1})
+
+	swapIn := &SwapIn{
+		Token:        token,
+		Receiver:     recipient,
+		FromChainId:  fromChainId,
+		Amount:       value,
+		ReceivePaths: realPaths,
+	}
+	return swapIn, nil
+}
+
+func CreateTransaction(
+	signerAddress sdk.Address,
+	signerIndex int,
+	signerSequence uint64,
+	gas uint64,
+	blockID sdk.Identifier,
+	swapInArgs *SwapIn,
+) (*sdk.Transaction, error) {
+	swapIn, errf := ioutil.ReadFile("tokens/flow/swapIn.cdc")
+	if errf != nil {
+		return nil, errf
+	}
+
+	tx := sdk.NewTransaction().
+		SetScript(swapIn).
+		SetGasLimit(gas).
+		SetReferenceBlockID(blockID).
+		SetProposalKey(signerAddress, signerIndex, signerSequence).
+		SetPayer(signerAddress).
+		AddAuthorizer(signerAddress)
+
+	err := tx.AddArgument(swapInArgs.Token)
 	if err != nil {
 		return nil, err
 	}
-	err = tx.AddArgument(fromChainId)
+	err = tx.AddArgument(swapInArgs.Receiver)
 	if err != nil {
 		return nil, err
 	}
-	err = tx.AddArgument(value)
+	err = tx.AddArgument(swapInArgs.FromChainId)
+	if err != nil {
+		return nil, err
+	}
+	err = tx.AddArgument(swapInArgs.Amount)
+	if err != nil {
+		return nil, err
+	}
+	err = tx.AddArgument(swapInArgs.ReceivePaths)
 	if err != nil {
 		return nil, err
 	}
