@@ -96,12 +96,6 @@ func initRouter() {
 
 	router.AllChainIDs = testCfg.GetAllChainIDs()
 	router.AllTokenIDs = []string{testCfg.Token.TokenID}
-	router.SetRouterInfo(
-		testCfg.Token.RouterContract,
-		&router.SwapRouterInfo{
-			RouterMPC: testCfg.SignerAddress,
-		},
-	)
 
 	tokensMap := new(sync.Map)
 	router.SetMultichainTokens(testCfg.Token.TokenID, tokensMap)
@@ -125,6 +119,13 @@ func initRouter() {
 		swapConfig.Store("0", swapCfg)
 		feeConfig.Store("0", feeCfg)
 		mpcConfig.SetSignerPrivateKey(chainID.String(), testCfg.SignWithPrivateKey)
+		router.SetRouterInfo(
+			testCfg.Token.RouterContract,
+			chainID.String(),
+			&router.SwapRouterInfo{
+				RouterMPC: testCfg.SignerAddress,
+			},
+		)
 	}
 	router.PrintMultichainTokens()
 

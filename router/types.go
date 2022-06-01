@@ -2,6 +2,7 @@
 package router
 
 import (
+	"fmt"
 	"math/big"
 	"sort"
 	"strings"
@@ -63,14 +64,14 @@ func GetBridgeByChainID(chainID string) tokens.IBridge {
 }
 
 // SetRouterInfo set router info
-func SetRouterInfo(router string, routerInfo *SwapRouterInfo) {
-	key := strings.ToLower(router)
+func SetRouterInfo(router, chainID string, routerInfo *SwapRouterInfo) {
+	key := strings.ToLower(fmt.Sprintf("%s:%s", router, chainID))
 	RouterInfos.Store(key, routerInfo)
 }
 
 // GetRouterInfo get router info
-func GetRouterInfo(router string) *SwapRouterInfo {
-	key := strings.ToLower(router)
+func GetRouterInfo(router, chainID string) *SwapRouterInfo {
+	key := strings.ToLower(fmt.Sprintf("%s:%s", router, chainID))
 	if info, exist := RouterInfos.Load(key); exist {
 		return info.(*SwapRouterInfo)
 	}
@@ -104,7 +105,7 @@ func GetTokenRouterInfo(tokenID, chainID string) (*SwapRouterInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	routerInfo := GetRouterInfo(routerContract)
+	routerInfo := GetRouterInfo(routerContract, chainID)
 	if routerInfo == nil {
 		return nil, tokens.ErrMissRouterInfo
 	}

@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	routerInfoIsLoaded = new(sync.Map) // key is router contract address
+	routerInfoIsLoaded = new(sync.Map) // key is chainID and router contract address
 )
 
 func getRouterInfoLoadedKey(chainID, routerContract string) string {

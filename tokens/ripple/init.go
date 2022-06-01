@@ -110,7 +110,7 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 		log.Warn("wrong router mpc address (in ripple routerMPC is routerContract)", "routerMPC", routerMPC)
 		return fmt.Errorf("wrong router mpc address: %v", routerMPC)
 	}
-	log.Info("get router mpc address success", "routerContract", routerContract, "routerMPC", routerMPC)
+	log.Info("get router mpc address success", "chainID", chainID, "routerContract", routerContract, "routerMPC", routerMPC)
 	routerMPCPubkey, err := router.GetMPCPubkey(routerMPC)
 	if err != nil {
 		log.Warn("get mpc public key failed", "mpc", routerMPC, "err", err)
@@ -122,6 +122,7 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 	}
 	router.SetRouterInfo(
 		routerContract,
+		chainID,
 		&router.SwapRouterInfo{
 			RouterMPC: routerMPC,
 		},
