@@ -34,12 +34,7 @@ func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, privKey string
 
 func signTransaction(tx interface{}, privKey crypto.PrivateKey) (signedTx interface{}, txHash string, err error) {
 	rawTx := tx.(*sdk.Transaction)
-	key := sdk.NewAccountKey().
-		SetPublicKey(privKey.PublicKey()).
-		SetSigAlgo(privKey.Algorithm()).
-		SetHashAlgo(crypto.SHA3_256).
-		SetWeight(sdk.AccountKeyWeightThreshold)
-	keySigner, err := crypto.NewInMemorySigner(privKey, key.HashAlgo)
+	keySigner, err := crypto.NewInMemorySigner(privKey, crypto.SHA3_256)
 	if err != nil {
 		return nil, "", err
 	}

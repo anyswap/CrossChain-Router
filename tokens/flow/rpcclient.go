@@ -3,7 +3,6 @@ package flow
 import (
 	"context"
 
-	"github.com/anyswap/CrossChain-Router/v3/log"
 	sdk "github.com/onflow/flow-go-sdk"
 	"github.com/onflow/flow-go-sdk/access/http"
 )
@@ -53,8 +52,6 @@ func GetAccount(url, address string) (*sdk.Account, error) {
 	if err2 != nil {
 		return nil, err2
 	}
-	log.Warn("GetAccount", "key", account.Keys[0])
-	log.Warn("GetAccount", "PublicKey", account.Keys[0].PublicKey, "index", account.Keys[0].Index, "sequence", account.Keys[0].SequenceNumber, "SigAlgo", account.Keys[0].SigAlgo, "Weight", account.Keys[0].Weight)
 	return account, nil
 }
 
