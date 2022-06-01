@@ -153,6 +153,7 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 	}
 	router.SetRouterInfo(
 		routerContract,
+		chainID,
 		&router.SwapRouterInfo{
 			RouterMPC:     routerMPC,
 			RouterFactory: routerFactory,
