@@ -141,7 +141,7 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 		log.Warn("get router mpc address return an empty address", "routerContract", routerContract)
 		return fmt.Errorf("empty router mpc address")
 	}
-	log.Info("get router mpc address success", "routerContract", routerContract, "routerMPC", routerMPC)
+	log.Info("get router mpc address success", "chainID", chainID, "routerContract", routerContract, "routerMPC", routerMPC)
 	routerMPCPubkey, err := router.GetMPCPubkey(routerMPC)
 	if err != nil {
 		log.Warn("get mpc public key failed", "mpc", routerMPC, "err", err)
@@ -153,6 +153,7 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 	}
 	router.SetRouterInfo(
 		routerContract,
+		chainID,
 		&router.SwapRouterInfo{
 			RouterMPC:     routerMPC,
 			RouterFactory: routerFactory,
