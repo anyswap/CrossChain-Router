@@ -61,11 +61,11 @@ func (b *Bridge) VerifyTransaction(txHash string, args *tokens.VerifyArgs) (*tok
 }
 
 //nolint:gocyclo,funlen // ok
-func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool) (*tokens.SwapTxInfo, error) {
+func (b *Bridge) verifySwapoutTx(txHash string, _ int, allowUnstable bool) (*tokens.SwapTxInfo, error) {
 	swapInfo := &tokens.SwapTxInfo{}
 	swapInfo.SwapType = tokens.ERC20SwapType          // SwapType
 	swapInfo.Hash = txHash                            // Hash
-	swapInfo.LogIndex = logIndex                      // LogIndex
+	swapInfo.LogIndex = 0                             // LogIndex always 0 (do not support multiple in one tx)
 	swapInfo.FromChainID = b.ChainConfig.GetChainID() // FromChainID
 
 	tx, err := b.GetTransaction(txHash)
