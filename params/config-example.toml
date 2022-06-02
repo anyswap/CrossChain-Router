@@ -216,8 +216,8 @@ APIPrefix = "dcrm_"
 RPCTimeout = 10
 # sign timeout of seconds
 SignTimeout = 120
-# max sign group consecutive failures
-MaxSignGroupFailures = 5
+# drop sign group if max sign group consecutive failures (0 means disable)
+MaxSignGroupFailures = 0
 # min interval to add back sign group (seconds)
 MinIntervalToAddSignGroup = 3600
 # verify signature in accept sign info
