@@ -382,7 +382,7 @@ func InitChainConfig(b tokens.IBridge, chainID *big.Int) {
 		if err == nil {
 			setRouterInfoLoaded(chainID.String(), routerContract)
 		} else {
-			logErrFunc("init chain router info failed", "routerContract", routerContract, "err", err)
+			logErrFunc("init chain router info failed", "chainID", chainID, "routerContract", routerContract, "err", err)
 			return
 		}
 	}
@@ -439,7 +439,7 @@ func InitTokenConfig(b tokens.IBridge, tokenID string, chainID *big.Int) {
 		if err == nil {
 			setRouterInfoLoaded(chainID.String(), routerContract)
 		} else {
-			logErrFunc("init token router info failed", "routerContract", routerContract, "err", err)
+			logErrFunc("init token router info failed", "chainID", chainID, "routerContract", routerContract, "err", err)
 			return
 		}
 	}
