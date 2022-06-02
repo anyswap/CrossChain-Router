@@ -166,7 +166,7 @@ func ReloadRouterConfig() (success bool) {
 	oldTokenIDs := router.AllTokenIDs
 	router.AllTokenIDs = tokenIDs
 
-	loadSwapConfigs(true)
+	loadSwapConfigs()
 
 	removedChainIDs := make([]string, 0)
 	for _, chainID := range oldChainIDs {

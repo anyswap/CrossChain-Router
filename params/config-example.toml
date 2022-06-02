@@ -203,14 +203,16 @@ APIAddress = ["http://127.0.0.1:8711", "http://127.0.0.1:8722"]
 
 # MPC config
 [MPC]
+# ec sign type key (ECDSA, EC256K1)
+SignTypeEC256K1 = "EC256K1"
 # mpc rpc api prefix
 APIPrefix = "smpc_"
 # RPC timeout
 RPCTimeout = 10
 # sign timeout of seconds
 SignTimeout = 120
-# max sign group consecutive failures
-MaxSignGroupFailures = 5
+# drop sign group if max sign group consecutive failures (0 means disable)
+MaxSignGroupFailures = 0
 # min interval to add back sign group (seconds)
 MinIntervalToAddSignGroup = 3600
 # verify signature in accept sign info

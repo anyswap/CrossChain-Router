@@ -59,17 +59,14 @@ func NewCustomConfig() CustomConfig {
 
 // InitAfterConfig init variables (ie. extra members) after loading config
 func (b *Bridge) InitAfterConfig() {
-	isReload := router.IsReloading
-	logErrFunc := log.GetLogFuncOr(isReload, log.Error, log.Fatal)
+	logErrFunc := log.GetLogFuncOr(router.DontPanicInLoading(), log.Error, log.Fatal)
 	chainID, err := common.GetBigIntFromStr(b.ChainConfig.ChainID)
 	if err != nil {
 		logErrFunc("wrong chainID",
 			"chainID", b.ChainConfig.ChainID,
 			"blockChain", b.ChainConfig.BlockChain,
 			"err", err)
-		if isReload {
-			return
-		}
+		return
 	}
 	err = b.InitExtraCustoms()
 	if err != nil {
@@ -77,9 +74,7 @@ func (b *Bridge) InitAfterConfig() {
 			"chainID", b.ChainConfig.ChainID,
 			"blockChain", b.ChainConfig.BlockChain,
 			"err", err)
-		if isReload {
-			return
-		}
+		return
 	}
 	err = b.initSigner(chainID)
 	if err != nil {
@@ -87,9 +82,7 @@ func (b *Bridge) InitAfterConfig() {
 			"chainID", b.ChainConfig.ChainID,
 			"blockChain", b.ChainConfig.BlockChain,
 			"err", err)
-		if isReload {
-			return
-		}
+		return
 	}
 }
 
@@ -148,7 +141,7 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 		log.Warn("get router mpc address return an empty address", "routerContract", routerContract)
 		return fmt.Errorf("empty router mpc address")
 	}
-	log.Info("get router mpc address success", "routerContract", routerContract, "routerMPC", routerMPC)
+	log.Info("get router mpc address success", "chainID", chainID, "routerContract", routerContract, "routerMPC", routerMPC)
 	routerMPCPubkey, err := router.GetMPCPubkey(routerMPC)
 	if err != nil {
 		log.Warn("get mpc public key failed", "mpc", routerMPC, "err", err)
@@ -160,6 +153,7 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 	}
 	router.SetRouterInfo(
 		routerContract,
+		chainID,
 		&router.SwapRouterInfo{
 			RouterMPC:     routerMPC,
 			RouterFactory: routerFactory,
@@ -194,23 +188,25 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 		return
 	}
 
-	isReload := router.IsReloading
-	logErrFunc := log.GetLogFuncOr(isReload, log.Error, log.Fatal)
-
 	tokenID := tokenCfg.TokenID
+
+	if tokenCfg.ContractVersion >= MintBurnWrapperTokenVersion {
+		log.Info("ignore wrapper token config checking",
+			"tokenID", tokenID, "tokenAddr", tokenAddr,
+			"decimals", tokenCfg.Decimals, "ContractVersion", tokenCfg.ContractVersion)
+		return
+	}
+
+	logErrFunc := log.GetLogFuncOr(router.DontPanicInLoading(), log.Error, log.Fatal)
 
 	decimals, errt := b.GetErc20Decimals(tokenAddr)
 	if errt != nil {
 		logErrFunc("get token decimals failed", "tokenID", tokenID, "tokenAddr", tokenAddr, "err", errt)
-		if isReload {
-			return
-		}
+		return
 	}
 	if decimals != tokenCfg.Decimals {
 		logErrFunc("token decimals mismatch", "tokenID", tokenID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract", decimals)
-		if isReload {
-			return
-		}
+		return
 	}
 	routerContract := tokenCfg.RouterContract
 	if routerContract == "" {
@@ -219,16 +215,12 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 	err := b.checkTokenMinter(routerContract, tokenCfg)
 	if err != nil && tokenCfg.IsStandardTokenVersion() {
 		logErrFunc("check token minter failed", "tokenID", tokenID, "tokenAddr", tokenAddr, "err", err)
-		if isReload {
-			return
-		}
+		return
 	}
 	underlying, err := b.GetUnderlyingAddress(tokenAddr)
 	if err != nil && tokenCfg.IsStandardTokenVersion() {
 		logErrFunc("get underlying address failed", "tokenID", tokenID, "tokenAddr", tokenAddr, "err", err)
-		if isReload {
-			return
-		}
+		return
 	}
 	tokenCfg.SetUnderlying(underlying) // init underlying address
 }
