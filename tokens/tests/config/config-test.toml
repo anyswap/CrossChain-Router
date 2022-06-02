@@ -11,14 +11,16 @@ Module = "flow"
 Port = 11556
 
 # use private key instead of mpc signing
-SignWithPrivateKey = "d095e6e001eece7b3451da0b7bd67984dc7bed2198cd4f903a1351da33259e45"
-SignerAddress = "0xf8d6e0586b0a20c7"
+# SignWithPrivateKey = "d095e6e001eece7b3451da0b7bd67984dc7bed2198cd4f903a1351da33259e45"
+# SignerAddress = "0xf8d6e0586b0a20c7"
+SignWithPrivateKey = "1380ad6b4394f646a868c8cfe17402c0e4d365b8ef0f1ecdfae4dd60a520f322"
+SignerAddress = "0xe03daebed8ca0615"
 
 # allow call into router from contract
 AllowCallByContract = false
 
 # is debug mode (print more logs)
-IsDebugMode = true
+IsDebugMode = false
 
 # all chain ids (pass 'miss token config' checking)
 AllChainIDs = ["1", "97"]

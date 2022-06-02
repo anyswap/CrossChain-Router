@@ -88,7 +88,7 @@ func main() {
 	createAccountTx.SetPayer(payerAddress)
 
 	if paramPrivKey != "" {
-		ecPrikey, err := fcrypto.DecodePrivateKeyHex(fcrypto.ECDSA_P256, paramPrivKey)
+		ecPrikey, err := fcrypto.DecodePrivateKeyHex(fcrypto.ECDSA_secp256k1, paramPrivKey)
 		if err != nil {
 			log.Fatal("DecodePrivateKeyHex failed", "privKey", paramPrivKey, "err", err)
 		}
@@ -199,7 +199,7 @@ func initFlags() {
 func initConfig() {
 	config := params.LoadRouterConfig(paramConfigFile, true, false)
 	mpcConfig = mpc.InitConfig(config.MPC, true)
-	log.Info("init config finished")
+	log.Info("init config finished", "config", config)
 }
 
 func initBridge() {
