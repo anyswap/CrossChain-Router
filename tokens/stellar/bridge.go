@@ -170,7 +170,7 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 	status.Receipt = nil
 	inledger := relTx.Ledger
 	status.BlockHeight = uint64(inledger)
-	// stellar use FBA which is like PBFT (ripple) as consensus which means need not have to wait for several ledgers to get confirmed.
+	// stellar use FBA which means need not have to wait for several ledgers to get confirmed.
 	status.Confirmations = 0
 	return
 }

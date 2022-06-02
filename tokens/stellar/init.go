@@ -9,7 +9,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/stellar/go/clients/horizonclient"
-	"github.com/stellar/go/network"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/txnbuild"
 )
@@ -67,7 +66,6 @@ func (b *Bridge) InitRemotes() {
 		return
 	}
 	b.Remotes = remotes
-	b.NetworkStr = network.TestNetworkPassphrase
 }
 
 // SetTokenConfig set token config

@@ -25,29 +25,9 @@ func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) (err error
 	}
 	tx, ok := rawTx.(hProtocol.Transaction)
 	if !ok {
-		return fmt.Errorf("ripple tx type error")
+		return fmt.Errorf("stellar tx type error")
 	}
 	fmt.Println(tx)
-
-	// msgHash, msg, err := data.SigningHash(tx)
-	// if err != nil {
-	// 	return fmt.Errorf("rebuild ripple tx msg error, %w", err)
-	// }
-	// msg = append(tx.SigningPrefix().Bytes(), msg...)
-
-	// pubkey := tx.GetPublicKey().Bytes()
-	// isEd := isEd25519Pubkey(pubkey)
-	// var signContent string
-	// if isEd {
-	// 	signContent = common.ToHex(msg)
-	// } else {
-	// 	signContent = msgHash.String()
-	// }
-
-	// if !strings.EqualFold(signContent, msgHashes[0]) {
-	// 	return fmt.Errorf("msg hash not match, recover: %v, claiming: %v", signContent, msgHashes[0])
-	// }
-
 	return nil
 }
 

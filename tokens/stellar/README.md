@@ -13,9 +13,9 @@
 ## stellar public key to stellar address
 
 ```shell
-go run tokens/stellar/tools/publicKeyToAddress/main.go 04b4904f8a2ea01891678fec45c63fb1f221666e7d19cfeeb28f08a6d99cac91cbc12731f4c144aef501e34a6eaa0b5418ed5d138b192964bc5ccf4cde67246ca3
+go run tokens/stellar/tools/publicKeyToAddress/main.go 3e41960afe5d2a92ad1184c5a6a2ec873ebf05c11544750569d34075f0f392c7
 # output
-address: rDsvn6aJG4YMQdHnuJtP9NLrFp18JYTJUf
+address: GA7EDFQK7ZOSVEVNCGCMLJVC5SDT5PYFYEKUI5IFNHJUA5PQ6OJMP5GC
 ```
 
 ## router mechanism
@@ -23,7 +23,7 @@ address: rDsvn6aJG4YMQdHnuJtP9NLrFp18JYTJUf
 user send asset to `mpc` address with memo of the following format
 
 ```
-len(hexBytesArray(bindAddress)):hexBytesArray(bindAddress):zeroPadding(hexBytesArray(toChainID))
+len(hexBytesArray(bindAddress)) hexBytesArray(bindAddress) zeroPadding(hexBytesArray(toChainID))
 
 example:
 

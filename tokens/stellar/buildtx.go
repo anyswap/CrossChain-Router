@@ -83,17 +83,17 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 			fee = *extra.Fee
 		}
 	}
-	// check trus line?
-
 	fromAccount, err := b.GetAccount(args.From)
 	if err != nil {
 		return nil, err
 	}
+	// TODO check XLM?
+
 	memo, err := buildMemo(args.FromChainID.String(), args.SwapID, strconv.Itoa(args.LogIndex))
 	if err != nil {
 		return nil, err
 	}
-	return NewUnsignedPaymentTransaction(fromAccount, b.NetworkStr, receiver, amt.String(), fee, memo, asset)
+	return NewUnsignedPaymentTransaction(fromAccount, b.NetworkStr, receiver, amount.String(), fee, memo, asset)
 }
 
 func buildMemo(fromChainID, swapID, logIndex string) (*txnbuild.MemoHash, error) {
@@ -141,18 +141,6 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 	return receiver, amount, err
 }
 
-func (b *Bridge) getMinReserveFee() *big.Int {
-	config := params.GetRouterConfig()
-	if config == nil {
-		return big.NewInt(0)
-	}
-	minReserve := params.GetMinReserveFee(b.ChainConfig.ChainID)
-	if minReserve == nil {
-		minReserve = big.NewInt(100000) // default 0.1 LUMEN
-	}
-	return minReserve
-}
-
 func (b *Bridge) swapoutDefaultArgs(txargs *tokens.BuildTxArgs, multichainToken string) (*tokens.AllExtras, error) {
 	token := b.GetTokenConfig(multichainToken)
 	if token == nil {
@@ -172,45 +160,6 @@ func (b *Bridge) swapoutDefaultArgs(txargs *tokens.BuildTxArgs, multichainToken 
 		Sequence: seq,
 		Fee:      &fee,
 	}, nil
-}
-
-func (b *Bridge) checkNativeBalance(account string, amount *big.Int, isPay bool) error {
-	balance, err := b.GetBalance(account)
-	if err != nil && balance == nil {
-		balance = big.NewInt(0)
-	}
-
-	remain := balance
-	if amount != nil {
-		if isPay {
-			remain = new(big.Int).Sub(balance, amount)
-		} else {
-			remain = new(big.Int).Add(balance, amount)
-		}
-	}
-	return nil
-}
-
-func (b *Bridge) checkNonNativeBalance(assetCode, issuer, account string, amount *big.Int) error {
-	if issuer == account {
-		return nil
-	}
-	ac, err := b.GetAccount(account)
-	if err != nil {
-		return err
-	}
-	for _, balance := range ac.Balances {
-		if balance.Issuer == issuer && balance.Code == assetCode {
-			bal := big.NewInt(0)
-			ok := false
-			bal, ok = bal.SetString(balance.Balance, 10)
-			if !ok || bal.Cmp(amount) < 0 {
-				return fmt.Errorf("insufficient %v balance, issuer: %v, account: %v", assetCode, issuer, account)
-			}
-			return nil
-		}
-	}
-	return fmt.Errorf("insufficient %v balance, issuer: %v, account: %v", assetCode, issuer, account)
 }
 
 // GetTxBlockInfo impl NonceSetter interface

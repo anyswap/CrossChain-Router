@@ -26,7 +26,7 @@ func (b *Bridge) PublicKeyToAddress(pubKey string) (string, error) {
 	return PublicKeyHexToAddress(pubKey)
 }
 
-// PublicKeyHexToAddress convert public key hex to ripple address
+// PublicKeyHexToAddress convert public key hex to stellar address
 func PublicKeyHexToAddress(pubKeyHex string) (string, error) {
 	pub, err := hex.DecodeString(pubKeyHex)
 	if err != nil {

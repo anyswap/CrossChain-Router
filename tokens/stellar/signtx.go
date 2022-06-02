@@ -79,9 +79,6 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 		signContent := common.ToHex(txMsg[:])
 		keyID, rsvs, err = mpcConfig.DoSignOneED(signPubKey, signContent, msgContext)
 	} else {
-		// signPubKey := pubkeyStr
-		// signContent := msgHash.String()
-		// keyID, rsvs, err = mpcConfig.DoSignOneEC(signPubKey, signContent, msgContext)
 		return nil, "", fmt.Errorf("stellar not support ec privatekey, publickey: %v", pubkey)
 	}
 
@@ -129,7 +126,7 @@ func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, privKey string
 	return b.SignTransactionWithStellarKey(rawTx, sourceKP)
 }
 
-// SignTransactionWithRippleKey sign tx with ripple key
+// SignTransactionWithStellarKey sign tx with stellar key
 func (b *Bridge) SignTransactionWithStellarKey(rawTx interface{}, key *keypair.Full) (signTx interface{}, txHash string, err error) {
 	tx, ok := rawTx.(*txnbuild.Transaction)
 	if !ok {
