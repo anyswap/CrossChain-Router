@@ -47,11 +47,11 @@ func getAcceptInfoCh(isFastMPC bool) chan *mpc.SignInfoData {
 	return acceptInfoCh
 }
 
-func getAcceptRoutines(isFastMPC bool) (cur, max int64) {
+func getAcceptRoutines(isFastMPC bool) (cur, max *int64) {
 	if isFastMPC {
-		return curAcceptRoutines2, maxAcceptRoutines2
+		return &curAcceptRoutines2, &maxAcceptRoutines2
 	}
-	return curAcceptRoutines, maxAcceptRoutines
+	return &curAcceptRoutines, &maxAcceptRoutines
 }
 
 // StartAcceptSignJob accept job
@@ -83,6 +83,8 @@ func startAcceptProducer(mpcConfig *mpc.Config) {
 		retryInterval = waitInterval
 	}
 
+	acceptCh := getAcceptInfoCh(mpcConfig.IsFastMPC)
+
 	i := 0
 	for {
 		if utils.IsCleanuping() {
@@ -111,7 +113,7 @@ func startAcceptProducer(mpcConfig *mpc.Config) {
 				continue
 			}
 			logWorker("accept", "dispatch accept sign info", "keyID", keyID)
-			getAcceptInfoCh(mpcConfig.IsFastMPC) <- info // produce
+			acceptCh <- info // produce
 		}
 		time.Sleep(waitInterval)
 	}
@@ -134,13 +136,13 @@ func startAcceptConsumer(mpcConfig *mpc.Config) {
 		case info := <-acceptCh: // consume
 			// loop and check, break if free worker exist
 			for {
-				if atomic.LoadInt64(&cur) < max {
+				if atomic.LoadInt64(cur) < *max {
 					break
 				}
 				time.Sleep(1 * time.Second)
 			}
 
-			atomic.AddInt64(&cur, 1)
+			atomic.AddInt64(cur, 1)
 			go processAcceptInfo(mpcConfig, info)
 		}
 	}
@@ -159,7 +161,8 @@ func checkAndUpdateCachedAcceptInfoMap(keyID string) (ok bool) {
 }
 
 func processAcceptInfo(mpcConfig *mpc.Config, info *mpc.SignInfoData) {
-	defer atomic.AddInt64(&curAcceptRoutines, -1)
+	cur, _ := getAcceptRoutines(mpcConfig.IsFastMPC)
+	defer atomic.AddInt64(cur, -1)
 
 	keyID := info.Key
 	if !checkAndUpdateCachedAcceptInfoMap(keyID) {
