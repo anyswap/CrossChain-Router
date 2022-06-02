@@ -1,10 +1,38 @@
 package flow
 
-import "github.com/anyswap/CrossChain-Router/v3/tokens"
+import (
+	"errors"
+	"fmt"
+
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
+)
+
+var (
+	LenForPubKey = 128
+)
 
 // IsValidAddress check address
 func (b *Bridge) IsValidAddress(address string) bool {
 	return address != ""
+}
+
+func (b *Bridge) pubKeyToMpcPubKey(pubKey string) (string, error) {
+	if len(pubKey) != LenForPubKey {
+		return "", errors.New("pubKey len not match")
+	}
+	return fmt.Sprintf("04%s", pubKey), nil
+}
+
+func (b *Bridge) pubKeyToAccountKey(pubKey string) (string, error) {
+	if len(pubKey) != LenForPubKey {
+		return "", errors.New("pubKey len not match")
+	}
+	return fmt.Sprintf("0x%s", pubKey), nil
+}
+
+// PublicKeyToAddress impl
+func (b *Bridge) PublicKeyToAddress(pubKey string) (string, error) {
+	return "", tokens.ErrNotImplemented
 }
 
 func (b *Bridge) GetAccountNonce(address string) (uint64, error) {
@@ -29,11 +57,21 @@ func (b *Bridge) GetAccountIndex(address string) (int, error) {
 	return 0, tokens.ErrGetAccount
 }
 
-// PublicKeyToAddress public key hex string (may be uncompressed) to address
-func (b *Bridge) PublicKeyToAddress(pubKeyHex string) (string, error) {
-	return "", nil
-}
-
 func (b *Bridge) VerifyPubKey(address, pubkey string) error {
-	return nil
+	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	for _, url := range urls {
+		result, err := GetAccount(url, address)
+		if err == nil {
+			for _, key := range result.Keys {
+				realPubKey, err := b.pubKeyToAccountKey(pubkey)
+				if err != nil {
+					continue
+				}
+				if key.PublicKey.String() == realPubKey {
+					return nil
+				}
+			}
+		}
+	}
+	return errors.New("not such pubKey for this address")
 }

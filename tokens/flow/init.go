@@ -109,5 +109,5 @@ func (b *Bridge) GetUnderlyingAddress(contractAddr string) (string, error) {
 
 // GetMPCAddress query mpc address
 func (b *Bridge) GetMPCAddress(contractAddr string) (string, error) {
-	return "", nil
+	return b.GetChainConfig().Extra, nil
 }

@@ -189,7 +189,7 @@ func loadSwapConfigs(wg *sync.WaitGroup, swapConfigs *sync.Map, tokenID string, 
 			wg2.Add(1)
 			go func(wg *sync.WaitGroup, tokenID string, fromChainID, toChainID *big.Int) {
 				defer wg.Done()
-				swapCfg, err := router.GetActualSwapConfig(tokenID, fromChainID, toChainID)
+				swapCfg, err := router.GetSwapConfig(tokenID, fromChainID, toChainID)
 				if err != nil {
 					logErrFunc("get swap config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "err", err)
 					return
@@ -224,7 +224,7 @@ func loadFeeConfigs(wg *sync.WaitGroup, feeConfigs *sync.Map, tokenID string, su
 			wg2.Add(1)
 			go func(wg *sync.WaitGroup, tokenID string, fromChainID, toChainID *big.Int) {
 				defer wg.Done()
-				feeCfg, err := router.GetActualFeeConfig(tokenID, fromChainID, toChainID)
+				feeCfg, err := router.GetFeeConfig(tokenID, fromChainID, toChainID)
 				if err != nil {
 					logErrFunc("get fee config failed", "tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID, "err", err)
 					return

@@ -37,6 +37,7 @@ func (b *Bridge) VerifyTransaction(txHash string, args *tokens.VerifyArgs) (*tok
 }
 
 func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool) (*tokens.SwapTxInfo, error) {
+	log.Info("verifySwapoutTx", "txhash", txHash, "logIndex", logIndex, "allowUnstable", allowUnstable)
 	swapInfo := &tokens.SwapTxInfo{SwapInfo: tokens.SwapInfo{ERC20SwapInfo: &tokens.ERC20SwapInfo{}}}
 	swapInfo.SwapType = tokens.ERC20SwapType          // SwapType
 	swapInfo.Hash = txHash                            // Hash

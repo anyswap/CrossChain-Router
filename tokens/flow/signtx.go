@@ -44,7 +44,12 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 	log.Info(logPrefix+"start", "txid", txid)
 
 	mpcConfig := mpc.GetMPCConfig(b.UseFastMPC)
-	keyID, rsvs, err := mpcConfig.DoSignOneEC(mpcPubkey, common.ToHex(message[:]), msgContext)
+	mpcRealPubkey, err := b.pubKeyToMpcPubKey(mpcPubkey)
+	if err != nil {
+		return nil, "", err
+	}
+	log.Warn("mpcPubkey", "mpcRealPubkey", mpcRealPubkey)
+	keyID, rsvs, err := mpcConfig.DoSignOneEC(mpcRealPubkey, common.ToHex(message[:]), msgContext)
 	if err != nil {
 		return nil, "", err
 	}

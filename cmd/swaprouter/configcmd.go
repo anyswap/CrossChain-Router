@@ -226,7 +226,7 @@ func getSwapConfig(ctx *cli.Context) error {
 		ctx.String(onchainContractFlag.Name),
 		ctx.StringSlice(gatewaysFlag.Name),
 	)
-	swapCfg, err := router.GetActualSwapConfig(tokenID, fromChainID, toChainID)
+	swapCfg, err := router.GetSwapConfig(tokenID, fromChainID, toChainID)
 	if err != nil {
 		return err
 	}
@@ -257,7 +257,7 @@ func getFeeConfig(ctx *cli.Context) error {
 		ctx.String(onchainContractFlag.Name),
 		ctx.StringSlice(gatewaysFlag.Name),
 	)
-	feeCfg, err := router.GetActualFeeConfig(tokenID, fromChainID, toChainID)
+	feeCfg, err := router.GetFeeConfig(tokenID, fromChainID, toChainID)
 	if err != nil {
 		return err
 	}

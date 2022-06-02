@@ -112,21 +112,18 @@ func CreateSwapInArgs(
 	}
 	fromChainId := cadence.NewUInt64(id)
 
-	realValue := amount.String()
-	if len(realValue) <= 8 {
+	realValue := parseFlowNumber(amount)
+	log.Info("swapValue", "realValue", realValue)
+	if len(realValue) < 10 {
 		return nil, tokens.ErrTxWithWrongValue
 	}
-	realValue = realValue[0:len(realValue)-8] + "." + realValue[len(realValue)-8:]
 	value, err := cadence.NewUFix64(realValue)
 	if err != nil {
 		return nil, err
 	}
-
 	receivePaths := strings.Split(path, ",")
-	// receivePaths := [2]string{
-	// 	"exampleTokenReceiver",
-	// 	"anyExampleTokenReceiver",
-	// }
+	log.Info("receivePaths", "path", path, "receivePaths", receivePaths)
+
 	if len(receivePaths) != 2 {
 		return nil, errors.New("receive path len error")
 	}
@@ -140,7 +137,6 @@ func CreateSwapInArgs(
 		Domain:     "public",
 		Identifier: receivePaths[1],
 	}
-	log.Warn("paths", "path-0", path_0.String(), "path-1", path_1.String())
 	realPaths := cadence.NewArray([]cadence.Value{path_0, path_1})
 
 	swapIn := &SwapIn{
