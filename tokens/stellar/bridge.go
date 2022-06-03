@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strconv"
 	"sync"
 	"time"
 
@@ -241,16 +242,30 @@ func (b *Bridge) GetBalance(accountAddress string) (*big.Int, error) {
 	bal := big.NewInt(0)
 	for _, asset := range acct.Balances {
 		if asset.Type == "native" {
-			ok := true
-			bal, ok = bal.SetString(asset.Balance, 10)
-			if !ok {
+			f, err := strconv.ParseFloat(asset.Balance, 64)
+			if err != nil {
 				log.Warn("balance format error", "account", accountAddress, "err", asset.Balance)
-				err = errors.New("balance format error")
 			}
+			bal = big.NewInt(int64(f))
 			break
 		}
 	}
 	return bal, err
+}
+
+func (b *Bridge) checkXMLBalanceEnough(acct *hProtocol.Account) bool {
+	ok := false
+	for _, asset := range acct.Balances {
+		if asset.Type == "native" {
+			f, err := strconv.ParseFloat(asset.Balance, 64)
+			if err != nil || f < 1.0 {
+				log.Error("stellar XML not enough", "account", acct.AccountID, "xml", asset.Balance)
+			}
+			ok = true
+			break
+		}
+	}
+	return ok
 }
 
 // GetAccount returns account

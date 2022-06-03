@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"strconv"
 
@@ -67,7 +68,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	if err != nil {
 		return nil, err
 	}
-
+	amt := getPaymentAmount(amount, token)
 	var fee string
 
 	extra := args.Extra
@@ -87,13 +88,16 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	if err != nil {
 		return nil, err
 	}
-	// TODO check XLM?
+	// check XLM
+	if !b.checkXMLBalanceEnough(fromAccount) {
+		return nil, tokens.ErrMissTokenConfig
+	}
 
 	memo, err := buildMemo(args.FromChainID.String(), args.SwapID, strconv.Itoa(args.LogIndex))
 	if err != nil {
 		return nil, err
 	}
-	return NewUnsignedPaymentTransaction(fromAccount, b.NetworkStr, receiver, amount.String(), fee, memo, asset)
+	return NewUnsignedPaymentTransaction(fromAccount, b.NetworkStr, receiver, amt, fee, memo, asset)
 }
 
 func buildMemo(fromChainID, swapID, logIndex string) (*txnbuild.MemoHash, error) {
@@ -113,8 +117,12 @@ func buildMemo(fromChainID, swapID, logIndex string) (*txnbuild.MemoHash, error)
 	for i := 0; i < len(memo); i++ {
 		rtn[i] = memo[i]
 	}
-	fmt.Println(rtn)
 	return rtn, nil
+}
+
+func getPaymentAmount(amount *big.Int, token *tokens.TokenConfig) string {
+	value := float64(amount.Int64()) / math.Pow10(int(token.Decimals))
+	return fmt.Sprintf("%.7f", value)
 }
 
 func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken string) (receiver string, amount *big.Int, err error) {
@@ -202,6 +210,7 @@ func (b *Bridge) GetSeq(args *tokens.BuildTxArgs) (nonceptr *uint64, err error) 
 func NewUnsignedPaymentTransaction(
 	from *hProtocol.Account, network,
 	dest, amt, fee string, memo *txnbuild.MemoHash, asset txnbuild.Asset) (*txnbuild.Transaction, error) {
+	// TODO amt 转化  float->string
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        from,
