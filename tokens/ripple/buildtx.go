@@ -72,29 +72,6 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	}
 	args.SwapValue = amount // SwapValue
 
-	var (
-		sequence uint64
-		fee      string
-	)
-
-	extra := args.Extra
-	if extra == nil {
-		extra, err = b.swapoutDefaultArgs(args, multichainToken)
-		if err != nil {
-			return nil, err
-		}
-		args.Extra = extra
-		sequence = *extra.Sequence
-		fee = *extra.Fee
-	} else {
-		if extra.Sequence != nil {
-			sequence = *extra.Sequence
-		}
-		if extra.Fee != nil {
-			fee = *extra.Fee
-		}
-	}
-
 	amt, err := getPaymentAmount(amount, token)
 	if err != nil {
 		return nil, err
@@ -121,9 +98,16 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		}
 	}
 
+	extra, err := b.setExtraArgs(args)
+	if err != nil {
+		return nil, err
+	}
+
 	ripplePubKey := ImportPublicKey(common.FromHex(mpcPubkey))
 	memo := fmt.Sprintf("%v:%v:%v", args.FromChainID, args.SwapID, args.LogIndex)
-	return NewUnsignedPaymentTransaction(ripplePubKey, nil, uint32(sequence), receiver, toTag, amt.String(), fee, memo, "", 0)
+	return NewUnsignedPaymentTransaction(
+		ripplePubKey, nil, uint32(*extra.Sequence),
+		receiver, toTag, amt.String(), *extra.Fee, memo, "", 0)
 }
 
 func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken string) (receiver string, destTag *uint32, amount *big.Int, err error) {
@@ -206,34 +190,38 @@ func (b *Bridge) getMinReserveFee() *big.Int {
 	return minReserve
 }
 
-func (b *Bridge) swapoutDefaultArgs(txargs *tokens.BuildTxArgs, multichainToken string) (*tokens.AllExtras, error) {
-	token := b.GetTokenConfig(multichainToken)
-	if token == nil {
-		return nil, tokens.ErrMissTokenConfig
+func (b *Bridge) setExtraArgs(args *tokens.BuildTxArgs) (*tokens.AllExtras, error) {
+	if args.Extra == nil {
+		args.Extra = &tokens.AllExtras{}
+	}
+	extra := args.Extra
+	extra.EthExtra = nil // clear this which may be set in replace job
+
+	if extra.Sequence == nil {
+		seq, err := b.GetSeq(args)
+		if err != nil {
+			log.Warn("get sequence failed", "err", err)
+			return nil, err
+		}
+		extra.Sequence = seq
 	}
 
-	seq, err := b.GetSeq(txargs)
-	if err != nil {
-		log.Warn("get sequence failed", "err", err)
-		return nil, err
+	if extra.Fee == nil {
+		feeRes, err := b.GetFee()
+		if err != nil {
+			log.Warn("get fee failed", "err", err)
+			return nil, err
+		}
+		feeAmount := feeRes.Drops.MinimumFee.Drops()
+		if feeAmount < defaultFee {
+			feeAmount = defaultFee
+		}
+		feeVal, _ := data.NewNativeValue(feeAmount)
+		fee := feeVal.String()
+		extra.Fee = &fee
 	}
 
-	feeRes, err := b.GetFee()
-	if err != nil {
-		log.Warn("get fee failed", "err", err)
-		return nil, err
-	}
-	feeAmount := feeRes.Drops.MinimumFee.Drops()
-	if feeAmount < defaultFee {
-		feeAmount = defaultFee
-	}
-	feeVal, _ := data.NewNativeValue(feeAmount)
-	fee := feeVal.String()
-
-	return &tokens.AllExtras{
-		Sequence: seq,
-		Fee:      &fee,
-	}, nil
+	return extra, nil
 }
 
 func (b *Bridge) checkNativeBalance(account string, amount *big.Int, isPay bool) error {
