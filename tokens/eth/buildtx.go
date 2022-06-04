@@ -296,13 +296,13 @@ func (b *Bridge) getAccountNonce(args *tokens.BuildTxArgs) (nonceptr *uint64, er
 		return &nonce, err
 	}
 
-	if params.IsAutoSwapNonceEnabled(b.ChainConfig.ChainID) { // increase automatically
-		nonce = b.GetSwapNonce(args.From)
-		return &nonce, nil
+	getPoolNonceBlockNumberOpt := "pending" // latest or pending
+	if params.IsAutoSwapNonceEnabled(b.ChainConfig.ChainID) {
+		getPoolNonceBlockNumberOpt = "latest"
 	}
 
 	for i := 0; i < retryRPCCount; i++ {
-		nonce, err = b.GetPoolNonce(args.From, "pending")
+		nonce, err = b.GetPoolNonce(args.From, getPoolNonceBlockNumberOpt)
 		if err == nil {
 			break
 		}
