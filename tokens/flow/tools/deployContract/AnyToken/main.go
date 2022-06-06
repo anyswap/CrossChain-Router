@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"flag"
 	"math/big"
@@ -23,15 +22,15 @@ import (
 var (
 	bridge = flow.NewCrossChainBridge()
 
-	paramConfigFile string
-	paramChainID    string
-	paramAddress    string
-	paramPublicKey  string
-	paramPrivKey    string
-	paramNewPrivKey string
-	chainID         = big.NewInt(0)
-	ctx             = context.Background()
-	mpcConfig       *mpc.Config
+	paramConfigFile      string
+	paramChainID         string
+	paramAddress         string
+	paramPublicKey       string
+	paramPrivKey         string
+	paramContractName    string
+	chainID              = big.NewInt(0)
+	mpcConfig            *mpc.Config
+	AnyTokenContractFile = "tokens/flow/contracts/AnyToken.cdc"
 )
 
 func main() {
@@ -50,18 +49,8 @@ func main() {
 		log.Fatal("connect failed", "url", url, "err", err)
 	}
 
-	newPrivKey, err := fcrypto.DecodePrivateKeyHex(fcrypto.ECDSA_secp256k1, paramNewPrivKey)
-	if err != nil {
-		log.Fatal("DecodePrivateKeyHex failed", "paramNewPrivKey", paramNewPrivKey, "err", err)
-	}
-
-	myAcctKey := sdk.NewAccountKey().
-		FromPrivateKey(newPrivKey).
-		SetHashAlgo(fcrypto.SHA3_256).
-		SetWeight(sdk.AccountKeyWeightThreshold)
-
-	referenceBlockID := examples.GetReferenceBlockId(flowClient)
 	payerAddress := sdk.HexToAddress(paramAddress)
+	referenceBlockID := examples.GetReferenceBlockId(flowClient)
 
 	index, err := bridge.GetAccountIndex(paramAddress, paramPublicKey)
 	if err != nil {
@@ -73,19 +62,19 @@ func main() {
 		log.Fatal("GetAccountNonce failed", "payerAddress", payerAddress, "err", err)
 	}
 
-	createAccountTx, err := templates.CreateAccount([]*sdk.AccountKey{myAcctKey}, nil, payerAddress)
-	if err != nil {
-		log.Fatal("CreateAccount failed", "payerAddress", payerAddress, "err", err)
-	}
-
-	createAccountTx.SetProposalKey(
+	anyTokenCode := examples.ReadFile(AnyTokenContractFile)
+	deployContractTx := templates.AddAccountContract(payerAddress,
+		templates.Contract{
+			Name:   "AnyToken",
+			Source: anyTokenCode,
+		})
+	deployContractTx.SetProposalKey(
 		payerAddress,
 		index,
 		sequenceNumber,
 	)
-
-	createAccountTx.SetReferenceBlockID(referenceBlockID)
-	createAccountTx.SetPayer(payerAddress)
+	deployContractTx.SetReferenceBlockID(referenceBlockID)
+	deployContractTx.SetPayer(payerAddress)
 
 	if paramPrivKey != "" {
 		ecPrikey, err := fcrypto.DecodePrivateKeyHex(fcrypto.ECDSA_secp256k1, paramPrivKey)
@@ -98,21 +87,20 @@ func main() {
 			log.Fatal("NewInMemorySigner failed", "ecPrikey", ecPrikey, "err", err)
 		}
 
-		err = createAccountTx.SignEnvelope(payerAddress, index, keySigner)
+		err = deployContractTx.SignEnvelope(deployContractTx.Payer, deployContractTx.ProposalKey.KeyIndex, keySigner)
 		if err != nil {
-			log.Fatal("SignEnvelope failed", "payerAddress", payerAddress, "index", index, "err", err)
+			log.Fatal("SignEnvelope failed", "payerAddress", deployContractTx.Payer, "index", deployContractTx.ProposalKey.KeyIndex, "err", err)
+		}
+		txHash, err := bridge.SendTransaction(deployContractTx)
+		if err != nil {
+			log.Fatal("SendTransaction failed", "createAccountTx", deployContractTx, "index", index, "err", err)
 		}
 
-		err = flowClient.SendTransaction(ctx, *createAccountTx)
-		if err != nil {
-			log.Fatal("SendTransaction failed", "createAccountTx", createAccountTx, "index", index, "err", err)
-		}
-
-		log.Info("SendTransaction success", "hash", createAccountTx.ID().Hex())
+		log.Info("SendTransaction success", "hash", deployContractTx.ID().Hex(), "txHash", txHash)
 		return
 	}
 
-	signedTx, txHash, err := MPCSignTransaction(createAccountTx, paramPublicKey)
+	signedTx, txHash, err := MPCSignTransaction(deployContractTx, paramPublicKey)
 	if err != nil {
 		log.Fatal("MPCSignTransaction failed", "paramPublicKey", paramPublicKey)
 	}
@@ -171,7 +159,6 @@ func checkParams() error {
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -187,7 +174,6 @@ func initFlags() {
 	flag.StringVar(&paramAddress, "address", "", "signer address")
 	flag.StringVar(&paramPublicKey, "pubKey", "", "signer public key")
 	flag.StringVar(&paramPrivKey, "privKey", "", "(option) signer paramPrivKey key")
-	flag.StringVar(&paramNewPrivKey, "newPrivKey", "", "new key privKey address")
 
 	flag.Parse()
 

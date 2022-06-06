@@ -54,7 +54,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	}
 
 	erc20SwapInfo := args.ERC20SwapInfo
-	multichainToken := router.GetCachedMultichainToken(erc20SwapInfo.TokenID, args.ToChainID.String())
+	multichainToken := router.GetCachedMultichainToken(erc20SwapInfo.TokenID, b.GetChainConfig().ChainID)
 	if multichainToken == "" {
 		log.Warn("get multichain token failed", "tokenID", erc20SwapInfo.TokenID, "chainID", args.ToChainID)
 		return nil, tokens.ErrMissTokenConfig
@@ -86,7 +86,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	if getBlockHashErr != nil {
 		return nil, getBlockHashErr
 	}
-	swapInArgs, err := CreateSwapInArgs(args.ERC20SwapInfo.TokenID, sdk.HexToAddress(receiver), args.FromChainID, args.OriginValue, token.Extra)
+	swapInArgs, err := CreateSwapInArgs(multichainToken, sdk.HexToAddress(receiver), args.FromChainID, args.OriginValue, token.Extra)
 	if err != nil {
 		return nil, err
 	}
@@ -105,6 +105,7 @@ func CreateSwapInArgs(
 	amount *big.Int,
 	path string,
 ) (*SwapIn, error) {
+	log.Warn("======CreateSwapInArgs======", "tokenIdentifier", tokenIdentifier)
 	token, err := cadence.NewString(tokenIdentifier)
 	if err != nil {
 		return nil, err
@@ -132,14 +133,13 @@ func CreateSwapInArgs(
 		return nil, errors.New("receive path len error")
 	}
 
-	path_0 := cadence.Path{
-		Domain:     "public",
-		Identifier: receivePaths[0],
+	path_0, err := cadence.NewString(receivePaths[0])
+	if err != nil {
+		return nil, err
 	}
-
-	path_1 := cadence.Path{
-		Domain:     "public",
-		Identifier: receivePaths[1],
+	path_1, err := cadence.NewString(receivePaths[0])
+	if err != nil {
+		return nil, err
 	}
 	realPaths := cadence.NewArray([]cadence.Value{path_0, path_1})
 
@@ -168,7 +168,6 @@ func CreateTransaction(
 
 	tx := sdk.NewTransaction().
 		SetScript(swapIn).
-		SetGasLimit(gas).
 		SetReferenceBlockID(blockID).
 		SetProposalKey(signerAddress, signerIndex, signerSequence).
 		SetPayer(signerAddress).

@@ -3,6 +3,7 @@ package flow
 import (
 	"context"
 
+	"github.com/anyswap/CrossChain-Router/v3/log"
 	sdk "github.com/onflow/flow-go-sdk"
 	"github.com/onflow/flow-go-sdk/access/http"
 )
@@ -16,6 +17,7 @@ func GetBlockNumberByHash(url string, blockId sdk.Identifier) (uint64, error) {
 	if err1 != nil {
 		return 0, err1
 	}
+	log.Warn("===========GetBlockNumberByHash===========", "blockId", blockId)
 	latestBlock, err2 := flowClient.GetBlockByID(ctx, blockId)
 	if err2 != nil {
 		return 0, err2

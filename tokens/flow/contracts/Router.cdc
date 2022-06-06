@@ -1,5 +1,5 @@
 import FungibleToken from 0xee82856bf20e2aa6
-import AnyToken from 0xf8d6e0586b0a20c7
+import AnyToken from 0xe03daebed8ca0615
 
 pub contract Router {
 

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
@@ -85,7 +84,6 @@ func (b *Bridge) VerifyPubKey(address, pubKey string) error {
 					continue
 				}
 				if key.PublicKey.String() == realPubKey {
-					log.Warn("========verify===========", "hashAlgo", key.HashAlgo, "Index", key.Index, "SigAlgo", key.SigAlgo, "weight", key.Weight)
 					return nil
 				}
 			}

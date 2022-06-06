@@ -1,7 +1,7 @@
 import FungibleToken from 0xee82856bf20e2aa6
-import Router from 0xf8d6e0586b0a20c7
+import Router from 0xe03daebed8ca0615
 
-transaction(token:String,receiver:Address,fromChainId:UInt64,amount:UFix64,receivePaths:[PublicPath]) {
+transaction(token:String,receiver:Address,fromChainId:UInt64,amount:UFix64,receivePaths:[String]) {
     let mpcRef: &Router.Mpc
     let mpcStoragePath: StoragePath
     let vaultPublicPath:PublicPath 
@@ -10,8 +10,8 @@ transaction(token:String,receiver:Address,fromChainId:UInt64,amount:UFix64,recei
     let receiverAnyRef:Capability<&{FungibleToken.Receiver}>
     prepare(acct: AuthAccount) {
         self.mpcStoragePath = /storage/routerMpc
-        self.vaultPublicPath = receivePaths[0]
-        self.anyVaultPublicPath = receivePaths[1]
+        self.vaultPublicPath = PublicPath(identifier: receivePaths[0])!
+        self.anyVaultPublicPath = PublicPath(identifier: receivePaths[1])!
         self.mpcRef=acct.borrow<&Router.Mpc>(from:self.mpcStoragePath)
                                 ??panic("Could not borrow a reference to the crosschain")
         let recipient=getAccount(receiver)
