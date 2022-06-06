@@ -12,7 +12,7 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error
 	tx := signedTx.(*sdk.Transaction)
 	txHash, err = b.BroadcastTxCommit(tx)
 	if err != nil {
-		log.Warn("SendTransaction failed", "hash", txHash, "err", err)
+		log.Warn("SendTransaction failed", "err", err)
 		return "", err
 	}
 	log.Info("SendTransaction success", "hash", txHash)

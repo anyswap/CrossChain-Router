@@ -43,6 +43,10 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		log.Error("build tx mpc mismatch", "have", args.From, "want", routerMPC)
 		return nil, tokens.ErrSenderMismatch
 	}
+	mpcPubKey, err := router.GetMPCPubkey(routerMPC)
+	if err != nil {
+		return nil, err
+	}
 	switch args.SwapType {
 	case tokens.ERC20SwapType:
 	default:
@@ -67,7 +71,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, err
 	}
 
-	index, err := b.GetAccountIndex(args.From)
+	index, err := b.GetAccountIndex(args.From, mpcPubKey)
 	if err != nil {
 		return nil, err
 	}

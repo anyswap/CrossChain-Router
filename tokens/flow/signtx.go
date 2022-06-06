@@ -35,7 +35,8 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 
 	message := tx.EnvelopeMessage()
 	message = append(sdk.TransactionDomainTag[:], message...)
-
+	hasher, _ := fcrypto.NewHasher(fcrypto.SHA3_256)
+	hash := hasher.ComputeHash(message)
 	jsondata, _ := json.Marshal(args.GetExtraArgs())
 	msgContext := string(jsondata)
 
@@ -44,12 +45,12 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 	log.Info(logPrefix+"start", "txid", txid)
 
 	mpcConfig := mpc.GetMPCConfig(b.UseFastMPC)
-	mpcRealPubkey, err := b.pubKeyToMpcPubKey(mpcPubkey)
+	mpcRealPubkey, err := b.PubKeyToMpcPubKey(mpcPubkey)
 	if err != nil {
 		return nil, "", err
 	}
 	log.Warn("mpcPubkey", "mpcRealPubkey", mpcRealPubkey)
-	keyID, rsvs, err := mpcConfig.DoSignOneEC(mpcRealPubkey, common.ToHex(message[:]), msgContext)
+	keyID, rsvs, err := mpcConfig.DoSignOneEC(mpcRealPubkey, common.ToHex(hash[:]), msgContext)
 	if err != nil {
 		return nil, "", err
 	}
@@ -68,7 +69,7 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 		return nil, "", errors.New("wrong signature length")
 	}
 
-	tx.AddEnvelopeSignature(tx.Payer, tx.ProposalKey.KeyIndex, sig)
+	tx.AddEnvelopeSignature(tx.Payer, tx.ProposalKey.KeyIndex, sig[:64])
 
 	txHash = tx.ID().String()
 	log.Info(logPrefix+"success", "keyID", keyID, "txid", txid, "txhash", txHash, "nonce", tx.ProposalKey.SequenceNumber)
