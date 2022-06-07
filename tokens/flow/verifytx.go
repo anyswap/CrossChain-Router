@@ -160,9 +160,9 @@ func (b *Bridge) checkSwapoutInfo(swapInfo *tokens.SwapTxInfo) error {
 		return tokens.ErrMissTokenConfig
 	}
 
-	// if !tokens.CheckTokenSwapValue(swapInfo, fromTokenCfg.Decimals, toTokenCfg.Decimals) {
-	// 	return tokens.ErrTxWithWrongValue
-	// }
+	if !tokens.CheckTokenSwapValue(swapInfo, fromTokenCfg.Decimals, toTokenCfg.Decimals) {
+		return tokens.ErrTxWithWrongValue
+	}
 
 	bindAddr := swapInfo.Bind
 	if !toBridge.IsValidAddress(bindAddr) {

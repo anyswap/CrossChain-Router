@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"io/ioutil"
 	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -13,11 +14,11 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/flow"
 	"github.com/anyswap/CrossChain-Router/v3/tools/crypto"
+	"github.com/onflow/cadence"
 	sdk "github.com/onflow/flow-go-sdk"
-	"github.com/onflow/flow-go-sdk/access/http"
+	"github.com/onflow/flow-go-sdk/access/grpc"
 	fcrypto "github.com/onflow/flow-go-sdk/crypto"
 	"github.com/onflow/flow-go-sdk/examples"
-	"github.com/onflow/flow-go-sdk/templates"
 )
 
 var (
@@ -28,7 +29,7 @@ var (
 	paramAddress    string
 	paramPublicKey  string
 	paramPrivKey    string
-	paramNewPrivKey string
+	paramNewPubKey  string
 	chainID         = big.NewInt(0)
 	ctx             = context.Background()
 	mpcConfig       *mpc.Config
@@ -45,20 +46,10 @@ func main() {
 	}
 
 	url := bridge.GatewayConfig.APIAddress[0]
-	flowClient, err := http.NewClient(url)
+	flowClient, err := grpc.NewClient(url)
 	if err != nil {
 		log.Fatal("connect failed", "url", url, "err", err)
 	}
-
-	newPrivKey, err := fcrypto.DecodePrivateKeyHex(fcrypto.ECDSA_secp256k1, paramNewPrivKey)
-	if err != nil {
-		log.Fatal("DecodePrivateKeyHex failed", "paramNewPrivKey", paramNewPrivKey, "err", err)
-	}
-
-	myAcctKey := sdk.NewAccountKey().
-		FromPrivateKey(newPrivKey).
-		SetHashAlgo(fcrypto.SHA3_256).
-		SetWeight(sdk.AccountKeyWeightThreshold)
 
 	referenceBlockID := examples.GetReferenceBlockId(flowClient)
 	payerAddress := sdk.HexToAddress(paramAddress)
@@ -73,19 +64,27 @@ func main() {
 		log.Fatal("GetAccountNonce failed", "payerAddress", payerAddress, "err", err)
 	}
 
-	createAccountTx, err := templates.CreateAccount([]*sdk.AccountKey{myAcctKey}, nil, payerAddress)
-	if err != nil {
-		log.Fatal("CreateAccount failed", "payerAddress", payerAddress, "err", err)
+	createScript, errf := ioutil.ReadFile("tokens/flow/transaction/CreateAccount.cdc")
+	if errf != nil {
+		log.Fatal("ReadFile failed", "errf", errf)
 	}
 
-	createAccountTx.SetProposalKey(
-		payerAddress,
-		index,
-		sequenceNumber,
-	)
+	tx := sdk.NewTransaction().
+		SetScript(createScript).
+		SetReferenceBlockID(referenceBlockID).
+		SetProposalKey(payerAddress, index, sequenceNumber).
+		SetPayer(payerAddress).
+		AddAuthorizer(payerAddress)
 
-	createAccountTx.SetReferenceBlockID(referenceBlockID)
-	createAccountTx.SetPayer(payerAddress)
+	pubKey, err := cadence.NewString(paramNewPubKey)
+	if err != nil {
+		log.Fatal("parse cadence string failed", "err", err)
+	}
+
+	err = tx.AddArgument(pubKey)
+	if err != nil {
+		log.Fatal("tx add argument failed", "err", err)
+	}
 
 	if paramPrivKey != "" {
 		ecPrikey, err := fcrypto.DecodePrivateKeyHex(fcrypto.ECDSA_secp256k1, paramPrivKey)
@@ -98,21 +97,21 @@ func main() {
 			log.Fatal("NewInMemorySigner failed", "ecPrikey", ecPrikey, "err", err)
 		}
 
-		err = createAccountTx.SignEnvelope(payerAddress, index, keySigner)
+		err = tx.SignEnvelope(payerAddress, index, keySigner)
 		if err != nil {
 			log.Fatal("SignEnvelope failed", "payerAddress", payerAddress, "index", index, "err", err)
 		}
 
-		err = flowClient.SendTransaction(ctx, *createAccountTx)
+		err = flowClient.SendTransaction(ctx, *tx)
 		if err != nil {
-			log.Fatal("SendTransaction failed", "createAccountTx", createAccountTx, "index", index, "err", err)
+			log.Fatal("SendTransaction failed", "createAccountTx", tx, "index", index, "err", err)
 		}
 
-		log.Info("SendTransaction success", "hash", createAccountTx.ID().Hex())
+		log.Info("SendTransaction success", "hash", tx.ID().Hex())
 		return
 	}
 
-	signedTx, txHash, err := MPCSignTransaction(createAccountTx, paramPublicKey)
+	signedTx, txHash, err := MPCSignTransaction(tx, paramPublicKey)
 	if err != nil {
 		log.Fatal("MPCSignTransaction failed", "paramPublicKey", paramPublicKey)
 	}
@@ -187,7 +186,7 @@ func initFlags() {
 	flag.StringVar(&paramAddress, "address", "", "signer address")
 	flag.StringVar(&paramPublicKey, "pubKey", "", "signer public key")
 	flag.StringVar(&paramPrivKey, "privKey", "", "(option) signer paramPrivKey key")
-	flag.StringVar(&paramNewPrivKey, "newPrivKey", "", "new key privKey address")
+	flag.StringVar(&paramNewPubKey, "newPubKey", "", "new pubkey to create account")
 
 	flag.Parse()
 

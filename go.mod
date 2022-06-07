@@ -25,5 +25,6 @@ require (
 	github.com/urfave/cli/v2 v2.8.1
 	go.mongodb.org/mongo-driver v1.7.2
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
+	google.golang.org/grpc v1.44.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 )

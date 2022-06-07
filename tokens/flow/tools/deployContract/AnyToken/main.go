@@ -13,7 +13,8 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens/flow"
 	"github.com/anyswap/CrossChain-Router/v3/tools/crypto"
 	sdk "github.com/onflow/flow-go-sdk"
-	"github.com/onflow/flow-go-sdk/access/http"
+	"github.com/onflow/flow-go-sdk/access/grpc"
+
 	fcrypto "github.com/onflow/flow-go-sdk/crypto"
 	"github.com/onflow/flow-go-sdk/examples"
 	"github.com/onflow/flow-go-sdk/templates"
@@ -27,7 +28,6 @@ var (
 	paramAddress         string
 	paramPublicKey       string
 	paramPrivKey         string
-	paramContractName    string
 	chainID              = big.NewInt(0)
 	mpcConfig            *mpc.Config
 	AnyTokenContractFile = "tokens/flow/contracts/AnyToken.cdc"
@@ -42,9 +42,8 @@ func main() {
 	if err != nil {
 		log.Fatal("checkParams failed", "err", err)
 	}
-
 	url := bridge.GatewayConfig.APIAddress[0]
-	flowClient, err := http.NewClient(url)
+	flowClient, err := grpc.NewClient(url)
 	if err != nil {
 		log.Fatal("connect failed", "url", url, "err", err)
 	}
@@ -77,7 +76,7 @@ func main() {
 	deployContractTx.SetPayer(payerAddress)
 
 	if paramPrivKey != "" {
-		ecPrikey, err := fcrypto.DecodePrivateKeyHex(fcrypto.ECDSA_secp256k1, paramPrivKey)
+		ecPrikey, err := fcrypto.DecodePrivateKeyHex(fcrypto.ECDSA_P256, paramPrivKey)
 		if err != nil {
 			log.Fatal("DecodePrivateKeyHex failed", "privKey", paramPrivKey, "err", err)
 		}

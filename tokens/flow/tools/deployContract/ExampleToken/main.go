@@ -22,14 +22,14 @@ import (
 var (
 	bridge = flow.NewCrossChainBridge()
 
-	paramConfigFile             string
-	paramChainID                string
-	paramAddress                string
-	paramPublicKey              string
-	paramPrivKey                string
-	chainID                     = big.NewInt(0)
-	mpcConfig                   *mpc.Config
-	AnyExampleTokenContractFile = "tokens/flow/contracts/AnyExampleToken.cdc"
+	paramConfigFile          string
+	paramChainID             string
+	paramAddress             string
+	paramPublicKey           string
+	paramPrivKey             string
+	chainID                  = big.NewInt(0)
+	mpcConfig                *mpc.Config
+	ExampleTokenContractFile = "tokens/flow/contracts/ExampleToken.cdc"
 )
 
 func main() {
@@ -61,13 +61,12 @@ func main() {
 		log.Fatal("GetAccountNonce failed", "payerAddress", payerAddress, "err", err)
 	}
 
-	anyExampleTokenCode := examples.ReadFile(AnyExampleTokenContractFile)
+	exampleTokenCode := examples.ReadFile(ExampleTokenContractFile)
 	deployContractTx := templates.AddAccountContract(payerAddress,
 		templates.Contract{
-			Name:   "AnyExampleToken",
-			Source: anyExampleTokenCode,
+			Name:   "ExampleToken",
+			Source: exampleTokenCode,
 		})
-
 	deployContractTx.SetProposalKey(
 		payerAddress,
 		index,

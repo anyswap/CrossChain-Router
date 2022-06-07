@@ -4,16 +4,21 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
 var (
-	LenForPubKey = 128
+	LenForPubKey  = 128
+	AddressLength = 16
 )
 
 // IsValidAddress check address
 func (b *Bridge) IsValidAddress(address string) bool {
-	return address != ""
+	if common.HasHexPrefix(address) {
+		address = address[2:]
+	}
+	return len(address) == AddressLength && common.IsHex(address)
 }
 
 func (b *Bridge) PubKeyToMpcPubKey(pubKey string) (string, error) {

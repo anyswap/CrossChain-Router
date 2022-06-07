@@ -49,7 +49,6 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 	if err != nil {
 		return nil, "", err
 	}
-	log.Warn("mpcPubkey", "mpcRealPubkey", mpcRealPubkey)
 	keyID, rsvs, err := mpcConfig.DoSignOneEC(mpcRealPubkey, common.ToHex(hash[:]), msgContext)
 	if err != nil {
 		return nil, "", err

@@ -15,7 +15,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens/flow"
 	"github.com/anyswap/CrossChain-Router/v3/tools/crypto"
 	sdk "github.com/onflow/flow-go-sdk"
-	"github.com/onflow/flow-go-sdk/access/http"
+	"github.com/onflow/flow-go-sdk/access/grpc"
 	fcrypto "github.com/onflow/flow-go-sdk/crypto"
 	"github.com/onflow/flow-go-sdk/examples"
 )
@@ -28,7 +28,6 @@ var (
 	paramAddress    string
 	paramPublicKey  string
 	paramPrivKey    string
-	paramNewPrivKey string
 	chainID         = big.NewInt(0)
 	ctx             = context.Background()
 	mpcConfig       *mpc.Config
@@ -45,7 +44,7 @@ func main() {
 	}
 
 	url := bridge.GatewayConfig.APIAddress[0]
-	flowClient, err := http.NewClient(url)
+	flowClient, err := grpc.NewClient(url)
 	if err != nil {
 		log.Fatal("connect failed", "url", url, "err", err)
 	}
@@ -175,7 +174,6 @@ func initFlags() {
 	flag.StringVar(&paramAddress, "address", "", "signer address")
 	flag.StringVar(&paramPublicKey, "pubKey", "", "signer public key")
 	flag.StringVar(&paramPrivKey, "privKey", "", "(option) signer paramPrivKey key")
-	flag.StringVar(&paramNewPrivKey, "newPrivKey", "", "new key privKey address")
 
 	flag.Parse()
 

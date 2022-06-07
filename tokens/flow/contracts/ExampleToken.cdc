@@ -1,24 +1,9 @@
 import FungibleToken from 0x9a0766d93b6608b7
-import ExampleToken from 0x2627a6b6570638c4
-import AnyToken from 0x2627a6b6570638c4
-pub contract AnyExampleToken: FungibleToken, AnyToken {
+pub contract ExampleToken: FungibleToken {
 
-    /// Total supply of AnyExampleTokens in existence
+    /// Total supply of ExampleTokens in existence
     pub var totalSupply: UFix64
 
-    // Defines token vault storage path
-    pub let TokenStoragePath: StoragePath
-
-    // Defines token vault public balance path
-    pub let TokenPublicBalancePath: PublicPath
-
-    // Defines token vault public receiver path
-    pub let TokenPublicReceiverPath: PublicPath
-
-    // Controls FlowToken vault
-    access(contract) let underlyingVault: @FungibleToken.Vault
-    
-    access(contract) let underlyingType:Type?
     /// TokensInitialized
     ///
     /// The event that is emitted when the contract is created
@@ -44,7 +29,16 @@ pub contract AnyExampleToken: FungibleToken, AnyToken {
     /// The event that is emitted when tokens are destroyed
     pub event TokensBurned(amount: UFix64)
 
-    pub event MinterCreated()
+    /// MinterCreated
+    ///
+    /// The event that is emitted when a new minter resource is created
+    pub event MinterCreated(allowedAmount: UFix64)
+
+    /// BurnerCreated
+    ///
+    /// The event that is emitted when a new burner resource is created
+    pub event BurnerCreated()
+
     /// Vault
     ///
     /// Each user stores an instance of only the Vault in their storage
@@ -93,7 +87,7 @@ pub contract AnyExampleToken: FungibleToken, AnyToken {
         /// been consumed and therefore can be destroyed.
         ///
         pub fun deposit(from: @FungibleToken.Vault) {
-            let vault <- from as! @AnyExampleToken.Vault
+            let vault <- from as! @ExampleToken.Vault
             self.balance = self.balance + vault.balance
             emit TokensDeposited(amount: vault.balance, to: self.owner?.address)
             vault.balance = 0.0
@@ -101,7 +95,7 @@ pub contract AnyExampleToken: FungibleToken, AnyToken {
         }
 
         destroy() {
-            AnyExampleToken.totalSupply = AnyExampleToken.totalSupply - self.balance
+            ExampleToken.totalSupply = ExampleToken.totalSupply - self.balance
         }
     }
 
@@ -122,104 +116,102 @@ pub contract AnyExampleToken: FungibleToken, AnyToken {
         ///
         /// Function that creates and returns a new minter resource
         ///
-        pub fun createNewMinter(): @Minter {
-            emit MinterCreated()
-            return <-create Minter()
+        pub fun createNewMinter(allowedAmount: UFix64): @Minter {
+            emit MinterCreated(allowedAmount: allowedAmount)
+            return <-create Minter(allowedAmount: allowedAmount)
         }
 
+        /// createNewBurner
+        ///
+        /// Function that creates and returns a new burner resource
+        ///
+        pub fun createNewBurner(): @Burner {
+            emit BurnerCreated()
+            return <-create Burner()
+        }
     }
 
     /// Minter
     ///
     /// Resource object that token admin accounts can hold to mint new tokens.
     ///
-    pub resource Minter:AnyToken.IMinter {
+    pub resource Minter {
 
-        pub fun mint(amount: UFix64): @FungibleToken.Vault {
-            if AnyExampleToken.underlying()==nil{
-                AnyExampleToken.totalSupply=AnyExampleToken.totalSupply+amount
-                emit TokensWithdrawn(amount: amount, from: self.owner?.address)
-                return <-create Vault(balance: amount)
-            }else{
-                if AnyExampleToken.underlyingVault.balance>=amount{
-                    return <- AnyExampleToken.underlyingVault.withdraw(amount:amount)
-                }
-                AnyExampleToken.totalSupply=AnyExampleToken.totalSupply+amount
-                emit TokensWithdrawn(amount: amount, from: self.owner?.address)
-                return <-create Vault(balance: amount)
+        /// The amount of tokens that the minter is allowed to mint
+        pub var allowedAmount: UFix64
+
+        /// mintTokens
+        ///
+        /// Function that mints new tokens, adds them to the total supply,
+        /// and returns them to the calling context.
+        ///
+        pub fun mintTokens(amount: UFix64): @ExampleToken.Vault {
+            pre {
+                amount > 0.0: "Amount minted must be greater than zero"
+                amount <= self.allowedAmount: "Amount minted must be less than the allowed amount"
             }
+            ExampleToken.totalSupply = ExampleToken.totalSupply + amount
+            self.allowedAmount = self.allowedAmount - amount
+            emit TokensMinted(amount: amount)
+            return <-create Vault(balance: amount)
         }
 
-        pub fun burn(from: @FungibleToken.Vault) {
-            if AnyExampleToken.underlying()==nil{
-                let vault <- from as! @AnyExampleToken.Vault
-                emit TokensBurned(amount: vault.balance)
-                destroy vault
-            }else{
-                AnyExampleToken.underlyingVault.deposit(from:<-from)
-            }
+        init(allowedAmount: UFix64) {
+            self.allowedAmount = allowedAmount
         }
     }
 
-    pub fun underlying(): String?{
-        if AnyExampleToken.underlyingVault==nil{
-            return nil;
-        }
-        return self.underlyingType!.identifier
-    }
+    /// Burner
+    ///
+    /// Resource object that token admin accounts can hold to burn tokens.
+    ///
+    pub resource Burner {
 
-    pub fun underlyingDeposit(from:@FungibleToken.Vault):@FungibleToken.Vault {
-        pre{
-            AnyExampleToken.underlying()!=nil:
-            "underlying token not exists"
+        /// burnTokens
+        ///
+        /// Function that destroys a Vault instance, effectively burning the tokens.
+        ///
+        /// Note: the burned tokens are automatically subtracted from the
+        /// total supply in the Vault destructor.
+        ///
+        pub fun burnTokens(from: @FungibleToken.Vault) {
+            let vault <- from as! @ExampleToken.Vault
+            let amount = vault.balance
+            destroy vault
+            emit TokensBurned(amount: amount)
         }
-        let tmpVault<- create Vault(balance:from.balance)
-        AnyExampleToken.underlyingVault.deposit(from:<-from)
-        return <- tmpVault
-    }
-
-    pub fun underlyingWithdraw(from:@FungibleToken.Vault):@FungibleToken.Vault{
-        pre{
-            AnyExampleToken.underlying()!=nil:
-            "underlying token not exists"
-        }
-        let vault <- from as! @AnyExampleToken.Vault
-        emit TokensBurned(amount: vault.balance)
-        let tmpVault<-AnyExampleToken.underlyingVault.withdraw(amount:vault.balance)
-        destroy vault
-        return <- tmpVault
     }
 
     init() {
-        self.TokenStoragePath= /storage/anyExampleTokenVault
-        self.TokenPublicBalancePath= /public/anyExampleTokenBalance
-        self.TokenPublicReceiverPath= /public/anyExampleTokenReceiver
-        self.underlyingVault <- ExampleToken.createEmptyVault()
-        self.underlyingType = Type<@ExampleToken.Vault>()
-        self.totalSupply=0.0
-        assert(self.underlyingType==self.underlyingVault.getType(), message: "underlying type not match")
+        self.totalSupply = 1000.0
+
         // Create the Vault with the total supply of tokens and save it in storage
+        //
         let vault <- create Vault(balance: self.totalSupply)
-        self.account.save(<-vault, to: self.TokenStoragePath)
+        self.account.save(<-vault, to: /storage/exampleTokenVault)
 
         // Create a public capability to the stored Vault that only exposes
         // the `deposit` method through the `Receiver` interface
+        //
         self.account.link<&{FungibleToken.Receiver}>(
-            self.TokenPublicReceiverPath,
-            target: self.TokenStoragePath
+            /public/exampleTokenReceiver,
+            target: /storage/exampleTokenVault
         )
 
         // Create a public capability to the stored Vault that only exposes
         // the `balance` field through the `Balance` interface
-        self.account.link<&AnyExampleToken.Vault{FungibleToken.Balance}>(
-            self.TokenPublicBalancePath,
-            target: self.TokenStoragePath
+        //
+        self.account.link<&ExampleToken.Vault{FungibleToken.Balance}>(
+            /public/exampleTokenBalance,
+            target: /storage/exampleTokenVault
         )
 
         let admin <- create Administrator()
-        let minter <- admin.createNewMinter()
-        self.account.save(<-minter,to: /storage/anyExampleTokenMinter)
-        self.account.save(<-admin, to: /storage/anyExampleTokenAdmin)
+        self.account.save(<-admin, to: /storage/exampleTokenAdmin)
+
+        // Emit an event that shows that the contract was initialized
+        //
+        emit TokensInitialized(initialSupply: self.totalSupply)
     }
 }
  

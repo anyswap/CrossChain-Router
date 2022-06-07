@@ -105,7 +105,6 @@ func CreateSwapInArgs(
 	amount *big.Int,
 	path string,
 ) (*SwapIn, error) {
-	log.Warn("======CreateSwapInArgs======", "tokenIdentifier", tokenIdentifier)
 	token, err := cadence.NewString(tokenIdentifier)
 	if err != nil {
 		return nil, err
@@ -137,7 +136,7 @@ func CreateSwapInArgs(
 	if err != nil {
 		return nil, err
 	}
-	path_1, err := cadence.NewString(receivePaths[0])
+	path_1, err := cadence.NewString(receivePaths[1])
 	if err != nil {
 		return nil, err
 	}
