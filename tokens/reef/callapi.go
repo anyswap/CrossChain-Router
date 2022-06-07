@@ -233,7 +233,7 @@ func (b *Bridge) SendSignedTransaction(ext *Extrinsic) (extHash, extKey string, 
 	extHash = fmt.Sprintf("%#x", blake2b.Sum256(bz))
 	log.Info("call author_submitAndWatchExtrinsic start", "txHash", extHash)
 	gateway := b.GatewayConfig
-	urlCount := len(gateway.APIAddressExt) + len(gateway.APIAddress)
+	urlCount := len(gateway.APIAddressExt) + len(gateway.WSAddress)
 	ch := make(chan *sendTxResult, urlCount)
 	wg := new(sync.WaitGroup)
 	wg.Add(urlCount)

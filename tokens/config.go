@@ -46,6 +46,7 @@ type SwapConfig struct {
 type GatewayConfig struct {
 	APIAddress    []string
 	APIAddressExt []string
+	WSAddress     []string
 }
 
 // CheckConfig check chain config
