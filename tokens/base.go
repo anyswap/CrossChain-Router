@@ -15,10 +15,12 @@ import (
 var (
 	routerSwapType SwapType
 	IsSwapoutToStringAddress bool = false
-	swapConfigMap  = new(sync.Map) // key is tokenID,toChainID
-)
+	swapConfigMap = new(sync.Map) // key is tokenID,fromChainID,toChainID
+	feeConfigMap  = new(sync.Map) // key is tokenID,fromChainID,toChainID
 
-var GetPairFor func (string, string, string) (string, error)
+	// StubChainIDBase stub chainID base value
+	StubChainIDBase = big.NewInt(1000000000000)
+)
 
 // IsNativeCoin is native coin
 func IsNativeCoin(name string) bool {
@@ -66,6 +68,7 @@ type CrossChainBridgeBase struct {
 	ChainConfig    *ChainConfig
 	GatewayConfig  *GatewayConfig
 	TokenConfigMap *sync.Map // key is token address
+	UseFastMPC     bool
 }
 
 // NewCrossChainBridgeBase new base bridge
@@ -92,6 +95,9 @@ func (b *CrossChainBridgeBase) GetBalance(account string) (*big.Int, error) {
 // SetChainConfig set chain config
 func (b *CrossChainBridgeBase) SetChainConfig(chainCfg *ChainConfig) {
 	b.ChainConfig = chainCfg
+	if params.IsUseFastMPC(chainCfg.ChainID) {
+		b.UseFastMPC = true
+	}
 }
 
 // SetGatewayConfig set gateway config
@@ -150,19 +156,47 @@ func SetSwapConfigs(swapCfgs *sync.Map) {
 }
 
 // GetSwapConfig get swap config
-func GetSwapConfig(tokenID, toChainID string) *SwapConfig {
-	if m, exist := swapConfigMap.Load(tokenID); exist {
-		cfgs := m.(*sync.Map)
-		if cfg, ok := cfgs.Load(toChainID); ok {
-			return cfg.(*SwapConfig)
-		}
+func GetSwapConfig(tokenID, fromChainID, toChainID string) *SwapConfig {
+	m, exist := swapConfigMap.Load(tokenID)
+	if !exist {
+		return nil
 	}
-	return nil
+	mm, exist := m.(*sync.Map).Load(fromChainID)
+	if !exist {
+		return nil
+	}
+	mmm, exist := mm.(*sync.Map).Load(toChainID)
+	if !exist {
+		return nil
+	}
+	return mmm.(*SwapConfig)
+}
+
+// SetFeeConfigs set fee configs
+func SetFeeConfigs(feeCfgs *sync.Map) {
+	feeConfigMap = feeCfgs
+}
+
+// GetFeeConfig get fee config
+func GetFeeConfig(tokenID, fromChainID, toChainID string) *FeeConfig {
+	m, exist := feeConfigMap.Load(tokenID)
+	if !exist {
+		return nil
+	}
+	mm, exist := m.(*sync.Map).Load(fromChainID)
+	if !exist {
+		return nil
+	}
+	mmm, exist := mm.(*sync.Map).Load(toChainID)
+	if !exist {
+		return nil
+	}
+	return mmm.(*FeeConfig)
 }
 
 // GetBigValueThreshold get big value threshold
-func GetBigValueThreshold(tokenID, toChainID string, fromDecimals uint8) *big.Int {
-	swapCfg := GetSwapConfig(tokenID, toChainID)
+func GetBigValueThreshold(tokenID, fromChainID, toChainID string, fromDecimals uint8) *big.Int {
+	swapCfg := GetSwapConfig(tokenID, fromChainID, toChainID)
 	if swapCfg == nil {
 		return big.NewInt(0)
 	}
@@ -179,8 +213,9 @@ func CheckTokenSwapValue(swapInfo *SwapTxInfo, fromDecimals, toDecimals uint8) b
 		return false
 	}
 	tokenID := swapInfo.GetTokenID()
+	fromChainID := swapInfo.FromChainID.String()
 	toChainID := swapInfo.ToChainID.String()
-	swapCfg := GetSwapConfig(tokenID, toChainID)
+	swapCfg := GetSwapConfig(tokenID, fromChainID, toChainID)
 	if swapCfg == nil {
 		return false
 	}
@@ -194,34 +229,34 @@ func CheckTokenSwapValue(swapInfo *SwapTxInfo, fromDecimals, toDecimals uint8) b
 		!params.IsInBigValueWhitelist(tokenID, swapInfo.TxTo) {
 		return false
 	}
-	return CalcSwapValue(tokenID, toChainID, value, fromDecimals, toDecimals, swapInfo.From, swapInfo.TxTo).Sign() > 0
+	return CalcSwapValue(tokenID, fromChainID, toChainID, value, fromDecimals, toDecimals, swapInfo.From, swapInfo.TxTo).Sign() > 0
 }
 
 // CalcSwapValue calc swap value (get rid of fee and convert by decimals)
-func CalcSwapValue(tokenID, toChainID string, value *big.Int, fromDecimals, toDecimals uint8, originFrom, originTxTo string) *big.Int {
+func CalcSwapValue(tokenID, fromChainID, toChainID string, value *big.Int, fromDecimals, toDecimals uint8, originFrom, originTxTo string) *big.Int {
 	if !IsERC20Router() {
 		return value
 	}
-	swapCfg := GetSwapConfig(tokenID, toChainID)
-	if swapCfg == nil {
+	feeCfg := GetFeeConfig(tokenID, fromChainID, toChainID)
+	if feeCfg == nil {
 		return big.NewInt(0)
 	}
 
 	valueLeft := value
-	if swapCfg.SwapFeeRatePerMillion > 0 {
+	if feeCfg.SwapFeeRatePerMillion > 0 {
 		var swapFee, adjustBaseFee *big.Int
-		minSwapFee := ConvertTokenValue(swapCfg.MinimumSwapFee, 18, fromDecimals)
+		minSwapFee := ConvertTokenValue(feeCfg.MinimumSwapFee, 18, fromDecimals)
 		if params.IsInBigValueWhitelist(tokenID, originFrom) ||
 			params.IsInBigValueWhitelist(tokenID, originTxTo) {
 			swapFee = minSwapFee
 		} else {
-			swapFee = new(big.Int).Mul(value, new(big.Int).SetUint64(swapCfg.SwapFeeRatePerMillion))
+			swapFee = new(big.Int).Mul(value, new(big.Int).SetUint64(feeCfg.SwapFeeRatePerMillion))
 			swapFee.Div(swapFee, big.NewInt(1000000))
 
 			if swapFee.Cmp(minSwapFee) < 0 {
 				swapFee = minSwapFee
 			} else {
-				maxSwapFee := ConvertTokenValue(swapCfg.MaximumSwapFee, 18, fromDecimals)
+				maxSwapFee := ConvertTokenValue(feeCfg.MaximumSwapFee, 18, fromDecimals)
 				if swapFee.Cmp(maxSwapFee) > 0 {
 					swapFee = maxSwapFee
 				}

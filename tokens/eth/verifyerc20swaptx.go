@@ -429,7 +429,7 @@ func checkSwapTradePath(swapInfo *tokens.SwapTxInfo) error {
 	if routerContract == "" {
 		return tokens.ErrMissRouterInfo
 	}
-	routerInfo := router.GetRouterInfo(routerContract)
+	routerInfo := router.GetRouterInfo(routerContract, dstChainID)
 	if routerInfo == nil {
 		return tokens.ErrMissRouterInfo
 	}

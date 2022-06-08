@@ -27,24 +27,24 @@ func newWrongStatusError(subject, status, errInfo string) error {
 	return fmt.Errorf("[%v] Wrong status \"%v\", err=\"%v\"", subject, status, errInfo)
 }
 
-func wrapPostError(method string, err error) error {
-	return fmt.Errorf("[post] %v error, %w", mpcAPIPrefix+method, err)
+func (c *Config) wrapPostError(method string, err error) error {
+	return fmt.Errorf("[post] %v error, %w", c.mpcAPIPrefix+method, err)
 }
 
-func httpPost(result interface{}, method string, params ...interface{}) error {
-	return client.RPCPostWithTimeout(mpcRPCTimeout, &result, defaultMPCNode.mpcRPCAddress, mpcAPIPrefix+method, params...)
+func (c *Config) httpPost(result interface{}, method string, params ...interface{}) error {
+	return client.RPCPostWithTimeout(c.mpcRPCTimeout, &result, c.defaultMPCNode.mpcRPCAddress, c.mpcAPIPrefix+method, params...)
 }
 
-func httpPostTo(result interface{}, rpcAddress, method string, params ...interface{}) error {
-	return client.RPCPostWithTimeout(mpcRPCTimeout, &result, rpcAddress, mpcAPIPrefix+method, params...)
+func (c *Config) httpPostTo(result interface{}, rpcAddress, method string, params ...interface{}) error {
+	return client.RPCPostWithTimeout(c.mpcRPCTimeout, &result, rpcAddress, c.mpcAPIPrefix+method, params...)
 }
 
 // GetEnode call getEnode
-func GetEnode(rpcAddr string) (string, error) {
+func (c *Config) GetEnode(rpcAddr string) (string, error) {
 	var result GetEnodeResp
-	err := httpPostTo(&result, rpcAddr, "getEnode")
+	err := c.httpPostTo(&result, rpcAddr, "getEnode")
 	if err != nil {
-		return "", wrapPostError("getEnode", err)
+		return "", c.wrapPostError("getEnode", err)
 	}
 	if result.Status != successStatus {
 		return "", newWrongStatusError("getEnode", result.Status, result.Error)
@@ -53,11 +53,11 @@ func GetEnode(rpcAddr string) (string, error) {
 }
 
 // GetSignNonce call getSignNonce
-func GetSignNonce(mpcUser, rpcAddr string) (uint64, error) {
+func (c *Config) GetSignNonce(mpcUser, rpcAddr string) (uint64, error) {
 	var result DataResultResp
-	err := httpPostTo(&result, rpcAddr, "getSignNonce", mpcUser)
+	err := c.httpPostTo(&result, rpcAddr, "getSignNonce", mpcUser)
 	if err != nil {
-		return 0, wrapPostError("getSignNonce", err)
+		return 0, c.wrapPostError("getSignNonce", err)
 	}
 	if result.Status != successStatus {
 		return 0, newWrongStatusError("getSignNonce", result.Status, result.Error)
@@ -70,11 +70,11 @@ func GetSignNonce(mpcUser, rpcAddr string) (uint64, error) {
 }
 
 // GetSignStatus call getSignStatus
-func GetSignStatus(key, rpcAddr string) (*SignStatus, error) {
+func (c *Config) GetSignStatus(key, rpcAddr string) (*SignStatus, error) {
 	var result DataResultResp
-	err := httpPostTo(&result, rpcAddr, "getSignStatus", key)
+	err := c.httpPostTo(&result, rpcAddr, "getSignStatus", key)
 	if err != nil {
-		return nil, wrapPostError("getSignStatus", err)
+		return nil, c.wrapPostError("getSignStatus", err)
 	}
 	if result.Status != successStatus {
 		return nil, newWrongStatusError("getSignStatus", result.Status, "response error "+result.Error)
@@ -83,7 +83,7 @@ func GetSignStatus(key, rpcAddr string) (*SignStatus, error) {
 	var signStatus SignStatus
 	err = json.Unmarshal([]byte(data), &signStatus)
 	if err != nil {
-		return nil, wrapPostError("getSignStatus", err)
+		return nil, c.wrapPostError("getSignStatus", err)
 	}
 	switch signStatus.Status {
 	case "Failure":
@@ -105,11 +105,11 @@ func GetSignStatus(key, rpcAddr string) (*SignStatus, error) {
 // GetCurNodeSignInfo call getCurNodeSignInfo
 // filter out invalid sign info and
 // filter out expired sign info if `expiredInterval` is greater than 0
-func GetCurNodeSignInfo(expiredInterval int64) ([]*SignInfoData, error) {
+func (c *Config) GetCurNodeSignInfo(expiredInterval int64) ([]*SignInfoData, error) {
 	var result SignInfoResp
-	err := httpPost(&result, "getCurNodeSignInfo", defaultMPCNode.keyWrapper.Address.String())
+	err := c.httpPost(&result, "getCurNodeSignInfo", c.defaultMPCNode.keyWrapper.Address.String())
 	if err != nil {
-		return nil, wrapPostError("getCurNodeSignInfo", err)
+		return nil, c.wrapPostError("getCurNodeSignInfo", err)
 	}
 	if result.Status != successStatus {
 		return nil, newWrongStatusError("getCurNodeSignInfo", result.Status, result.Error)
@@ -132,11 +132,11 @@ func GetCurNodeSignInfo(expiredInterval int64) ([]*SignInfoData, error) {
 }
 
 // Sign call sign
-func Sign(raw, rpcAddr string) (string, error) {
+func (c *Config) Sign(raw, rpcAddr string) (string, error) {
 	var result DataResultResp
-	err := httpPostTo(&result, rpcAddr, "sign", raw)
+	err := c.httpPostTo(&result, rpcAddr, "sign", raw)
 	if err != nil {
-		return "", wrapPostError("sign", err)
+		return "", c.wrapPostError("sign", err)
 	}
 	if result.Status != successStatus {
 		return "", newWrongStatusError("sign", result.Status, result.Error)
@@ -145,11 +145,11 @@ func Sign(raw, rpcAddr string) (string, error) {
 }
 
 // AcceptSign call acceptSign
-func AcceptSign(raw string) (string, error) {
+func (c *Config) AcceptSign(raw string) (string, error) {
 	var result DataResultResp
-	err := httpPost(&result, "acceptSign", raw)
+	err := c.httpPost(&result, "acceptSign", raw)
 	if err != nil {
-		return "", wrapPostError("acceptSign", err)
+		return "", c.wrapPostError("acceptSign", err)
 	}
 	if result.Status != successStatus {
 		return "", newWrongStatusError("acceptSign", result.Status, result.Error)
@@ -158,11 +158,11 @@ func AcceptSign(raw string) (string, error) {
 }
 
 // GetGroupByID call getGroupByID
-func GetGroupByID(groupID, rpcAddr string) (*GroupInfo, error) {
+func (c *Config) GetGroupByID(groupID, rpcAddr string) (*GroupInfo, error) {
 	var result GetGroupByIDResp
-	err := httpPostTo(&result, rpcAddr, "getGroupByID", groupID)
+	err := c.httpPostTo(&result, rpcAddr, "getGroupByID", groupID)
 	if err != nil {
-		return nil, wrapPostError("getGroupByID", err)
+		return nil, c.wrapPostError("getGroupByID", err)
 	}
 	if result.Status != successStatus {
 		return nil, newWrongStatusError("getGroupByID", result.Status, result.Error)

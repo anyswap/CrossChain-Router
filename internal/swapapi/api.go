@@ -69,10 +69,11 @@ func GetStatusInfo(status string) (map[string]interface{}, error) {
 
 // ReportOracleInfo report oracle info
 func ReportOracleInfo(oracle string, info *OracleInfo) error {
+	mpcConfig := mpc.GetMPCConfig(false)
 	var exist bool
-	for _, enode := range mpc.GetAllEnodes() {
+	for _, enode := range mpcConfig.GetAllEnodes() {
 		if strings.EqualFold(oracle, enode) {
-			if !strings.EqualFold(oracle, mpc.GetSelfEnode()) {
+			if !strings.EqualFold(oracle, mpcConfig.GetSelfEnode()) {
 				exist = true
 			}
 			break
@@ -250,4 +251,19 @@ func GetRouterSwapHistory(fromChainID, address string, offset, limit int, status
 		return nil, err
 	}
 	return ConvertMgoSwapResultsToSwapInfos(result), nil
+}
+
+// GetAllMultichainTokens impl
+func GetAllMultichainTokens(tokenID string) map[string]string {
+	m := make(map[string]string)
+	tokensMap := router.GetCachedMultichainTokens(tokenID)
+	if tokensMap != nil {
+		tokensMap.Range(func(k, v interface{}) bool {
+			key := k.(string)
+			val := v.(string)
+			m[key] = val
+			return true
+		})
+	}
+	return m
 }

@@ -17,6 +17,7 @@
 [swap.GetChainConfig](#swapgetchainconfig)  
 [swap.GetTokenConfig](#swapgettokenconfig)  
 [swap.GetSwapConfig](#swapgetswapconfig)  
+[swap.GetFeeConfig](#swapgetfeeconfig)  
 
 ### swap.RegisterRouterSwap
 
@@ -155,14 +156,25 @@
 
 ##### 参数：
 ```json
-[{"tokenid": "tokenID", "chainid":"目标链ChainID"}]
+[{"tokenid": "tokenID", "fromchainid":"源链ChainID", "tochainid":"目标链ChainID"}]
 ```
 
 ##### 返回值：
 ```text
-获取指定 tokenID 和目标链 chainID 对应的 swap 配置
+获取指定 tokenID, 源链 fromchainid 和目标链 tochainid 对应的 swap 配置
 ```
 
+### swap.GetFeeConfig
+
+##### 参数：
+```json
+[{"tokenid": "tokenID", "fromchainid":"源链ChainID", "tochainid":"目标链ChainID"}]
+```
+
+##### 返回值：
+```text
+获取指定 tokenID, 源链 fromchainid 和目标链 tochainid 对应的 fee 配置
+```
 
 ## RESTful API Reference
 
@@ -209,5 +221,8 @@
 ### GET /tokenconfig/{chainid}/{address}
 获取指定 chainID 和 token 地址的 token 配置
 
-### GET /swapconfig/{tokenid}/{chainid}
-获取指定 tokenID 和目标链 chainID 对应的 swap 配置
+### GET /swapconfig/{tokenid}/{fromchainid}/{tochainid}
+获取指定 tokenID, 源链 fromchainid 和目标链 tochainid 对应的 swap 配置
+
+### GET /feeconfig/{tokenid}/{fromchainid}/{tochainid}
+获取指定 tokenID, 源链 fromchainid 和目标链 tochainid 对应的 fee 配置

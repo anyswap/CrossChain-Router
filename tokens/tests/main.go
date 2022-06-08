@@ -71,7 +71,6 @@ func initRouter() {
 	testCfg := config.TestConfig
 
 	params.IsTestMode = true
-	params.EnableSignWithPrivateKey()
 	params.SetDebugMode(testCfg.IsDebugMode)
 
 	switch testCfg.Module {
@@ -97,12 +96,6 @@ func initRouter() {
 
 	router.AllChainIDs = testCfg.GetAllChainIDs()
 	router.AllTokenIDs = []string{testCfg.Token.TokenID}
-	router.SetRouterInfo(
-		testCfg.Token.RouterContract,
-		&router.SwapRouterInfo{
-			RouterMPC: testCfg.SignerAddress,
-		},
-	)
 
 	tokensMap := new(sync.Map)
 	router.SetMultichainTokens(testCfg.Token.TokenID, tokensMap)
@@ -110,17 +103,34 @@ func initRouter() {
 	swapConfigs := new(sync.Map)
 	swapConfig := new(sync.Map)
 	swapConfigs.Store(testCfg.Token.TokenID, swapConfig)
+
+	feeConfigs := new(sync.Map)
+	feeConfig := new(sync.Map)
+	feeConfigs.Store(testCfg.Token.TokenID, feeConfig)
+
 	swapCfg := testCfg.GetSwapConfig()
+	feeCfg := testCfg.GetFeeConfig()
+
+	mpcConfig := params.GetMPCConfig(false)
 
 	for _, chainID := range router.AllChainIDs {
 		router.SetBridge(chainID.String(), bridge)
 		tokensMap.Store(chainID.String(), testCfg.Token.ContractAddress)
-		swapConfig.Store(chainID.String(), swapCfg)
-		params.SetSignerPrivateKey(chainID.String(), testCfg.SignWithPrivateKey)
+		swapConfig.Store("0", swapCfg)
+		feeConfig.Store("0", feeCfg)
+		mpcConfig.SetSignerPrivateKey(chainID.String(), testCfg.SignWithPrivateKey)
+		router.SetRouterInfo(
+			testCfg.Token.RouterContract,
+			chainID.String(),
+			&router.SwapRouterInfo{
+				RouterMPC: testCfg.SignerAddress,
+			},
+		)
 	}
 	router.PrintMultichainTokens()
 
 	tokens.SetSwapConfigs(swapConfigs)
+	tokens.SetFeeConfigs(feeConfigs)
 }
 
 func startWork() {

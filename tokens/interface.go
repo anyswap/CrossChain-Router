@@ -43,13 +43,11 @@ type IBridge interface {
 	GetLatestBlockNumberOf(url string) (uint64, error)
 
 	IsValidAddress(address string) bool
-	PublicKeyToAddress(pubKey string) (string, error)
+	PublicKeyToAddress(pubKeyHex string) (string, error)
 
 	// GetBalance get balance is used for checking budgets
 	// to prevent DOS attacking (used in any`call)
 	GetBalance(account string) (*big.Int, error)
-
-	GetPairFor(string, string, string) (string, error)
 }
 
 // ISwapTrade interface

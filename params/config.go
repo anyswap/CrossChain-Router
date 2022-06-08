@@ -19,7 +19,7 @@ const (
 var IsTestMode bool
 
 var (
-	routerConfig = &RouterConfig{Extra: &ExtraConfig{}}
+	routerConfig = &RouterConfig{Extra: &ExtraConfig{}, MPC: &MPCConfig{}}
 
 	routerConfigFile string
 	locDataDir       string
@@ -43,6 +43,7 @@ var (
 	enableCheckTxBlockHashChains         map[string]struct{}
 	enableCheckTxBlockIndexChains        map[string]struct{}
 	disableUseFromChainIDInReceiptChains map[string]struct{}
+	useFastMPCChains                     map[string]struct{}
 	dontCheckReceivedTokenIDs            map[string]struct{}
 
 	isDebugMode           *bool
@@ -109,6 +110,7 @@ type RouterConfig struct {
 	Gateways    map[string][]string // key is chain ID
 	GatewaysExt map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	MPC         *MPCConfig
+	FastMPC     *MPCConfig   `toml:",omitempty" json:",omitempty"`
 	Extra       *ExtraConfig `toml:",omitempty" json:",omitempty"`
 }
 
@@ -127,9 +129,6 @@ type ExtraConfig struct {
 	BaseFeePercent   map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID
 	MinReserveBudget map[string]uint64 `toml:",omitempty" json:",omitempty"`
 
-	GetAcceptListInterval uint64 `toml:",omitempty" json:",omitempty"`
-	PendingInvalidAccept  bool   `toml:",omitempty" json:",omitempty"`
-
 	AllowCallByConstructor          bool                `toml:",omitempty" json:",omitempty"`
 	AllowCallByContract             bool                `toml:",omitempty" json:",omitempty"`
 	CheckEIP1167Master              bool                `toml:",omitempty" json:",omitempty"`
@@ -141,6 +140,7 @@ type ExtraConfig struct {
 	EnableCheckTxBlockHashChains         []string `toml:",omitempty" json:",omitempty"`
 	EnableCheckTxBlockIndexChains        []string `toml:",omitempty" json:",omitempty"`
 	DisableUseFromChainIDInReceiptChains []string `toml:",omitempty" json:",omitempty"`
+	UseFastMPCChains                     []string `toml:",omitempty" json:",omitempty"`
 	DontCheckReceivedTokenIDs            []string `toml:",omitempty" json:",omitempty"`
 
 	RPCClientTimeout map[string]int `toml:",omitempty" json:",omitempty"` // key is chainID
@@ -158,6 +158,8 @@ type OnchainConfig struct {
 
 // MPCConfig mpc related config
 type MPCConfig struct {
+	SignTypeEC256K1 string `toml:",omitempty" json:",omitempty"`
+
 	APIPrefix                 string
 	RPCTimeout                uint64 `toml:",omitempty" json:",omitempty"`
 	SignTimeout               uint64 `toml:",omitempty" json:",omitempty"`
@@ -165,6 +167,11 @@ type MPCConfig struct {
 	MinIntervalToAddSignGroup int64  `toml:",omitempty" json:",omitempty"`
 
 	VerifySignatureInAccept bool `toml:",omitempty" json:",omitempty"`
+
+	GetAcceptListLoopInterval  uint64 `toml:",omitempty" json:",omitempty"`
+	GetAcceptListRetryInterval uint64 `toml:",omitempty" json:",omitempty"`
+	MaxAcceptSignTimeInterval  int64  `toml:",omitempty" json:",omitempty"`
+	PendingInvalidAccept       bool   `toml:",omitempty" json:",omitempty"`
 
 	GroupID       *string
 	NeededOracles *uint32
@@ -258,19 +265,6 @@ func IsForceAnySwapInAuto() bool {
 // IsParallelSwapEnabled is parallel swap enabled
 func IsParallelSwapEnabled() bool {
 	return GetExtraConfig() != nil && GetExtraConfig().EnableParallelSwap
-}
-
-// IsPendingInvalidAccept ignore invalid accept instead of disagree it immediately
-func IsPendingInvalidAccept() bool {
-	return GetExtraConfig() != nil && GetExtraConfig().PendingInvalidAccept
-}
-
-// GetAcceptListInterval get accept list interval (seconds)
-func GetAcceptListInterval() uint64 {
-	if GetExtraConfig() != nil {
-		return GetExtraConfig().GetAcceptListInterval
-	}
-	return 0
 }
 
 // IsFixedGasPrice is fixed gas price of specified chain
@@ -382,31 +376,21 @@ func GetCustom(chainID, key string) string {
 	return ""
 }
 
-// SignWithPrivateKey sign with private key (use for testing)
-func SignWithPrivateKey() bool {
-	return routerConfig.MPC.SignWithPrivateKey
-}
-
-// EnableSignWithPrivateKey enable sign with private key (use for testing)
-func EnableSignWithPrivateKey() {
-	if routerConfig.MPC == nil {
-		routerConfig.MPC = &MPCConfig{}
-	}
-	routerConfig.MPC.SignWithPrivateKey = true
-	routerConfig.MPC.SignerPrivateKeys = make(map[string]string)
-}
-
 // GetSignerPrivateKey get signer private key (use for testing)
-func GetSignerPrivateKey(chainID string) string {
-	if prikey, exist := routerConfig.MPC.SignerPrivateKeys[chainID]; exist {
+func (c *MPCConfig) GetSignerPrivateKey(chainID string) string {
+	if prikey, exist := c.SignerPrivateKeys[chainID]; exist {
 		return prikey
 	}
 	return ""
 }
 
 // SetSignerPrivateKey set signer private key (use for testing)
-func SetSignerPrivateKey(chainID, prikey string) {
-	routerConfig.MPC.SignerPrivateKeys[chainID] = prikey
+func (c *MPCConfig) SetSignerPrivateKey(chainID, prikey string) {
+	c.SignWithPrivateKey = true
+	if len(c.SignerPrivateKeys) == 0 {
+		c.SignerPrivateKeys = make(map[string]string)
+	}
+	c.SignerPrivateKeys[chainID] = prikey
 }
 
 // IsDebugMode is debug mode, add more debugging log infos
@@ -659,17 +643,6 @@ func AddOrRemoveBigValueWhitelist(tokenID string, callers []string, isAdd bool) 
 	}
 }
 
-// IsMPCInitiator is initiator of mpc sign
-func IsMPCInitiator(account string) bool {
-	initiators := GetRouterConfig().MPC.Initiators
-	for _, initiator := range initiators {
-		if strings.EqualFold(account, initiator) {
-			return true
-		}
-	}
-	return false
-}
-
 // GetRouterConfig get router config
 func GetRouterConfig() *RouterConfig {
 	return routerConfig
@@ -686,7 +659,10 @@ func GetRouterOracleConfig() *RouterOracleConfig {
 }
 
 // GetMPCConfig get mpc config
-func GetMPCConfig() *MPCConfig {
+func GetMPCConfig(isFastMPC bool) *MPCConfig {
+	if isFastMPC {
+		return routerConfig.FastMPC
+	}
 	return routerConfig.MPC
 }
 
@@ -909,6 +885,23 @@ func IsUseFromChainIDInReceiptDisabled(chainID string) bool {
 	return exist
 }
 
+func initUseFastMPCChains() {
+	useFastMPCChains = make(map[string]struct{})
+	if GetExtraConfig() == nil || len(GetExtraConfig().UseFastMPCChains) == 0 {
+		return
+	}
+	for _, cid := range GetExtraConfig().UseFastMPCChains {
+		useFastMPCChains[cid] = struct{}{}
+	}
+	log.Info("initUseFastMPCChains success")
+}
+
+// IsUseFastMPC is use fast mpc
+func IsUseFastMPC(chainID string) bool {
+	_, exist := useFastMPCChains[chainID]
+	return exist
+}
+
 func initDontCheckReceivedTokenIDs() {
 	dontCheckReceivedTokenIDs = make(map[string]struct{})
 	if GetExtraConfig() == nil || len(GetExtraConfig().DontCheckReceivedTokenIDs) == 0 {
@@ -950,7 +943,7 @@ func LoadRouterConfig(configFile string, isServer, check bool) *RouterConfig {
 	if !common.FileExist(configFile) {
 		log.Fatalf("LoadRouterConfig error: config file '%v' not exist", configFile)
 	}
-	config := &RouterConfig{}
+	config := &RouterConfig{Extra: &ExtraConfig{}, MPC: &MPCConfig{}}
 	if _, err := toml.DecodeFile(configFile, &config); err != nil {
 		log.Fatalf("LoadRouterConfig error (toml DecodeFile): %v", err)
 	}
@@ -988,7 +981,7 @@ func ReloadRouterConfig() {
 
 	log.Info("reload router config file", "configFile", configFile, "isServer", isServer)
 
-	config := &RouterConfig{}
+	config := &RouterConfig{Extra: &ExtraConfig{}, MPC: &MPCConfig{}}
 	if _, err := toml.DecodeFile(configFile, &config); err != nil {
 		log.Errorf("ReloadRouterConfig error (toml DecodeFile): %v", err)
 		return
@@ -1019,9 +1012,6 @@ func ReloadRouterConfig() {
 // SetDataDir set data dir
 func SetDataDir(dir string, isServer bool) {
 	if dir == "" {
-		if !isServer {
-			log.Warn("suggest specify '--datadir' to enhance accept job")
-		}
 		return
 	}
 	currDir, err := common.CurrentDir()

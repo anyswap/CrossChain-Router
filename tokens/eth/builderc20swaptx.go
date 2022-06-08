@@ -24,6 +24,7 @@ var (
 	ForceAnySwapInNativeTokenVersion           = uint64(10004)
 	ForceAnySwapInAndCallTokenVersion          = uint64(10005)
 	ForceAnySwapInUnerlyingAndCallTokenVersion = uint64(10006)
+	MintBurnWrapperTokenVersion                = uint64(20000)
 
 	// anySwapIn(bytes32 txs, address token, address to, uint amount, uint fromChainID)
 	AnySwapInFuncHash = common.FromHex("0x825bb13c")
@@ -38,9 +39,9 @@ var (
 	// anySwapInExactTokensForNative(bytes32 txs, uint amountIn, uint amountOutMin, address[] path, address to, uint deadline, uint fromChainID)
 	AnySwapInExactTokensForNativeFuncHash = common.FromHex("0x52a397d5")
 	// anySwapInAndExec(bytes32 txs, address token, address to, uint amount, uint fromChainID, address anycallProxy, bytes calldata data)
-	AnySwapInAndExecFuncHash = common.FromHex("0x22db7336")
+	AnySwapInAndExecFuncHash = common.FromHex("0x86377115")
 	// anySwapInUnderlyingAndExec(bytes32 txs, address token, address to, uint amount, uint fromChainID, address anycallProxy, bytes calldata data)
-	AnySwapInUnderlyingAndExecFuncHash = common.FromHex("0x302ef85a")
+	AnySwapInUnderlyingAndExecFuncHash = common.FromHex("0x3a4ff8dc")
 )
 
 // GetSwapInFuncHash get swapin func hash
@@ -52,9 +53,9 @@ func GetSwapInFuncHash(tokenCfg *tokens.TokenConfig, forUnderlying bool) []byte 
 	switch tokenCfg.ContractVersion {
 	case ForceAnySwapInAutoTokenVersion:
 		return AnySwapInAutoFuncHash
-	case ForceAnySwapInTokenVersion:
+	case ForceAnySwapInTokenVersion, ForceAnySwapInAndCallTokenVersion, MintBurnWrapperTokenVersion:
 		return AnySwapInFuncHash
-	case ForceAnySwapInUnderlyingTokenVersion:
+	case ForceAnySwapInUnderlyingTokenVersion, ForceAnySwapInUnerlyingAndCallTokenVersion:
 		return AnySwapInUnderlyingFuncHash
 	case ForceAnySwapInNativeTokenVersion:
 		return AnySwapInNativeFuncHash
@@ -76,7 +77,7 @@ func GetSwapInFuncHash(tokenCfg *tokens.TokenConfig, forUnderlying bool) []byte 
 // GetSwapInAndExecFuncHash get swapin and call func hash
 func GetSwapInAndExecFuncHash(tokenCfg *tokens.TokenConfig) []byte {
 	switch tokenCfg.ContractVersion {
-	case ForceAnySwapInAndCallTokenVersion:
+	case ForceAnySwapInAndCallTokenVersion, MintBurnWrapperTokenVersion:
 		return AnySwapInAndExecFuncHash
 	case ForceAnySwapInUnerlyingAndCallTokenVersion:
 		return AnySwapInUnderlyingAndExecFuncHash
@@ -231,7 +232,7 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 	if toTokenCfg == nil {
 		return receiver, amount, tokens.ErrMissTokenConfig
 	}
-	amount = tokens.CalcSwapValue(erc20SwapInfo.TokenID, b.ChainConfig.ChainID, args.OriginValue, fromTokenCfg.Decimals, toTokenCfg.Decimals, args.OriginFrom, args.OriginTxTo)
+	amount = tokens.CalcSwapValue(erc20SwapInfo.TokenID, args.FromChainID.String(), b.ChainConfig.ChainID, args.OriginValue, fromTokenCfg.Decimals, toTokenCfg.Decimals, args.OriginFrom, args.OriginTxTo)
 	return receiver, amount, err
 }
 

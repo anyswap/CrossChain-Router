@@ -159,8 +159,10 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 		log.Warn("verify mpc public key failed", "mpc", routerMPC, "mpcPubkey", routerMPCPubkey, "err", err)
 		return err
 	}
+	chainID := b.ChainConfig.ChainID
 	router.SetRouterInfo(
 		routerContract,
+		chainID,
 		&router.SwapRouterInfo{
 			RouterMPC:     routerMPC,
 			RouterFactory: routerFactory,
@@ -168,8 +170,6 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 		},
 	)
 	router.SetMPCPublicKey(routerMPC, routerMPCPubkey)
-
-	chainID := b.ChainConfig.ChainID
 
 	log.Info(fmt.Sprintf("[%5v] init router info success", chainID),
 		"routerContract", routerContract, "routerMPC", routerMPC,

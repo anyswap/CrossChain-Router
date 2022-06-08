@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"runtime"
 	"sort"
 	"sync"
 	"time"
@@ -396,11 +397,19 @@ func (b *Bridge) SendSignedTransaction(tx *types.Transaction) (txHash string, er
 	ch := make(chan *sendTxResult, urlCount)
 	wg := new(sync.WaitGroup)
 	wg.Add(urlCount)
-	go func() {
+	go func(hash string, count int, start time.Time) {
+		defer func() {
+			if err := recover(); err != nil {
+				const size = 4096
+				buf := make([]byte, size)
+				buf = buf[:runtime.Stack(buf, false)]
+				log.Errorf("call eth_sendRawTransaction crashed: %v\n%s", err, buf)
+			}
+		}()
 		wg.Wait()
 		close(ch)
-		log.Info("call eth_sendRawTransaction finished", "txHash", txHash)
-	}()
+		log.Info("call eth_sendRawTransaction finished", "txHash", hash, "count", count, "duration", time.Since(start))
+	}(tx.Hash().String(), urlCount, time.Now())
 	for _, url := range gateway.APIAddress {
 		go b.sendRawTransaction(wg, hexData, url, ch)
 	}
