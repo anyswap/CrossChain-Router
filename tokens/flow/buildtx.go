@@ -82,16 +82,12 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	}
 	args.SwapValue = amount // SwapValue
 
-	blockID, getBlockHashErr := b.GetLatestBlockID()
-	if getBlockHashErr != nil {
-		return nil, getBlockHashErr
-	}
 	swapInArgs, err := CreateSwapInArgs(multichainToken, sdk.HexToAddress(receiver), args.FromChainID, args.OriginValue, token.Extra)
 	if err != nil {
 		return nil, err
 	}
 
-	rawTx, err = CreateTransaction(sdk.HexToAddress(args.From), index, *extra.Sequence, *extra.Gas, blockID, swapInArgs)
+	rawTx, err = CreateTransaction(sdk.HexToAddress(args.From), index, *extra.Sequence, *extra.Gas, *extra.BlockID, swapInArgs)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +153,7 @@ func CreateTransaction(
 	signerIndex int,
 	signerSequence uint64,
 	gas uint64,
-	blockID sdk.Identifier,
+	blockID string,
 	swapInArgs *SwapIn,
 ) (*sdk.Transaction, error) {
 	swapIn, errf := ioutil.ReadFile("tokens/flow/transaction/swapIn.cdc")
@@ -165,9 +161,10 @@ func CreateTransaction(
 		return nil, errf
 	}
 
+	fmtBlockID := sdk.HexToID(blockID)
 	tx := sdk.NewTransaction().
 		SetScript(swapIn).
-		SetReferenceBlockID(blockID).
+		SetReferenceBlockID(fmtBlockID).
 		SetProposalKey(signerAddress, signerIndex, signerSequence).
 		SetPayer(signerAddress).
 		AddAuthorizer(signerAddress)
@@ -210,6 +207,14 @@ func (b *Bridge) initExtra(args *tokens.BuildTxArgs) (extra *tokens.AllExtras, e
 	if extra.Gas == nil {
 		gas := defaultGasLimit
 		extra.Gas = &gas
+	}
+	if extra.BlockID == nil {
+		blockID, err := b.GetLatestBlockID()
+		if err != nil {
+			return nil, err
+		}
+		tem := blockID.Hex()
+		extra.BlockID = &tem
 	}
 	return extra, nil
 }

@@ -7,9 +7,11 @@ import (
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	sdk "github.com/onflow/flow-go-sdk"
+	fcrypto "github.com/onflow/flow-go-sdk/crypto"
 )
 
 var (
@@ -19,6 +21,22 @@ var (
 
 // VerifyMsgHash verify msg hash
 func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) (err error) {
+	tx, ok := rawTx.(*sdk.Transaction)
+	if !ok {
+		return tokens.ErrWrongRawTx
+	}
+	msgHash := msgHashes[0]
+
+	message := tx.EnvelopeMessage()
+	message = append(sdk.TransactionDomainTag[:], message...)
+	hasher, _ := fcrypto.NewHasher(fcrypto.SHA3_256)
+	sigHash := hasher.ComputeHash(message)
+
+	if !strings.EqualFold(sigHash.String(), msgHash) {
+		logFunc := log.GetPrintFuncOr(params.IsDebugMode, log.Info, log.Trace)
+		logFunc("message hash mismatch", "want", msgHash, "have", sigHash)
+		return tokens.ErrMsgHashMismatch
+	}
 	return nil
 }
 
