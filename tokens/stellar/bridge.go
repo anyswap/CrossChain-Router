@@ -302,7 +302,7 @@ func (b *Bridge) GetAsset(code string, address string) (acct *hProtocol.AssetSta
 				continue
 			}
 			if len(resp.Embedded.Records) <= 0 {
-				err = errors.New("balance format error")
+				err = errors.New("asset code/issuer error")
 			}
 			acct = &resp.Embedded.Records[0]
 			return

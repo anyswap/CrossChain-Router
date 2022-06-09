@@ -100,6 +100,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	return NewUnsignedPaymentTransaction(fromAccount, b.NetworkStr, receiver, amt, fee, memo, asset)
 }
 
+// TODO 判断swapID isHex 是的话写入swapID
 func buildMemo(fromChainID, swapID, logIndex string) (*txnbuild.MemoHash, error) {
 	rtn := new(txnbuild.MemoHash)
 
