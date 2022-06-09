@@ -116,7 +116,7 @@ func (c *Config) GetCurNodeSignInfo(expiredInterval int64) ([]*SignInfoData, err
 	}
 	signInfoSortedSlice := make(SignInfoSortedSlice, 0, len(result.Data))
 	for _, signInfo := range result.Data {
-		if !signInfo.IsValid() {
+		if !signInfo.IsValid(c.verifySignatureInAccept) {
 			log.Trace("filter out invalid sign info", "signInfo", signInfo)
 			continue
 		}
