@@ -40,7 +40,7 @@ func convertToAsset(tokenID, tokenAddr string) (txnbuild.BasicAsset, error) {
 
 func convertTokenID(payment *operations.Payment) string {
 	if strings.ToUpper(payment.Asset.Type) == "NATIVE" {
-		return "XML"
+		return "XLM"
 	}
 	return payment.Asset.Code + "/" + payment.Asset.Issuer
 }
@@ -87,6 +87,7 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 	asset, _ := convertToAsset(tokenCfg.TokenID, tokenCfg.ContractAddress)
 	if asset.IsNative() {
 		b.CrossChainBridgeBase.SetTokenConfig(tokenCfg.TokenID, tokenCfg)
+		b.CrossChainBridgeBase.SetTokenConfig("native", tokenCfg)
 	} else {
 		b.CrossChainBridgeBase.SetTokenConfig(tokenAddr, tokenCfg)
 	}

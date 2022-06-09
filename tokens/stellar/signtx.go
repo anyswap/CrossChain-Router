@@ -1,7 +1,6 @@
 package stellar
 
 import (
-	"crypto/ed25519"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -65,22 +64,19 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 	}
 
 	pubkeyStr := router.GetMPCPublicKey(args.From)
-	pubkey := common.FromHex(pubkeyStr)
+
+	signPubkeyStr, err := FormatPublicKeyToPureHex(pubkeyStr)
+	if err != nil {
+		return nil, "", err
+	}
 
 	var keyID string
 	var rsvs []string
 
 	mpcConfig := mpc.GetMPCConfig(b.UseFastMPC)
-	if isEd25519Pubkey(pubkey) {
-		// mpc ed public key has no 0xed prefix
-		signPubKey := pubkeyStr[2:]
-		// the real sign content is (signing prefix + msg)
-		// when we hex encoding here, the mpc should do hex decoding there.
-		signContent := common.ToHex(txMsg[:])
-		keyID, rsvs, err = mpcConfig.DoSignOneED(signPubKey, signContent, msgContext)
-	} else {
-		return nil, "", fmt.Errorf("stellar not support ec privatekey, publickey: %v", pubkey)
-	}
+
+	signContent := common.ToHex(txMsg[:])
+	keyID, rsvs, err = mpcConfig.DoSignOneED(signPubkeyStr, signContent, msgContext)
 
 	if err != nil {
 		return nil, "", err
@@ -144,10 +140,6 @@ func (b *Bridge) SignTransactionWithStellarKey(rawTx interface{}, key *keypair.F
 func MakeSignedTransaction(pubkey *keypair.FromAddress, sig []byte, tx *txnbuild.Transaction) (signedTx *txnbuild.Transaction, err error) {
 	decoratedSignature := xdr.NewDecoratedSignature(sig, pubkey.Hint())
 	return tx.AddSignatureDecorated(decoratedSignature)
-}
-
-func isEd25519Pubkey(pubkey []byte) bool {
-	return len(pubkey) == ed25519.PublicKeySize+1 && pubkey[0] == 0xED
 }
 
 func rsvToSig(rsv string, isEd bool) []byte {

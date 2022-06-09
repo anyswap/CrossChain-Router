@@ -61,10 +61,6 @@ func main() {
 	} else {
 		asset = txnbuild.NativeAsset{}
 	}
-	_, err = b.GetAsset(asset.GetCode(), asset.GetIssuer())
-	if err != nil {
-		log.Fatal("get asset err", err)
-	}
 	ca, err := asset.ToChangeTrustAsset()
 	if err != nil {
 		log.Fatal("ToChangeTrustAsset failed", "err", err)

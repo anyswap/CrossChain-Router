@@ -172,7 +172,7 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 	inledger := relTx.Ledger
 	status.BlockHeight = uint64(inledger)
 	// stellar use FBA which means need not have to wait for several ledgers to get confirmed.
-	status.Confirmations = 0
+	status.Confirmations = 100
 	return
 }
 
@@ -253,13 +253,13 @@ func (b *Bridge) GetBalance(accountAddress string) (*big.Int, error) {
 	return bal, err
 }
 
-func (b *Bridge) checkXMLBalanceEnough(acct *hProtocol.Account) bool {
+func (b *Bridge) checkXlmBalanceEnough(acct *hProtocol.Account) bool {
 	ok := false
 	for _, asset := range acct.Balances {
 		if asset.Type == "native" {
 			f, err := strconv.ParseFloat(asset.Balance, 64)
 			if err != nil || f < 1.0 {
-				log.Error("stellar XML not enough", "account", acct.AccountID, "xml", asset.Balance)
+				log.Error("stellar XLM not enough", "account", acct.AccountID, "XLM", asset.Balance)
 			}
 			ok = true
 			break
@@ -303,8 +303,9 @@ func (b *Bridge) GetAsset(code string, address string) (acct *hProtocol.AssetSta
 			}
 			if len(resp.Embedded.Records) <= 0 {
 				err = errors.New("asset code/issuer error")
+			} else {
+				acct = &resp.Embedded.Records[0]
 			}
-			acct = &resp.Embedded.Records[0]
 			return
 		}
 		time.Sleep(rpcRetryInterval)

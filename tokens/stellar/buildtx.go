@@ -89,7 +89,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, err
 	}
 	// check XLM
-	if !b.checkXMLBalanceEnough(fromAccount) {
+	if !b.checkXlmBalanceEnough(fromAccount) {
 		return nil, tokens.ErrMissTokenConfig
 	}
 
