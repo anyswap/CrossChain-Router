@@ -100,23 +100,16 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	return NewUnsignedPaymentTransaction(fromAccount, b.NetworkStr, receiver, amt, fee, memo, asset)
 }
 
-// TODO 判断swapID isHex 是的话写入swapID
+// 判断swapID isHex 是的话写入swapID
 func buildMemo(fromChainID, swapID, logIndex string) (*txnbuild.MemoHash, error) {
 	rtn := new(txnbuild.MemoHash)
 
-	memo := make([]byte, 0)
-	a, _ := hex.DecodeString(fromChainID)
-	b, _ := hex.DecodeString(swapID)
-	c, _ := hex.DecodeString(logIndex)
-	if len(a)+len(b)+len(c) >= 32 {
-		log.Warn("stellar memo byte over max length")
-		return nil, tokens.ErrMissTokenConfig
+	b, err := hex.DecodeString(swapID)
+	if err != nil || len(b) > 32 {
+		return rtn, nil
 	}
-	memo = append(memo, a[:]...)
-	memo = append(memo, b[:]...)
-	memo = append(memo, c[:]...)
-	for i := 0; i < len(memo); i++ {
-		rtn[i] = memo[i]
+	for i := 0; i < len(b); i++ {
+		rtn[i] = b[i]
 	}
 	return rtn, nil
 }
@@ -211,7 +204,6 @@ func (b *Bridge) GetSeq(args *tokens.BuildTxArgs) (nonceptr *uint64, err error) 
 func NewUnsignedPaymentTransaction(
 	from *hProtocol.Account, network,
 	dest, amt, fee string, memo *txnbuild.MemoHash, asset txnbuild.Asset) (*txnbuild.Transaction, error) {
-	// TODO amt 转化  float->string
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        from,
