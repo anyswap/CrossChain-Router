@@ -5,13 +5,16 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/stellar/go/network"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/operations"
+	"github.com/stellar/go/txnbuild"
 )
 
 var errTxResultType = errors.New("tx type is not horizon.Transaction")
@@ -21,11 +24,23 @@ func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) (err error
 	if len(msgHashes) < 1 {
 		return fmt.Errorf("must provide msg hash")
 	}
-	tx, ok := rawTx.(hProtocol.Transaction)
+
+	tx, ok := rawTx.(*txnbuild.Transaction)
 	if !ok {
-		return fmt.Errorf("stellar tx type error")
+		return tokens.ErrWrongRawTx
 	}
-	fmt.Println(tx)
+
+	txMsg, err := network.HashTransactionInEnvelope(tx.ToXDR(), b.NetworkStr)
+	if err != nil {
+		return err
+	}
+
+	signContent := common.ToHex(txMsg[:])
+
+	if !strings.EqualFold(signContent, msgHashes[0]) {
+		return fmt.Errorf("msg hash not match, recover: %v, claiming: %v", signContent, msgHashes[0])
+	}
+
 	return nil
 }
 
