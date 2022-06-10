@@ -2,9 +2,9 @@ package stellar
 
 import (
 	"encoding/base64"
-	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -102,20 +102,26 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 	return b.buildSwapInfoFromOperation(txres, &opt, logIndex)
 }
 
+// memo format:
+// three parts: | 0 (bindAddrBytesLen) | 1...pos (bindAddr) | pos+1... (tochainID) |
+// memo[0] (=len): bind address bytes length
+// memo[1:len+1]: bind address bytes
+// memo[len+1:]:  tochainId big.Int bytes
 func parseSwapMemos(swapInfo *tokens.SwapTxInfo, memoStr string) bool {
 	if memoStr == "" {
 		return false
 	}
-	memobytes, _ := base64.StdEncoding.DecodeString(memoStr)
-	addrLen := int(memobytes[0:1][0])
-	addEnd := 1 + addrLen
-	bindStr := hex.EncodeToString(memobytes[1:addEnd])
-
-	toChainIDStr := hex.EncodeToString(memobytes[addEnd:])
-	bigToChainID, err := common.GetBigIntFromStr(toChainIDStr)
-	if err != nil {
+	memobytes, err := base64.StdEncoding.DecodeString(memoStr)
+	if err != nil || len(memobytes) == 0 {
 		return false
 	}
+	addrLen := int(memobytes[0])
+	addEnd := 1 + addrLen
+	if len(memobytes) < addEnd+1 {
+		return false
+	}
+	bindStr := common.ToHex(memobytes[1:addEnd])
+	bigToChainID := new(big.Int).SetBytes(memobytes[addEnd:])
 	dstBridge := router.GetBridgeByChainID(bigToChainID.String())
 	if dstBridge == nil {
 		return false
