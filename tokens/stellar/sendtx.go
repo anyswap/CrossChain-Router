@@ -18,6 +18,7 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error
 	var success bool
 	var resp hProtocol.Transaction
 	for i := 0; i < rpcRetryTimes; i++ {
+		// try send to all remotes
 		for _, r := range b.Remotes {
 			resp, err = r.SubmitTransaction(tx)
 			if err != nil {
@@ -26,17 +27,14 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error
 			}
 			if !resp.Successful {
 				log.Warn("send tx with error result", "result", resp.Successful, "message")
-			} else {
-				txHash = resp.Hash
-				success = true
-				break
 			}
+			txHash = resp.Hash
+			success = true
 		}
-		if !success {
-			time.Sleep(rpcRetryInterval)
-		} else {
+		if success {
 			break
 		}
+		time.Sleep(rpcRetryInterval)
 	}
 	if success {
 		return txHash, nil

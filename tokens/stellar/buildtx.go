@@ -68,32 +68,24 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, err
 	}
 	amt := getPaymentAmount(amount, token)
-	var fee string
 
-	extra := args.Extra
-	if extra == nil {
-		extra, err = b.swapoutDefaultArgs(args, multichainToken)
-		if err != nil {
-			return nil, err
-		}
-		args.Extra = extra
-		fee = *extra.Fee
-	} else {
-		if extra.Fee != nil {
-			fee = *extra.Fee
-		}
-	}
 	fromAccount, err := b.GetAccount(args.From)
 	if err != nil {
 		return nil, err
 	}
+
 	// check XLM
 	if !b.checkXlmBalanceEnough(fromAccount) {
 		return nil, tokens.ErrMissTokenConfig
 	}
 
+	extra, err := b.setExtraArgs(args)
+	if err != nil {
+		return nil, err
+	}
+
 	memo := buildMemo(args)
-	return NewUnsignedPaymentTransaction(fromAccount, b.NetworkStr, receiver, amt, fee, memo, asset)
+	return NewUnsignedPaymentTransaction(fromAccount, b.NetworkStr, receiver, amt, *extra.Fee, memo, asset)
 }
 
 func buildMemo(args *tokens.BuildTxArgs) *txnbuild.MemoHash {
@@ -137,61 +129,20 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 	return receiver, amount, err
 }
 
-func (b *Bridge) swapoutDefaultArgs(txargs *tokens.BuildTxArgs, multichainToken string) (*tokens.AllExtras, error) {
-	token := b.GetTokenConfig(multichainToken)
-	if token == nil {
-		return nil, tokens.ErrMissTokenConfig
+func (b *Bridge) setExtraArgs(args *tokens.BuildTxArgs) (*tokens.AllExtras, error) {
+	if args.Extra == nil {
+		args.Extra = &tokens.AllExtras{}
+	}
+	extra := args.Extra
+	extra.EthExtra = nil // clear this which may be set in replace job
+
+	if extra.Fee == nil {
+		feeRes := b.GetFee()
+		fee := strconv.Itoa(feeRes)
+		extra.Fee = &fee
 	}
 
-	seq, err := b.GetSeq(txargs)
-	if err != nil {
-		log.Warn("get sequence failed", "err", err)
-		return nil, err
-	}
-
-	feeRes := b.GetFee()
-	fee := strconv.Itoa(feeRes)
-
-	return &tokens.AllExtras{
-		Sequence: seq,
-		Fee:      &fee,
-	}, nil
-}
-
-// GetTxBlockInfo impl NonceSetter interface
-func (b *Bridge) GetTxBlockInfo(txHash string) (blockHeight, blockTime uint64) {
-	txStatus, err := b.GetTransactionStatus(txHash)
-	if err != nil {
-		return 0, 0
-	}
-	return txStatus.BlockHeight, txStatus.BlockTime
-}
-
-// GetPoolNonce impl NonceSetter interface
-func (b *Bridge) GetPoolNonce(address, _height string) (uint64, error) {
-	return uint64(0), nil
-}
-
-// GetSeq returns account tx sequence
-func (b *Bridge) GetSeq(args *tokens.BuildTxArgs) (nonceptr *uint64, err error) {
-	var nonce uint64
-
-	// if params.IsParallelSwapEnabled() {
-	// 	nonce, err = b.AllocateNonce(args)
-	// 	return &nonce, err
-	// }
-
-	// if params.IsAutoSwapNonceEnabled(b.ChainConfig.ChainID) { // increase automatically
-	// 	nonce = b.GetSwapNonce(args.From)
-	// 	return &nonce, nil
-	// }
-
-	// nonce, err = b.GetPoolNonce(args.From, "pending")
-	// if err != nil {
-	// 	return nil, err
-	// }
-	nonce = b.AdjustNonce(args.From, nonce)
-	return &nonce, nil
+	return extra, nil
 }
 
 // NewUnsignedPaymentTransaction build stellar payment tx

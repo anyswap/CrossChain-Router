@@ -2,7 +2,6 @@ package stellar
 
 import (
 	"errors"
-	"fmt"
 	"math/big"
 	"strconv"
 	"sync"
@@ -10,7 +9,6 @@ import (
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
-	"github.com/anyswap/CrossChain-Router/v3/tokens/base"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/network"
 	hProtocol "github.com/stellar/go/protocols/horizon"
@@ -20,8 +18,6 @@ import (
 var (
 	// ensure Bridge impl tokens.CrossChainBridge
 	_ tokens.IBridge = &Bridge{}
-	// ensure Bridge impl tokens.NonceSetter
-	_ tokens.NonceSetter = &Bridge{}
 
 	supportedChainIDs     = make(map[string]bool)
 	supportedChainIDsInit sync.Once
@@ -39,7 +35,7 @@ const (
 
 // Bridge block bridge inherit from btc bridge
 type Bridge struct {
-	*base.NonceSetterBase
+	*tokens.CrossChainBridgeBase
 	NetworkStr string
 	Remotes    map[string]*horizonclient.Client
 }
@@ -47,9 +43,9 @@ type Bridge struct {
 // NewCrossChainBridge new bridge
 func NewCrossChainBridge(chainID string) *Bridge {
 	return &Bridge{
-		NonceSetterBase: base.NewNonceSetterBase(),
-		NetworkStr:      networkChainIDs[chainID],
-		Remotes:         make(map[string]*horizonclient.Client),
+		CrossChainBridgeBase: tokens.NewCrossChainBridgeBase(),
+		NetworkStr:           networkChainIDs[chainID],
+		Remotes:              make(map[string]*horizonclient.Client),
 	}
 }
 
@@ -171,9 +167,11 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 	status.Receipt = nil
 	inledger := relTx.Ledger
 	status.BlockHeight = uint64(inledger)
-	// stellar use FBA which means need not have to wait for several ledgers to get confirmed.
-	status.Confirmations = 100
-	return
+
+	if latest, err := b.GetLatestBlockNumber(); err == nil && latest > uint64(inledger) {
+		status.Confirmations = latest - uint64(inledger)
+	}
+	return status, nil
 }
 
 // GetBlockHash gets block hash
@@ -311,35 +309,6 @@ func (b *Bridge) GetAsset(code string, address string) (acct *hProtocol.AssetSta
 		time.Sleep(rpcRetryInterval)
 	}
 	return
-}
-
-// GetAccountLine get account line
-func (b *Bridge) GetAccountLine(currency, issuer, accountAddress string) (string, error) {
-	// account, err := data.NewAccountFromAddress(accountAddress)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// var acclRes *websockets.AccountLinesResult
-	// for i := 0; i < rpcRetryTimes; i++ {
-	// 	for _, r := range b.Remotes {
-	// 		acclRes, err = r.AccountLines(*account, nil)
-	// 		if err == nil && acclRes != nil {
-	// 			break
-	// 		}
-	// 	}
-	// 	time.Sleep(rpcRetryInterval)
-	// }
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// for i := 0; i < len(acclRes.Lines); i++ {
-	// 	accl := &acclRes.Lines[i]
-	// 	asset := accl.Asset()
-	// 	if asset.Currency == currency && asset.Issuer == issuer {
-	// 		return accl, nil
-	// 	}
-	// }
-	return "", fmt.Errorf("account line not found")
 }
 
 // GetFee get fee
