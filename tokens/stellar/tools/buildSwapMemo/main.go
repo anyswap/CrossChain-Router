@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
+	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/stellar/go/txnbuild"
@@ -27,8 +28,9 @@ func main() {
 	initFlags()
 
 	rtn := new(txnbuild.MemoHash)
-	if len(paramChainID)%2 > 0 {
-		paramChainID = "0" + paramChainID
+	chainId, ok := new(big.Int).SetString(paramChainID, 10)
+	if !ok {
+		log.Fatal("paramChainID format error")
 	}
 	if paramAddress[:2] == "0x" || paramAddress[:2] == "0X" {
 		paramAddress = paramAddress[2:]
@@ -37,10 +39,7 @@ func main() {
 	if err != nil {
 		log.Fatal("paramAddress is not hex string")
 	}
-	c, err := hex.DecodeString(paramChainID)
-	if err != nil {
-		log.Fatal("paramAddress is not hex string")
-	}
+	c := chainId.Bytes()
 	if len(b)+len(c) > 31 {
 		log.Fatal("build memo error")
 	}
