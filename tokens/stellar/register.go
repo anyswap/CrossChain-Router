@@ -55,15 +55,23 @@ func (b *Bridge) registerERC20SwapTx(txHash string, logIndex int) ([]*tokens.Swa
 	errs := make([]error, 0)
 	swapInfos := make([]*tokens.SwapTxInfo, 0)
 	for i := startIndex; i < endIndex; i++ {
-		op, ok := opts[i].(operations.Payment)
-		if !ok || op.GetType() != "payment" || !op.TransactionSuccessful {
+		op := getPaymentOperation(opts[i])
+		if op == nil {
 			continue
 		}
-		si, err := b.buildSwapInfoFromOperation(txres, &op, i)
+		si, err := b.buildSwapInfoFromOperation(txres, op, i)
 		errs = append(errs, err)
 		swapInfos = append(swapInfos, si)
 	}
 	return swapInfos, errs
+}
+
+func getPaymentOperation(opt interface{}) *operations.Payment {
+	op, ok := opt.(operations.Payment)
+	if ok && op.GetType() == "payment" && op.TransactionSuccessful {
+		return &op
+	}
+	return nil
 }
 
 func (b *Bridge) buildSwapInfoFromOperation(txres *hProtocol.Transaction, op *operations.Payment, logIndex int) (*tokens.SwapTxInfo, error) {

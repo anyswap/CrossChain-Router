@@ -15,7 +15,6 @@ import (
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
-	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/txnbuild"
 )
 
@@ -59,7 +58,7 @@ func main() {
 		log.Fatal("get account", "err", err)
 	}
 
-	var asset txnbuild.Asset = nil
+	var asset txnbuild.Asset
 	if paramAssetCode != "native" {
 		asset = txnbuild.CreditAsset{Code: paramAssetCode, Issuer: paramAssetIssuer}
 	} else {
@@ -152,7 +151,7 @@ func initBridge() {
 }
 
 func buildTx(
-	account *hProtocol.Account, asset txnbuild.Asset, toAddress, amount string, memo *txnbuild.MemoHash) (*txnbuild.Transaction, error) {
+	account txnbuild.Account, asset txnbuild.Asset, toAddress, amount string, memo txnbuild.Memo) (*txnbuild.Transaction, error) {
 	return txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        account,

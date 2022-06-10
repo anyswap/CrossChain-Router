@@ -21,18 +21,26 @@ import (
 )
 
 func (b *Bridge) verifyTransactionWithArgs(tx *txnbuild.Transaction, args *tokens.BuildTxArgs) error {
-	if len(tx.Operations()) <= 0 {
-		return fmt.Errorf("not a payment transaction")
+	opts := tx.Operations()
+	if len(opts) == 0 {
+		return fmt.Errorf("no operation in transaction")
 	}
-
-	op := tx.Operations()[0].(*txnbuild.Payment)
-
-	to := op.Destination
 
 	checkReceiver := args.Bind
-	if !strings.EqualFold(to, checkReceiver) {
-		return fmt.Errorf("[sign] verify tx receiver failed")
+
+	for i := 0; i < len(opts); i++ {
+		op, ok := opts[i].(*txnbuild.Payment)
+		if !ok {
+			continue
+		}
+
+		to := op.Destination
+
+		if !strings.EqualFold(to, checkReceiver) {
+			return fmt.Errorf("[sign] verify tx receiver failed")
+		}
 	}
+
 	return nil
 }
 
@@ -116,7 +124,6 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 
 // SignTransactionWithPrivateKey sign tx with ECDSA private key
 func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, privKey string) (signTx interface{}, txHash string, err error) {
-
 	sourceKP := keypair.MustParseFull(privKey)
 
 	return b.SignTransactionWithStellarKey(rawTx, sourceKP)

@@ -12,7 +12,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
-	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/txnbuild"
 )
 
@@ -79,10 +78,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, tokens.ErrMissTokenConfig
 	}
 
-	extra, err := b.setExtraArgs(args)
-	if err != nil {
-		return nil, err
-	}
+	extra := b.setExtraArgs(args)
 
 	memo := buildMemo(args)
 	return NewUnsignedPaymentTransaction(fromAccount, b.NetworkStr, receiver, amt, *extra.Fee, memo, asset)
@@ -129,7 +125,7 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 	return receiver, amount, err
 }
 
-func (b *Bridge) setExtraArgs(args *tokens.BuildTxArgs) (*tokens.AllExtras, error) {
+func (b *Bridge) setExtraArgs(args *tokens.BuildTxArgs) *tokens.AllExtras {
 	if args.Extra == nil {
 		args.Extra = &tokens.AllExtras{}
 	}
@@ -142,13 +138,14 @@ func (b *Bridge) setExtraArgs(args *tokens.BuildTxArgs) (*tokens.AllExtras, erro
 		extra.Fee = &fee
 	}
 
-	return extra, nil
+	return extra
 }
 
 // NewUnsignedPaymentTransaction build stellar payment tx
 func NewUnsignedPaymentTransaction(
-	from *hProtocol.Account, network,
-	dest, amt, fee string, memo *txnbuild.MemoHash, asset txnbuild.Asset) (*txnbuild.Transaction, error) {
+	from txnbuild.Account, network,
+	dest, amt, fee string, memo txnbuild.Memo, asset txnbuild.Asset,
+) (*txnbuild.Transaction, error) {
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        from,

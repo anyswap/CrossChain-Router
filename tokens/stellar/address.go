@@ -7,13 +7,13 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/stellar/go/strkey"
 )
 
 var rAddressReg = "^[1-9A-Z]{56}$"
 
-// 严格验证
 // IsValidAddress check address
 func (b *Bridge) IsValidAddress(addr string) bool {
 	match, err := regexp.MatchString(rAddressReg, addr)
@@ -33,8 +33,7 @@ func (b *Bridge) PublicKeyToAddress(pubKey string) (string, error) {
 // PublicKeyHexToAddress convert public key hex to stellar address
 func PublicKeyHexToAddress(pubKeyHex string) (string, error) {
 	pubKey := pubKeyHex
-	// 去掉0xED
-	if pubKeyHex[:2] == "0x" || pubKeyHex[:2] == "0X" {
+	if common.HasHexPrefix(pubKey) {
 		pubKey = pubKey[2:]
 	}
 	pub, err := hex.DecodeString(pubKey)
@@ -43,13 +42,14 @@ func PublicKeyHexToAddress(pubKeyHex string) (string, error) {
 	}
 	if len(pub) == ed25519.PublicKeySize+1 && pub[0] == 0xED {
 		return PublicKeyToAddress(pub[1:])
-	} else if len(pub) == ed25519.PublicKeySize {
-		return PublicKeyToAddress(pub)
-	} else {
-		return "", fmt.Errorf("public key format error : %v", pubKeyHex)
 	}
+	if len(pub) == ed25519.PublicKeySize {
+		return PublicKeyToAddress(pub)
+	}
+	return "", fmt.Errorf("public key format error : %v", pubKeyHex)
 }
 
+// PublicKeyToAddress public key to address
 func PublicKeyToAddress(pubkey []byte) (string, error) {
 	pubkeyAddr, err := strkey.Encode(strkey.VersionByteAccountID, pubkey)
 	if err != nil {
@@ -70,10 +70,10 @@ func VerifyMPCPubKey(mpcAddress, mpcPubkey string) error {
 	return nil
 }
 
+// FormatPublicKeyToPureHex format public key, get rid of hex prefix and ED prefix
 func FormatPublicKeyToPureHex(pubKeyHex string) (string, error) {
 	pubKey := pubKeyHex
-	// 去掉0xED
-	if pubKeyHex[:2] == "0x" || pubKeyHex[:2] == "0X" {
+	if common.HasHexPrefix(pubKey) {
 		pubKey = pubKey[2:]
 	}
 	pub, err := hex.DecodeString(pubKey)
@@ -81,10 +81,10 @@ func FormatPublicKeyToPureHex(pubKeyHex string) (string, error) {
 		return "", err
 	}
 	if len(pub) == ed25519.PublicKeySize+1 && pub[0] == 0xED {
-		return pubKeyHex[4:], nil
-	} else if len(pub) == ed25519.PublicKeySize {
-		return pubKeyHex, nil
-	} else {
-		return "", fmt.Errorf("public key format error : %v", pubKeyHex)
+		return pubKey[2:], nil
 	}
+	if len(pub) == ed25519.PublicKeySize {
+		return pubKey, nil
+	}
+	return "", fmt.Errorf("public key format error : %v", pubKeyHex)
 }

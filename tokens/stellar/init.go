@@ -23,7 +23,7 @@ func convertToAsset(tokenID, tokenAddr string) (txnbuild.BasicAsset, error) {
 	if tokenAddr == "" {
 		return nil, fmt.Errorf("non native asset must have issuer")
 	}
-	if strings.ToUpper(tokenAddr) == "NATIVE" {
+	if strings.EqualFold(tokenAddr, "native") {
 		return txnbuild.NativeAsset{}, nil
 	}
 	token := strings.Split(tokenAddr, "/")
@@ -39,7 +39,7 @@ func convertToAsset(tokenID, tokenAddr string) (txnbuild.BasicAsset, error) {
 }
 
 func convertTokenID(payment *operations.Payment) string {
-	if strings.ToUpper(payment.Asset.Type) == "NATIVE" {
+	if isNativeAsset(payment.Asset.Type) {
 		return "XLM"
 	}
 	return payment.Asset.Code + "/" + payment.Asset.Issuer

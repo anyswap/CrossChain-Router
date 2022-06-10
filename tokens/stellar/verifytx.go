@@ -13,7 +13,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/stellar/go/network"
 	hProtocol "github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/txnbuild"
 )
 
@@ -58,7 +57,6 @@ func (b *Bridge) VerifyTransaction(txHash string, args *tokens.VerifyArgs) (*tok
 	}
 }
 
-//nolint:gocyclo,funlen // ok
 func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool) (*tokens.SwapTxInfo, error) {
 	tx, err := b.GetTransaction(txHash)
 	if err != nil {
@@ -94,12 +92,15 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 	if err != nil {
 		return nil, err
 	}
-	opt, ok := opts[logIndex].(operations.Payment)
-	if !ok || opt.GetType() != "payment" || !opt.TransactionSuccessful {
+	if logIndex >= len(opts) {
+		return nil, tokens.ErrLogIndexOutOfRange
+	}
+	opt := getPaymentOperation(opts[logIndex])
+	if opt == nil {
 		return nil, fmt.Errorf("not a payment transaction")
 	}
 
-	return b.buildSwapInfoFromOperation(txres, &opt, logIndex)
+	return b.buildSwapInfoFromOperation(txres, opt, logIndex)
 }
 
 // memo format:

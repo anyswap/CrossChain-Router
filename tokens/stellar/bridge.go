@@ -61,15 +61,15 @@ func SupportsChainID(chainID *big.Int) bool {
 }
 
 // GetStubChainID get stub chainID
-func GetStubChainID(network string) *big.Int {
+func GetStubChainID(networkid string) *big.Int {
 	stubChainID := new(big.Int).SetBytes([]byte("XLM"))
-	switch network {
+	switch networkid {
 	case mainnetNetWork:
 		stubChainID.Add(stubChainID, big.NewInt(1))
 	case testnetNetWork:
 		stubChainID.Add(stubChainID, big.NewInt(2))
 	default:
-		log.Fatalf("unknown network %v", network)
+		log.Fatalf("unknown network %v", networkid)
 	}
 	stubChainID.Mod(stubChainID, tokens.StubChainIDBase)
 	stubChainID.Add(stubChainID, tokens.StubChainIDBase)
@@ -110,7 +110,7 @@ func (b *Bridge) GetLatestBlockNumberOf(apiAddress string) (uint64, error) {
 	var err error
 	r, exist := b.Remotes[apiAddress]
 	if !exist {
-		r := horizonclient.DefaultPublicNetClient
+		r = horizonclient.DefaultPublicNetClient
 		r.HorizonURL = apiAddress
 		b.Remotes[apiAddress] = r
 	}
@@ -209,7 +209,8 @@ func (b *Bridge) GetBlockTxids(num uint64) (txs []string, err error) {
 			}
 			nextPage := true
 			for nextPage {
-				for _, tx := range resp.Embedded.Records {
+				for i := 0; i < len(resp.Embedded.Records); i++ {
+					tx := resp.Embedded.Records[i]
 					txs = append(txs, tx.Hash)
 				}
 				if len(resp.Embedded.Records) >= int(rpcQueryLimit) {
@@ -227,7 +228,11 @@ func (b *Bridge) GetBlockTxids(num uint64) (txs []string, err error) {
 		}
 		time.Sleep(rpcRetryInterval)
 	}
-	return
+	return txs, err
+}
+
+func isNativeAsset(assetType string) bool {
+	return assetType == "native"
 }
 
 // GetBalance gets balance
@@ -238,30 +243,35 @@ func (b *Bridge) GetBalance(accountAddress string) (*big.Int, error) {
 		return nil, err
 	}
 	bal := big.NewInt(0)
-	for _, asset := range acct.Balances {
-		if asset.Type == "native" {
-			f, err := strconv.ParseFloat(asset.Balance, 64)
-			if err != nil {
-				log.Warn("balance format error", "account", accountAddress, "err", asset.Balance)
-			}
-			bal = big.NewInt(int64(f))
-			break
+	for i := 0; i < len(acct.Balances); i++ {
+		asset := acct.Balances[i]
+		if !isNativeAsset(asset.Type) {
+			continue
 		}
+		var f float64
+		f, err = strconv.ParseFloat(asset.Balance, 64)
+		if err != nil {
+			log.Warn("balance format error", "account", accountAddress, "err", asset.Balance)
+		}
+		bal = big.NewInt(int64(f))
+		break
 	}
 	return bal, err
 }
 
 func (b *Bridge) checkXlmBalanceEnough(acct *hProtocol.Account) bool {
 	ok := false
-	for _, asset := range acct.Balances {
-		if asset.Type == "native" {
-			f, err := strconv.ParseFloat(asset.Balance, 64)
-			if err != nil || f < 1.0 {
-				log.Error("stellar XLM not enough", "account", acct.AccountID, "XLM", asset.Balance)
-			}
-			ok = true
-			break
+	for i := 0; i < len(acct.Balances); i++ {
+		asset := acct.Balances[i]
+		if !isNativeAsset(asset.Type) {
+			continue
 		}
+		f, err := strconv.ParseFloat(asset.Balance, 64)
+		if err != nil || f < 1.0 {
+			log.Error("stellar XLM not enough", "account", acct.AccountID, "XLM", asset.Balance)
+		}
+		ok = true
+		break
 	}
 	return ok
 }
@@ -286,8 +296,8 @@ func (b *Bridge) GetAccount(address string) (acct *hProtocol.Account, err error)
 	return
 }
 
-// GetAccount returns account
-func (b *Bridge) GetAsset(code string, address string) (acct *hProtocol.AssetStat, err error) {
+// GetAsset returns asset stat
+func (b *Bridge) GetAsset(code, address string) (acct *hProtocol.AssetStat, err error) {
 	request := horizonclient.AssetRequest{
 		ForAssetCode:   code,
 		ForAssetIssuer: address,
@@ -299,7 +309,7 @@ func (b *Bridge) GetAsset(code string, address string) (acct *hProtocol.AssetSta
 			if err1 != nil {
 				continue
 			}
-			if len(resp.Embedded.Records) <= 0 {
+			if len(resp.Embedded.Records) == 0 {
 				err = errors.New("asset code/issuer error")
 			} else {
 				acct = &resp.Embedded.Records[0]
@@ -316,6 +326,7 @@ func (b *Bridge) GetFee() int {
 	return txnbuild.MinBaseFee
 }
 
+// GetOperations get operations
 func (b *Bridge) GetOperations(txHash string) (opts []interface{}, err error) {
 	req := horizonclient.OperationRequest{
 		ForTransaction: txHash,
@@ -348,5 +359,5 @@ func (b *Bridge) GetOperations(txHash string) (opts []interface{}, err error) {
 		}
 		time.Sleep(rpcRetryInterval)
 	}
-	return
+	return opts, err
 }
