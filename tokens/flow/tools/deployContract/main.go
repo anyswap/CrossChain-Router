@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"flag"
+	"fmt"
 	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -22,14 +23,25 @@ import (
 var (
 	bridge = flow.NewCrossChainBridge()
 
-	paramConfigFile             string
-	paramChainID                string
-	paramAddress                string
-	paramPublicKey              string
-	paramPrivKey                string
-	chainID                     = big.NewInt(0)
-	mpcConfig                   *mpc.Config
+	paramConfigFile   string
+	paramChainID      string
+	paramAddress      string
+	paramPublicKey    string
+	paramPrivKey      string
+	paramContractName string
+	chainID           = big.NewInt(0)
+	mpcConfig         *mpc.Config
+
 	AnyExampleTokenContractFile = "tokens/flow/contracts/AnyExampleToken.cdc"
+	AnyTokenContractFile        = "tokens/flow/contracts/AnyToken.cdc"
+	ExampleTokenContractFile    = "tokens/flow/contracts/ExampleToken.cdc"
+	RouterContractFile          = "tokens/flow/contracts/Router.cdc"
+
+	supportContractList = make(map[string]bool)
+	router              = "Router"
+	exampleToken        = "ExampleToken"
+	anyToken            = "AnyToken"
+	anyExampleToken     = "AnyExampleToken"
 )
 
 func main() {
@@ -61,11 +73,11 @@ func main() {
 		log.Fatal("GetAccountNonce failed", "payerAddress", payerAddress, "err", err)
 	}
 
-	anyExampleTokenCode := examples.ReadFile(AnyExampleTokenContractFile)
+	code := getContractCode()
 	deployContractTx := templates.AddAccountContract(payerAddress,
 		templates.Contract{
-			Name:   "AnyExampleToken",
-			Source: anyExampleTokenCode,
+			Name:   paramContractName,
+			Source: code,
 		})
 
 	deployContractTx.SetProposalKey(
@@ -96,7 +108,7 @@ func main() {
 			log.Fatal("SendTransaction failed", "createAccountTx", deployContractTx, "index", index, "err", err)
 		}
 
-		log.Info("SendTransaction success", "hash", deployContractTx.ID().Hex(), "txHash", txHash)
+		log.Info("SendTransaction success", "txHash", txHash)
 		return
 	}
 
@@ -154,7 +166,30 @@ func MPCSignTransaction(rawTx interface{}, paramPublicKey string) (signedTx inte
 	return tx, txHash, err
 }
 
+func getContractCode() (code string) {
+	log.Info("deploy contract", "conractName", paramContractName)
+	switch paramContractName {
+	case router:
+		code = examples.ReadFile(RouterContractFile)
+		code = fmt.Sprintf(code, paramAddress)
+	case exampleToken:
+		code = examples.ReadFile(ExampleTokenContractFile)
+	case anyToken:
+		code = examples.ReadFile(AnyTokenContractFile)
+	case anyExampleToken:
+		code = examples.ReadFile(AnyExampleTokenContractFile)
+		code = fmt.Sprintf(code, paramAddress, paramAddress)
+	default:
+		log.Fatalf("unknown method name: '%v'", paramContractName)
+	}
+	return code
+}
+
 func checkParams() error {
+	if !supportContractList[paramContractName] {
+		return errors.New("deploy contract name not support")
+	}
+
 	err := bridge.VerifyPubKey(paramAddress, paramPublicKey)
 	if err != nil {
 		return err
@@ -166,6 +201,7 @@ func initAll() {
 	initFlags()
 	initConfig()
 	initBridge()
+	initSupportList()
 }
 
 func initFlags() {
@@ -174,6 +210,7 @@ func initFlags() {
 	flag.StringVar(&paramAddress, "address", "", "signer address")
 	flag.StringVar(&paramPublicKey, "pubKey", "", "signer public key")
 	flag.StringVar(&paramPrivKey, "privKey", "", "(option) signer paramPrivKey key")
+	flag.StringVar(&paramContractName, "contract", "", "deploy contract name")
 
 	flag.Parse()
 
@@ -190,7 +227,9 @@ func initFlags() {
 
 func initConfig() {
 	config := params.LoadRouterConfig(paramConfigFile, true, false)
-	mpcConfig = mpc.InitConfig(config.MPC, true)
+	if paramPrivKey == "" {
+		mpcConfig = mpc.InitConfig(config.MPC, true)
+	}
 	log.Info("init config finished", "config", config)
 }
 
@@ -206,4 +245,11 @@ func initBridge() {
 		APIAddressExt: apiAddrsExt,
 	})
 	log.Info("init bridge finished")
+}
+
+func initSupportList() {
+	supportContractList[router] = true
+	supportContractList[exampleToken] = true
+	supportContractList[anyToken] = true
+	supportContractList[anyExampleToken] = true
 }

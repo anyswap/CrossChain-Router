@@ -1,12 +1,12 @@
 import FungibleToken from 0x9a0766d93b6608b7
-import AnyToken from 0x2627a6b6570638c4
+import AnyToken from %s
 
 pub contract Router {
 
     pub let chainId:UInt64
     
     access(contract) var anyTokens:{String:Capability<&{AnyToken.IMinter}>}
-
+    access(contract) var txs:{String:Bool}
     pub event LogSwapOut(
         token:String,
         to:String,
@@ -16,6 +16,7 @@ pub contract Router {
     )
 
     pub event LogSwapIn(
+        tx:String,
         token:String,
         to:Address,
         amount:UFix64,
@@ -45,17 +46,20 @@ pub contract Router {
             Router.anyTokens.remove(key:key)
         }
 
-        pub fun swapIn(token:String,fromChainId:UInt64,amount:UFix64,receivePaths: [Capability<&{FungibleToken.Receiver}>;2]){
+        pub fun swapIn(tx:String,token:String,fromChainId:UInt64,amount:UFix64,receivePaths: [Capability<&{FungibleToken.Receiver}>;2]){
             pre {
                 Router.anyTokens.containsKey(token):
-                    "Router not exists for this token"
+                    "Router: Capability not exists for this token"
+                !Router.txs.containsKey(tx):
+                    "Router: tx has exists"
             }
+            Router.txs.insert(key: tx, true)
             let routerForToken=Router.anyTokens[token]!.borrow()
                 ??panic("get router for capability fails")
             var receiveRef=receivePaths[0].borrow()
                 ??panic("get receive for capability fails")
             let swapVault<-routerForToken.mint(amount:amount)
-            emit LogSwapIn(token:token,to:receivePaths[0].address,amount:swapVault.balance,fromChainId:fromChainId,toChainId:Router.chainId)
+            emit LogSwapIn(tx:tx,token:token,to:receivePaths[0].address,amount:swapVault.balance,fromChainId:fromChainId,toChainId:Router.chainId)
             if (swapVault.getType().identifier!=receiveRef.getType().identifier){
                 receiveRef=receivePaths[1].borrow()
                     ??panic("get receive for capability fails")
@@ -72,11 +76,15 @@ pub contract Router {
         return Router.anyTokens.containsKey(token)
     }
 
+    pub fun containsTx(tx:String):Bool{
+        return Router.txs.containsKey(tx)
+    }
+    
     init() {
         self.chainId=1001179406168
         self.anyTokens={}
+        self.txs={}
         let mpc <- create Mpc()
         self.account.save(<-mpc, to: /storage/routerMpc)
     }
 }
- 

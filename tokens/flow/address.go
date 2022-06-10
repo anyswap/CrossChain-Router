@@ -40,6 +40,7 @@ func (b *Bridge) PublicKeyToAddress(pubKey string) (string, error) {
 	return "", tokens.ErrNotImplemented
 }
 
+// todo： read from config
 func (b *Bridge) GetAccountNonce(address, pubKey string) (uint64, error) {
 	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
 	for _, url := range urls {
@@ -59,6 +60,7 @@ func (b *Bridge) GetAccountNonce(address, pubKey string) (uint64, error) {
 	return 0, tokens.ErrGetAccount
 }
 
+// todo： read from config
 func (b *Bridge) GetAccountIndex(address, pubKey string) (int, error) {
 	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
 	for _, url := range urls {
@@ -78,6 +80,7 @@ func (b *Bridge) GetAccountIndex(address, pubKey string) (int, error) {
 	return 0, tokens.ErrGetAccount
 }
 
+// todo： read from config
 func (b *Bridge) VerifyPubKey(address, pubKey string) error {
 	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
 	for _, url := range urls {

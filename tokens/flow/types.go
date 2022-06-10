@@ -5,6 +5,7 @@ import (
 )
 
 type SwapIn struct {
+	Tx        cadence.String  `json:"tx"`
 	Token        cadence.String  `json:"token"`
 	Receiver     cadence.Address `json:"Receiver"`
 	FromChainId  cadence.UInt64  `json:"fromChainId"`

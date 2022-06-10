@@ -22,7 +22,7 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 
 	chainID := b.ChainConfig.ChainID
 	log.Info(fmt.Sprintf("[%5v] start init router info", chainID), "routerContract", routerContract)
-	routerMPC, err := b.GetMPCAddress(routerContract)
+	routerMPC, err := b.GetMPCAddress()
 	if err != nil {
 		log.Warn("get router mpc address failed", "routerContract", routerContract, "err", err)
 		return err
@@ -108,6 +108,6 @@ func (b *Bridge) GetUnderlyingAddress(contractAddr string) (string, error) {
 }
 
 // GetMPCAddress query mpc address
-func (b *Bridge) GetMPCAddress(contractAddr string) (string, error) {
+func (b *Bridge) GetMPCAddress() (string, error) {
 	return b.GetChainConfig().Extra, nil
 }

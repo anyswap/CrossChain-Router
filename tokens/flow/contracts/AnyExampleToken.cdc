@@ -1,6 +1,6 @@
 import FungibleToken from 0x9a0766d93b6608b7
-import ExampleToken from 0x2627a6b6570638c4
-import AnyToken from 0x2627a6b6570638c4
+import ExampleToken from %s
+import AnyToken from %s
 pub contract AnyExampleToken: FungibleToken, AnyToken {
 
     /// Total supply of AnyExampleTokens in existence

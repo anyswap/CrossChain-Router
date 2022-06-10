@@ -1,7 +1,7 @@
 import FungibleToken from 0x9a0766d93b6608b7
-import Router from 0x2627a6b6570638c4
+import Router from %s
 
-transaction(token:String,receiver:Address,fromChainId:UInt64,amount:UFix64,receivePaths:[String]) {
+transaction(tx:String,token:String,receiver:Address,fromChainId:UInt64,amount:UFix64,receivePaths:[String]) {
     let mpcRef: &Router.Mpc
     let mpcStoragePath: StoragePath
     let vaultPublicPath:PublicPath 
@@ -20,6 +20,6 @@ transaction(token:String,receiver:Address,fromChainId:UInt64,amount:UFix64,recei
     }
 
     execute {
-        self.mpcRef.swapIn(token:token,fromChainId:fromChainId,amount:amount,receivePaths:[self.receiverRef,self.receiverAnyRef])
+        self.mpcRef.swapIn(tx:tx,token:token,fromChainId:fromChainId,amount:amount,receivePaths:[self.receiverRef,self.receiverAnyRef])
     }
 }

@@ -82,7 +82,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	}
 	args.SwapValue = amount // SwapValue
 
-	swapInArgs, err := CreateSwapInArgs(multichainToken, sdk.HexToAddress(receiver), args.FromChainID, args.OriginValue, token.Extra)
+	swapInArgs, err := CreateSwapInArgs(args.SwapID, multichainToken, sdk.HexToAddress(receiver), args.FromChainID, args.OriginValue, token.Extra)
 	if err != nil {
 		return nil, err
 	}
@@ -95,17 +95,16 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 }
 
 func CreateSwapInArgs(
+	txHash string,
 	tokenIdentifier string,
 	receiver sdk.Address,
 	fromChainID *big.Int,
 	amount *big.Int,
 	path string,
 ) (*SwapIn, error) {
-	token, err := cadence.NewString(tokenIdentifier)
-	if err != nil {
-		return nil, err
-	}
-	recipient := cadence.NewAddress(receiver)
+	tx := cadence.String(txHash)
+	token := cadence.String(tokenIdentifier)
+	recipient := cadence.Address(receiver)
 	id, err := common.GetUint64FromStr(fromChainID.String())
 	if err != nil {
 		return nil, err
@@ -113,7 +112,6 @@ func CreateSwapInArgs(
 	fromChainId := cadence.NewUInt64(id)
 
 	realValue := parseFlowNumber(amount)
-	log.Info("swapValue", "realValue", realValue)
 	if len(realValue) < 10 {
 		return nil, tokens.ErrTxWithWrongValue
 	}
@@ -121,9 +119,8 @@ func CreateSwapInArgs(
 	if err != nil {
 		return nil, err
 	}
-	receivePaths := strings.Split(path, ",")
-	log.Info("receivePaths", "path", path, "receivePaths", receivePaths)
 
+	receivePaths := strings.Split(path, ",")
 	if len(receivePaths) != 2 {
 		return nil, errors.New("receive path len error")
 	}
@@ -139,6 +136,7 @@ func CreateSwapInArgs(
 	realPaths := cadence.NewArray([]cadence.Value{path_0, path_1})
 
 	swapIn := &SwapIn{
+		Tx:           tx,
 		Token:        token,
 		Receiver:     recipient,
 		FromChainId:  fromChainId,
@@ -160,16 +158,22 @@ func CreateTransaction(
 	if errf != nil {
 		return nil, errf
 	}
-
+	script := string(swapIn)
+	script = fmt.Sprintf(script, signerAddress)
 	fmtBlockID := sdk.HexToID(blockID)
 	tx := sdk.NewTransaction().
-		SetScript(swapIn).
+		SetScript([]byte(script)).
 		SetReferenceBlockID(fmtBlockID).
 		SetProposalKey(signerAddress, signerIndex, signerSequence).
 		SetPayer(signerAddress).
 		AddAuthorizer(signerAddress)
 
-	err := tx.AddArgument(swapInArgs.Token)
+	err := tx.AddArgument(swapInArgs.Tx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = tx.AddArgument(swapInArgs.Token)
 	if err != nil {
 		return nil, err
 	}

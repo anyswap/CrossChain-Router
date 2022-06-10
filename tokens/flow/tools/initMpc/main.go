@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"math/big"
 
@@ -66,9 +67,11 @@ func main() {
 	if errf != nil {
 		log.Fatal("ReadFile failed", "errf", errf)
 	}
+	script := string(initScript)
+	script = fmt.Sprintf(script, paramAddress, paramAddress, paramAddress)
 
 	tx := sdk.NewTransaction().
-		SetScript(initScript).
+		SetScript([]byte(script)).
 		SetReferenceBlockID(referenceBlockID).
 		SetProposalKey(payerAddress, index, sequenceNumber).
 		SetPayer(payerAddress).
@@ -190,7 +193,9 @@ func initFlags() {
 
 func initConfig() {
 	config := params.LoadRouterConfig(paramConfigFile, true, false)
-	mpcConfig = mpc.InitConfig(config.MPC, true)
+	if paramPrivKey == "" {
+		mpcConfig = mpc.InitConfig(config.MPC, true)
+	}
 	log.Info("init config finished", "config", config)
 }
 

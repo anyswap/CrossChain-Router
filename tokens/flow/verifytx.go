@@ -16,7 +16,7 @@ import (
 
 var (
 	errTxResultType = errors.New("tx type is not TransactionResult")
-	Event_Type      = "A.f8d6e0586b0a20c7.Router.LogSwapOut"
+	Event_Type      = "A.%s.Router.LogSwapOut"
 )
 
 // VerifyMsgHash verify msg hash
@@ -209,7 +209,11 @@ func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable boo
 }
 
 func (b *Bridge) fliterReceipts(receipt *sdk.Event) ([]interface{}, error) {
-	if receipt.Type == Event_Type {
+	mpc, err := b.GetMPCAddress()
+	if err != nil {
+		return nil, err
+	}
+	if receipt.Type == fmt.Sprintf(Event_Type, mpc) {
 		valut := receipt.Value.ToGoValue()
 		return valut.([]interface{}), nil
 	}
