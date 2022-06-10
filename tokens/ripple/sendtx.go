@@ -20,6 +20,7 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error
 	var success bool
 	var resp *websockets.SubmitResult
 	for i := 0; i < rpcRetryTimes; i++ {
+		// try send to all remotes
 		for _, r := range b.Remotes {
 			resp, err = r.Submit(tx)
 			if err != nil || resp == nil {
@@ -32,9 +33,10 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error
 			txHash = tx.GetBase().Hash.String()
 			success = true
 		}
-		if !success {
-			time.Sleep(rpcRetryInterval)
+		if success {
+			break
 		}
+		time.Sleep(rpcRetryInterval)
 	}
 	if success {
 		if !params.IsParallelSwapEnabled() {
