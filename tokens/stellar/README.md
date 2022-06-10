@@ -13,9 +13,9 @@
 ## stellar public key to stellar address
 
 ```shell
-go run tokens/stellar/tools/publicKeyToAddress/main.go 3e41960afe5d2a92ad1184c5a6a2ec873ebf05c11544750569d34075f0f392c7
+go run ./tokens/stellar/tools/publicKeyToAddress/main.go -p 0xED146f71db711bc259176f9bcba1756308d2a7af0f1c0b90deece65997a84c8f56
 # output
-address: GA7EDFQK7ZOSVEVNCGCMLJVC5SDT5PYFYEKUI5IFNHJUA5PQ6OJMP5GC
+address: GAKG64O3OEN4EWIXN6N4XILVMMENFJ5PB4OAXEG65TTFTF5IJSHVMBIC
 ```
 
 ## router mechanism
@@ -46,15 +46,16 @@ go run tokens/stellar/tools/publicKeyToAddress/main.go -h
 ```
 
 ```text
+addressToPublickey
+	convert stellar address to stellar public key(ed25519)
 publicKeyToAddress
 	convert stellar public key to stellar address
-
+buildSwapMemo
+	format swapout memo by toAddress and toChainID
 sendPaymentTx
 	send mpc signed Payment tx
-
-sendAccountSetTx
-	send mpc signed AccountSet tx
-
-sendTrustSetTx
-	send mpc signed TrustSet tx
+sendTrustLineTx
+	send mpc signed TrustLine tx
+getStubChainID
+	get stellar chainID
 ```

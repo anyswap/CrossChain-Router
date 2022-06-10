@@ -22,14 +22,14 @@ https://github.com/anyswap/FastMulThreshold-DSA/wiki/keygen-and-sign-workflow
 ***
 特别强调  
 >1)mpc公钥和stellar地址的关系  
-mpc申请ec公钥(65字节16进制编码字符串，非压缩公钥)后，公钥本身经过地址转换就是stellar的地址，触发一笔交易后即激活  
+mpc申请ed公钥(65字节16进制编码字符串，非压缩公钥)后，公钥本身经过地址转换就是stellar的地址，触发一笔交易后即激活  
 另外，mpc获取的公钥，通过  https://github.com/anyswap/CrossChain-Router/blob/feature/stellar/tokens/stellar/tools/publicKeyToAddress/main.go  工具可获得stellar address  
 示例：  
-go run tokens/stellar/tools/publicKeyToAddress/main.go 04b4904f8a2ea01891678fec45c63fb1f221666e7d19cfeeb28f08a6d99cac91cbc12731f4c144aef501e34a6eaa0b5418ed5d138b192964bc5ccf4cde67246ca3  
+go run ./tokens/stellar/tools/publicKeyToAddress/main.go -p 0xED146f71db711bc259176f9bcba1756308d2a7af0f1c0b90deece65997a84c8f56
 #output
-address: rDsvn6aJG4YMQdHnuJtP9NLrFp18JYTJUf  
+address: GAKG64O3OEN4EWIXN6N4XILVMMENFJ5PB4OAXEG65TTFTF5IJSHVMBIC  
 >2)stellar转账注意事项  
-所有的token接收对象，都必须设置ChangeTrustt方法对接受的token添加信任
+所有的token接收对象，都必须设置ChangeTrust方法对接受的token添加信任
 >3)config合约配置注意事项, 且stellar链上asset decimal默认为7
     3.1 stellar的router_contract都填写为mpc的stellar地址  
     3.2 stellar的token的contractaAddr填写格式为
