@@ -218,6 +218,10 @@ func (b *Bridge) getGasPrice(args *tokens.BuildTxArgs) (price *big.Int, err erro
 		if args.GetReplaceNum() == 0 {
 			return price, nil
 		}
+		maxGasPrice := params.GetMaxGasPrice(b.ChainConfig.ChainID)
+		if maxGasPrice != nil && price.Cmp(maxGasPrice) == 0 {
+			return price, nil
+		}
 	} else {
 		for i := 0; i < retryRPCCount; i++ {
 			price, err = b.SuggestPrice()
