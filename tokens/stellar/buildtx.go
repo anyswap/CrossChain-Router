@@ -1,7 +1,6 @@
 package stellar
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"math"
@@ -93,25 +92,20 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, tokens.ErrMissTokenConfig
 	}
 
-	memo, err := buildMemo(args.FromChainID.String(), args.SwapID, strconv.Itoa(args.LogIndex))
-	if err != nil {
-		return nil, err
-	}
+	memo := buildMemo(args)
 	return NewUnsignedPaymentTransaction(fromAccount, b.NetworkStr, receiver, amt, fee, memo, asset)
 }
 
-// 判断swapID isHex 是的话写入swapID
-func buildMemo(fromChainID, swapID, logIndex string) (*txnbuild.MemoHash, error) {
-	rtn := new(txnbuild.MemoHash)
+func buildMemo(args *tokens.BuildTxArgs) *txnbuild.MemoHash {
+	var memo txnbuild.MemoHash
 
-	b, err := hex.DecodeString(swapID)
-	if err != nil || len(b) > 32 {
-		return rtn, nil
+	swapID := args.SwapID
+
+	if common.IsHexHash(swapID) {
+		memo = txnbuild.MemoHash(common.HexToHash(swapID))
 	}
-	for i := 0; i < len(b); i++ {
-		rtn[i] = b[i]
-	}
-	return rtn, nil
+
+	return &memo
 }
 
 func getPaymentAmount(amount *big.Int, token *tokens.TokenConfig) string {

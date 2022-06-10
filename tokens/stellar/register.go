@@ -2,7 +2,6 @@ package stellar
 
 import (
 	"math/big"
-	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -25,7 +24,6 @@ func (b *Bridge) RegisterSwap(txHash string, args *tokens.RegisterArgs) ([]*toke
 }
 
 func (b *Bridge) registerERC20SwapTx(txHash string, logIndex int) ([]*tokens.SwapTxInfo, []error) {
-	// swapInfo, err := b.verifySwapoutTx(txHash, logIndex, true)
 	tx, err := b.GetTransaction(txHash)
 	if err != nil {
 		log.Debug("[verifySwapout] "+b.ChainConfig.BlockChain+" Bridge::GetTransaction fail", "tx", txHash, "err", err)
@@ -71,7 +69,7 @@ func (b *Bridge) registerERC20SwapTx(txHash string, logIndex int) ([]*tokens.Swa
 func (b *Bridge) buildSwapInfoFromOperation(txres *hProtocol.Transaction, op *operations.Payment, logIndex int) (*tokens.SwapTxInfo, error) {
 	swapInfo := &tokens.SwapTxInfo{}
 	swapInfo.SwapType = tokens.ERC20SwapType
-	swapInfo.Hash = strings.ToLower(txres.Hash)
+	swapInfo.Hash = txres.Hash
 	swapInfo.LogIndex = logIndex
 	swapInfo.FromChainID = b.ChainConfig.GetChainID()
 
