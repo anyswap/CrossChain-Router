@@ -14,6 +14,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/anyswap/CrossChain-Router/v3/tools/fifo"
 	mapset "github.com/deckarep/golang-set"
 )
 
@@ -25,12 +26,12 @@ var (
 	cachedSwapTasks    = mapset.NewSet()
 	maxCachedSwapTasks = 1000
 
-	swapChanSize          = 100
-	routerSwapTaskChanMap = make(map[string]chan *tokens.BuildTxArgs) // key is chainID
+	swapTaskQueues   = make(map[string]*fifo.Queue) // key is toChainID
+	swapTasksInQueue = mapset.NewSet()
 
 	errAlreadySwapped     = errors.New("already swapped")
 	errSendTxWithDiffHash = errors.New("send tx with different hash")
-	errSwapChannelIsFull  = errors.New("swap task channel is full")
+	errChainIsPaused      = errors.New("from or to chain is paused")
 )
 
 // StartSwapJob swap job
@@ -38,20 +39,23 @@ func StartSwapJob() {
 	router.RouterBridges.Range(func(k, v interface{}) bool {
 		chainID := k.(string)
 
-		if _, exist := routerSwapTaskChanMap[chainID]; !exist {
-			routerSwapTaskChanMap[chainID] = make(chan *tokens.BuildTxArgs, swapChanSize)
-			utils.TopWaitGroup.Add(1)
-			go processSwapTask(chainID, routerSwapTaskChanMap[chainID])
+		taskQueue, exist := swapTaskQueues[chainID]
+		if !exist {
+			taskQueue = fifo.NewQueue()
+			swapTaskQueues[chainID] = taskQueue
 		}
 
+		utils.TopWaitGroup.Add(1)
+		go processSwapTask(chainID, taskQueue)
+
 		mongodb.MgoWaitGroup.Add(1)
-		go startRouterSwapJob(chainID)
+		go startRouterSwapJob(chainID, taskQueue)
 
 		return true
 	})
 }
 
-func startRouterSwapJob(chainID string) {
+func startRouterSwapJob(chainID string, taskQueue *fifo.Queue) {
 	defer mongodb.MgoWaitGroup.Done()
 	logWorker("swap", "start router swap job", "chainID", chainID)
 	for {
@@ -67,13 +71,12 @@ func startRouterSwapJob(chainID string) {
 				logWorker("swap", "stop router swap job", "chainID", chainID)
 				return
 			}
-			err = processRouterSwap(swap)
-			ctx := []interface{}{"fromChainID", chainID, "txid", swap.TxID, "logIndex", swap.LogIndex}
+			err = processRouterSwap(swap, taskQueue)
+			ctx := []interface{}{"fromChainID", swap.FromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex}
 			switch {
 			case err == nil:
 				logWorker("swap", "process router swap success", ctx...)
-			case errors.Is(err, errAlreadySwapped),
-				errors.Is(err, errSwapChannelIsFull):
+			case errors.Is(err, errAlreadySwapped), errors.Is(err, errChainIsPaused):
 				ctx = append(ctx, "err", err)
 				logWorker("swap", "process router swap error", ctx...)
 			default:
@@ -91,12 +94,12 @@ func startRouterSwapJob(chainID string) {
 func findRouterSwapToSwap(chainID string) ([]*mongodb.MgoSwap, error) {
 	status := mongodb.TxNotSwapped
 	septime := getSepTimeInFind(maxDoSwapLifetime)
-	return mongodb.FindRouterSwapsWithChainIDAndStatus(chainID, status, septime)
+	return mongodb.FindRouterSwapsWithToChainIDAndStatus(chainID, status, septime)
 }
 
-func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
+func processRouterSwap(swap *mongodb.MgoSwap, taskQueue *fifo.Queue) (err error) {
 	if router.IsChainIDPaused(swap.FromChainID) || router.IsChainIDPaused(swap.ToChainID) {
-		return nil
+		return errChainIsPaused
 	}
 
 	fromChainID := swap.FromChainID
@@ -108,6 +111,9 @@ func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
 	cacheKey := mongodb.GetRouterSwapKey(fromChainID, txid, logIndex)
 	if cachedSwapTasks.Contains(cacheKey) {
 		return errAlreadySwapped
+	}
+	if swapTasksInQueue.Contains(cacheKey) {
+		return nil
 	}
 
 	if isBlacked(swap) {
@@ -166,7 +172,7 @@ func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
 		return err
 	}
 
-	return dispatchSwapTask(args)
+	return dispatchSwapTask(args, taskQueue)
 }
 
 func getFromToChainIDAndValue(fromChainIDStr, toChainIDStr, valueStr string) (fromChainID, toChainID, value *big.Int, err error) {
@@ -224,54 +230,54 @@ func processHistory(res *mongodb.MgoSwapResult) error {
 	return errAlreadySwapped
 }
 
-func dispatchSwapTask(args *tokens.BuildTxArgs) error {
+func dispatchSwapTask(args *tokens.BuildTxArgs, taskQueue *fifo.Queue) error {
 	if !args.SwapType.IsValidType() {
 		return fmt.Errorf("unknown router swap type %d", args.SwapType)
 	}
-	toChainID := args.ToChainID.String()
-	swapChan, exist := routerSwapTaskChanMap[toChainID]
-	if !exist {
-		return fmt.Errorf("no swapout task channel for chainID '%v'", args.ToChainID)
-	}
 
-	ctx := []interface{}{
-		"fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "value", args.OriginValue, "swapNonce", args.GetTxNonce(),
-	}
+	logWorker("doSwap", "dispatch router swap task", "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "value", args.OriginValue, "swapNonce", args.GetTxNonce())
 
-	select {
-	case swapChan <- args:
-		logWorker("doSwap", "dispatch router swap task", ctx...)
-	default:
-		logWorkerWarn("doSwap", "swap task channel is full", ctx...)
-		return errSwapChannelIsFull
-	}
+	taskQueue.Add(args)
+
+	cacheKey := mongodb.GetRouterSwapKey(args.FromChainID.String(), args.SwapID, args.LogIndex)
+	swapTasksInQueue.Add(cacheKey)
 
 	return nil
 }
 
-func processSwapTask(chainID string, swapChan <-chan *tokens.BuildTxArgs) {
+func processSwapTask(chainID string, taskQueue *fifo.Queue) {
 	defer utils.TopWaitGroup.Done()
 	for {
-		select {
-		case <-utils.CleanupChan:
+		if utils.IsCleanuping() {
 			logWorker("doSwap", "stop process swap task", "chainID", chainID)
 			return
-		case args := <-swapChan:
-			if args.ToChainID.String() != chainID {
-				logWorkerWarn("doSwap", "ignore swap task as toChainID mismatch", "want", chainID, "args", args)
-				continue
-			}
-			err := doSwap(args)
-			switch {
-			case err == nil:
-				logWorker("doSwap", "process router swap success", "args", args)
-			case errors.Is(err, errAlreadySwapped),
-				errors.Is(err, tokens.ErrNoBridgeForChainID):
-				logWorker("doSwap", "process router swap failed", "args", args, "err", err)
-			default:
-				logWorkerError("doSwap", "process router swap failed", err, "args", args)
-			}
 		}
+
+		front := taskQueue.Next()
+		if front == nil {
+			sleepSeconds(1)
+			continue
+		}
+
+		args := front.(*tokens.BuildTxArgs)
+
+		if args.ToChainID.String() != chainID {
+			logWorkerWarn("doSwap", "ignore swap task as toChainID mismatch", "want", chainID, "args", args)
+			continue
+		}
+		err := doSwap(args)
+		switch {
+		case err == nil:
+			logWorker("doSwap", "process router swap success", "args", args)
+		case errors.Is(err, errAlreadySwapped),
+			errors.Is(err, tokens.ErrNoBridgeForChainID):
+			logWorker("doSwap", "process router swap failed", "args", args, "err", err)
+		default:
+			logWorkerError("doSwap", "process router swap failed", err, "args", args)
+		}
+
+		cacheKey := mongodb.GetRouterSwapKey(args.FromChainID.String(), args.SwapID, args.LogIndex)
+		swapTasksInQueue.Remove(cacheKey)
 	}
 }
 
