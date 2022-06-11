@@ -213,6 +213,30 @@ func FindRouterSwapsWithStatus(status SwapStatus, septime int64) ([]*MgoSwap, er
 	return result, nil
 }
 
+// FindRouterSwapsWithToChainIDAndStatus find router swap with toChainID and status in the past septime
+//nolint:dupl // allow duplicate
+func FindRouterSwapsWithToChainIDAndStatus(toChainID string, status SwapStatus, septime int64) ([]*MgoSwap, error) {
+	qtime := bson.M{"timestamp": bson.M{"$gte": septime}}
+	qstatus := bson.M{"status": status}
+	qchainid := bson.M{"toChainID": toChainID}
+	queries := []bson.M{qtime, qstatus, qchainid}
+	query := bson.M{"$and": queries}
+	opts := &options.FindOptions{
+		Sort:  bson.D{{Key: "inittime", Value: 1}},
+		Limit: &maxCountOfResults,
+	}
+	cur, err := collRouterSwap.Find(clientCtx, query, opts)
+	if err != nil {
+		return nil, mgoError(err)
+	}
+	result := make([]*MgoSwap, 0, 20)
+	err = cur.All(clientCtx, &result)
+	if err != nil {
+		return nil, mgoError(err)
+	}
+	return result, nil
+}
+
 // FindRouterSwapsWithChainIDAndStatus find router swap with chainid and status in the past septime
 //nolint:dupl // allow duplicate
 func FindRouterSwapsWithChainIDAndStatus(fromChainID string, status SwapStatus, septime int64) ([]*MgoSwap, error) {

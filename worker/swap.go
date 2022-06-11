@@ -39,20 +39,23 @@ func StartSwapJob() {
 	router.RouterBridges.Range(func(k, v interface{}) bool {
 		chainID := k.(string)
 
-		if _, exist := swapTaskQueues[chainID]; !exist {
-			swapTaskQueues[chainID] = fifo.NewQueue()
-			utils.TopWaitGroup.Add(1)
-			go processSwapTask(chainID, swapTaskQueues[chainID])
+		taskQueue, exist := swapTaskQueues[chainID]
+		if !exist {
+			taskQueue = fifo.NewQueue()
+			swapTaskQueues[chainID] = taskQueue
 		}
 
+		utils.TopWaitGroup.Add(1)
+		go processSwapTask(chainID, taskQueue)
+
 		mongodb.MgoWaitGroup.Add(1)
-		go startRouterSwapJob(chainID)
+		go startRouterSwapJob(chainID, taskQueue)
 
 		return true
 	})
 }
 
-func startRouterSwapJob(chainID string) {
+func startRouterSwapJob(chainID string, taskQueue *fifo.Queue) {
 	defer mongodb.MgoWaitGroup.Done()
 	logWorker("swap", "start router swap job", "chainID", chainID)
 	for {
@@ -68,7 +71,7 @@ func startRouterSwapJob(chainID string) {
 				logWorker("swap", "stop router swap job", "chainID", chainID)
 				return
 			}
-			err = processRouterSwap(swap)
+			err = processRouterSwap(swap, taskQueue)
 			ctx := []interface{}{"fromChainID", swap.FromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex}
 			switch {
 			case err == nil:
@@ -91,10 +94,10 @@ func startRouterSwapJob(chainID string) {
 func findRouterSwapToSwap(chainID string) ([]*mongodb.MgoSwap, error) {
 	status := mongodb.TxNotSwapped
 	septime := getSepTimeInFind(maxDoSwapLifetime)
-	return mongodb.FindRouterSwapsWithChainIDAndStatus(chainID, status, septime)
+	return mongodb.FindRouterSwapsWithToChainIDAndStatus(chainID, status, septime)
 }
 
-func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
+func processRouterSwap(swap *mongodb.MgoSwap, taskQueue *fifo.Queue) (err error) {
 	if router.IsChainIDPaused(swap.FromChainID) || router.IsChainIDPaused(swap.ToChainID) {
 		return errChainIsPaused
 	}
@@ -169,7 +172,7 @@ func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
 		return err
 	}
 
-	return dispatchSwapTask(args)
+	return dispatchSwapTask(args, taskQueue)
 }
 
 func getFromToChainIDAndValue(fromChainIDStr, toChainIDStr, valueStr string) (fromChainID, toChainID, value *big.Int, err error) {
@@ -227,14 +230,9 @@ func processHistory(res *mongodb.MgoSwapResult) error {
 	return errAlreadySwapped
 }
 
-func dispatchSwapTask(args *tokens.BuildTxArgs) error {
+func dispatchSwapTask(args *tokens.BuildTxArgs, taskQueue *fifo.Queue) error {
 	if !args.SwapType.IsValidType() {
 		return fmt.Errorf("unknown router swap type %d", args.SwapType)
-	}
-	toChainID := args.ToChainID.String()
-	taskQueue, exist := swapTaskQueues[toChainID]
-	if !exist {
-		return fmt.Errorf("no swap task queue for chainID '%v'", args.ToChainID)
 	}
 
 	logWorker("doSwap", "dispatch router swap task", "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "value", args.OriginValue, "swapNonce", args.GetTxNonce())
