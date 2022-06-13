@@ -14,7 +14,7 @@ http: https://horizon.stellar.org/
 chain_id:  1000005786702
 
 ## router部署文档 
-https://github.com/anyswap/CrossChain-Router/tree/feature/near#readme
+https://github.com/anyswap/CrossChain-Router/tree/feature/stellar#readme
 ## mpc部署文档 
 https://github.com/anyswap/FastMulThreshold-DSA/wiki/keygen-and-sign-workflow
 
@@ -34,9 +34,15 @@ address: GAKG64O3OEN4EWIXN6N4XILVMMENFJ5PB4OAXEG65TTFTF5IJSHVMBIC
     3.1 stellar的router_contract都填写为mpc的stellar地址  
     3.2 stellar的token的contractaAddr填写格式为
     3.3 stellar的native(XLM)的contractAddress填写为native
-示例：
+示例： instance为config实例
 instance.setTokenConfig("Ooxx", "1000005786703", "Ooxx/GCHH22AXHDDXET47Q3YKSANZ74GAAWEIMECQ3ZNFVM3SJY2LGYYPFLUH", 7, 6, "", "")
 instance.setTokenConfig("XLM", "1000005786703", "native", 7, 6, "", "")
+>4)stellar上创建anyToken时 需要2个mpc 作为冷热账户
+https://developers.stellar.org/docs/issuing-assets/how-to-issue-an-asset/
+步骤为：
+1.B mpc 创建trustline 金额 = 初始金额
+2.A mpc 转账给 B mpc 初始金额
+
 
 ## stellar测试步骤
 **evm部署步骤这里不做赘述**
