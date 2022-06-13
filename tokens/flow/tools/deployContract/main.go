@@ -140,7 +140,6 @@ func MPCSignTransaction(rawTx interface{}, paramPublicKey string) (signedTx inte
 	if err != nil {
 		return nil, "", err
 	}
-	log.Warn("mpcPubkey", "mpcRealPubkey", mpcRealPubkey)
 	keyID, rsvs, err := mpcConfig.DoSignOneEC(mpcRealPubkey, common.ToHex(hash[:]), "")
 	if err != nil {
 		return nil, "", err

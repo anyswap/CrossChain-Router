@@ -15,6 +15,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/flow"
 	"github.com/anyswap/CrossChain-Router/v3/tools/crypto"
+	"github.com/onflow/cadence"
 	sdk "github.com/onflow/flow-go-sdk"
 	"github.com/onflow/flow-go-sdk/access/grpc"
 	fcrypto "github.com/onflow/flow-go-sdk/crypto"
@@ -29,6 +30,10 @@ var (
 	paramAddress    string
 	paramPublicKey  string
 	paramPrivKey    string
+	paramToken      string
+	paramTo         string
+	paramToChainID  string
+	paramValue      string
 	chainID         = big.NewInt(0)
 	ctx             = context.Background()
 	mpcConfig       *mpc.Config
@@ -63,12 +68,12 @@ func main() {
 		log.Fatal("GetAccountNonce failed", "payerAddress", payerAddress, "err", err)
 	}
 
-	initScript, errf := ioutil.ReadFile("tokens/flow/transaction/Init.cdc")
+	initScript, errf := ioutil.ReadFile("tokens/flow/transaction/SwapOut.cdc")
 	if errf != nil {
 		log.Fatal("ReadFile failed", "errf", errf)
 	}
 	script := string(initScript)
-	script = fmt.Sprintf(script, paramAddress, paramAddress, paramAddress)
+	script = fmt.Sprintf(script, paramAddress, paramAddress)
 
 	tx := sdk.NewTransaction().
 		SetScript([]byte(script)).
@@ -76,6 +81,35 @@ func main() {
 		SetProposalKey(payerAddress, index, sequenceNumber).
 		SetPayer(payerAddress).
 		AddAuthorizer(payerAddress)
+
+	tokenInditifier := cadence.String(paramToken)
+	bindAddr := cadence.String(paramTo)
+	id, err := common.GetUint64FromStr(paramToChainID)
+	if err != nil {
+		log.Fatal("build tx fails", "err", err)
+	}
+	toChainID := cadence.NewUInt64(id)
+
+	value, err := cadence.NewUFix64(paramValue)
+	if err != nil {
+		log.Fatal("build tx fails", "err", err)
+	}
+	err = tx.AddArgument(tokenInditifier)
+	if err != nil {
+		log.Fatal("build tx fails", "err", err)
+	}
+	err = tx.AddArgument(bindAddr)
+	if err != nil {
+		log.Fatal("build tx fails", "err", err)
+	}
+	err = tx.AddArgument(toChainID)
+	if err != nil {
+		log.Fatal("build tx fails", "err", err)
+	}
+	err = tx.AddArgument(value)
+	if err != nil {
+		log.Fatal("build tx fails", "err", err)
+	}
 
 	if paramPrivKey != "" {
 		ecPrikey, err := fcrypto.DecodePrivateKeyHex(fcrypto.ECDSA_secp256k1, paramPrivKey)
@@ -176,6 +210,10 @@ func initFlags() {
 	flag.StringVar(&paramAddress, "address", "", "signer address")
 	flag.StringVar(&paramPublicKey, "pubKey", "", "signer public key")
 	flag.StringVar(&paramPrivKey, "privKey", "", "(option) signer paramPrivKey key")
+	flag.StringVar(&paramToken, "token", "", "swap out token identifier")
+	flag.StringVar(&paramTo, "to", "", "dest chain receiver addr")
+	flag.StringVar(&paramToChainID, "toChainId", "", "dest chain id")
+	flag.StringVar(&paramValue, "value", "", "swap out amount")
 
 	flag.Parse()
 

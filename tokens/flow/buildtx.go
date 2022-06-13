@@ -111,7 +111,7 @@ func CreateSwapInArgs(
 	}
 	fromChainId := cadence.NewUInt64(id)
 
-	realValue := parseFlowNumber(amount)
+	realValue := ParseFlowNumber(amount)
 	if len(realValue) < 10 {
 		return nil, tokens.ErrTxWithWrongValue
 	}
@@ -154,7 +154,7 @@ func CreateTransaction(
 	blockID string,
 	swapInArgs *SwapIn,
 ) (*sdk.Transaction, error) {
-	swapIn, errf := ioutil.ReadFile("tokens/flow/transaction/swapIn.cdc")
+	swapIn, errf := ioutil.ReadFile("tokens/flow/transaction/SwapIn.cdc")
 	if errf != nil {
 		return nil, errf
 	}
@@ -243,8 +243,7 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 	if toTokenCfg == nil {
 		return receiver, amount, tokens.ErrMissTokenConfig
 	}
-	// amount = tokens.CalcSwapValue(erc20SwapInfo.TokenID, args.FromChainID.String(), b.ChainConfig.ChainID, args.OriginValue, fromTokenCfg.Decimals, toTokenCfg.Decimals, args.OriginFrom, args.OriginTxTo)
-	amount = args.OriginValue
+	amount = tokens.CalcSwapValue(erc20SwapInfo.TokenID, args.FromChainID.String(), b.ChainConfig.ChainID, args.OriginValue, fromTokenCfg.Decimals, toTokenCfg.Decimals, args.OriginFrom, args.OriginTxTo)
 	return receiver, amount, err
 }
 

@@ -9,7 +9,7 @@ var (
 	FixLen = 8
 )
 
-func parseFlowNumber(amount *big.Int) string {
+func ParseFlowNumber(amount *big.Int) string {
 	value := amount.String()
 	if len(value) <= FixLen {
 		return "0." + fmt.Sprintf("%08d", amount)
