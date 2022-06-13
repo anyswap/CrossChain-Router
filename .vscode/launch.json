@@ -1,0 +1,76 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "stellar-router",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "cmd/swaprouter",
+            "args": [
+                "-c",
+                "/Users/potti/multichain-workspace/Multichain-CrossChain-Router/build/bin/config-mpc.toml",
+                "--runserver"
+            ],
+        },
+        {
+            "name": "router-oracle",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "cmd/swaprouter",
+            "args": [
+                "-c",
+                "/Users/potti/multichain-workspace/Multichain-CrossChain-Router/build/bin/config-oracle.toml",
+                "--runserver"
+            ],
+        },
+        {
+            "name": "stellar-sendTrustLineTx",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "tokens/stellar/tools/sendTrustLineTx/main.go",
+            "args": [
+                "-config",
+                "/Users/potti/multichain-workspace/Multichain-CrossChain-Router/build/bin/config-mpc.toml",
+                "-chainID",
+                "1000005786703",
+                "-pubkey",
+                "0xEDbe0d03d8022012a03d5535e8677681dbbd9bbd130a3593388a61454129f5c294",
+                "-limitAmount",
+                "10000000",
+                "-assetCode",
+                "Ooxx",
+                "-issuer",
+                "GCHH22AXHDDXET47Q3YKSANZ74GAAWEIMECQ3ZNFVM3SJY2LGYYPFLUH"
+            ],
+        },
+        {
+            "name": "stellar-sendPaymentTx",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "tokens/stellar/tools/sendPaymentTx/main.go",
+            "args": [
+                "-config",
+                "/Users/potti/multichain-workspace/Multichain-CrossChain-Router/build/bin/config-mpc.toml",
+                "-chainID",
+                "1000005786703",
+                "-pubkey",
+                "0xEDbe0d03d8022012a03d5535e8677681dbbd9bbd130a3593388a61454129f5c294",
+                "-destination",
+                "GA7EDFQK7ZOSVEVNCGCMLJVC5SDT5PYFYEKUI5IFNHJUA5PQ6OJMP5GC",
+                "-amount",
+                "10000.1234567",
+                "-assetCode",
+                "Ooxx",
+                "-issuer",
+                "GC7A2A6YAIQBFIB5KU26QZ3WQHN33G55CMFDLEZYRJQUKQJJ6XBJJPJJ"
+            ],
+        }
+    ]
+}
