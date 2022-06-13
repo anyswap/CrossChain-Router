@@ -9,9 +9,12 @@ import (
 	"net/url"
 	"reflect"
 	"sort"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/ripple/rubblelabs/ripple/data"
 	"github.com/gorilla/websocket"
 )
@@ -34,6 +37,8 @@ type Remote struct {
 	Incoming chan interface{}
 	outgoing chan Syncer
 	ws       *websocket.Conn
+
+	IsConnected bool
 }
 
 // NewRemote returns a new remote session connected to the specified
@@ -70,17 +75,21 @@ func (r *Remote) Close() {
 
 	// Drain the Incoming channel and block until it is closed,
 	// indicating that this Remote is fully cleaned up.
-	for _ = range r.Incoming {
+	for range r.Incoming {
 	}
 }
 
 // run spawns the read/write pumps and then runs until Close() is called.
 func (r *Remote) run() {
+	r.IsConnected = true
+
 	outbound := make(chan interface{})
 	inbound := make(chan []byte)
 	pending := make(map[uint64]Syncer)
 
 	defer func() {
+		r.IsConnected = false
+
 		close(outbound) // Shuts down the writePump
 		close(r.Incoming)
 
@@ -91,7 +100,7 @@ func (r *Remote) run() {
 
 		// Drain the inbound channel and block until it is closed,
 		// indicating that the readPump has returned.
-		for _ = range inbound {
+		for range inbound {
 		}
 	}()
 
@@ -111,6 +120,7 @@ func (r *Remote) run() {
 		select {
 		case command, ok := <-r.outgoing:
 			if !ok {
+				log.Errorln("Outgoing is closed")
 				return
 			}
 			outbound <- command
@@ -118,11 +128,6 @@ func (r *Remote) run() {
 			pending[id] = command
 
 		case in, ok := <-inbound:
-			/*src := rand.NewSource(int64(time.Now().Nanosecond()))
-			randnum := rand.New(src).Int()
-			if randnum%3 == 0 {
-				ok = false
-			}*/
 			if !ok {
 				log.Errorln("Connection closed by server")
 				return
@@ -263,9 +268,14 @@ func (r *Remote) LedgerData(ledger interface{}, marker *data.Hash256) (*LedgerDa
 	return cmd.Result, nil
 }
 
-func (r *Remote) streamLedgerData(ledger interface{}, c chan data.LedgerEntrySlice) {
-	defer close(c)
-	cmd := newBinaryLedgerDataCommand(ledger, nil)
+func (r *Remote) streamLedgerData(ledger interface{}, start, end string, c chan data.LedgerEntrySlice, wg *sync.WaitGroup) {
+	defer wg.Done()
+	first, err := data.NewHash256(start)
+	if err != nil {
+		log.Errorln(err.Error())
+	}
+	cmd := newBinaryLedgerDataCommand(ledger, first)
+	var br bytes.Reader
 	for ; ; cmd = newBinaryLedgerDataCommand(ledger, cmd.Result.Marker) {
 		r.outgoing <- cmd
 		<-cmd.Ready
@@ -273,23 +283,29 @@ func (r *Remote) streamLedgerData(ledger interface{}, c chan data.LedgerEntrySli
 			log.Errorln(cmd.Error())
 			return
 		}
-		les := make(data.LedgerEntrySlice, len(cmd.Result.State))
-		for i, state := range cmd.Result.State {
+		les := make(data.LedgerEntrySlice, 0, len(cmd.Result.State))
+		var done bool
+		for _, state := range cmd.Result.State {
+			if done = state.Index > end; done {
+				break
+			}
 			b, err := hex.DecodeString(state.Data + state.Index)
 			if err != nil {
-				log.Errorln(cmd.Error())
+				log.Errorln(err.Error())
 				return
 			}
-			les[i], err = data.ReadLedgerEntry(bytes.NewReader(b), data.Hash256{})
+			br.Reset(b)
+			le, err := data.ReadLedgerEntry(&br, data.Hash256{})
 			if err != nil {
 				log.Errorln(err.Error())
 				log.Errorln(state.Data)
 				log.Errorln(state.Index)
 				continue
 			}
+			les = append(les, le)
 		}
 		c <- les
-		if cmd.Result.Marker == nil {
+		if cmd.Result.Marker == nil || done {
 			return
 		}
 	}
@@ -297,8 +313,18 @@ func (r *Remote) streamLedgerData(ledger interface{}, c chan data.LedgerEntrySli
 
 // Asynchronously retrieve all data for a ledger using the binary form
 func (r *Remote) StreamLedgerData(ledger interface{}) chan data.LedgerEntrySlice {
-	c := make(chan data.LedgerEntrySlice)
-	go r.streamLedgerData(ledger, c)
+	c := make(chan data.LedgerEntrySlice, 100)
+	wg := &sync.WaitGroup{}
+	for i := 0; i < 16; i++ {
+		wg.Add(1)
+		start := fmt.Sprintf("%X%s", i, strings.Repeat("0", 63))
+		end := fmt.Sprintf("%X%s", i, strings.Repeat("F", 63))
+		go r.streamLedgerData(ledger, start, end, c, wg)
+	}
+	go func() {
+		wg.Wait()
+		close(c)
+	}()
 	return c
 }
 
@@ -522,8 +548,11 @@ func (r *Remote) readPump(inbound chan<- []byte) {
 	for {
 		_, message, err := r.ws.ReadMessage()
 		if err != nil {
-			log.Errorln(err.Error())
+			log.Errorln("ws read message error", "err", err)
 			return
+		}
+		if params.IsDebugMode() {
+			log.Infoln(dump(message))
 		}
 		r.ws.SetReadDeadline(time.Now().Add(pongWait))
 		inbound <- message
@@ -543,6 +572,7 @@ func (r *Remote) writePump(outbound <-chan interface{}) {
 		// An outbound message is available to send
 		case message, ok := <-outbound:
 			if !ok {
+				r.ws.SetWriteDeadline(time.Now().Add(writeWait))
 				r.ws.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
@@ -553,18 +583,29 @@ func (r *Remote) writePump(outbound <-chan interface{}) {
 				log.Errorln(err.Error())
 				continue
 			}
-
+			if params.IsDebugMode() {
+				log.Infoln(dump(b))
+			}
+			r.ws.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := r.ws.WriteMessage(websocket.TextMessage, b); err != nil {
-				log.Errorln(err.Error())
+				log.Errorln("ws write message error", "err", err)
 				return
 			}
 
 		// Time to send a ping
 		case <-ticker.C:
+			r.ws.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := r.ws.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
-				log.Errorln(err.Error())
+				log.Errorln("ws write ping message error", "err", err)
 				return
 			}
 		}
 	}
+}
+
+func dump(b []byte) string {
+	var v map[string]interface{}
+	json.Unmarshal(b, &v)
+	out, _ := json.MarshalIndent(v, "", "  ")
+	return string(out)
 }
