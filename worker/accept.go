@@ -235,6 +235,8 @@ func processAcceptInfo(mpcConfig *mpc.Config, info *mpc.SignInfoData) {
 		}
 		aggreeMsgContext = append(aggreeMsgContext, disgreeReason)
 		ctx = append(ctx, "disgreeReason", disgreeReason)
+	} else {
+		logWorker("accept", "AGREE sign", ctx...)
 	}
 	ctx = append(ctx, "result", agreeResult)
 

@@ -124,6 +124,7 @@ func RegisterRouterSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, e
 		SwapType: swapType,
 		LogIndex: logIndex,
 	}
+	log.Info("[api] register swap start", "chainid", fromChainID, "txid", txid, "logIndex", logIndexStr, "swapType", swapType.String())
 	swapInfos, errs := bridge.RegisterSwap(txid, registerArgs)
 	for i, swapInfo := range swapInfos {
 		var memo string
@@ -173,6 +174,7 @@ func RegisterRouterSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, e
 			log.Info("register swap db error", "chainid", fromChainID, "txid", txid, "logIndex", logIndexStr, "err", err)
 		}
 	}
+	log.Info("[api] register swap finished", "chainid", fromChainID, "txid", txid, "logIndex", logIndexStr, "swapType", swapType.String())
 	return &result, nil
 }
 

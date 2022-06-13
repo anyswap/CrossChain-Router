@@ -132,7 +132,7 @@ func (b *Bridge) verifySwapoutTx(txHash string, _ int, allowUnstable bool) (*tok
 	}
 
 	if success := parseSwapMemos(swapInfo, payment.Memos); !success {
-		log.Debug("wrong memos", "memos", payment.Memos)
+		log.Info("wrong memos", "memos", payment.Memos)
 		return swapInfo, tokens.ErrWrongBindAddress
 	}
 
