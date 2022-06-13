@@ -213,7 +213,6 @@ func (b *Bridge) fliterReceipts(receipt *sdk.Event) ([]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Warn("sssssssssss", "type", fmt.Sprintf(Event_Type, mpc[2:]), "receipt.Type", receipt.Type)
 	if receipt.Type == fmt.Sprintf(Event_Type, mpc[2:]) {
 		valut := receipt.Value.ToGoValue()
 		return valut.([]interface{}), nil
