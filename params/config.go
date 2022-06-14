@@ -64,10 +64,6 @@ type RouterServerConfig struct {
 	MongoDB    *MongoDBConfig
 	APIServer  *APIServerConfig
 
-	ChainIDBlackList []string `toml:",omitempty" json:",omitempty"`
-	TokenIDBlackList []string `toml:",omitempty" json:",omitempty"`
-	AccountBlackList []string `toml:",omitempty" json:",omitempty"`
-
 	AutoSwapNonceEnabledChains []string `toml:",omitempty" json:",omitempty"`
 
 	// extras
@@ -112,6 +108,10 @@ type RouterConfig struct {
 	MPC         *MPCConfig
 	FastMPC     *MPCConfig   `toml:",omitempty" json:",omitempty"`
 	Extra       *ExtraConfig `toml:",omitempty" json:",omitempty"`
+
+	ChainIDBlackList []string `toml:",omitempty" json:",omitempty"`
+	TokenIDBlackList []string `toml:",omitempty" json:",omitempty"`
+	AccountBlackList []string `toml:",omitempty" json:",omitempty"`
 }
 
 // ExtraConfig extra config
@@ -725,13 +725,11 @@ func AddOrRemoveChainIDBlackList(chainIDs []string, isAdd bool) {
 			delete(chainIDBlacklistMap, chainID)
 		}
 	}
-	if GetRouterServerConfig() != nil {
-		blacklist := make([]string, 0, len(chainIDBlacklistMap))
-		for chainID := range chainIDBlacklistMap {
-			blacklist = append(blacklist, chainID)
-		}
-		GetRouterServerConfig().ChainIDBlackList = blacklist
+	blacklist := make([]string, 0, len(chainIDBlacklistMap))
+	for chainID := range chainIDBlacklistMap {
+		blacklist = append(blacklist, chainID)
 	}
+	GetRouterConfig().ChainIDBlackList = blacklist
 }
 
 // IsTokenIDInBlackList is token id in black list
@@ -750,13 +748,11 @@ func AddOrRemoveTokenIDBlackList(tokenIDs []string, isAdd bool) {
 			delete(tokenIDBlacklistMap, key)
 		}
 	}
-	if GetRouterServerConfig() != nil {
-		blacklist := make([]string, 0, len(tokenIDBlacklistMap))
-		for tokenID := range tokenIDBlacklistMap {
-			blacklist = append(blacklist, tokenID)
-		}
-		GetRouterServerConfig().TokenIDBlackList = blacklist
+	blacklist := make([]string, 0, len(tokenIDBlacklistMap))
+	for tokenID := range tokenIDBlacklistMap {
+		blacklist = append(blacklist, tokenID)
 	}
+	GetRouterConfig().TokenIDBlackList = blacklist
 }
 
 // IsAccountInBlackList is account in black list
@@ -775,13 +771,11 @@ func AddOrRemoveAccountBlackList(accounts []string, isAdd bool) {
 			delete(accountBlacklistMap, key)
 		}
 	}
-	if GetRouterServerConfig() != nil {
-		blacklist := make([]string, 0, len(accountBlacklistMap))
-		for account := range accountBlacklistMap {
-			blacklist = append(blacklist, account)
-		}
-		GetRouterServerConfig().AccountBlackList = blacklist
+	blacklist := make([]string, 0, len(accountBlacklistMap))
+	for account := range accountBlacklistMap {
+		blacklist = append(blacklist, account)
 	}
+	GetRouterConfig().AccountBlackList = blacklist
 }
 
 func initAutoSwapNonceEnabledChains() {

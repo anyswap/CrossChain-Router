@@ -43,6 +43,11 @@ func (config *RouterConfig) CheckConfig(isServer bool) (err error) {
 	}
 	log.Info("check identifier pass", "identifier", config.Identifier, "swaptype", config.SwapType, "isServer", isServer)
 
+	err = config.CheckBlacklistConfig()
+	if err != nil {
+		return err
+	}
+
 	// check and init extra firstly
 	if config.Extra != nil {
 		err = config.Extra.CheckConfig()
@@ -83,6 +88,51 @@ func (config *RouterConfig) CheckConfig(isServer bool) (err error) {
 		return err
 	}
 
+	return nil
+}
+
+// CheckBlacklistConfig check black list config
+func (config *RouterConfig) CheckBlacklistConfig() (err error) {
+	for _, chainID := range config.ChainIDBlackList {
+		biChainID, ok := new(big.Int).SetString(chainID, 0)
+		if !ok {
+			return fmt.Errorf("wrong chain id '%v' in black list", chainID)
+		}
+		key := biChainID.String()
+		if _, exist := chainIDBlacklistMap[key]; exist {
+			return fmt.Errorf("duplicate chain id '%v' in black list", key)
+		}
+		chainIDBlacklistMap[key] = struct{}{}
+	}
+	if len(chainIDBlacklistMap) > 0 {
+		log.Infof("chainID blacklist is %v", config.ChainIDBlackList)
+	}
+	for _, tokenID := range config.TokenIDBlackList {
+		if tokenID == "" {
+			return errors.New("empty token id in black list")
+		}
+		key := strings.ToLower(tokenID)
+		if _, exist := tokenIDBlacklistMap[key]; exist {
+			return fmt.Errorf("duplicate token id '%v' in black list", key)
+		}
+		tokenIDBlacklistMap[key] = struct{}{}
+	}
+	if len(tokenIDBlacklistMap) > 0 {
+		log.Infof("tokenID blacklist is %v", config.TokenIDBlackList)
+	}
+	for _, account := range config.AccountBlackList {
+		if account == "" {
+			return errors.New("empty account in black list")
+		}
+		key := strings.ToLower(account)
+		if _, exist := accountBlacklistMap[key]; exist {
+			return fmt.Errorf("duplicate account '%v' in black list", key)
+		}
+		accountBlacklistMap[key] = struct{}{}
+	}
+	if len(accountBlacklistMap) > 0 {
+		log.Infof("account blacklist is %v", config.AccountBlackList)
+	}
 	return nil
 }
 
@@ -128,46 +178,6 @@ func (s *RouterServerConfig) CheckConfig() error {
 		return err
 	}
 	initAutoSwapNonceEnabledChains()
-	for _, chainID := range s.ChainIDBlackList {
-		biChainID, ok := new(big.Int).SetString(chainID, 0)
-		if !ok {
-			return fmt.Errorf("wrong chain id '%v' in black list", chainID)
-		}
-		key := biChainID.String()
-		if _, exist := chainIDBlacklistMap[key]; exist {
-			return fmt.Errorf("duplicate chain id '%v' in black list", key)
-		}
-		chainIDBlacklistMap[key] = struct{}{}
-	}
-	if len(chainIDBlacklistMap) > 0 {
-		log.Infof("chainID blacklist is %v", chainIDBlacklistMap)
-	}
-	for _, tokenID := range s.TokenIDBlackList {
-		if tokenID == "" {
-			return errors.New("empty token id in black list")
-		}
-		key := strings.ToLower(tokenID)
-		if _, exist := tokenIDBlacklistMap[key]; exist {
-			return fmt.Errorf("duplicate token id '%v' in black list", key)
-		}
-		tokenIDBlacklistMap[key] = struct{}{}
-	}
-	if len(tokenIDBlacklistMap) > 0 {
-		log.Infof("tokenID blacklist is %v", tokenIDBlacklistMap)
-	}
-	for _, account := range s.AccountBlackList {
-		if account == "" {
-			return errors.New("empty account in black list")
-		}
-		key := strings.ToLower(account)
-		if _, exist := accountBlacklistMap[key]; exist {
-			return fmt.Errorf("duplicate account '%v' in black list", key)
-		}
-		accountBlacklistMap[key] = struct{}{}
-	}
-	if len(accountBlacklistMap) > 0 {
-		log.Infof("account blacklist is %v", accountBlacklistMap)
-	}
 	for chainID, fixedGasPriceStr := range s.FixedGasPrice {
 		biChainID, ok := new(big.Int).SetString(chainID, 0)
 		if !ok {

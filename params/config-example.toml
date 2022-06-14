@@ -5,6 +5,13 @@ SwapType = "erc20swap"
 # default subtype is empty. anycall has subtype of 'curve'
 SwapSubType = ""
 
+# chain id black list of string array
+ChainIDBlackList = []
+# token id black list of string array
+TokenIDBlackList = []
+# account black list of string array
+AccountBlackList = []
+
 # router sever config (server only)
 [Server]
 # administrators who can do admin work
@@ -16,12 +23,6 @@ Assistants = [
 	"0x6666666666666666666666666666666666666666"
 ]
 
-# chain id black list of string array
-ChainIDBlackList = []
-# token id black list of string array
-TokenIDBlackList = []
-# account black list of string array
-AccountBlackList = []
 # enable replace swap job
 EnableReplaceSwap = true
 # enable pass big value swap job
