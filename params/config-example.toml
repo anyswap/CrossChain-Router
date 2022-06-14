@@ -5,8 +5,14 @@ SwapType = "erc20swap"
 # default subtype is empty. anycall has subtype of 'curve'
 SwapSubType = ""
 
+# chain id black list of string array
+ChainIDBlackList = []
+# token id black list of string array
+TokenIDBlackList = []
+# account black list of string array
+AccountBlackList = []
 # token id black list on chain
-[Server.TokenIDBlackListOnChain]
+[TokenIDBlackListOnChain]
 43114 = []
 25    = []
 
@@ -21,12 +27,6 @@ Assistants = [
 	"0x6666666666666666666666666666666666666666"
 ]
 
-# chain id black list of string array
-ChainIDBlackList = []
-# token id black list of string array
-TokenIDBlackList = []
-# account black list of string array
-AccountBlackList = []
 # enable replace swap job
 EnableReplaceSwap = true
 # enable pass big value swap job
