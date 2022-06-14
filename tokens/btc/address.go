@@ -4,11 +4,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
-var (
-	LenForPubKey  = 128
-	AddressLength = 16
-)
-
 // IsValidAddress check address
 func (b *Bridge) IsValidAddress(address string) bool {
 	return true

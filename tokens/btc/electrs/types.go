@@ -1,6 +1,8 @@
-package btc
+package electrs
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // ElectBlock struct
 type ElectBlock struct {

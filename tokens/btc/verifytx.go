@@ -11,7 +11,8 @@ import (
 
 var (
 	errTxResultType = errors.New("tx type is not TransactionResult")
-	Event_Type      = "A.%s.Router.LogSwapOut"
+	opReturnType    = "op_return"
+	p2pkhType       = "p2pkh"
 )
 
 // VerifyMsgHash verify msg hash
@@ -41,6 +42,25 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 	swapInfo.LogIndex = logIndex                      // LogIndex
 	swapInfo.FromChainID = b.ChainConfig.GetChainID() // FromChainID
 
+	receipts, err := b.getSwapTxReceipt(swapInfo, true)
+	if err != nil {
+		return swapInfo, err
+	}
+
+	if logIndex >= len(receipts) {
+		return swapInfo, tokens.ErrLogIndexOutOfRange
+	}
+
+	events, errv := b.fliterReceipts(receipts[logIndex])
+	if errv != nil {
+		return swapInfo, tokens.ErrSwapoutLogNotFound
+	}
+
+	parseErr := b.parseSwapoutTx(swapInfo, events)
+	if parseErr != nil {
+		return swapInfo, parseErr
+	}
+
 	checkErr := b.checkSwapoutInfo(swapInfo)
 	if checkErr != nil {
 		return swapInfo, checkErr
@@ -56,11 +76,21 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 	return swapInfo, nil
 }
 
-func (b *Bridge) checkTxStatus(txres interface{}, allowUnstable bool) error {
-	return tokens.ErrNotImplemented
+func (b *Bridge) checkTxStatus(tx *ElectTx, swapInfo *tokens.SwapTxInfo, allowUnstable bool) error {
+	txStatus := tx.Status
+	if txStatus.BlockHeight != nil {
+		swapInfo.Height = *txStatus.BlockHeight // Height
+	} else if *tx.Locktime != 0 {
+		// tx with locktime should be on chain, prvent DDOS attack
+		return tokens.ErrTxNotStable
+	}
+	if txStatus.BlockTime != nil {
+		swapInfo.Timestamp = *txStatus.BlockTime // Timestamp
+	}
+	return nil
 }
 
-func (b *Bridge) parseSwapoutTxEvent(swapInfo *tokens.SwapTxInfo, event []interface{}) error {
+func (b *Bridge) parseSwapoutTx(swapInfo *tokens.SwapTxInfo, event []string) error {
 	return tokens.ErrNotImplemented
 }
 
@@ -103,4 +133,27 @@ func (b *Bridge) checkSwapoutInfo(swapInfo *tokens.SwapTxInfo) error {
 		return tokens.ErrWrongBindAddress
 	}
 	return nil
+}
+
+func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable bool) ([]*ElectTxOut, error) {
+	tx, txErr := b.GetTransaction(swapInfo.Hash)
+	if txErr != nil {
+		log.Debug("[verifySwapout] "+b.ChainConfig.BlockChain+" Bridge::GetTransaction fail", "tx", swapInfo.Hash, "err", txErr)
+		return nil, tokens.ErrTxNotFound
+	}
+	txres, ok := tx.(*ElectTx)
+	if !ok {
+		return nil, errTxResultType
+	}
+
+	statusErr := b.checkTxStatus(txres, swapInfo, allowUnstable)
+	if statusErr != nil {
+		return nil, statusErr
+	}
+	return txres.Vout, nil
+}
+
+func (b *Bridge) fliterReceipts(receipt *ElectTxOut) ([]string, error) {
+	var events []string
+	return events, nil
 }

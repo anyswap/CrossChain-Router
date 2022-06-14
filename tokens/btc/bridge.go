@@ -81,8 +81,15 @@ func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
 }
 
 // GetTransactionByHash get tx response by hash
-func (b *Bridge) GetTransactionByHash(txHash string) (result interface{}, err error) {
-	return nil, tokens.ErrNotImplemented
+func (b *Bridge) GetTransactionByHash(txHash string) (result *ElectTx, err error) {
+	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	for _, url := range urls {
+		result, err = GetTransactionByHash(url, txHash)
+		if err == nil {
+			return result, nil
+		}
+	}
+	return nil, tokens.ErrTxNotFound
 }
 
 // GetTransactionStatus impl
