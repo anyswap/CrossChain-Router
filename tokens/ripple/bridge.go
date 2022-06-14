@@ -81,7 +81,11 @@ func SetRPCRetryTimes(times int) {
 // For ripple, GetLatestBlockNumber returns current ledger version
 func (b *Bridge) GetLatestBlockNumber() (num uint64, err error) {
 	for i := 0; i < rpcRetryTimes; i++ {
-		for _, r := range b.Remotes {
+		for url, r := range b.Remotes {
+			if !r.IsConnected {
+				log.Trace("[GetLatestBlockNumber] connection is closed", "url", url)
+				continue
+			}
 			resp, err1 := r.Ledger(nil, false)
 			if err1 != nil || resp == nil {
 				err = err1
@@ -123,7 +127,11 @@ func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
 		return
 	}
 	for i := 0; i < rpcRetryTimes; i++ {
-		for _, r := range b.Remotes {
+		for url, r := range b.Remotes {
+			if !r.IsConnected {
+				log.Trace("[GetTransaction] connection is closed", "url", url)
+				continue
+			}
 			resp, err1 := r.Tx(*txhash256)
 			if err1 != nil || resp == nil {
 				log.Warn("Try get transaction failed", "error", err1)
@@ -172,7 +180,11 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 // GetBlockHash gets block hash
 func (b *Bridge) GetBlockHash(num uint64) (hash string, err error) {
 	for i := 0; i < rpcRetryTimes; i++ {
-		for _, r := range b.Remotes {
+		for url, r := range b.Remotes {
+			if !r.IsConnected {
+				log.Trace("[GetBlockHash] connection is closed", "url", url)
+				continue
+			}
 			resp, err1 := r.Ledger(num, false)
 			if err1 != nil || resp == nil {
 				err = err1
@@ -191,7 +203,11 @@ func (b *Bridge) GetBlockHash(num uint64) (hash string, err error) {
 func (b *Bridge) GetBlockTxids(num uint64) (txs []string, err error) {
 	txs = make([]string, 0)
 	for i := 0; i < rpcRetryTimes; i++ {
-		for _, r := range b.Remotes {
+		for url, r := range b.Remotes {
+			if !r.IsConnected {
+				log.Trace("[GetBlockTxids] connection is closed", "url", url)
+				continue
+			}
 			resp, err1 := r.Ledger(num, true)
 			if err1 != nil || resp == nil {
 				err = err1
@@ -226,7 +242,11 @@ func (b *Bridge) GetAccount(address string) (acct *websockets.AccountInfoResult,
 		return
 	}
 	for i := 0; i < rpcRetryTimes; i++ {
-		for _, r := range b.Remotes {
+		for url, r := range b.Remotes {
+			if !r.IsConnected {
+				log.Trace("[GetAccount] connection is closed", "url", url)
+				continue
+			}
 			acct, err = r.AccountInfo(*account)
 			if err != nil || acct == nil {
 				continue
@@ -246,7 +266,11 @@ func (b *Bridge) GetAccountLine(currency, issuer, accountAddress string) (*data.
 	}
 	var acclRes *websockets.AccountLinesResult
 	for i := 0; i < rpcRetryTimes; i++ {
-		for _, r := range b.Remotes {
+		for url, r := range b.Remotes {
+			if !r.IsConnected {
+				log.Trace("[GetAccountLine] connection is closed", "url", url)
+				continue
+			}
 			acclRes, err = r.AccountLines(*account, nil)
 			if err == nil && acclRes != nil {
 				break
@@ -272,7 +296,11 @@ func (b *Bridge) GetFee() (*websockets.FeeResult, error) {
 	var feeRes *websockets.FeeResult
 	var err error
 	for i := 0; i < rpcRetryTimes; i++ {
-		for _, r := range b.Remotes {
+		for url, r := range b.Remotes {
+			if !r.IsConnected {
+				log.Trace("[GetFee] connection is closed", "url", url)
+				continue
+			}
 			feeRes, err = r.Fee()
 			if err == nil && feeRes != nil {
 				return feeRes, nil

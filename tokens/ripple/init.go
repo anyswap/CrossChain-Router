@@ -3,6 +3,7 @@ package ripple
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
@@ -33,7 +34,8 @@ func (b *Bridge) SetGatewayConfig(gatewayCfg *tokens.GatewayConfig) {
 func (b *Bridge) InitRemotes() {
 	logErrFunc := log.GetLogFuncOr(router.DontPanicInLoading(), log.Error, log.Fatal)
 	remotes := make(map[string]*websockets.Remote)
-	for _, apiAddress := range b.GetGatewayConfig().APIAddress {
+	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
+	for _, apiAddress := range urls {
 		remote, err := websockets.NewRemote(apiAddress)
 		if err != nil || remote == nil {
 			log.Warn("Cannot connect to ripple", "address", apiAddress, "error", err)
@@ -47,6 +49,26 @@ func (b *Bridge) InitRemotes() {
 		return
 	}
 	b.Remotes = remotes
+	go b.CheckAndReconnectRemotes()
+}
+
+// CheckAndReconnectRemotes check and reconnect
+func (b *Bridge) CheckAndReconnectRemotes() {
+	for {
+		for url, r := range b.Remotes {
+			if r.IsConnected {
+				continue
+			}
+			remote, err := websockets.NewRemote(url)
+			if err != nil || remote == nil {
+				log.Warn("reconnect to remote api failed", "url", url, "error", err)
+				continue
+			}
+			log.Info("reconnect to remote api success", "url", url)
+			b.Remotes[url] = remote
+		}
+		time.Sleep(30 * time.Second)
+	}
 }
 
 // SetTokenConfig set token config
