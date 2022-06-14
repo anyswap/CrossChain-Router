@@ -1,6 +1,8 @@
 package solana
 
 import (
+	"math/big"
+
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/solana/types"
@@ -121,13 +123,18 @@ func (b *Bridge) GetAccountInfo(account, encoding string) (result *types.GetAcco
 }
 
 // GetBalance get balance
-func (b *Bridge) GetBalance(publicKey string) (result *types.GetBalanceResult, err error) {
+func (b *Bridge) GetBalance(publicKey string) (*big.Int, error) {
 	obj := map[string]string{
 		"commitment": "confirmed",
 	}
+	result := types.GetBalanceResult{}
 	callMethod := "getBalance"
-	err = RPCCall(&result, b.GatewayConfig.APIAddress, callMethod, publicKey, obj)
-	return result, err
+	err := RPCCall(&result, b.GatewayConfig.APIAddress, callMethod, publicKey, obj)
+	if err != nil {
+		return nil, err
+	}
+	bal := new(big.Int).SetUint64(uint64(result.Value))
+	return bal, nil
 }
 
 // GetProgramAccounts get program accounts

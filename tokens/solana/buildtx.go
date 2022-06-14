@@ -76,7 +76,7 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 	if toTokenCfg == nil {
 		return receiver, amount, tokens.ErrMissTokenConfig
 	}
-	swapValue := tokens.CalcSwapValue(erc20SwapInfo.TokenID, b.ChainConfig.ChainID, args.OriginValue, fromTokenCfg.Decimals, toTokenCfg.Decimals, args.OriginFrom, args.OriginTxTo)
+	swapValue := tokens.CalcSwapValue(erc20SwapInfo.TokenID, args.FromChainID.String(), b.ChainConfig.ChainID, args.OriginValue, fromTokenCfg.Decimals, toTokenCfg.Decimals, args.OriginFrom, args.OriginTxTo)
 	if !swapValue.IsUint64() {
 		return receiver, amount, tokens.ErrTxWithWrongValue
 	}

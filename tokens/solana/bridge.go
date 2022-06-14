@@ -149,12 +149,13 @@ func (b *Bridge) InitTokenConfig(tokenID string, chainID *big.Int) {
 	b.SetTokenConfig(tokenAddr, tokenCfg)
 
 	tokenIDKey := strings.ToLower(tokenID)
-	tokensMap := router.MultichainTokens[tokenIDKey]
-	if tokensMap == nil {
-		tokensMap = make(map[string]string)
-		router.MultichainTokens[tokenIDKey] = tokensMap
-	}
-	tokensMap[chainID.String()] = tokenAddr
+	// tokensMap := router.GetCachedMultichainTokens(tokenIDKey)
+	// if tokensMap == nil {
+	// 	tokensMap = make(map[string]string)
+	// 	router.MultichainTokens[tokenIDKey] = tokensMap
+	// }
+	// tokensMap[chainID.String()] = tokenAddr
+	router.SetMultichainToken(tokenIDKey, chainID.String(), tokenAddr)
 
 	routerAccount, err := b.GetRouterAccount(routerContract)
 	if err != nil {
@@ -175,6 +176,7 @@ func (b *Bridge) InitTokenConfig(tokenID string, chainID *big.Int) {
 
 	router.SetRouterInfo(
 		routerContract,
+		chainID.String(),
 		&router.SwapRouterInfo{
 			RouterMPC: routerMPC,
 			RouterPDA: routerPDA,
@@ -286,12 +288,13 @@ func (b *Bridge) ReloadTokenConfig(tokenID string, chainID *big.Int) {
 	b.SetTokenConfig(tokenAddr, tokenCfg)
 
 	tokenIDKey := strings.ToLower(tokenID)
-	tokensMap := router.MultichainTokens[tokenIDKey]
-	if tokensMap == nil {
-		tokensMap = make(map[string]string)
-		router.MultichainTokens[tokenIDKey] = tokensMap
-	}
-	tokensMap[chainID.String()] = tokenAddr
+	// tokensMap := router.MultichainTokens[tokenIDKey]
+	// if tokensMap == nil {
+	// 	tokensMap = make(map[string]string)
+	// 	router.MultichainTokens[tokenIDKey] = tokensMap
+	// }
+	// tokensMap[chainID.String()] = tokenAddr
+	router.SetMultichainToken(tokenIDKey, chainID.String(), tokenAddr)
 
 	routerAccount, err := b.GetRouterAccount(routerContract)
 	if err != nil {
@@ -312,6 +315,7 @@ func (b *Bridge) ReloadTokenConfig(tokenID string, chainID *big.Int) {
 
 	router.SetRouterInfo(
 		routerContract,
+		chainID.String(),
 		&router.SwapRouterInfo{
 			RouterMPC: routerMPC,
 			RouterPDA: routerPDA,

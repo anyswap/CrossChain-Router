@@ -21,3 +21,9 @@ func VerifyMPCPubKey(mpcAddress, mpcPubkey string) error {
 	}
 	return nil
 }
+
+// PublicKeyToAddress impl
+func (b *Bridge) PublicKeyToAddress(pubKeyHex string) (string, error) {
+	// TODO implement
+	return "", nil
+}

@@ -9,11 +9,17 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mpc"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/solana/types"
 	bin "github.com/streamingfast/binary"
 )
+
+func (b *Bridge) verifyTransactionWithArgs(tx *types.Transaction, args *tokens.BuildTxArgs) error {
+
+	return nil
+}
 
 // MPCSignTransaction impl
 func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs) (signTx interface{}, txHash string, err error) {
@@ -22,9 +28,21 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 		return nil, "", errors.New("wrong signed transaction type")
 	}
 
+	err = b.verifyTransactionWithArgs(tx, args)
+	if err != nil {
+		log.Warn("Verify transaction failed", "error", err)
+		return nil, "", err
+	}
+
 	signerKeys := tx.Message.SignerKeys()
 	if len(signerKeys) != 1 {
 		return nil, "", fmt.Errorf("wrong number of signer keys: %d", len(signerKeys))
+	}
+
+	mpcParams := params.GetMPCConfig(b.UseFastMPC)
+	if mpcParams.SignWithPrivateKey {
+		priKey := mpcParams.GetSignerPrivateKey(b.ChainConfig.ChainID)
+		return b.SignTransactionWithPrivateKey(rawTx, priKey)
 	}
 
 	mpcPubkey := router.GetMPCPublicKey(args.From)
@@ -47,7 +65,9 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 	txid := args.SwapID
 	logPrefix := b.ChainConfig.BlockChain + " MPCSignTransaction "
 	log.Info(logPrefix+"start", "txid", txid, "fromChainID", args.FromChainID, "toChainID", args.ToChainID)
-	keyID, rsvs, err := mpc.DoSignOne(mpcPubkey, common.ToHex(msgContent), msgContext)
+
+	mpcConfig := mpc.GetMPCConfig(b.UseFastMPC)
+	keyID, rsvs, err := mpcConfig.DoSignOneED(mpcPubkey, common.ToHex(msgContent), msgContext)
 	if err != nil {
 		return nil, "", err
 	}
@@ -71,4 +91,10 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 	tx.Signatures = append(tx.Signatures, sig)
 
 	return tx, sig.String(), nil
+}
+
+// SignTransactionWithPrivateKey sign tx with ECDSA private key
+func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, privKey string) (signTx interface{}, txHash string, err error) {
+	// TODO implement
+	return nil, "", nil
 }
