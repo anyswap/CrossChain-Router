@@ -44,7 +44,7 @@ type Remote struct {
 // NewRemote returns a new remote session connected to the specified
 // server endpoint URI. To close the connection, use Close().
 func NewRemote(endpoint string) (*Remote, error) {
-	log.Infoln(endpoint)
+	log.Info("new remote session", "remote", endpoint)
 	u, err := url.Parse(endpoint)
 	if err != nil {
 		return nil, err
@@ -88,6 +88,7 @@ func (r *Remote) run() {
 	pending := make(map[uint64]Syncer)
 
 	defer func() {
+		log.Warn("stop run remote", "remote", r.ws.RemoteAddr())
 		r.IsConnected = false
 
 		close(outbound) // Shuts down the writePump
@@ -102,6 +103,9 @@ func (r *Remote) run() {
 		// indicating that the readPump has returned.
 		for range inbound {
 		}
+
+		r.Close()
+		log.Warn("close remote session", "remote", r.ws.RemoteAddr())
 	}()
 
 	// Spawn read/write goroutines
@@ -120,7 +124,7 @@ func (r *Remote) run() {
 		select {
 		case command, ok := <-r.outgoing:
 			if !ok {
-				log.Errorln("Outgoing is closed")
+				log.Error("Outgoing is closed", "remote", r.ws.RemoteAddr())
 				return
 			}
 			outbound <- command
@@ -129,12 +133,12 @@ func (r *Remote) run() {
 
 		case in, ok := <-inbound:
 			if !ok {
-				log.Errorln("Connection closed by server")
+				log.Error("Connection closed by server", "remote", r.ws.RemoteAddr())
 				return
 			}
 
 			if err := json.Unmarshal(in, &response); err != nil {
-				log.Errorln(err.Error())
+				log.Error("json unmarshal response error", "input", string(in), "err", err)
 				continue
 			}
 			// Stream message
@@ -142,7 +146,7 @@ func (r *Remote) run() {
 			if ok {
 				cmd := factory()
 				if err := json.Unmarshal(in, &cmd); err != nil {
-					log.Errorln(err.Error(), string(in))
+					log.Error("json unmarshal command error", "input", string(in), "err", err)
 					continue
 				}
 				r.Incoming <- cmd
@@ -157,7 +161,7 @@ func (r *Remote) run() {
 			}
 			delete(pending, response.Id)
 			if err := json.Unmarshal(in, &cmd); err != nil {
-				log.Errorln(err.Error())
+				log.Error("json unmarshal command error", "input", string(in), "err", err)
 				continue
 			}
 			cmd.Done()
@@ -186,7 +190,7 @@ func (r *Remote) accountTx(account data.Account, c chan *data.TransactionWithMet
 		r.outgoing <- cmd
 		<-cmd.Ready
 		if cmd.CommandError != nil {
-			log.Errorln(cmd.Error())
+			log.Error("command error", "id", cmd.Id, "name", cmd.Name, "err", cmd.Error())
 			return
 		}
 		for _, tx := range cmd.Result.Transactions {
@@ -272,7 +276,7 @@ func (r *Remote) streamLedgerData(ledger interface{}, start, end string, c chan 
 	defer wg.Done()
 	first, err := data.NewHash256(start)
 	if err != nil {
-		log.Errorln(err.Error())
+		log.Error("data.NewHash256 error", "err", err)
 	}
 	cmd := newBinaryLedgerDataCommand(ledger, first)
 	var br bytes.Reader
@@ -280,7 +284,7 @@ func (r *Remote) streamLedgerData(ledger interface{}, start, end string, c chan 
 		r.outgoing <- cmd
 		<-cmd.Ready
 		if cmd.CommandError != nil {
-			log.Errorln(cmd.Error())
+			log.Error("command error", "id", cmd.Id, "name", cmd.Name, "err", cmd.Error())
 			return
 		}
 		les := make(data.LedgerEntrySlice, 0, len(cmd.Result.State))
@@ -291,15 +295,13 @@ func (r *Remote) streamLedgerData(ledger interface{}, start, end string, c chan 
 			}
 			b, err := hex.DecodeString(state.Data + state.Index)
 			if err != nil {
-				log.Errorln(err.Error())
+				log.Error("hex.DecodeString error", "err", err)
 				return
 			}
 			br.Reset(b)
 			le, err := data.ReadLedgerEntry(&br, data.Hash256{})
 			if err != nil {
-				log.Errorln(err.Error())
-				log.Errorln(state.Data)
-				log.Errorln(state.Index)
+				log.Error("data.ReadLedgerEntry error", "data", state.Data, "index", state.Index, "err", err)
 				continue
 			}
 			les = append(les, le)
@@ -543,19 +545,20 @@ func (r *Remote) Fee() (*FeeResult, error) {
 // readPump reads from the websocket and sends to inbound channel.
 // Expects to receive PONGs at specified interval, or logs an error and returns.
 func (r *Remote) readPump(inbound chan<- []byte) {
-	r.ws.SetReadDeadline(time.Now().Add(pongWait))
 	r.ws.SetPongHandler(func(string) error { r.ws.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 	for {
-		_, message, err := r.ws.ReadMessage()
+		r.ws.SetReadDeadline(time.Now().Add(pongWait))
+		messageType, message, err := r.ws.ReadMessage()
 		if err != nil {
-			log.Errorln("ws read message error", "err", err)
+			log.Error("ws read message error", "remote", r.ws.RemoteAddr(), "err", err)
 			return
 		}
 		if params.IsDebugMode() {
-			log.Infoln(dump(message))
+			log.Info("ws read message", "messageType", messageType, "message", dump(message))
 		}
-		r.ws.SetReadDeadline(time.Now().Add(pongWait))
-		inbound <- message
+		if messageType == websocket.TextMessage {
+			inbound <- message
+		}
 	}
 }
 
@@ -580,15 +583,15 @@ func (r *Remote) writePump(outbound <-chan interface{}) {
 			b, err := json.Marshal(message)
 			if err != nil {
 				// Outbound message cannot be JSON serialized (log it and continue)
-				log.Errorln(err.Error())
+				log.Error("json marshal error", "err", err)
 				continue
 			}
 			if params.IsDebugMode() {
-				log.Infoln(dump(b))
+				log.Info("ws write message", "message", dump(b))
 			}
 			r.ws.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := r.ws.WriteMessage(websocket.TextMessage, b); err != nil {
-				log.Errorln("ws write message error", "err", err)
+				log.Error("ws write message error", "remote", r.ws.RemoteAddr(), "err", err)
 				return
 			}
 
@@ -596,7 +599,7 @@ func (r *Remote) writePump(outbound <-chan interface{}) {
 		case <-ticker.C:
 			r.ws.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := r.ws.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
-				log.Errorln("ws write ping message error", "err", err)
+				log.Error("ws write ping message error", "remote", r.ws.RemoteAddr(), "err", err)
 				return
 			}
 		}
