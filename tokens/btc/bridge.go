@@ -3,6 +3,7 @@ package btc
 import (
 	"math/big"
 	"sync"
+	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
@@ -95,4 +96,15 @@ func (b *Bridge) GetTransactionByHash(txHash string) (result *ElectTx, err error
 // GetTransactionStatus impl
 func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, err error) {
 	return status, tokens.ErrNotImplemented
+}
+
+func (b *Bridge) getTransactionByHashWithRetry(txid string) (tx *ElectTx, err error) {
+	for i := 0; i < retryCount; i++ {
+		tx, err = b.GetTransactionByHash(txid)
+		if err == nil {
+			break
+		}
+		time.Sleep(retryInterval)
+	}
+	return tx, err
 }

@@ -1,6 +1,15 @@
 package btc
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
+)
+
+type wireTxOutType = wire.TxOut
+type btcAmountType = btcutil.Amount
+type wireTxInType = wire.TxIn
 
 // ElectBlock struct
 type ElectBlock struct {
