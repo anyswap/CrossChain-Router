@@ -11,7 +11,6 @@ import (
 
 var (
 	errTxResultType = errors.New("tx type is not TransactionResult")
-	opReturnType    = "op_return"
 	p2pkhType       = "p2pkh"
 )
 
