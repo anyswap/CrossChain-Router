@@ -2,11 +2,16 @@ package btc
 
 import (
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
-	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
-func sendTransaction(url string, signedTx interface{}) (string, error) {
-	return "", tokens.ErrNotImplemented
+// PostTransaction call post to /tx
+func PostTransaction(url, txHex string) (txHash string, err error) {
+	restApi := url + "/tx"
+	txHash, err = client.RPCRawPost(restApi, txHex)
+	if err == nil {
+		return txHash, nil
+	}
+	return "", err
 }
 
 // GetTransactionByHash get tx by hash

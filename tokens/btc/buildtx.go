@@ -15,10 +15,9 @@ import (
 )
 
 var (
-	retryCount              = 3
-	retryRPCCount           = 3
-	retryRPCInterval        = 1 * time.Second
-	defaultGasLimit  uint64 = 1_000_000
+	retryCount       = 3
+	retryRPCCount    = 3
+	retryRPCInterval = 1 * time.Second
 
 	UnlockMemoPrefix     = "SWAPTX:"
 	retryInterval        = 3 * time.Second
