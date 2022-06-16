@@ -77,7 +77,10 @@ func startVerifyConsumer() {
 
 			atomic.AddInt64(&curVerifyRoutines, 1)
 			go func() {
-				_ = processRouterSwapVerify(swap)
+				err := processRouterSwapVerify(swap)
+				if err != nil {
+					logWorker("verify swap error", "fromChainID", swap.FromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex, "err", err)
+				}
 			}()
 		}
 	}
