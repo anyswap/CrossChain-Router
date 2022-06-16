@@ -22,7 +22,7 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error
 	for i := 0; i < rpcRetryTimes; i++ {
 		// try send to all remotes
 		for url, r := range b.Remotes {
-			if !r.IsConnected {
+			if !r.IsConnected() {
 				log.Trace("[SendTransaction] connection is closed", "url", url)
 				continue
 			}

@@ -36,19 +36,26 @@ func (b *Bridge) InitRemotes() {
 	remotes := make(map[string]*websockets.Remote)
 	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
 	for _, apiAddress := range urls {
-		remote, err := websockets.NewRemote(apiAddress)
-		if err != nil || remote == nil {
-			log.Warn("Cannot connect to ripple", "address", apiAddress, "error", err)
+		if _, exist := remotes[apiAddress]; exist {
 			continue
 		}
-		log.Info("Connected to remote api success", "api", apiAddress)
-		remotes[apiAddress] = remote
+		for i := 0; i < 3; i++ { // with retry
+			remote, err := websockets.NewRemote(apiAddress)
+			if err != nil || remote == nil {
+				log.Warn("Cannot connect to ripple", "address", apiAddress, "error", err)
+				continue
+			}
+			log.Info("Connected to remote api success", "api", apiAddress)
+			remotes[apiAddress] = remote
+			break
+		}
 	}
 	if len(remotes) < 1 {
 		logErrFunc("No available remote api")
 		return
 	}
 	b.Remotes = remotes
+	log.Infof("connected remotes are %v", b.Remotes)
 	go b.CheckAndReconnectRemotes()
 }
 
@@ -56,7 +63,7 @@ func (b *Bridge) InitRemotes() {
 func (b *Bridge) CheckAndReconnectRemotes() {
 	for {
 		for url, r := range b.Remotes {
-			if r.IsConnected {
+			if r.IsConnected() {
 				continue
 			}
 			remote, err := websockets.NewRemote(url)

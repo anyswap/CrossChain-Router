@@ -37,6 +37,9 @@ type SourceCurrency struct {
 }
 
 func (r *Remote) PathFindCreate(src, dest data.Account, amt data.Amount, sendMax *data.Amount, sourceCurrencies *[]SourceCurrency) (*PathFindCreateResult, error) {
+	if !r.IsConnected() {
+		return nil, ErrNotConnected
+	}
 	cmd := &PathFindCreateCommand{
 		Command:            newCommand("path_find"),
 		Subcommand:         "create",
