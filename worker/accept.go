@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync/atomic"
+	"sync"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
@@ -13,6 +13,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/anyswap/CrossChain-Router/v3/tools/fifo"
 	mapset "github.com/deckarep/golang-set"
 )
 
@@ -31,9 +32,9 @@ var (
 	retryInterval = 3 * time.Second
 	waitInterval  = 5 * time.Second
 
-	acceptInfoCh      = make(chan *mpc.SignInfoData, 10)
-	maxAcceptRoutines = int64(10)
-	curAcceptRoutines = int64(0)
+	workerCount        = 10
+	acceptInfoQueue    = fifo.NewQueue() // element is signInfo
+	acceptInfosInQueue = mapset.NewSet() // element is keyID
 
 	// those errors will be ignored in accepting
 	errIdentifierMismatch = errors.New("cross chain bridge identifier mismatch")
@@ -86,12 +87,26 @@ func startAcceptProducer() {
 				continue
 			}
 			keyID := info.Key
-			if cachedAcceptInfos.Contains(keyID) {
-				logWorkerTrace("accept", "ignore cached accept sign info before dispatch", "keyID", keyID)
+
+			if acceptInfosInQueue.Contains(keyID) {
+				logWorkerTrace("accept", "ignore accept sign info in queue", "keyID", keyID)
 				continue
 			}
-			logWorker("accept", "dispatch accept sign info", "keyID", keyID)
-			acceptInfoCh <- info // produce
+
+			if cachedAcceptInfos.Contains(keyID) {
+				logWorkerTrace("accept", "ignore accept sign info in cache", "keyID", keyID)
+				continue
+			}
+
+			_, err = filterSignInfo(info)
+			if err != nil {
+				logWorkerTrace("accept", "ignore accept sign info", "keyID", keyID, "msgContext", info.MsgContext, "err", err)
+				continue
+			}
+
+			logWorker("accept", "dispatch accept sign info", "keyID", keyID, "msgContext", info.MsgContext)
+			acceptInfoQueue.Add(info)
+			acceptInfosInQueue.Add(keyID)
 		}
 		time.Sleep(waitInterval)
 	}
@@ -102,29 +117,38 @@ func startAcceptConsumer() {
 		closeLeveldb()
 		utils.TopWaitGroup.Done()
 	}()
-	for {
-		select {
-		case <-utils.CleanupChan:
-			logWorker("accept", "stop accept sign job")
-			return
-		case info := <-acceptInfoCh: // consume
-			// loop and check, break if free worker exist
-			for {
-				if atomic.LoadInt64(&curAcceptRoutines) < maxAcceptRoutines {
-					break
-				}
-				time.Sleep(1 * time.Second)
-			}
 
-			atomic.AddInt64(&curAcceptRoutines, 1)
-			go processAcceptInfo(info)
-		}
+	wg := new(sync.WaitGroup)
+	wg.Add(workerCount)
+	for i := 0; i < workerCount; i++ {
+		go func() {
+			defer wg.Done()
+			for {
+				if utils.IsCleanuping() {
+					return
+				}
+
+				front := acceptInfoQueue.Next()
+				if front == nil {
+					time.Sleep(3 * time.Second)
+					continue
+				}
+
+				info := front.(*mpc.SignInfoData)
+
+				logWorker("accept", "process accept sign info start", "keyID", info.Key, "msgContext", info.MsgContext)
+				processAcceptInfo(info)
+				acceptInfosInQueue.Remove(info.Key)
+				logWorker("accept", "process accept sign info finish", "keyID", info.Key, "msgContext", info.MsgContext)
+			}
+		}()
 	}
+	wg.Wait()
 }
 
 func checkAndUpdateCachedAcceptInfoMap(keyID string) (ok bool) {
 	if cachedAcceptInfos.Contains(keyID) {
-		logWorker("accept", "ignore cached accept sign info in process", "keyID", keyID)
+		logWorker("accept", "ignore accept sign info in cache", "keyID", keyID)
 		return false
 	}
 	if cachedAcceptInfos.Cardinality() >= maxCachedAcceptInfos {
@@ -135,8 +159,6 @@ func checkAndUpdateCachedAcceptInfoMap(keyID string) (ok bool) {
 }
 
 func processAcceptInfo(info *mpc.SignInfoData) {
-	defer atomic.AddInt64(&curAcceptRoutines, -1)
-
 	keyID := info.Key
 	if !checkAndUpdateCachedAcceptInfoMap(keyID) {
 		return
@@ -206,6 +228,8 @@ func processAcceptInfo(info *mpc.SignInfoData) {
 		}
 		aggreeMsgContext = append(aggreeMsgContext, disgreeReason)
 		ctx = append(ctx, "disgreeReason", disgreeReason)
+	} else {
+		logWorker("accept", "AGREE sign", ctx...)
 	}
 	ctx = append(ctx, "result", agreeResult)
 
@@ -219,8 +243,7 @@ func processAcceptInfo(info *mpc.SignInfoData) {
 	}
 }
 
-func verifySignInfo(signInfo *mpc.SignInfoData) (*tokens.BuildTxArgs, error) {
-	msgHash := signInfo.MsgHash
+func filterSignInfo(signInfo *mpc.SignInfoData) (*tokens.BuildTxArgs, error) {
 	msgContext := signInfo.MsgContext
 	var args tokens.BuildTxArgs
 	err := json.Unmarshal([]byte(msgContext[0]), &args)
@@ -232,18 +255,25 @@ func verifySignInfo(signInfo *mpc.SignInfoData) (*tokens.BuildTxArgs, error) {
 	default:
 		return nil, errIdentifierMismatch
 	}
+	return &args, err
+}
+
+func verifySignInfo(signInfo *mpc.SignInfoData) (*tokens.BuildTxArgs, error) {
+	args, err := filterSignInfo(signInfo)
+	if err != nil {
+		return args, err
+	}
 	if !params.IsMPCInitiator(signInfo.Account) {
 		return nil, errInitiatorMismatch
 	}
-	logWorker("accept", "verifySignInfo", "keyID", signInfo.Key, "msgHash", msgHash, "msgContext", msgContext)
 	if lvldbHandle != nil && args.GetTxNonce() > 0 { // only for eth like chain
-		err = CheckAcceptRecord(&args)
+		err = CheckAcceptRecord(args)
 		if err != nil {
-			return &args, err
+			return args, err
 		}
 	}
-	err = rebuildAndVerifyMsgHash(signInfo.Key, msgHash, &args)
-	return &args, err
+	err = rebuildAndVerifyMsgHash(signInfo.Key, signInfo.MsgHash, args)
+	return args, err
 }
 
 func getBridges(fromChainID, toChainID string) (srcBridge, dstBridge tokens.IBridge, err error) {
