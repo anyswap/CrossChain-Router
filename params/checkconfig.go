@@ -314,9 +314,6 @@ func (c *OnchainConfig) CheckConfig() error {
 	if c.ReloadCycle > 0 && c.ReloadCycle < 600 {
 		return errors.New("onchain config wrong 'ReloadCycle' value (must be 0 or >= 600)")
 	}
-	if len(c.WSServers) == 0 {
-		log.Warn("onchain does not config web socket server, so do not support reload config.")
-	}
 	callGetAllChainIDs := common.FromHex("0xe27112d5")
 	for _, apiAddress := range c.APIAddress {
 		_, err := CallContractWithGateway(apiAddress, c.Contract, callGetAllChainIDs, "latest")
