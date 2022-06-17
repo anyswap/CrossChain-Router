@@ -76,12 +76,19 @@ func NewRemote(endpoint string) (*Remote, error) {
 // goroutines have been cleaned up.
 // Any commands that are pending a response will return with an error.
 func (r *Remote) Close() {
+	// Drain the outgoing channel and block until it is closed
+	for c := range r.outgoing {
+		c.Fail("Connection Closed")
+	}
+
 	close(r.outgoing)
 
 	// Drain the Incoming channel and block until it is closed,
 	// indicating that this Remote is fully cleaned up.
 	for range r.Incoming {
 	}
+
+	close(r.Incoming)
 }
 
 // IsConnected is connected
@@ -110,8 +117,11 @@ func (r *Remote) run() {
 		log.Warn("stop run remote", "remote", r.ws.RemoteAddr())
 		r.SetIsConnected(false)
 
+		// Drain the outbound channel and block until it is closed,
+		for range outbound {
+		}
+
 		close(outbound) // Shuts down the writePump
-		close(r.Incoming)
 
 		// Cancel all pending commands with an error
 		for _, c := range pending {
@@ -143,7 +153,6 @@ func (r *Remote) run() {
 		select {
 		case command, ok := <-r.outgoing:
 			if !ok {
-				log.Error("Outgoing is closed", "remote", r.ws.RemoteAddr())
 				return
 			}
 			outbound <- command
