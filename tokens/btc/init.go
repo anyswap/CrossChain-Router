@@ -100,15 +100,16 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 
 // GetTokenDecimals query token decimals
 func (b *Bridge) GetTokenDecimals(tokenAddr string) (uint8, error) {
-	return 8, tokens.ErrNotImplemented
+	return 8, nil
 }
 
 // GetUnderlyingAddress query underlying address
 func (b *Bridge) GetUnderlyingAddress(contractAddr string) (string, error) {
-	return "", tokens.ErrNotImplemented
+	return "", nil
 }
 
 // GetMPCAddress query mpc address
 func (b *Bridge) GetMPCAddress() (string, error) {
-	return "", tokens.ErrNotImplemented
+	return "mw3Vr9dERAsJZZXEF9Xbi4tuB6xCAp3L2r", nil
+	// return b.GetChainConfig().Extra, nil
 }

@@ -2,8 +2,10 @@ package btc
 
 import (
 	"errors"
+	"regexp"
 	"strings"
 
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
@@ -11,7 +13,9 @@ import (
 
 var (
 	errTxResultType = errors.New("tx type is not TransactionResult")
+	regexMemo       = regexp.MustCompile(`^OP_RETURN OP_PUSHBYTES_\d* `)
 	p2pkhType       = "p2pkh"
+	opReturnType    = "op_return"
 )
 
 // VerifyMsgHash verify msg hash
@@ -50,14 +54,28 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 		return swapInfo, tokens.ErrLogIndexOutOfRange
 	}
 
-	events, errv := b.fliterReceipts(receipts[logIndex])
-	if errv != nil {
-		return swapInfo, tokens.ErrSwapoutLogNotFound
+	mpcAddress, err := b.GetMPCAddress()
+	if err != nil {
+		return swapInfo, err
+	}
+	value, memoScript, rightReceiver := b.GetReceivedValue(receipts, mpcAddress, p2pkhType)
+
+	if !rightReceiver {
+		return swapInfo, tokens.ErrTxWithWrongReceiver
 	}
 
-	parseErr := b.parseSwapoutTx(swapInfo, events)
-	if parseErr != nil {
-		return swapInfo, parseErr
+	bindAddress, toChainId, bindOk := GetBindAddressFromMemoScipt(memoScript)
+	if !bindOk {
+		log.Debug("wrong memo", "memo", memoScript)
+		return swapInfo, tokens.ErrTxWithWrongMemo
+	}
+
+	swapInfo.Value = common.BigFromUint64(value)
+	swapInfo.Bind = bindAddress
+	swapInfo.From = mpcAddress
+	swapInfo.ToChainID, err = common.GetBigIntFromStr(toChainId)
+	if err != nil {
+		return swapInfo, err
 	}
 
 	checkErr := b.checkSwapoutInfo(swapInfo)
@@ -79,6 +97,8 @@ func (b *Bridge) checkTxStatus(tx *ElectTx, swapInfo *tokens.SwapTxInfo, allowUn
 	txStatus := tx.Status
 	if txStatus.BlockHeight != nil {
 		swapInfo.Height = *txStatus.BlockHeight // Height
+	} else if !*txStatus.Confirmed {
+		return tokens.ErrTxNotStable
 	} else if *tx.Locktime != 0 {
 		// tx with locktime should be on chain, prvent DDOS attack
 		return tokens.ErrTxNotStable
@@ -87,10 +107,6 @@ func (b *Bridge) checkTxStatus(tx *ElectTx, swapInfo *tokens.SwapTxInfo, allowUn
 		swapInfo.Timestamp = *txStatus.BlockTime // Timestamp
 	}
 	return nil
-}
-
-func (b *Bridge) parseSwapoutTx(swapInfo *tokens.SwapTxInfo, event []string) error {
-	return tokens.ErrNotImplemented
 }
 
 func (b *Bridge) checkSwapoutInfo(swapInfo *tokens.SwapTxInfo) error {
@@ -152,7 +168,39 @@ func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable boo
 	return txres.Vout, nil
 }
 
-func (b *Bridge) fliterReceipts(receipt *ElectTxOut) ([]string, error) {
-	var events []string
-	return events, nil
+func (b *Bridge) GetReceivedValue(vout []*ElectTxOut, receiver, pubkeyType string) (value uint64, memoScript string, rightReceiver bool) {
+	for _, output := range vout {
+		switch *output.ScriptpubkeyType {
+		case opReturnType:
+			if memoScript == "" {
+				memoScript = *output.ScriptpubkeyAsm
+			}
+			continue
+		case pubkeyType:
+			if output.ScriptpubkeyAddress == nil || *output.ScriptpubkeyAddress != receiver {
+				continue
+			}
+			rightReceiver = true
+			value += *output.Value
+		}
+	}
+	return value, memoScript, rightReceiver
+}
+
+// GetBindAddressFromMemoScipt get bind address
+func GetBindAddressFromMemoScipt(memoScript string) (bind string, toChainID string, ok bool) {
+	parts := regexMemo.Split(memoScript, -1)
+	if len(parts) != 2 {
+		return "", "", false
+	}
+	memoHex := strings.TrimSpace(parts[1])
+	memo := common.FromHex(memoHex)
+	memoStr := string(memo)
+	memoArray := strings.Split(memoStr, ":")
+	if len(memoArray) != 2 {
+		return "", "", false
+	}
+	bind = memoArray[0]
+	toChainID = memoArray[1]
+	return bind, toChainID, true
 }
