@@ -81,7 +81,7 @@ func (b *Bridge) GetLatestBlockNumber() (result uint64, err error) {
 
 // GetLatestBlockNumberOf gets latest block number from single api
 func (b *Bridge) GetLatestBlockNumberOf(apiAddress string) (uint64, error) {
-	return 0, tokens.ErrNotImplemented
+	return GetLatestBlockNumber(apiAddress)
 }
 
 // GetTransaction impl
@@ -101,9 +101,45 @@ func (b *Bridge) GetTransactionByHash(txHash string) (result *ElectTx, err error
 	return nil, tokens.ErrTxNotFound
 }
 
+// GetElectTransactionStatus impl
+func (b *Bridge) GetElectTransactionStatus(txHash string) (result *ElectTxStatus, err error) {
+	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	for _, url := range urls {
+		result, err = GetElectTransactionStatus(url, txHash)
+		if err == nil {
+			return result, nil
+		}
+	}
+	return nil, tokens.ErrTxNotFound
+}
+
 // GetTransactionStatus impl
 func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, err error) {
-	return status, tokens.ErrNotImplemented
+	txStatus := &tokens.TxStatus{}
+	electStatus, err := b.GetElectTransactionStatus(txHash)
+	if err != nil {
+		log.Trace(b.ChainConfig.BlockChain+" Bridge::GetElectTransactionStatus fail", "tx", txHash, "err", err)
+		return txStatus, err
+	}
+	if !*electStatus.Confirmed {
+		return txStatus, tokens.ErrTxNotStable
+	}
+	if electStatus.BlockHash != nil {
+		txStatus.BlockHash = *electStatus.BlockHash
+	}
+	if electStatus.BlockTime != nil {
+		txStatus.BlockTime = *electStatus.BlockTime
+	}
+	if electStatus.BlockHeight != nil {
+		txStatus.BlockHeight = *electStatus.BlockHeight
+		latest, errt := b.GetLatestBlockNumber()
+		if errt == nil {
+			if latest > txStatus.BlockHeight {
+				txStatus.Confirmations = latest - txStatus.BlockHeight
+			}
+		}
+	}
+	return txStatus, nil
 }
 
 func (b *Bridge) getTransactionByHashWithRetry(txid string) (tx *ElectTx, err error) {

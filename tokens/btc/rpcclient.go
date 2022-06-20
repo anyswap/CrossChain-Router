@@ -48,6 +48,16 @@ func FindUtxos(url string, addr string) (result []*ElectUtxo, err error) {
 	return nil, err
 }
 
+// GetElectTransactionStatus call /tx/{txHash}/status
+func GetElectTransactionStatus(url, txHash string) (result *ElectTxStatus, err error) {
+	restApi := url + "/tx/" + txHash + "/status"
+	err = client.RPCGet(&result, restApi)
+	if err == nil {
+		return result, nil
+	}
+	return nil, err
+}
+
 func GetLatestBlockNumber(url string) (result uint64, err error) {
 	restApi := url + "/blocks/tip/height"
 	err = client.RPCGet(&result, restApi)

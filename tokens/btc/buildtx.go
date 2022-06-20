@@ -272,31 +272,3 @@ func (b *Bridge) GetTxBlockInfo(txHash string) (blockHeight, blockTime uint64) {
 func (b *Bridge) GetPoolNonce(address, _height string) (uint64, error) {
 	return 0, tokens.ErrNotImplemented
 }
-
-// GetSeq returns account tx sequence
-func (b *Bridge) GetSeq(args *tokens.BuildTxArgs) (nonceptr *uint64, err error) {
-	var nonce uint64
-
-	if params.IsParallelSwapEnabled() {
-		nonce, err = b.AllocateNonce(args)
-		return &nonce, err
-	}
-
-	if params.IsAutoSwapNonceEnabled(b.ChainConfig.ChainID) { // increase automatically
-		nonce = b.GetSwapNonce(args.From)
-		return &nonce, nil
-	}
-
-	for i := 0; i < retryRPCCount; i++ {
-		nonce, err = b.GetPoolNonce(args.From, "pending")
-		if err == nil {
-			break
-		}
-		time.Sleep(retryRPCInterval)
-	}
-	if err != nil {
-		return nil, err
-	}
-	nonce = b.AdjustNonce(args.From, nonce)
-	return &nonce, nil
-}

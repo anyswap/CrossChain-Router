@@ -1,6 +1,7 @@
 package btc
 
 import (
+	"encoding/hex"
 	"errors"
 	"regexp"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/btcsuite/btcwallet/wallet/txauthor"
 )
 
 var (
@@ -21,7 +23,28 @@ var (
 
 // VerifyMsgHash verify msg hash
 func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) (err error) {
-	return tokens.ErrNotImplemented
+	authoredTx, ok := rawTx.(*txauthor.AuthoredTx)
+	if !ok {
+		return tokens.ErrWrongRawTx
+	}
+	for i, preScript := range authoredTx.PrevScripts {
+		sigScript := preScript
+		if b.IsPayToScriptHash(sigScript) {
+			sigScript, err = b.getRedeemScriptByOutputScrpit(preScript)
+			if err != nil {
+				return err
+			}
+		}
+		sigHash, err := b.CalcSignatureHash(sigScript, authoredTx.Tx, i)
+		if err != nil {
+			return err
+		}
+		if hex.EncodeToString(sigHash) != msgHashes[i] {
+			log.Trace("message hash mismatch", "index", i, "want", msgHashes[i], "have", hex.EncodeToString(sigHash))
+			return tokens.ErrMsgHashMismatch
+		}
+	}
+	return nil
 }
 
 // VerifyTransaction impl
