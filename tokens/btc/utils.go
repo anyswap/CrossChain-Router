@@ -7,7 +7,6 @@ import (
 	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
-	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tools/crypto"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
@@ -98,16 +97,16 @@ func (b *Bridge) IsPayToScriptHash(sigScript []byte) bool {
 }
 
 func (b *Bridge) getRedeemScriptByOutputScrpit(preScript []byte) ([]byte, error) {
-	// pkScript, err := b.ParsePkScript(preScript)
-	// if err != nil {
-	// return nil, err
-	// }
-	// p2shAddress, err := pkScript.Address(b.Inherit.GetChainParams())
-	// if err != nil {
-	// return nil, err
-	// }
-	// p2shAddr := p2shAddress.String()
-	p2shAddr := ""
+	pkScript, err := b.ParsePkScript(preScript)
+	if err != nil {
+		return nil, err
+	}
+	chainParams := b.GetChainParams(b.ChainConfig.GetChainID())
+	p2shAddress, err := pkScript.Address(chainParams)
+	if err != nil {
+		return nil, err
+	}
+	p2shAddr := p2shAddress.String()
 	bindAddr := GetP2shBindAddress(p2shAddr)
 	if bindAddr == "" {
 		return nil, fmt.Errorf("p2sh address %v is not registered", p2shAddr)
@@ -171,8 +170,8 @@ func (b *Bridge) GetP2shRedeemScript(memo, pubKeyHash []byte) (redeemScript []by
 
 // NewAddressScriptHash encap
 func (b *Bridge) NewAddressScriptHash(redeemScript []byte) (*btcutil.AddressScriptHash, error) {
-	// return btcutil.NewAddressScriptHash(redeemScript, b.Inherit.GetChainParams())
-	return nil, tokens.ErrNotImplemented
+	chainParams := b.GetChainParams(b.ChainConfig.GetChainID())
+	return btcutil.NewAddressScriptHash(redeemScript, chainParams)
 }
 
 // CalcSignatureHash calc sig hash
@@ -304,8 +303,8 @@ func (b *Bridge) verifyPublickeyData(pkData []byte) error {
 
 // NewAddressPubKeyHash encap
 func (b *Bridge) NewAddressPubKeyHash(pkData []byte) (*btcutil.AddressPubKeyHash, error) {
-	// return btcutil.NewAddressPubKeyHash(btcutil.Hash160(pkData), b.Inherit.GetChainParams())
-	return nil, tokens.ErrNotImplemented
+	chainParams := b.GetChainParams(b.ChainConfig.GetChainID())
+	return btcutil.NewAddressPubKeyHash(btcutil.Hash160(pkData), chainParams)
 }
 
 // the rsv must have correct v (recovery id), otherwise will get wrong public key data.

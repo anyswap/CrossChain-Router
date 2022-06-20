@@ -11,6 +11,7 @@ require (
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
 	github.com/btcsuite/btcwallet/wallet/txauthor v1.0.0 // indirect
 	github.com/btcsuite/btcwallet/wallet/txsizes v1.0.0 // indirect
+	github.com/cosmos/btcutil v1.0.4
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/deckarep/golang-set v1.7.1
 	github.com/didip/tollbooth/v6 v6.1.1

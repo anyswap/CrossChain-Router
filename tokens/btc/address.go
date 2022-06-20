@@ -1,6 +1,7 @@
 package btc
 
 import (
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
@@ -11,12 +12,16 @@ func (b *Bridge) IsValidAddress(address string) bool {
 
 // PublicKeyToAddress impl
 func (b *Bridge) PublicKeyToAddress(pubKey string) (string, error) {
-	return "", tokens.ErrNotImplemented
-}
-
-// todo： read from config
-func (b *Bridge) GetAccountNonce(address, pubKey string) (uint64, error) {
-	return 0, tokens.ErrNotImplemented
+	pkData := common.FromHex(pubKey)
+	cPkData, err := b.ToCompressedPublicKey(pkData)
+	if err != nil {
+		return "", err
+	}
+	address, err := b.NewAddressPubKeyHash(cPkData)
+	if err != nil {
+		return "", err
+	}
+	return address.EncodeAddress(), nil
 }
 
 // todo： read from config
