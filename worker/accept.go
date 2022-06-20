@@ -98,7 +98,7 @@ func startAcceptProducer(mpcConfig *mpc.Config) {
 		}
 		i++
 		if i%7 == 0 {
-			logWorker("accept", "getCurNodeSignInfo", "count", len(signInfo))
+			logWorker("accept", "getCurNodeSignInfo", "count", len(signInfo), "queuelen", acceptInfoQueue.Len())
 		}
 		for _, info := range signInfo {
 			if utils.IsCleanuping() {
@@ -161,10 +161,14 @@ func startAcceptConsumer(mpcConfig *mpc.Config) {
 
 				info := front.(*mpc.SignInfoData)
 
-				logWorker("accept", "process accept sign info start", "keyID", info.Key, "msgContext", info.MsgContext)
-				processAcceptInfo(mpcConfig, info)
+				logWorker("accept", "process accept sign info start", "keyID", info.Key)
+				err := processAcceptInfo(mpcConfig, info)
 				acceptInfosInQueue.Remove(info.Key)
-				logWorker("accept", "process accept sign info finish", "keyID", info.Key, "msgContext", info.MsgContext)
+				if err == nil {
+					logWorker("accept", "process accept sign info finish", "keyID", info.Key)
+				} else {
+					logWorkerError("accept", "process accept sign info finish", err, "keyID", info.Key)
+				}
 			}
 		}()
 	}
@@ -183,10 +187,10 @@ func checkAndUpdateCachedAcceptInfoMap(keyID string) (ok bool) {
 	return true
 }
 
-func processAcceptInfo(mpcConfig *mpc.Config, info *mpc.SignInfoData) {
+func processAcceptInfo(mpcConfig *mpc.Config, info *mpc.SignInfoData) error {
 	keyID := info.Key
 	if !checkAndUpdateCachedAcceptInfoMap(keyID) {
-		return
+		return nil
 	}
 	isProcessed := false
 	defer func() {
@@ -221,7 +225,7 @@ func processAcceptInfo(mpcConfig *mpc.Config, info *mpc.SignInfoData) {
 		ctx = append(ctx, "err", err)
 		logWorkerTrace("accept", "discard sign", ctx...)
 		isProcessed = true
-		return
+		return err
 	case // these are situations we can not judge, ignore them or disagree immediately
 		errors.Is(err, tokens.ErrTxNotStable),
 		errors.Is(err, tokens.ErrTxNotFound),
@@ -229,7 +233,7 @@ func processAcceptInfo(mpcConfig *mpc.Config, info *mpc.SignInfoData) {
 		if isPendingInvalidAccept {
 			ctx = append(ctx, "err", err)
 			logWorkerTrace("accept", "ignore sign", ctx...)
-			return
+			return err
 		}
 	case // these we are sure are config problem, discard them or disagree immediately
 		errors.Is(err, errInitiatorMismatch),
@@ -239,7 +243,7 @@ func processAcceptInfo(mpcConfig *mpc.Config, info *mpc.SignInfoData) {
 			ctx = append(ctx, "err", err)
 			logWorker("accept", "discard sign", ctx...)
 			isProcessed = true
-			return
+			return err
 		}
 	}
 
@@ -255,19 +259,19 @@ func processAcceptInfo(mpcConfig *mpc.Config, info *mpc.SignInfoData) {
 		}
 		aggreeMsgContext = append(aggreeMsgContext, disgreeReason)
 		ctx = append(ctx, "disgreeReason", disgreeReason)
-	} else {
-		logWorker("accept", "AGREE sign", ctx...)
 	}
 	ctx = append(ctx, "result", agreeResult)
 
+	logWorker("accept", "accept sign start", "keyID", keyID, "result", agreeResult)
 	res, err := mpcConfig.DoAcceptSign(keyID, agreeResult, info.MsgHash, aggreeMsgContext)
 	if err != nil {
 		ctx = append(ctx, "rpcResult", res)
-		logWorkerError("accept", "accept sign job failed", err, ctx...)
+		logWorkerError("accept", "accept sign failed", err, ctx...)
 	} else {
-		logWorker("accept", "accept sign job finish", ctx...)
+		logWorker("accept", "accept sign finish", ctx...)
 		isProcessed = true
 	}
+	return err
 }
 
 func filterSignInfo(signInfo *mpc.SignInfoData) (*tokens.BuildTxArgs, error) {
