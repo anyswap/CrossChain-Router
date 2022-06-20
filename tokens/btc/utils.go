@@ -10,10 +10,10 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tools/crypto"
 	"github.com/btcsuite/btcd/btcec"
-	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
 )
 
 // GetPayToAddrScript get pay to address script
@@ -27,15 +27,15 @@ func (b *Bridge) GetPayToAddrScript(address string) ([]byte, error) {
 
 // DecodeAddress decode address
 func (b *Bridge) DecodeAddress(addr string) (address btcutil.Address, err error) {
-	// chainConfig := b.Inherit.GetChainParams()
-	// address, err = btcutil.DecodeAddress(addr, chainConfig)
-	// if err != nil {
-	// 	return
-	// }
-	// if !address.IsForNet(chainConfig) {
-	// 	err = fmt.Errorf("invalid address for net")
-	// 	return
-	// }
+	chainConfig := b.GetChainParams(b.ChainConfig.GetChainID())
+	address, err = btcutil.DecodeAddress(addr, chainConfig)
+	if err != nil {
+		return
+	}
+	if !address.IsForNet(chainConfig) {
+		err = fmt.Errorf("invalid address for net")
+		return
+	}
 	return
 }
 
@@ -49,8 +49,18 @@ func (b *Bridge) NewTxOut(amount int64, pkScript []byte) *wire.TxOut {
 	return wire.NewTxOut(amount, pkScript)
 }
 
-func (b *Bridge) FindUtxos(addr string) ([]*ElectUtxo, error) {
-	return b.FindUtxos(addr)
+func (b *Bridge) FindUtxos(addr string) (result []*ElectUtxo, err error) {
+	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	for _, url := range urls {
+		result, err = FindUtxos(url, addr)
+		if err == nil {
+			break
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 // EstimateFeePerKb impl
@@ -276,6 +286,9 @@ func (b *Bridge) ToCompressedPublicKey(pkData []byte) ([]byte, error) {
 
 func (b *Bridge) verifyPublickeyData(pkData []byte) error {
 	dcrmAddress, err := b.GetMPCAddress()
+	if err != nil {
+		return err
+	}
 	if dcrmAddress == "" {
 		return nil
 	}
@@ -312,4 +325,9 @@ func (b *Bridge) SerializePublicKey(ecPub *ecdsa.PublicKey, compressed bool) []b
 		return (*btcec.PublicKey)(ecPub).SerializeCompressed()
 	}
 	return (*btcec.PublicKey)(ecPub).SerializeUncompressed()
+}
+
+// DecodeWIF decode wif
+func DecodeWIF(wif string) (*btcutil.WIF, error) {
+	return btcutil.DecodeWIF(wif)
 }

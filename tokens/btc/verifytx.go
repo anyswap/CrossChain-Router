@@ -7,7 +7,6 @@ import (
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
-	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
@@ -59,12 +58,13 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 		return swapInfo, err
 	}
 	value, memoScript, rightReceiver := b.GetReceivedValue(receipts, mpcAddress, p2pkhType)
-
+	log.Warn("GetReceivedValue", "value", value, "memoScript", memoScript, "rightReceiver", rightReceiver)
 	if !rightReceiver {
 		return swapInfo, tokens.ErrTxWithWrongReceiver
 	}
 
 	bindAddress, toChainId, bindOk := GetBindAddressFromMemoScipt(memoScript)
+	log.Warn("GetBindAddressFromMemoScipt", "bindAddress", bindAddress, "toChainId", toChainId, "bindOk", bindOk)
 	if !bindOk {
 		log.Debug("wrong memo", "memo", memoScript)
 		return swapInfo, tokens.ErrTxWithWrongMemo
@@ -97,12 +97,16 @@ func (b *Bridge) checkTxStatus(tx *ElectTx, swapInfo *tokens.SwapTxInfo, allowUn
 	txStatus := tx.Status
 	if txStatus.BlockHeight != nil {
 		swapInfo.Height = *txStatus.BlockHeight // Height
-	} else if !*txStatus.Confirmed {
-		return tokens.ErrTxNotStable
 	} else if *tx.Locktime != 0 {
 		// tx with locktime should be on chain, prvent DDOS attack
 		return tokens.ErrTxNotStable
 	}
+	// } else if !*txStatus.Confirmed {
+	// 	return tokens.ErrTxNotStable
+	// } else if *tx.Locktime != 0 {
+	// 	// tx with locktime should be on chain, prvent DDOS attack
+	// 	return tokens.ErrTxNotStable
+	// }
 	if txStatus.BlockTime != nil {
 		swapInfo.Timestamp = *txStatus.BlockTime // Timestamp
 	}
@@ -114,39 +118,39 @@ func (b *Bridge) checkSwapoutInfo(swapInfo *tokens.SwapTxInfo) error {
 		return tokens.ErrTxWithWrongSender
 	}
 
-	erc20SwapInfo := swapInfo.ERC20SwapInfo
+	// erc20SwapInfo := swapInfo.ERC20SwapInfo
 
-	fromTokenCfg := b.GetTokenConfig(erc20SwapInfo.Token)
-	if fromTokenCfg == nil || erc20SwapInfo.TokenID == "" {
-		return tokens.ErrMissTokenConfig
-	}
+	// fromTokenCfg := b.GetTokenConfig(erc20SwapInfo.Token)
+	// if fromTokenCfg == nil || erc20SwapInfo.TokenID == "" {
+	// 	return tokens.ErrMissTokenConfig
+	// }
 
-	multichainToken := router.GetCachedMultichainToken(erc20SwapInfo.TokenID, swapInfo.ToChainID.String())
-	if multichainToken == "" {
-		log.Warn("get multichain token failed", "tokenID", erc20SwapInfo.TokenID, "chainID", swapInfo.ToChainID, "txid", swapInfo.Hash)
-		return tokens.ErrMissTokenConfig
-	}
+	// multichainToken := router.GetCachedMultichainToken(erc20SwapInfo.TokenID, swapInfo.ToChainID.String())
+	// if multichainToken == "" {
+	// 	log.Warn("get multichain token failed", "tokenID", erc20SwapInfo.TokenID, "chainID", swapInfo.ToChainID, "txid", swapInfo.Hash)
+	// 	return tokens.ErrMissTokenConfig
+	// }
 
-	toBridge := router.GetBridgeByChainID(swapInfo.ToChainID.String())
-	if toBridge == nil {
-		return tokens.ErrNoBridgeForChainID
-	}
+	// toBridge := router.GetBridgeByChainID(swapInfo.ToChainID.String())
+	// if toBridge == nil {
+	// 	return tokens.ErrNoBridgeForChainID
+	// }
 
-	toTokenCfg := toBridge.GetTokenConfig(multichainToken)
-	if toTokenCfg == nil {
-		log.Warn("get token config failed", "chainID", swapInfo.ToChainID, "token", multichainToken)
-		return tokens.ErrMissTokenConfig
-	}
+	// toTokenCfg := toBridge.GetTokenConfig(multichainToken)
+	// if toTokenCfg == nil {
+	// 	log.Warn("get token config failed", "chainID", swapInfo.ToChainID, "token", multichainToken)
+	// 	return tokens.ErrMissTokenConfig
+	// }
 
-	if !tokens.CheckTokenSwapValue(swapInfo, fromTokenCfg.Decimals, toTokenCfg.Decimals) {
-		return tokens.ErrTxWithWrongValue
-	}
+	// if !tokens.CheckTokenSwapValue(swapInfo, fromTokenCfg.Decimals, toTokenCfg.Decimals) {
+	// 	return tokens.ErrTxWithWrongValue
+	// }
 
-	bindAddr := swapInfo.Bind
-	if !toBridge.IsValidAddress(bindAddr) {
-		log.Warn("wrong bind address in swapin", "bind", bindAddr)
-		return tokens.ErrWrongBindAddress
-	}
+	// bindAddr := swapInfo.Bind
+	// if !toBridge.IsValidAddress(bindAddr) {
+	// 	log.Warn("wrong bind address in swapin", "bind", bindAddr)
+	// 	return tokens.ErrWrongBindAddress
+	// }
 	return nil
 }
 

@@ -1,6 +1,8 @@
 package btc
 
 import (
+	"sort"
+
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 )
 
@@ -34,4 +36,14 @@ func EstimateFeePerKb(url string, blocks int) (fee int64, err error) {
 		return 0, err
 	}
 	return int64(result[blocks] * 1000), nil
+}
+
+func FindUtxos(url string, addr string) (result []*ElectUtxo, err error) {
+	restApi := url + "/address/" + addr + "/utxo"
+	err = client.RPCGet(&result, restApi)
+	if err == nil {
+		sort.Sort(SortableElectUtxoSlice(result))
+		return result, nil
+	}
+	return nil, err
 }

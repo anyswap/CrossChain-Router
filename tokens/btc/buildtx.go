@@ -227,6 +227,7 @@ func (b *Bridge) addPayToAddrOutput(txOuts *[]*wireTxOutType, to string, amount 
 		return nil
 	}
 	pkscript, err := b.GetPayToAddrScript(to)
+	log.Warn("GetPayToAddrScript", "pkscript", pkscript, "to", to, "amount", amount, "err", err)
 	if err != nil {
 		return err
 	}

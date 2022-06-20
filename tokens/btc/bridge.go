@@ -8,6 +8,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/base"
+	"github.com/btcsuite/btcd/chaincfg"
 )
 
 var (
@@ -107,4 +108,15 @@ func (b *Bridge) getTransactionByHashWithRetry(txid string) (tx *ElectTx, err er
 		time.Sleep(retryInterval)
 	}
 	return tx, err
+}
+
+// GetChainParams get chain config (net params)
+func (b *Bridge) GetChainParams(chainID *big.Int) *chaincfg.Params {
+	chainId := chainID.String()
+	switch chainId {
+	case (*GetStubChainID(mainnetNetWork)).String():
+		return &chaincfg.MainNetParams
+	default:
+		return &chaincfg.TestNet3Params
+	}
 }

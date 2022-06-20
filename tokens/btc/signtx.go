@@ -14,7 +14,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
-	"github.com/anyswap/CrossChain-Router/v3/tools/crypto"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcwallet/wallet/txauthor"
 )
@@ -39,61 +38,6 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 	}
 
 	return b.DcrmSignTransaction(rawTx, args)
-	// jsondata, _ := json.Marshal(args.GetExtraArgs())
-	// msgContext := string(jsondata)
-	// msgHash, msg, err := data.SigningHash(tx)
-	// if err != nil {
-	// 	return nil, "", fmt.Errorf("get transaction signing hash failed: %w", err)
-	// }
-	// msg = append(tx.SigningPrefix().Bytes(), msg...)
-
-	// pubkeyStr := router.GetMPCPublicKey(args.From)
-	// pubkey := common.FromHex(pubkeyStr)
-	// isEd := isEd25519Pubkey(pubkey)
-
-	// var keyID string
-	// var rsvs []string
-
-	// mpcConfig := mpc.GetMPCConfig(b.UseFastMPC)
-	// if isEd {
-	// 	// mpc ed public key has no 0xed prefix
-	// 	signPubKey := pubkeyStr[2:]
-	// 	// the real sign content is (signing prefix + msg)
-	// 	// when we hex encoding here, the mpc should do hex decoding there.
-	// 	signContent := common.ToHex(msg)
-	// 	keyID, rsvs, err = mpcConfig.DoSignOneED(signPubKey, signContent, msgContext)
-	// } else {
-	// 	signPubKey := pubkeyStr
-	// 	signContent := msgHash.String()
-	// 	keyID, rsvs, err = mpcConfig.DoSignOneEC(signPubKey, signContent, msgContext)
-	// }
-
-	// if err != nil {
-	// 	return nil, "", err
-	// }
-	// log.Info(b.ChainConfig.BlockChain+" MPCSignTransaction finished", "keyID", keyID, "txid", args.SwapID)
-
-	// if len(rsvs) != 1 {
-	// 	return nil, "", fmt.Errorf("get sign status require one rsv but have %v (keyID = %v)", len(rsvs), keyID)
-	// }
-
-	// rsv := rsvs[0]
-	// log.Trace(b.ChainConfig.BlockChain+" MPCSignTransaction get rsv success", "keyID", keyID, "rsv", rsv)
-
-	// sig := rsvToSig(rsv, isEd)
-	// valid, err := rcrypto.Verify(pubkey, msgHash.Bytes(), msg, sig)
-	// if !valid || err != nil {
-	// 	return nil, "", fmt.Errorf("verify signature error (valid: %v): %v", valid, err)
-	// }
-
-	// signedTx, err := MakeSignedTransaction(pubkey, rsv, rawTx)
-	// if err != nil {
-	// 	return signedTx, "", err
-	// }
-
-	// txhash := signedTx.GetHash().String()
-
-	// return signedTx, txhash, nil
 }
 
 func (b *Bridge) verifyTransactionWithArgs(tx *txauthor.AuthoredTx, args *tokens.BuildTxArgs) error {
@@ -171,12 +115,12 @@ func (b *Bridge) DcrmSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs
 }
 
 // SignTransactionWithPrivateKey sign tx with ECDSA private key string
-func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, privKey string) (signedTx interface{}, txHash string, err error) {
-	ecPrikey, err := crypto.HexToECDSA(privKey)
+func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, wifPrivKey string) (signedTx interface{}, txHash string, err error) {
+	pkWif, err := DecodeWIF(wifPrivKey)
 	if err != nil {
 		return nil, "", err
 	}
-	return b.signTransaction(rawTx, ecPrikey)
+	return b.signTransaction(rawTx, pkWif.PrivKey.ToECDSA())
 }
 
 func (b *Bridge) signTransaction(tx interface{}, privKey *ecdsa.PrivateKey) (signedTx interface{}, txHash string, err error) {
@@ -314,7 +258,6 @@ func (b *Bridge) DcrmSignMsgHash(msgHash []string, args *tokens.BuildTxArgs) (rs
 	log.Trace(b.ChainConfig.BlockChain+" DcrmSignTransaction get rsv success", "keyID", keyID, "txid", args.SwapID, "rsv", rsv)
 	return rsv, nil
 }
-
 
 func (b *Bridge) adjustRsvOrders(rsvs, msgHashes []string, fromPublicKey string) (newRsvs []string, err error) {
 	if len(rsvs) <= 1 {
