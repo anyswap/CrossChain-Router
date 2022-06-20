@@ -22,15 +22,12 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 
 	chainID := b.ChainConfig.ChainID
 	log.Info(fmt.Sprintf("[%5v] start init router info", chainID), "routerContract", routerContract)
-	routerMPC, err := b.GetMPCAddress()
-	if err != nil {
-		log.Warn("get router mpc address failed", "routerContract", routerContract, "err", err)
-		return err
+	routerMPC := routerContract // in btc routerMPC is routerContract
+	if !b.IsValidAddress(routerMPC) {
+		log.Warn("wrong router mpc address (in ripple routerMPC is routerContract)", "routerMPC", routerMPC)
+		return fmt.Errorf("wrong router mpc address: %v", routerMPC)
 	}
-	if routerMPC == "" {
-		log.Warn("get router mpc address return an empty address", "routerContract", routerContract)
-		return fmt.Errorf("empty router mpc address")
-	}
+
 	log.Info("get router mpc address success", "routerContract", routerContract, "routerMPC", routerMPC)
 	routerMPCPubkey, err := router.GetMPCPubkey(routerMPC)
 	if err != nil {
@@ -106,10 +103,4 @@ func (b *Bridge) GetTokenDecimals(tokenAddr string) (uint8, error) {
 // GetUnderlyingAddress query underlying address
 func (b *Bridge) GetUnderlyingAddress(contractAddr string) (string, error) {
 	return "", nil
-}
-
-// GetMPCAddress query mpc address
-func (b *Bridge) GetMPCAddress() (string, error) {
-	return "mw3Vr9dERAsJZZXEF9Xbi4tuB6xCAp3L2r", nil
-	// return b.GetChainConfig().Extra, nil
 }

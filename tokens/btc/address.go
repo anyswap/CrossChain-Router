@@ -2,7 +2,6 @@ package btc
 
 import (
 	"github.com/anyswap/CrossChain-Router/v3/common"
-	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
 // IsValidAddress check address
@@ -26,5 +25,9 @@ func (b *Bridge) PublicKeyToAddress(pubKey string) (string, error) {
 
 // todo： read from config
 func (b *Bridge) VerifyPubKey(address, pubKey string) error {
-	return tokens.ErrNotImplemented
+	wantAddr, err := b.PublicKeyToAddress(pubKey)
+	if err != nil || wantAddr != address {
+		return err
+	}
+	return nil
 }

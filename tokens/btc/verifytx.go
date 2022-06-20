@@ -16,6 +16,7 @@ var (
 	regexMemo       = regexp.MustCompile(`^OP_RETURN OP_PUSHBYTES_\d* `)
 	p2pkhType       = "p2pkh"
 	opReturnType    = "op_return"
+	tokenSymbol     = "btc"
 )
 
 // VerifyMsgHash verify msg hash
@@ -44,6 +45,13 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 	swapInfo.Hash = txHash                            // Hash
 	swapInfo.LogIndex = logIndex                      // LogIndex
 	swapInfo.FromChainID = b.ChainConfig.GetChainID() // FromChainID
+	swapInfo.ERC20SwapInfo.Token = tokenSymbol
+
+	tokenCfg := b.GetTokenConfig(swapInfo.ERC20SwapInfo.Token)
+	if tokenCfg == nil || tokenCfg.TokenID == "" {
+		return swapInfo, tokens.ErrMissTokenConfig
+	}
+	swapInfo.ERC20SwapInfo.TokenID = tokenCfg.TokenID
 
 	receipts, err := b.getSwapTxReceipt(swapInfo, true)
 	if err != nil {
@@ -54,10 +62,8 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 		return swapInfo, tokens.ErrLogIndexOutOfRange
 	}
 
-	mpcAddress, err := b.GetMPCAddress()
-	if err != nil {
-		return swapInfo, err
-	}
+	mpcAddress := b.GetChainConfig().RouterContract // in btc routerMPC is routerContract
+
 	value, memoScript, rightReceiver := b.GetReceivedValue(receipts, mpcAddress, p2pkhType)
 	log.Warn("GetReceivedValue", "value", value, "memoScript", memoScript, "rightReceiver", rightReceiver)
 	if !rightReceiver {
@@ -96,10 +102,16 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 
 func (b *Bridge) checkTxStatus(tx *ElectTx, swapInfo *tokens.SwapTxInfo, allowUnstable bool) error {
 	txStatus := tx.Status
+	// if txStatus.BlockHeight != nil {
+	// 	swapInfo.Height = *txStatus.BlockHeight // Height
+	// } else if !*txStatus.Confirmed {
+	// 	return tokens.ErrTxNotStable
+	// } else if *tx.Locktime != 0 {
+	// 	// tx with locktime should be on chain, prvent DDOS attack
+	// 	return tokens.ErrTxNotStable
+	// }
 	if txStatus.BlockHeight != nil {
 		swapInfo.Height = *txStatus.BlockHeight // Height
-	} else if !*txStatus.Confirmed {
-		return tokens.ErrTxNotStable
 	} else if *tx.Locktime != 0 {
 		// tx with locktime should be on chain, prvent DDOS attack
 		return tokens.ErrTxNotStable
@@ -118,6 +130,7 @@ func (b *Bridge) checkSwapoutInfo(swapInfo *tokens.SwapTxInfo) error {
 	erc20SwapInfo := swapInfo.ERC20SwapInfo
 
 	fromTokenCfg := b.GetTokenConfig(erc20SwapInfo.Token)
+	log.Warn("GetTokenConfig", "token", erc20SwapInfo.Token, "fromTokenCfg", fromTokenCfg)
 	if fromTokenCfg == nil || erc20SwapInfo.TokenID == "" {
 		return tokens.ErrMissTokenConfig
 	}

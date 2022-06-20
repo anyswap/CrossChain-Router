@@ -68,8 +68,15 @@ func (b *Bridge) VerifyTokenConfig(tokenCfg *tokens.TokenConfig) error {
 }
 
 // GetLatestBlockNumber gets latest block number
-func (b *Bridge) GetLatestBlockNumber() (uint64, error) {
-	return 0, tokens.ErrNotImplemented
+func (b *Bridge) GetLatestBlockNumber() (result uint64, err error) {
+	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	for _, url := range urls {
+		result, err = GetLatestBlockNumber(url)
+		if err == nil {
+			return result, nil
+		}
+	}
+	return 0, tokens.ErrTxNotFound
 }
 
 // GetLatestBlockNumberOf gets latest block number from single api

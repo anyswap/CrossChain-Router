@@ -135,10 +135,8 @@ func (b *Bridge) GetP2shAddress(bindAddr string) (p2shAddress string, redeemScri
 	}
 	memo := common.FromHex(bindAddr)
 
-	dcrmAddress, err := b.GetMPCAddress()
-	if err != nil {
-		return "", nil, fmt.Errorf("invalid dcrm address %v, %w", dcrmAddress, err)
-	}
+	dcrmAddress := b.GetChainConfig().RouterContract // in btc routerMPC is routerContract
+
 	address, err := b.DecodeAddress(dcrmAddress)
 	if err != nil {
 		return "", nil, fmt.Errorf("invalid dcrm address %v, %w", dcrmAddress, err)
@@ -284,10 +282,7 @@ func (b *Bridge) ToCompressedPublicKey(pkData []byte) ([]byte, error) {
 }
 
 func (b *Bridge) verifyPublickeyData(pkData []byte) error {
-	dcrmAddress, err := b.GetMPCAddress()
-	if err != nil {
-		return err
-	}
+	dcrmAddress := b.GetChainConfig().RouterContract // in btc routerMPC is routerContract
 	if dcrmAddress == "" {
 		return nil
 	}
