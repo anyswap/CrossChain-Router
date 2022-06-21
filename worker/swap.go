@@ -484,7 +484,7 @@ func reverifySwap(args *tokens.BuildTxArgs) {
 		errors.Is(err, tokens.ErrRPCQueryError):
 		// ignore the above situations
 	default:
-		logWorkerWarn("reverify swap after get sign status has disagree", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "err", err)
+		logWorkerWarn("doSwap", "reverify swap after get sign status has disagree", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "err", err)
 		_ = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxNotStable, now(), "")
 		_ = mongodb.UpdateRouterSwapResultStatus(fromChainID, txid, logIndex, mongodb.TxNotStable, now(), err.Error())
 	}

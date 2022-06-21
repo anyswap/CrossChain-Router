@@ -79,7 +79,7 @@ func startVerifyConsumer() {
 			go func() {
 				err := processRouterSwapVerify(swap)
 				if err != nil {
-					logWorker("verify swap error", "fromChainID", swap.FromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex, "err", err)
+					logWorkerError("verify", "verify swap error", err, "fromChainID", swap.FromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex)
 				}
 			}()
 		}

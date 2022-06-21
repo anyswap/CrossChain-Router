@@ -591,8 +591,8 @@ func initBigValueWhitelist() {
 	for tid, whitelist := range GetExtraConfig().BigValueWhitelist {
 		whitelistMap := make(map[string]struct{}, len(whitelist))
 		for _, address := range whitelist {
-			if !common.IsHexAddress(address) {
-				log.Fatal("initBigValueWhitelist wrong address", "tokenID", tid, "address", address)
+			if address == "" {
+				log.Fatal("initBigValueWhitelist empty address", "tokenID", tid)
 			}
 			whitelistMap[strings.ToLower(address)] = struct{}{}
 		}
