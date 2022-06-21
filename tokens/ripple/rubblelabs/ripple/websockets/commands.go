@@ -240,7 +240,7 @@ type AccountLinesCommand struct {
 type AccountLinesResult struct {
 	LedgerSequence *uint32               `json:"ledger_index"`
 	Account        data.Account          `json:"account"`
-	Marker         *data.Hash256         `json:"marker"`
+	Marker         *string               `json:"marker"`
 	Lines          data.AccountLineSlice `json:"lines"`
 }
 

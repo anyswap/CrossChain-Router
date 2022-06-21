@@ -405,7 +405,7 @@ func (r *Remote) AccountLines(account data.Account, ledgerIndex interface{}) (*A
 			return nil, cmd.CommandError
 		case cmd.Result.Marker != nil:
 			lines = append(lines, cmd.Result.Lines...)
-			marker = cmd.Result.Marker
+			//marker = cmd.Result.Marker // TODO
 			if cmd.Result.LedgerSequence != nil {
 				ledgerIndex = *cmd.Result.LedgerSequence
 			}
