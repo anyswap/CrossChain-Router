@@ -7,15 +7,12 @@ import (
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
-	"github.com/anyswap/CrossChain-Router/v3/tokens/base"
 	"github.com/btcsuite/btcd/chaincfg"
 )
 
 var (
 	// ensure Bridge impl tokens.CrossChainBridge
 	_ tokens.IBridge = &Bridge{}
-	// ensure Bridge impl tokens.NonceSetter
-	_ tokens.NonceSetter = &Bridge{}
 
 	supportedChainIDs     = make(map[string]bool)
 	supportedChainIDsInit sync.Once
@@ -28,7 +25,7 @@ const (
 
 // Bridge near bridge
 type Bridge struct {
-	*base.NonceSetterBase
+	*tokens.CrossChainBridgeBase
 }
 
 // SupportsChainID supports chainID
@@ -42,9 +39,7 @@ func SupportsChainID(chainID *big.Int) bool {
 
 // NewCrossChainBridge new bridge
 func NewCrossChainBridge() *Bridge {
-	return &Bridge{
-		NonceSetterBase: base.NewNonceSetterBase(),
-	}
+	return &Bridge{CrossChainBridgeBase: tokens.NewCrossChainBridgeBase()}
 }
 
 // GetStubChainID get stub chainID
@@ -120,9 +115,6 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 	if err != nil {
 		log.Trace(b.ChainConfig.BlockChain+" Bridge::GetElectTransactionStatus fail", "tx", txHash, "err", err)
 		return txStatus, err
-	}
-	if !*electStatus.Confirmed {
-		return txStatus, tokens.ErrTxNotStable
 	}
 	if electStatus.BlockHash != nil {
 		txStatus.BlockHash = *electStatus.BlockHash

@@ -11,7 +11,12 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/btcsuite/btcd/txscript"
+	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcwallet/wallet/txauthor"
+	"github.com/btcsuite/btcwallet/wallet/txrules"
+	"github.com/btcsuite/btcwallet/wallet/txsizes"
 )
 
 var (
@@ -89,13 +94,87 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	changeSource := func() ([]byte, error) {
 		return b.GetPayToAddrScript(args.From)
 	}
-
-	rawTx, err = txauthor.NewUnsignedTransaction(txOuts, relayFeePerKb, inputSource, changeSource)
+	rawTx, err = b.NewUnsignedTransaction(txOuts, relayFeePerKb, inputSource, changeSource)
 	if err != nil {
 		return nil, err
 	}
 
 	return rawTx, nil
+}
+
+func (b *Bridge) NewUnsignedTransaction(outputs []*wire.TxOut, relayFeePerKb btcutil.Amount,
+	fetchInputs txauthor.InputSource, fetchChange txauthor.ChangeSource) (*txauthor.AuthoredTx, error) {
+
+	targetAmount := txauthor.SumOutputValues(outputs)
+	estimatedSize := txsizes.EstimateVirtualSize(0, 1, 0, outputs, true)
+	targetFee := txrules.FeeForSerializeSize(relayFeePerKb, estimatedSize)
+
+	for {
+		inputAmount, inputs, inputValues, scripts, err := fetchInputs(targetAmount + targetFee)
+		if err != nil {
+			return nil, err
+		}
+		if inputAmount < targetAmount+targetFee {
+			return nil, errors.New("insufficient funds available to construct transaction")
+		}
+
+		// We count the types of inputs, which we'll use to estimate
+		// the vsize of the transaction.
+		var nested, p2wpkh, p2pkh int
+		for _, pkScript := range scripts {
+			switch {
+			// If this is a p2sh output, we assume this is a
+			// nested P2WKH.
+			case txscript.IsPayToScriptHash(pkScript):
+				nested++
+			case txscript.IsPayToWitnessPubKeyHash(pkScript):
+				p2wpkh++
+			default:
+				p2pkh++
+			}
+		}
+
+		maxSignedSize := txsizes.EstimateVirtualSize(p2pkh, p2wpkh,
+			nested, outputs, true)
+		maxRequiredFee := txrules.FeeForSerializeSize(relayFeePerKb, maxSignedSize)
+		remainingAmount := inputAmount - targetAmount
+		if remainingAmount < maxRequiredFee {
+			targetFee = maxRequiredFee
+			continue
+		}
+
+		unsignedTransaction := &wire.MsgTx{
+			Version:  wire.TxVersion,
+			TxIn:     inputs,
+			TxOut:    outputs,
+			LockTime: 0,
+		}
+		changeIndex := -1
+		changeAmount := inputAmount - targetAmount - maxRequiredFee
+		if changeAmount != 0 && !txrules.IsDustAmount(changeAmount,
+			txsizes.P2WPKHPkScriptSize, relayFeePerKb) {
+			changeScript, err := fetchChange()
+			if err != nil {
+				return nil, err
+			}
+			// if len(changeScript) > txsizes.P2WPKHPkScriptSize {
+			// 	return nil, errors.New("fee estimation requires change " +
+			// 		"scripts no larger than P2WPKH output scripts")
+			// }
+			change := wire.NewTxOut(int64(changeAmount), changeScript)
+			l := len(outputs)
+			unsignedTransaction.TxOut = append(outputs[:l:l], change)
+			changeIndex = l
+		}
+
+		return &txauthor.AuthoredTx{
+			Tx:              unsignedTransaction,
+			PrevScripts:     scripts,
+			PrevInputValues: inputValues,
+			TotalInput:      inputAmount,
+			ChangeIndex:     changeIndex,
+		}, nil
+	}
 }
 
 func (b *Bridge) findUxtosWithRetry(from string) (utxos []*ElectUtxo, err error) {
@@ -227,7 +306,6 @@ func (b *Bridge) addPayToAddrOutput(txOuts *[]*wireTxOutType, to string, amount 
 		return nil
 	}
 	pkscript, err := b.GetPayToAddrScript(to)
-	log.Warn("GetPayToAddrScript", "pkscript", pkscript, "to", to, "amount", amount, "err", err)
 	if err != nil {
 		return err
 	}
@@ -257,18 +335,4 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 	}
 	amount = tokens.CalcSwapValue(erc20SwapInfo.TokenID, args.FromChainID.String(), b.ChainConfig.ChainID, args.OriginValue, fromTokenCfg.Decimals, toTokenCfg.Decimals, args.OriginFrom, args.OriginTxTo)
 	return receiver, amount, err
-}
-
-// GetTxBlockInfo impl NonceSetter interface
-func (b *Bridge) GetTxBlockInfo(txHash string) (blockHeight, blockTime uint64) {
-	txStatus, err := b.GetTransactionStatus(txHash)
-	if err != nil {
-		return 0, 0
-	}
-	return txStatus.BlockHeight, txStatus.BlockTime
-}
-
-// GetPoolNonce impl NonceSetter interface
-func (b *Bridge) GetPoolNonce(address, _height string) (uint64, error) {
-	return 0, tokens.ErrNotImplemented
 }

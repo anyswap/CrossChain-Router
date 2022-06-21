@@ -6,7 +6,8 @@ import (
 
 // IsValidAddress check address
 func (b *Bridge) IsValidAddress(address string) bool {
-	return true
+	_, err := b.DecodeAddress(address)
+	return err == nil
 }
 
 // PublicKeyToAddress impl

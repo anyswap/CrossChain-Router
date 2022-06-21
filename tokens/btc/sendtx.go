@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 
-	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/btcsuite/btcwallet/wallet/txauthor"
 )
@@ -28,7 +27,6 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error
 		return "", err
 	}
 	txHex := hex.EncodeToString(buf.Bytes())
-	log.Info("Bridge send tx", "hash", tx.TxHash())
 
 	return b.BroadcastTxCommit(txHex)
 }

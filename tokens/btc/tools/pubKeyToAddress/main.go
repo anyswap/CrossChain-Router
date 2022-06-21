@@ -46,5 +46,5 @@ func main() {
 	if err != nil {
 		log.Fatal("NewAddressPubKeyHash fails", "paramPubKey", paramPubKey)
 	}
-	fmt.Printf("%v: %v\n", paramChainID, address)
+	fmt.Printf("address: %v\n", address)
 }

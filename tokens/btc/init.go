@@ -2,12 +2,14 @@ package btc
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
-	"github.com/anyswap/CrossChain-Router/v3/mongodb"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+)
+
+var (
+	fixDecimals uint8 = 8
 )
 
 // InitAfterConfig init variables (ie. extra members) after loading config
@@ -48,14 +50,6 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 	router.SetMPCPublicKey(routerMPC, routerMPCPubkey)
 
 	log.Info(fmt.Sprintf("[%5v] init router info success", chainID), "routerContract", routerContract, "routerMPC", routerMPC)
-	if mongodb.HasClient() {
-		nextSwapNonce, err := mongodb.FindNextSwapNonce(chainID, strings.ToLower(routerMPC))
-		if err == nil {
-			log.Info("init next swap nonce from db", "chainID", chainID, "mpc", routerMPC, "nonce", nextSwapNonce)
-			b.InitSwapNonce(b, routerMPC, nextSwapNonce)
-		}
-	}
-
 	return nil
 }
 
@@ -72,35 +66,10 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 
 	tokenID := tokenCfg.TokenID
 
-	decimals, errt := b.GetTokenDecimals(tokenAddr)
-	if errt != nil {
-		logErrFunc("get token decimals failed", "tokenID", tokenID, "tokenAddr", tokenAddr, "err", errt)
+	if fixDecimals != tokenCfg.Decimals {
+		logErrFunc("token decimals mismatch", "tokenID", tokenID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "fixDecimals", fixDecimals)
 		if isReload {
 			return
 		}
 	}
-	if decimals != tokenCfg.Decimals {
-		logErrFunc("token decimals mismatch", "tokenID", tokenID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract", decimals)
-		if isReload {
-			return
-		}
-	}
-	underlying, err := b.GetUnderlyingAddress(tokenAddr)
-	if err != nil && tokenCfg.IsStandardTokenVersion() {
-		logErrFunc("get underlying address failed", "tokenID", tokenID, "tokenAddr", tokenAddr, "err", err)
-		if isReload {
-			return
-		}
-	}
-	tokenCfg.SetUnderlying(underlying) // init underlying address
-}
-
-// GetTokenDecimals query token decimals
-func (b *Bridge) GetTokenDecimals(tokenAddr string) (uint8, error) {
-	return 8, nil
-}
-
-// GetUnderlyingAddress query underlying address
-func (b *Bridge) GetUnderlyingAddress(contractAddr string) (string, error) {
-	return "", nil
 }
