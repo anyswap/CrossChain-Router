@@ -197,7 +197,7 @@ func (b *Bridge) GetAccount(address string) (acctRes *websockets.AccountInfoResu
 func (b *Bridge) GetAccountLine(currency, issuer, accountAddress string) (line *data.AccountLine, err error) {
 	rpcParams := map[string]interface{}{
 		"account":      accountAddress,
-		"ledger_index": "validated",
+		"ledger_index": "current",
 	}
 	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
 	var acclRes *websockets.AccountLinesResult
