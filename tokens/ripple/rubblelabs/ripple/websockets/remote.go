@@ -166,7 +166,7 @@ func (r *Remote) run() {
 			}
 
 			if err := json.Unmarshal(in, &response); err != nil {
-				log.Error("json unmarshal response error", "input", string(in), "err", err)
+				log.Error("json unmarshal response error", "err", err)
 				continue
 			}
 			// Stream message
@@ -174,7 +174,7 @@ func (r *Remote) run() {
 			if ok {
 				cmd := factory()
 				if err := json.Unmarshal(in, &cmd); err != nil {
-					log.Error("json unmarshal command error", "input", string(in), "err", err)
+					log.Error("json unmarshal command error", "err", err)
 					continue
 				}
 				r.Incoming <- cmd
@@ -189,7 +189,7 @@ func (r *Remote) run() {
 			}
 			delete(pending, response.Id)
 			if err := json.Unmarshal(in, &cmd); err != nil {
-				log.Error("json unmarshal command error", "input", string(in), "err", err)
+				log.Error("json unmarshal command error", "err", err)
 				continue
 			}
 			cmd.Done()

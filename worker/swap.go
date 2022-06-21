@@ -254,7 +254,7 @@ func dispatchSwapTask(args *tokens.BuildTxArgs, taskQueue *fifo.Queue) error {
 
 	cacheKey := mongodb.GetRouterSwapKey(args.FromChainID.String(), args.SwapID, args.LogIndex)
 	swapTasksInQueue.Add(cacheKey)
-	logWorker("doSwap", "add swap in queue", "key", cacheKey, "queue", taskQueue.Len())
+	logWorker("doSwap", "add swap in queue", "key", cacheKey, "queue", taskQueue.Len(), "toChainID", args.ToChainID)
 
 	return nil
 }
@@ -286,20 +286,23 @@ func processSwapTask(chainID string, taskQueue *fifo.Queue) {
 			logWorkerWarn("doSwap", "ignore swap task as toChainID mismatch", "want", chainID, "args", args)
 			continue
 		}
+		logWorker("doSwap", "process router swap start", "args", args)
+		ctx := []interface{}{"fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex}
 		err := doSwap(args)
 		switch {
 		case err == nil:
-			logWorker("doSwap", "process router swap success", "args", args)
+			logWorker("doSwap", "process router swap success", ctx...)
 		case errors.Is(err, errAlreadySwapped),
 			errors.Is(err, tokens.ErrNoBridgeForChainID):
-			logWorker("doSwap", "process router swap failed", "args", args, "err", err)
+			ctx = append(ctx, "err", err)
+			logWorkerTrace("doSwap", "process router swap failed", ctx...)
 		default:
-			logWorkerError("doSwap", "process router swap failed", err, "args", args)
+			logWorkerError("doSwap", "process router swap failed", err, ctx...)
 		}
 
 		cacheKey := mongodb.GetRouterSwapKey(args.FromChainID.String(), args.SwapID, args.LogIndex)
 		swapTasksInQueue.Remove(cacheKey)
-		logWorker("doSwap", "remove swap in queue", "key", cacheKey, "queue", taskQueue.Len())
+		logWorker("doSwap", "remove swap in queue", "key", cacheKey, "queue", taskQueue.Len(), "toChainID", chainID)
 	}
 }
 
