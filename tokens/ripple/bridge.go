@@ -97,8 +97,8 @@ func (b *Bridge) GetLatestBlockNumber() (num uint64, err error) {
 // For ripple, GetLatestBlockNumberOf returns current ledger version
 func (b *Bridge) GetLatestBlockNumberOf(url string) (num uint64, err error) {
 	rpcParams := map[string]interface{}{}
-	var res *websockets.LedgerCurrentResult
 	for i := 0; i < rpcRetryTimes; i++ {
+		var res *websockets.LedgerCurrentResult
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &res, url, "ledger_current", rpcParams)
 		if err == nil && res != nil {
 			return uint64(res.LedgerSequence), nil
@@ -120,9 +120,10 @@ func (b *Bridge) GetTransactionByHash(txHash string) (txRes *websockets.TxResult
 	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
 	for i := 0; i < rpcRetryTimes; i++ {
 		for _, url := range urls {
-			err = client.RPCPostWithTimeout(b.RPCClientTimeout, &txRes, url, "tx", rpcParams)
-			if err == nil && txRes != nil {
-				return txRes, nil
+			var res *websockets.TxResult
+			err = client.RPCPostWithTimeout(b.RPCClientTimeout, &res, url, "tx", rpcParams)
+			if err == nil && res != nil {
+				return res, nil
 			}
 		}
 		time.Sleep(rpcRetryInterval)
@@ -181,9 +182,10 @@ func (b *Bridge) GetAccount(address string) (acctRes *websockets.AccountInfoResu
 	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
 	for i := 0; i < rpcRetryTimes; i++ {
 		for _, url := range urls {
-			err = client.RPCPostWithTimeout(b.RPCClientTimeout, &acctRes, url, "account_info", rpcParams)
-			if err == nil && acctRes != nil {
-				return acctRes, nil
+			var res *websockets.AccountInfoResult
+			err = client.RPCPostWithTimeout(b.RPCClientTimeout, &res, url, "account_info", rpcParams)
+			if err == nil && res != nil {
+				return res, nil
 			}
 		}
 		time.Sleep(rpcRetryInterval)
@@ -202,14 +204,17 @@ func (b *Bridge) GetAccountLine(currency, issuer, accountAddress string) (line *
 OUT_LOOP:
 	for i := 0; i < rpcRetryTimes; i++ {
 		for _, url := range urls {
-			err = client.RPCPostWithTimeout(b.RPCClientTimeout, &acclRes, url, "account_lines", rpcParams)
-			if err == nil && acclRes != nil {
+			var res *websockets.AccountLinesResult
+			err = client.RPCPostWithTimeout(b.RPCClientTimeout, &res, url, "account_lines", rpcParams)
+			if err == nil && res != nil {
+				acclRes = res
 				break OUT_LOOP
 			}
 		}
 		time.Sleep(rpcRetryInterval)
 	}
 	if err != nil {
+		log.Error("GetAccountLine rpc error", "err", err)
 		return nil, err
 	}
 	for i := 0; i < len(acclRes.Lines); i++ {
@@ -228,9 +233,10 @@ func (b *Bridge) GetFee() (feeRes *websockets.FeeResult, err error) {
 	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
 	for i := 0; i < rpcRetryTimes; i++ {
 		for _, url := range urls {
-			err = client.RPCPostWithTimeout(b.RPCClientTimeout, &feeRes, url, "fee", rpcParams)
-			if err == nil && feeRes != nil {
-				return feeRes, nil
+			var res *websockets.FeeResult
+			err = client.RPCPostWithTimeout(b.RPCClientTimeout, &res, url, "fee", rpcParams)
+			if err == nil && res != nil {
+				return res, nil
 			}
 		}
 		time.Sleep(rpcRetryInterval)
