@@ -942,6 +942,7 @@ func LoadRouterConfig(configFile string, isServer, check bool) *RouterConfig {
 		log.Fatalf("LoadRouterConfig error (toml DecodeFile): %v", err)
 	}
 
+	IsSwapServer = isServer
 	if !isServer {
 		config.Server = nil
 	} else {

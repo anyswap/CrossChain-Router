@@ -219,7 +219,7 @@ OUT_LOOP:
 			return accl, nil
 		}
 	}
-	return nil, wrapRPCQueryError(err, "GetAccountLine")
+	return nil, wrapRPCQueryError(err, "GetAccountLine", currency, issuer, accountAddress)
 }
 
 // GetFee get fee

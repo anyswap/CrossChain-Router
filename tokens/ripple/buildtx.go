@@ -250,6 +250,9 @@ func (b *Bridge) checkNativeBalance(account string, amount *big.Int, isPay bool)
 }
 
 func (b *Bridge) checkNonNativeBalance(currency, issuer, account, receiver string, amount *data.Amount) error {
+	if !params.IsSwapServer {
+		return nil
+	}
 	_, err := b.GetAccountLine(currency, issuer, receiver)
 	if err != nil {
 		return fmt.Errorf("receiver account line: %w", err)
