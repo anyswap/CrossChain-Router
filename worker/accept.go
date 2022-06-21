@@ -96,10 +96,11 @@ func startAcceptProducer(mpcConfig *mpc.Config) {
 			time.Sleep(retryInterval)
 			continue
 		}
-		i++
 		if i%7 == 0 {
 			logWorker("accept", "getCurNodeSignInfo", "count", len(signInfo), "queue", acceptInfoQueue.Len())
 		}
+		i++
+
 		for _, info := range signInfo {
 			if utils.IsCleanuping() {
 				return
