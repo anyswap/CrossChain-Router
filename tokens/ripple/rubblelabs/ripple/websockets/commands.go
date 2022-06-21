@@ -299,3 +299,8 @@ type FeeResult struct {
 	MaxQueueSize uint32 `json:"max_queue_size,string"`
 	Status       string `json:"status"`
 }
+
+type LedgerCurrentResult struct {
+	LedgerSequence uint32 `json:"ledger_current_index"`
+	Status         string `json:"status"`
+}
