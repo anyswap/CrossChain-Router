@@ -39,6 +39,8 @@ func StartSwapJob() {
 	router.RouterBridges.Range(func(k, v interface{}) bool {
 		chainID := k.(string)
 
+		logWorker("swap", "init swap task queue", "chainID", chainID)
+
 		taskQueue, exist := swapTaskQueues[chainID]
 		if !exist {
 			taskQueue = fifo.NewQueue()
@@ -57,7 +59,7 @@ func StartSwapJob() {
 
 func startRouterSwapJob(chainID string, taskQueue *fifo.Queue) {
 	defer mongodb.MgoWaitGroup.Done()
-	logWorker("swap", "start router swap job", "chainID", chainID)
+	logWorker("swap", "start router swap job", "chainID", chainID, "taskQueue", taskQueue)
 	for {
 		res, err := findRouterSwapToSwap(chainID)
 		if err != nil {
@@ -78,7 +80,7 @@ func startRouterSwapJob(chainID string, taskQueue *fifo.Queue) {
 				logWorker("swap", "process router swap success", ctx...)
 			case errors.Is(err, errAlreadySwapped), errors.Is(err, errChainIsPaused):
 				ctx = append(ctx, "err", err)
-				logWorker("swap", "process router swap error", ctx...)
+				logWorkerTrace("swap", "process router swap error", ctx...)
 			default:
 				logWorkerError("swap", "process router swap error", err, ctx...)
 			}
@@ -113,6 +115,7 @@ func processRouterSwap(swap *mongodb.MgoSwap, taskQueue *fifo.Queue) (err error)
 		return errAlreadySwapped
 	}
 	if swapTasksInQueue.Contains(cacheKey) {
+		logWorkerTrace("swap", "ignore swap in queue", "key", cacheKey)
 		return nil
 	}
 
@@ -235,7 +238,7 @@ func dispatchSwapTask(args *tokens.BuildTxArgs, taskQueue *fifo.Queue) error {
 		return fmt.Errorf("unknown router swap type %d", args.SwapType)
 	}
 
-	logWorker("doSwap", "dispatch router swap task", "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "value", args.OriginValue, "swapNonce", args.GetTxNonce())
+	logWorker("doSwap", "dispatch router swap task", "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "value", args.OriginValue, "swapNonce", args.GetTxNonce(), "queue", taskQueue.Len())
 
 	taskQueue.Add(args)
 
@@ -247,15 +250,22 @@ func dispatchSwapTask(args *tokens.BuildTxArgs, taskQueue *fifo.Queue) error {
 
 func processSwapTask(chainID string, taskQueue *fifo.Queue) {
 	defer utils.TopWaitGroup.Done()
+	logWorker("swap", "start process router swap job", "chainID", chainID, "taskQueue", taskQueue)
+	i := 0
 	for {
 		if utils.IsCleanuping() {
 			logWorker("doSwap", "stop process swap task", "chainID", chainID)
 			return
 		}
 
+		i++
+		if i%10 == 0 {
+			logWorker("doSwap", "tasks in queue", "chainID", chainID, "count", taskQueue.Len())
+		}
+
 		front := taskQueue.Next()
 		if front == nil {
-			sleepSeconds(1)
+			sleepSeconds(3)
 			continue
 		}
 
