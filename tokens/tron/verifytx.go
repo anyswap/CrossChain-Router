@@ -1,14 +1,15 @@
 package tron
 
 import (
-	"errors"
 	"crypto/sha256"
+	"encoding/json"
+	"errors"
+	"fmt"
 	"math/big"
 	"strings"
 
 	"github.com/fbsobreira/gotron-sdk/pkg/proto/core"
 	proto "github.com/golang/protobuf/proto"
-	"google.golang.org/grpc"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
@@ -20,18 +21,23 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 	status = &tokens.TxStatus{}
 	var tx *core.TransactionInfo
 	rpcError := &RPCError{[]error{}, "GetTransactionStatus"}
-	for _, cli := range b.getClients() {
-		err := cli.Start(grpc.WithInsecure())
+	defer func() {
+		if r := recover(); r != nil {
+			rpcError.log(fmt.Errorf("%v", r))
+		}
+	}()
+	txinfo := make(map[string]interface{})
+	for _, endpoint := range b.GatewayConfig.APIAddress {
+		apiurl := strings.TrimSuffix(endpoint, "/") + `/walletsolidity/gettransactioninfobyid`
+		res, err := post(apiurl, `{"value":"`+txHash+`"}`)
+		if err != nil {
+			panic(err)
+		}
+		err = json.Unmarshal(res, &txinfo)
 		if err != nil {
 			rpcError.log(err)
 			continue
 		}
-		tx, err = cli.GetTransactionInfoByID(txHash)
-		if err == nil && tx != nil {
-			cli.Stop()
-			break
-		}
-		cli.Stop()
 	}
 
 	if tx.Result != core.TransactionInfo_SUCESS {

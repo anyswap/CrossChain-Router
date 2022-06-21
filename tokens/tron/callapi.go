@@ -1,28 +1,34 @@
 package tron
 
 import (
-	"context"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"math/big"
+	"net/http"
+	"strings"
 	"time"
 
 	tronaddress "github.com/fbsobreira/gotron-sdk/pkg/address"
-	tronclient "github.com/fbsobreira/gotron-sdk/pkg/client"
 	"github.com/fbsobreira/gotron-sdk/pkg/proto/api"
 	"github.com/fbsobreira/gotron-sdk/pkg/proto/core"
-	"github.com/fbsobreira/gotron-sdk/pkg/client"
-	"google.golang.org/grpc"
 
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/params"
+	"github.com/anyswap/CrossChain-Router/v3/router"
+	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
+	ethclient "github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/types"
-	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/golang/protobuf/proto"
 )
 
 var GRPC_TIMEOUT = time.Second * 15
 
-func (b *Bridge) getClients() []*tronclient.GrpcClient {
+/*func (b *Bridge) getClients() []*tronclient.GrpcClient {
 	endpoints := b.GatewayConfig.APIAddress
 	clis := make([]*client.GrpcClient, 0)
 	for _, endpoint := range endpoints {
@@ -32,6 +38,26 @@ func (b *Bridge) getClients() []*tronclient.GrpcClient {
 		}
 	}
 	return clis
+}*/
+
+func post(url string, data string) ([]byte, error) {
+	client := &http.Client{}
+	var dataReader = strings.NewReader(data)
+	req, err := http.NewRequest("POST", url, dataReader)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	bodyText, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	return bodyText, nil
 }
 
 type RPCError struct {
@@ -59,23 +85,49 @@ func (b *Bridge) GetLatestBlockNumberOf(url string) (latest uint64, err error) {
 // GetLatestBlockNumber returns current finalized block height
 func (b *Bridge) GetLatestBlockNumber() (height uint64, err error) {
 	rpcError := &RPCError{[]error{}, "GetLatestBlockNumber"}
-	for _, cli := range b.getClients() {
-		err = cli.Start(grpc.WithInsecure())
+	for _, endpoint := range b.GatewayConfig.APIAddress {
+		apiurl := strings.TrimSuffix(endpoint, "/") + `/wallet/getblockbylatestnum`
+		res, err := post(apiurl, `{"num":1}`)
 		if err != nil {
 			rpcError.log(err)
 			continue
 		}
-		res, err := cli.GetNowBlock()
-		if err == nil {
-			if res.BlockHeader.RawData.Number > 0 {
-				height = uint64(res.BlockHeader.RawData.Number)
-				cli.Stop()
-				break
-			}
-		} else {
+		var blocks map[string]interface{}
+		err = json.Unmarshal(res, &blocks)
+		if err != nil {
 			rpcError.log(err)
+			continue
 		}
-		cli.Stop()
+		if blocks["block"] == nil {
+			rpcError.log(errors.New("parse error"))
+			continue
+		}
+		blockLs, ok := blocks["block"].([]interface{})
+		if !ok || len(blockLs) < 1 {
+			rpcError.log(errors.New("parse error"))
+			continue
+		}
+		block, ok := blockLs[0].(map[string]interface{})
+		if !ok {
+			rpcError.log(errors.New("parse error"))
+			continue
+		}
+		header, ok := block["block_header"].(map[string]interface{})
+		if !ok {
+			rpcError.log(errors.New("parse error"))
+			continue
+		}
+		raw, ok := header["raw_data"].(map[string]interface{})
+		if !ok {
+			rpcError.log(errors.New("parse error"))
+			continue
+		}
+		numberF, ok := raw["number"].(float64)
+		if !ok {
+			rpcError.log(errors.New("parse error"))
+			continue
+		}
+		return uint64(numberF), nil
 	}
 	if height > 0 {
 		return height, nil
@@ -86,21 +138,56 @@ func (b *Bridge) GetLatestBlockNumber() (height uint64, err error) {
 // GetTransaction impl
 func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
 	rpcError := &RPCError{[]error{}, "GetTransaction"}
-	for _, cli := range b.getClients() {
-		err = cli.Start(grpc.WithInsecure())
+	for _, endpoint := range b.GatewayConfig.APIAddress {
+		apiurl := strings.TrimSuffix(endpoint, "/") + `/wallet/gettransactionbyid`
+		res, err := post(apiurl, `{"value":"724f8f853b5824e477435faa4b4ee6f0691ec005abc0b105c55e82c6c78031cb"}`)
 		if err != nil {
 			rpcError.log(err)
 			continue
 		}
-		tx, err = cli.GetTransactionByID(txHash)
-		if err == nil {
-			cli.Stop()
-			break
+		tx, err := func(res []byte) (tx *core.Transaction, err error) {
+			defer func() {
+				if r := recover(); r != nil {
+					err = fmt.Errorf("%v", r)
+				}
+			}()
+			txi := make(map[string]interface{})
+			tx = &core.Transaction{}
+			err = json.Unmarshal(res, &txi)
+			if err != nil {
+				panic(err)
+			}
+			for _, reti := range txi["ret"].([]interface{}) {
+				ret := reti.(map[string]interface{})["ret"]
+				cret := reti.(map[string]interface{})["contractRet"]
+				switch {
+				case ret != nil:
+					tx.Ret = append(tx.Ret, &core.Transaction_Result{Ret: core.Transaction_ResultCode(core.Transaction_ResultCode_value[ret.(string)])})
+				case cret != nil:
+					tx.Ret = append(tx.Ret, &core.Transaction_Result{ContractRet: core.Transaction_ResultContractResult(core.Transaction_ResultContractResult_value[cret.(string)])})
+				default:
+				}
+			}
+			for _, sig := range txi["signature"].([]interface{}) {
+				bz, err := hex.DecodeString(sig.(string))
+				if err != nil {
+					panic(err)
+				}
+				tx.Signature = append(tx.Signature, bz)
+			}
+			bz, _ := hex.DecodeString(txi["raw_data_hex"].(string))
+			rawdata := &core.TransactionRaw{}
+			err = proto.Unmarshal(bz, rawdata)
+			if err != nil {
+				panic(err)
+			}
+			return tx, err
+		}(res)
+		if err != nil {
+			rpcError.log(err)
+			continue
 		}
-		cli.Stop()
-	}
-	if err != nil {
-		return nil, rpcError.Error()
+		return tx, nil
 	}
 	return
 }
@@ -108,37 +195,56 @@ func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
 // GetTransactionLog
 func (b *Bridge) GetTransactionLog(txHash string) ([]*types.RPCLog, error) {
 	rpcError := &RPCError{[]error{}, "GetTransactionLog"}
-	var tx *core.TransactionInfo
+	defer func() {
+		if r := recover(); r != nil {
+			rpcError.log(fmt.Errorf("%v", r))
+		}
+	}()
+	var tronlogs []interface{}
 	var err error
-	for _, cli := range b.getClients() {
-		err = cli.Start(grpc.WithInsecure())
+	for _, endpoint := range b.GatewayConfig.APIAddress {
+		apiurl := strings.TrimSuffix(endpoint, "/") + `/walletsolidity/gettransactioninfobyid`
+		res, err := post(apiurl, `{"value":"`+txHash+`"}`)
+		if err != nil {
+			panic(err)
+		}
+		txinfo := make(map[string]interface{})
+		err = json.Unmarshal(res, &txinfo)
 		if err != nil {
 			rpcError.log(err)
 			continue
 		}
-		tx, err = cli.GetTransactionInfoByID(txHash)
-		if err == nil {
-			cli.Stop()
-			break
+		var ok bool
+		tronlogs, ok = txinfo["log"].([]interface{})
+		if !ok {
+			rpcError.log(errors.New("parse error"))
+			continue
 		}
-		cli.Stop()
 	}
 	if err != nil {
 		return nil, rpcError.Error()
 	}
-	tronlogs := tx.GetLog()
-	logs := make([]*types.RPCLog,0)
+	logs := make([]*types.RPCLog, 0)
 	for _, tlog := range tronlogs {
-		addr := common.BytesToAddress(tlog.Address)
-		data := hexutil.Bytes(tlog.Data)
+		tl, ok := tlog.(map[string]interface{})
+		if !ok {
+			rpcError.log(errors.New("parse error"))
+			continue
+		}
+		addr, _ := common.FromHex(tl["address"].(string))
+		data := hexutil.HexToBytes(tl["topics"].(string))
 		ethlog := &types.RPCLog{
 			Address: &addr,
-			Topics: []common.Hash{},
-			Data: &data,
+			Topics:  []common.Hash{},
+			Data:    &data,
 			Removed: new(bool),
 		}
-		for _, topic := range tlog.Topics {
-			ethlog.Topics = append(ethlog.Topics, common.BytesToHash(topic))
+		topics, _ := tl["topics"].([]interface{})
+		if topics == nil && len(topics) == 0 {
+			return nil, rpcError.Error()
+		}
+		for _, topic := range topics {
+			ethlog.Topics = append(ethlog.Topics, common.FromHex(topic.(string)))
 		}
 		logs = append(logs, ethlog)
 	}
@@ -148,21 +254,28 @@ func (b *Bridge) GetTransactionLog(txHash string) ([]*types.RPCLog, error) {
 // BroadcastTx broadcast tx to network
 func (b *Bridge) BroadcastTx(tx *core.Transaction) (err error) {
 	rpcError := &RPCError{[]error{}, "BroadcastTx"}
-	for _, cli := range b.getClients() {
-		err = cli.Start(grpc.WithInsecure())
+	txhex := hex.EncodeToString(tx.GetRawData().GetData())
+	for _, endpoint := range b.GatewayConfig.APIAddress {
+		apiurl := strings.TrimSuffix(endpoint, "/") + `/wallet/broadcasthex`
+		res, err := post(apiurl, `{"transaction":"`+txhex+`"}`)
 		if err != nil {
 			rpcError.log(err)
 			continue
 		}
-		res, err := cli.Broadcast(tx)
-		if err == nil {
-			cli.Stop()
-			if res.Code != 0 {
-				rpcError.log(fmt.Errorf("bad transaction: %v", string(res.GetMessage())))
-			}
+		result := make(map[string]interface{})
+		err = json.Unmarshal(res, &result)
+		if err != nil {
+			rpcError.log(err)
+			continue
+		}
+		success, ok := result["result"].(bool)
+		if !ok {
+			rpcError.log(errors.New("parse error"))
+			continue
+		}
+		if success {
 			return nil
 		}
-		rpcError.log(err)
 	}
 	return rpcError.Error()
 }
@@ -187,51 +300,58 @@ func (b *Bridge) GetCode(contractAddress string) (data []byte, err error) {
 	message := new(api.BytesMessage)
 	message.Value = contractDesc
 	rpcError := &RPCError{[]error{}, "GetCode"}
-	for _, cli := range b.getClients() {
-		err = cli.Start(grpc.WithInsecure())
-		ctx, cancel := context.WithTimeout(context.Background(), GRPC_TIMEOUT)
+	for _, endpoint := range b.GatewayConfig.APIAddress {
+		apiurl := strings.TrimSuffix(endpoint, "/") + `/wallet/getcontract`
+		res, err := post(apiurl, `{"value":"`+contractAddress+`","visible":false}`)
 		if err != nil {
 			rpcError.log(err)
-			cancel()
 			continue
 		}
-		sm, err1 := cli.Client.GetContract(ctx, message)
-		err = err1
-		if err == nil {
-			data = sm.Bytecode
-			cli.Stop()
-			cancel()
-			break
+		result := make(map[string]interface{})
+		err = json.Unmarshal(res, &result)
+		if err != nil {
+			rpcError.log(err)
+			continue
 		}
-		cli.Stop()
-		cancel()
+		//bytecode
+		datastr, ok := result["bytecode"].(string)
+		if !ok {
+			rpcError.log(errors.New("parse error"))
+			continue
+		}
+		data, err := hex.DecodeString(datastr)
+		if err != nil {
+			rpcError.log(errors.New("parse error"))
+			continue
+		}
+		return data, nil
 	}
-	if err != nil {
-		return nil, rpcError.Error()
-	}
-	return data, nil
+	return nil, rpcError.Error()
 }
 
 // GetBalance gets TRON token balance
 func (b *Bridge) GetBalance(account string) (balance *big.Int, err error) {
 	rpcError := &RPCError{[]error{}, "GetBalance"}
-	for _, cli := range b.getClients() {
-		err = cli.Start(grpc.WithInsecure())
+	for _, endpoint := range b.GatewayConfig.APIAddress {
+		apiurl := strings.TrimSuffix(endpoint, "/") + `/wallet/getaccount`
+		res, err := post(apiurl, `{"value":"`+contractAddress+`","visible":false}`)
 		if err != nil {
 			rpcError.log(err)
 			continue
 		}
-		res, err := cli.GetAccount(account)
-		if err == nil {
-			if res.Balance > 0 {
-				balance = big.NewInt(int64(res.Balance))
-				cli.Stop()
-				break
-			}
-		} else {
-			rpcError.log(err)
+		result := make(map[string]interface{})
+		err = json.Unmarshal(res, &result)
+		if err != nil {
+			rpcError.log(errors.New("parse error"))
+			continue
 		}
-		cli.Stop()
+		bal, ok := result["balance"].(int64)
+		if !ok {
+			rpcError.log(errors.New("parse error"))
+			continue
+		}
+		balance.SetUint64(uint64(bal))
+		return balance, nil
 	}
 	if balance.Cmp(big.NewInt(0)) > 0 {
 		return balance, nil
@@ -239,53 +359,48 @@ func (b *Bridge) GetBalance(account string) (balance *big.Int, err error) {
 	return big.NewInt(0), rpcError.Error()
 }
 
-var SwapinFeeLimit int64 = 300000000 // 300 TRX
-var ExtraExpiration int64 = 900000 // 15 min
-
-func (b *Bridge) BuildTriggerConstantContractTx(from, contract string, dataBytes []byte) (tx *core.Transaction, err error) {
+func (b *Bridge) BuildTriggerConstantContractTx(from, contract string, selector string, paramater string, fee_limit int32) (tx *core.Transaction, err error) {
 	fromAddr := tronaddress.HexToAddress(anyToEth(from))
 	if fromAddr.String() == "" {
 		return nil, errors.New("invalid from address")
 	}
+	fromAddr = strings.TrimPrefix(fromAddr, "0x")
 	contractAddr := tronaddress.HexToAddress(anyToEth(contract))
 	if contractAddr.String() == "" {
 		return nil, errors.New("invalid contract address")
 	}
-	ct := &core.TriggerSmartContract{
-		OwnerAddress:    fromAddr.Bytes(),
-		ContractAddress: contractAddr.Bytes(),
-		Data:            dataBytes,
-	}
+	contractAddr = strings.TrimPrefix(contractAddr, "0x")
 
 	rpcError := &RPCError{[]error{}, "BuildTriggerConstantContractTx"}
 
-	ctx, cancel := context.WithTimeout(context.Background(), GRPC_TIMEOUT)
-	defer cancel()
-
-	for _, cli := range b.getClients() {
-		err = cli.Start(grpc.WithInsecure())
+	tx = &core.Transaction
+	for _, endpoint := range b.GatewayConfig.APIAddress {
+		apiurl := strings.TrimSuffix(endpoint, "/") + `/wallet/triggersmartcontract`
+		res, err := post(apiurl, `{"owner_address":"`+fromAddr+`","contract_address":"`+contractAddr+`","function_selector":"`+selector+`","paramater":"`+paramater+`","fee_limit":"`+fee_limit+`"}`)
 		if err != nil {
 			rpcError.log(err)
 			continue
 		}
-		txext, err1 := cli.Client.TriggerConstantContract(ctx, ct)
-		if txext != nil {
-			txext.Transaction.RawData.FeeLimit = SwapinFeeLimit
-			txext.Transaction.RawData.Expiration = txext.Transaction.RawData.Expiration + ExtraExpiration
+		result := make(map[string]interface{})
+		err = json.Unmarshal(res, &result)
+		if err != nil {
+			rpcError.log(errors.New("parse error"))
+			continue
 		}
-		err = err1
-		if err == nil {
-			tx = txext.Transaction
-			cli.Stop()
-			break
+		raw, ok := result["raw_data_hex"].(string)
+		if !ok {
+			rpcError.log(errors.New("parse error"))
+			continue
 		}
-		rpcError.log(err)
-		cli.Stop()
+		rawdata := &core.TransactionRaw{}
+		err = proto.Unmarshal(raw, rawdata)
+		if err != nil {
+			panic(err)
+		}
+		tx.RawData = rawdata
+		return tx, nil
 	}
-	if err != nil {
-		return nil, rpcError.Error()
-	}
-	return tx, nil
+	return nil, rpcError.Error()
 }
 
 // CallContract
@@ -295,31 +410,31 @@ func (b *Bridge) CallContract(contract string, data hexutil.Bytes, blockNumber s
 		return "", errors.New("invalid contract address")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), GRPC_TIMEOUT)
-	defer cancel()
-
-	fromDesc := tronaddress.HexToAddress("410000000000000000000000000000000000000000")
-
-	ct := &core.TriggerSmartContract{
-		OwnerAddress:    fromDesc.Bytes(),
-		ContractAddress: contractAddr.Bytes(),
-		Data:            []byte(data),
+	reqArgs := map[string]interface{}{
+		"to":   contract,
+		"data": data,
 	}
-
-	rpcError := &RPCError{[]error{}, "CallContract"}
+	gateway := b.GatewayConfig
+	var result string
 	var err error
-	for _, cli := range b.getClients() {
-		err = cli.Start(grpc.WithInsecure())
-		if err != nil {
-			rpcError.log(err)
-			continue
+	for _, apiAddress := range gateway.EVMAPIAddress {
+		url := apiAddress
+		err = ethclient.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_call", reqArgs, blockNumber)
+		if err != nil && router.IsIniting {
+			for i := 0; i < router.RetryRPCCountInInit; i++ {
+				if err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_call", reqArgs, blockNumber); err == nil {
+					return result, nil
+				}
+				time.Sleep(router.RetryRPCIntervalInInit)
+			}
 		}
-		txext, err1 := cli.Client.TriggerConstantContract(ctx, ct)
-		if err1 != nil {
-			continue
+		if err == nil {
+			return result, nil
 		}
-		res := common.ToHex(txext.GetConstantResult()[0])
-		return res, nil
 	}
-	return "", nil
+	if err != nil {
+		logFunc := log.GetPrintFuncOr(params.IsDebugMode, log.Info, log.Trace)
+		logFunc("call CallContract failed", "contract", contract, "data", data, "err", err)
+	}
+	return "", err
 }

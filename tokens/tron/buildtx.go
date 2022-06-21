@@ -60,10 +60,12 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	return b.buildTx(args)
 }
 
+var SwapinFeeLimit int32 = 300000000 // 300 TRX
+
 func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error) {
 	var (
-		to        = args.To
-		input     = *args.Input
+		to = args.To
+		//input     = *args.Input
 		extra     = args.Extra.EthExtra
 		gasLimit  = *extra.Gas
 		gasPrice  = extra.GasPrice
@@ -71,7 +73,7 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 		gasFeeCap = extra.GasFeeCap
 	)
 
-	rawTx, err = b.BuildTriggerConstantContractTx(args.From, args.To, input)
+	rawTx, err = b.BuildTriggerConstantContractTx(args.From, args.To, args.Extra.TronExtra.Selector, args.Extra.TronExtra.Params, SwapinFeeLimit)
 
 	ctx := []interface{}{
 		"identifier", args.Identifier, "swapID", args.SwapID,

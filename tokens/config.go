@@ -52,6 +52,7 @@ type FeeConfig struct {
 type GatewayConfig struct {
 	APIAddress    []string
 	APIAddressExt []string
+	EVMAPIAddress []string
 }
 
 // CheckConfig check chain config
