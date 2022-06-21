@@ -1,7 +1,6 @@
 package ripple
 
 import (
-	"fmt"
 	"math/big"
 	"sync"
 	"time"
@@ -24,6 +23,8 @@ var (
 
 	rpcRetryTimes    = 3
 	rpcRetryInterval = 1 * time.Second
+
+	wrapRPCQueryError = tokens.WrapRPCQueryError
 )
 
 const (
@@ -80,70 +81,79 @@ func SetRPCRetryTimes(times int) {
 // GetLatestBlockNumber gets latest block number
 // For ripple, GetLatestBlockNumber returns current ledger version
 func (b *Bridge) GetLatestBlockNumber() (num uint64, err error) {
+	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
 	for i := 0; i < rpcRetryTimes; i++ {
-		for url, r := range b.Remotes {
-			if !r.IsConnected() {
-				log.Trace("[GetLatestBlockNumber] connection is closed", "url", url)
+		for _, url := range urls {
+			r, err1 := websockets.NewRemote(url)
+			if err1 != nil {
+				log.Warn("Cannot connect to remote", "remote", url, "err", err1)
 				continue
 			}
+			defer r.Close()
+
 			resp, err1 := r.Ledger(nil, false)
-			if err1 != nil || resp == nil {
+			if err1 != nil {
 				err = err1
 				log.Warn("Try get latest block number failed", "error", err1)
 				continue
 			}
 			num = uint64(resp.Ledger.LedgerSequence)
-			return
+			return num, nil
 		}
 		time.Sleep(rpcRetryInterval)
 	}
-	return
+	return 0, wrapRPCQueryError(err, "GetLatestBlockNumber")
 }
 
 // GetLatestBlockNumberOf gets latest block number from single api
 // For ripple, GetLatestBlockNumberOf returns current ledger version
-func (b *Bridge) GetLatestBlockNumberOf(apiAddress string) (uint64, error) {
-	var err error
-	r, exist := b.Remotes[apiAddress]
-	if !exist {
-		r, err = websockets.NewRemote(apiAddress)
-		if err != nil {
-			log.Warn("Cannot connect to remote", "remote", apiAddress, "error", err)
-			return 0, err
+func (b *Bridge) GetLatestBlockNumberOf(url string) (num uint64, err error) {
+	for i := 0; i < rpcRetryTimes; i++ {
+		r, err1 := websockets.NewRemote(url)
+		if err1 != nil {
+			log.Warn("Cannot connect to remote", "remote", url, "err", err1)
+			continue
 		}
 		defer r.Close()
+
+		resp, err1 := r.Ledger(nil, false)
+		if err1 != nil {
+			return 0, err1
+		}
+		num = uint64(resp.Ledger.LedgerSequence)
+		return num, nil
 	}
-	resp, err := r.Ledger(nil, false)
-	if err != nil || resp == nil {
-		return 0, err
-	}
-	return uint64(resp.Ledger.LedgerSequence), nil
+	return 0, wrapRPCQueryError(err, "GetLatestBlockNumberOf")
 }
 
 // GetTransaction impl
 func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
 	txhash256, err := data.NewHash256(txHash)
 	if err != nil {
-		return
+		return nil, err
 	}
+	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
 	for i := 0; i < rpcRetryTimes; i++ {
-		for url, r := range b.Remotes {
-			if !r.IsConnected() {
-				log.Trace("[GetTransaction] connection is closed", "url", url)
+		for _, url := range urls {
+			r, err1 := websockets.NewRemote(url)
+			if err1 != nil {
+				log.Warn("Cannot connect to remote", "remote", url, "err", err1)
 				continue
 			}
+			defer r.Close()
+
 			resp, err1 := r.Tx(*txhash256)
-			if err1 != nil || resp == nil {
+			if err1 != nil {
 				log.Warn("Try get transaction failed", "error", err1)
 				err = err1
 				continue
 			}
 			tx = resp
-			return
+			return tx, nil
 		}
 		time.Sleep(rpcRetryInterval)
 	}
-	return
+	return nil, wrapRPCQueryError(err, "GetTransaction")
 }
 
 // GetTransactionStatus impl
@@ -174,54 +184,7 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 	if latest, err := b.GetLatestBlockNumber(); err == nil && latest > uint64(inledger) {
 		status.Confirmations = latest - uint64(inledger)
 	}
-	return
-}
-
-// GetBlockHash gets block hash
-func (b *Bridge) GetBlockHash(num uint64) (hash string, err error) {
-	for i := 0; i < rpcRetryTimes; i++ {
-		for url, r := range b.Remotes {
-			if !r.IsConnected() {
-				log.Trace("[GetBlockHash] connection is closed", "url", url)
-				continue
-			}
-			resp, err1 := r.Ledger(num, false)
-			if err1 != nil || resp == nil {
-				err = err1
-				log.Warn("Try get block hash failed", "error", err1)
-				continue
-			}
-			hash = resp.Ledger.Hash.String()
-			return
-		}
-		time.Sleep(rpcRetryInterval)
-	}
-	return
-}
-
-// GetBlockTxids gets glock txids
-func (b *Bridge) GetBlockTxids(num uint64) (txs []string, err error) {
-	txs = make([]string, 0)
-	for i := 0; i < rpcRetryTimes; i++ {
-		for url, r := range b.Remotes {
-			if !r.IsConnected() {
-				log.Trace("[GetBlockTxids] connection is closed", "url", url)
-				continue
-			}
-			resp, err1 := r.Ledger(num, true)
-			if err1 != nil || resp == nil {
-				err = err1
-				log.Warn("Try get block tx ids failed", "error", err1)
-				continue
-			}
-			for _, tx := range resp.Ledger.Transactions {
-				txs = append(txs, tx.GetBase().Hash.String())
-			}
-			return
-		}
-		time.Sleep(rpcRetryInterval)
-	}
-	return
+	return status, nil
 }
 
 // GetBalance gets balance
@@ -239,23 +202,27 @@ func (b *Bridge) GetBalance(accountAddress string) (*big.Int, error) {
 func (b *Bridge) GetAccount(address string) (acct *websockets.AccountInfoResult, err error) {
 	account, err := data.NewAccountFromAddress(address)
 	if err != nil {
-		return
+		return nil, err
 	}
+	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
 	for i := 0; i < rpcRetryTimes; i++ {
-		for url, r := range b.Remotes {
-			if !r.IsConnected() {
-				log.Trace("[GetAccount] connection is closed", "url", url)
+		for _, url := range urls {
+			r, err1 := websockets.NewRemote(url)
+			if err1 != nil {
+				log.Warn("Cannot connect to remote", "remote", url, "err", err1)
 				continue
 			}
+			defer r.Close()
+
 			acct, err = r.AccountInfo(*account)
 			if err != nil || acct == nil {
 				continue
 			}
-			return
+			return acct, nil
 		}
 		time.Sleep(rpcRetryInterval)
 	}
-	return
+	return nil, wrapRPCQueryError(err, "GetAccount")
 }
 
 // GetAccountLine get account line
@@ -265,15 +232,20 @@ func (b *Bridge) GetAccountLine(currency, issuer, accountAddress string) (*data.
 		return nil, err
 	}
 	var acclRes *websockets.AccountLinesResult
+	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
+OUT_LOOP:
 	for i := 0; i < rpcRetryTimes; i++ {
-		for url, r := range b.Remotes {
-			if !r.IsConnected() {
-				log.Trace("[GetAccountLine] connection is closed", "url", url)
+		for _, url := range urls {
+			r, err1 := websockets.NewRemote(url)
+			if err1 != nil {
+				log.Warn("Cannot connect to remote", "remote", url, "err", err1)
 				continue
 			}
+			defer r.Close()
+
 			acclRes, err = r.AccountLines(*account, nil)
 			if err == nil && acclRes != nil {
-				break
+				break OUT_LOOP
 			}
 		}
 		time.Sleep(rpcRetryInterval)
@@ -288,19 +260,21 @@ func (b *Bridge) GetAccountLine(currency, issuer, accountAddress string) (*data.
 			return accl, nil
 		}
 	}
-	return nil, fmt.Errorf("account line not found")
+	return nil, wrapRPCQueryError(err, "GetAccountLine")
 }
 
 // GetFee get fee
-func (b *Bridge) GetFee() (*websockets.FeeResult, error) {
-	var feeRes *websockets.FeeResult
-	var err error
+func (b *Bridge) GetFee() (feeRes *websockets.FeeResult, err error) {
+	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
 	for i := 0; i < rpcRetryTimes; i++ {
-		for url, r := range b.Remotes {
-			if !r.IsConnected() {
-				log.Trace("[GetFee] connection is closed", "url", url)
+		for _, url := range urls {
+			r, err1 := websockets.NewRemote(url)
+			if err1 != nil {
+				log.Warn("Cannot connect to remote", "remote", url, "err", err1)
 				continue
 			}
+			defer r.Close()
+
 			feeRes, err = r.Fee()
 			if err == nil && feeRes != nil {
 				return feeRes, nil
@@ -308,5 +282,5 @@ func (b *Bridge) GetFee() (*websockets.FeeResult, error) {
 		}
 		time.Sleep(rpcRetryInterval)
 	}
-	return nil, err
+	return nil, wrapRPCQueryError(err, "GetFee")
 }

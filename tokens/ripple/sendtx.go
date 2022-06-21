@@ -19,13 +19,17 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error
 	}
 	var success bool
 	var resp *websockets.SubmitResult
+	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
 	for i := 0; i < rpcRetryTimes; i++ {
 		// try send to all remotes
-		for url, r := range b.Remotes {
-			if !r.IsConnected() {
-				log.Trace("[SendTransaction] connection is closed", "url", url)
+		for _, url := range urls {
+			r, err1 := websockets.NewRemote(url)
+			if err1 != nil {
+				log.Warn("Cannot connect to remote", "remote", url, "err", err1)
 				continue
 			}
+			defer r.Close()
+
 			resp, err = r.Submit(tx)
 			if err != nil || resp == nil {
 				log.Warn("Try sending transaction failed", "error", err)

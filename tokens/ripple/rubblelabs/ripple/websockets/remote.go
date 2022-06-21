@@ -41,9 +41,6 @@ type Remote struct {
 	Incoming chan interface{}
 	outgoing chan Syncer
 	ws       *websocket.Conn
-
-	isConnected bool
-	lock        sync.RWMutex
 }
 
 // NewRemote returns a new remote session connected to the specified
@@ -76,52 +73,23 @@ func NewRemote(endpoint string) (*Remote, error) {
 // goroutines have been cleaned up.
 // Any commands that are pending a response will return with an error.
 func (r *Remote) Close() {
-	// Drain the outgoing channel and block until it is closed
-	for c := range r.outgoing {
-		c.Fail("Connection Closed")
-	}
-
 	close(r.outgoing)
 
 	// Drain the Incoming channel and block until it is closed,
 	// indicating that this Remote is fully cleaned up.
 	for range r.Incoming {
 	}
-
-	close(r.Incoming)
-}
-
-// IsConnected is connected
-func (r *Remote) IsConnected() bool {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
-	return r.isConnected
-}
-
-// SetIsConnected set is connected flag
-func (r *Remote) SetIsConnected(flag bool) {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-	r.isConnected = flag
 }
 
 // run spawns the read/write pumps and then runs until Close() is called.
 func (r *Remote) run() {
-	r.SetIsConnected(true)
-
 	outbound := make(chan interface{})
 	inbound := make(chan []byte)
 	pending := make(map[uint64]Syncer)
 
 	defer func() {
-		log.Warn("stop run remote", "remote", r.ws.RemoteAddr())
-		r.SetIsConnected(false)
-
-		// Drain the outbound channel and block until it is closed,
-		for range outbound {
-		}
-
 		close(outbound) // Shuts down the writePump
+		close(r.Incoming)
 
 		// Cancel all pending commands with an error
 		for _, c := range pending {
@@ -132,9 +100,6 @@ func (r *Remote) run() {
 		// indicating that the readPump has returned.
 		for range inbound {
 		}
-
-		r.Close()
-		log.Warn("close remote session", "remote", r.ws.RemoteAddr())
 	}()
 
 	// Spawn read/write goroutines
@@ -199,9 +164,6 @@ func (r *Remote) run() {
 
 // Synchronously get a single transaction
 func (r *Remote) Tx(hash data.Hash256) (*TxResult, error) {
-	if !r.IsConnected() {
-		return nil, ErrNotConnected
-	}
 	cmd := &TxCommand{
 		Command:     newCommand("tx"),
 		Transaction: hash,
@@ -242,9 +204,6 @@ func (r *Remote) accountTx(account data.Account, c chan *data.TransactionWithMet
 // Use minLedger -1 for the earliest ledger available.
 // Use maxLedger -1 for the most recent validated ledger.
 func (r *Remote) AccountTx(account data.Account, pageSize int, minLedger, maxLedger int64) chan *data.TransactionWithMetaData {
-	if !r.IsConnected() {
-		return nil
-	}
 	c := make(chan *data.TransactionWithMetaData)
 	go r.accountTx(account, c, pageSize, minLedger, maxLedger)
 	return c
@@ -252,9 +211,6 @@ func (r *Remote) AccountTx(account data.Account, pageSize int, minLedger, maxLed
 
 // Synchronously submit a single transaction
 func (r *Remote) Submit(tx data.Transaction) (*SubmitResult, error) {
-	if !r.IsConnected() {
-		return nil, ErrNotConnected
-	}
 	_, raw, err := data.Raw(tx)
 	if err != nil {
 		return nil, err
@@ -273,9 +229,6 @@ func (r *Remote) Submit(tx data.Transaction) (*SubmitResult, error) {
 
 // Synchronously submit multiple transactions
 func (r *Remote) SubmitBatch(txs []data.Transaction) ([]*SubmitResult, error) {
-	if !r.IsConnected() {
-		return nil, ErrNotConnected
-	}
 	commands := make([]*SubmitCommand, len(txs))
 	results := make([]*SubmitResult, len(txs))
 	for i := range txs {
@@ -299,9 +252,6 @@ func (r *Remote) SubmitBatch(txs []data.Transaction) ([]*SubmitResult, error) {
 
 // Synchronously gets ledger entries
 func (r *Remote) LedgerData(ledger interface{}, marker *data.Hash256) (*LedgerDataResult, error) {
-	if !r.IsConnected() {
-		return nil, ErrNotConnected
-	}
 	cmd := &LedgerDataCommand{
 		Command: newCommand("ledger_data"),
 		Ledger:  ledger,
@@ -358,9 +308,6 @@ func (r *Remote) streamLedgerData(ledger interface{}, start, end string, c chan 
 
 // Asynchronously retrieve all data for a ledger using the binary form
 func (r *Remote) StreamLedgerData(ledger interface{}) chan data.LedgerEntrySlice {
-	if !r.IsConnected() {
-		return nil
-	}
 	c := make(chan data.LedgerEntrySlice, 100)
 	wg := &sync.WaitGroup{}
 	for i := 0; i < 16; i++ {
@@ -378,9 +325,6 @@ func (r *Remote) StreamLedgerData(ledger interface{}) chan data.LedgerEntrySlice
 
 // Synchronously gets a single ledger
 func (r *Remote) Ledger(ledger interface{}, transactions bool) (*LedgerResult, error) {
-	if !r.IsConnected() {
-		return nil, ErrNotConnected
-	}
 	cmd := &LedgerCommand{
 		Command:      newCommand("ledger"),
 		LedgerIndex:  ledger,
@@ -397,9 +341,6 @@ func (r *Remote) Ledger(ledger interface{}, transactions bool) (*LedgerResult, e
 }
 
 func (r *Remote) LedgerHeader(ledger interface{}) (*LedgerHeaderResult, error) {
-	if !r.IsConnected() {
-		return nil, ErrNotConnected
-	}
 	cmd := &LedgerHeaderCommand{
 		Command: newCommand("ledger_header"),
 		Ledger:  ledger,
@@ -414,9 +355,6 @@ func (r *Remote) LedgerHeader(ledger interface{}) (*LedgerHeaderResult, error) {
 
 // Synchronously requests paths
 func (r *Remote) RipplePathFind(src, dest data.Account, amount data.Amount, srcCurr *[]data.Currency) (*RipplePathFindResult, error) {
-	if !r.IsConnected() {
-		return nil, ErrNotConnected
-	}
 	cmd := &RipplePathFindCommand{
 		Command:       newCommand("ripple_path_find"),
 		SrcAccount:    src,
@@ -434,9 +372,6 @@ func (r *Remote) RipplePathFind(src, dest data.Account, amount data.Amount, srcC
 
 // Synchronously requests account info
 func (r *Remote) AccountInfo(a data.Account) (*AccountInfoResult, error) {
-	if !r.IsConnected() {
-		return nil, ErrNotConnected
-	}
 	cmd := &AccountInfoCommand{
 		Command: newCommand("account_info"),
 		Account: a,
@@ -451,9 +386,6 @@ func (r *Remote) AccountInfo(a data.Account) (*AccountInfoResult, error) {
 
 // Synchronously requests account line info
 func (r *Remote) AccountLines(account data.Account, ledgerIndex interface{}) (*AccountLinesResult, error) {
-	if !r.IsConnected() {
-		return nil, ErrNotConnected
-	}
 	var (
 		lines  data.AccountLineSlice
 		marker *data.Hash256
@@ -487,9 +419,6 @@ func (r *Remote) AccountLines(account data.Account, ledgerIndex interface{}) (*A
 
 // Synchronously requests account offers
 func (r *Remote) AccountOffers(account data.Account, ledgerIndex interface{}) (*AccountOffersResult, error) {
-	if !r.IsConnected() {
-		return nil, ErrNotConnected
-	}
 	var (
 		offers data.AccountOfferSlice
 		marker *data.Hash256
@@ -522,9 +451,6 @@ func (r *Remote) AccountOffers(account data.Account, ledgerIndex interface{}) (*
 }
 
 func (r *Remote) BookOffers(taker data.Account, ledgerIndex interface{}, pays, gets data.Asset) (*BookOffersResult, error) {
-	if !r.IsConnected() {
-		return nil, ErrNotConnected
-	}
 	cmd := &BookOffersCommand{
 		Command:     newCommand("book_offers"),
 		LedgerIndex: ledgerIndex,
@@ -544,9 +470,6 @@ func (r *Remote) BookOffers(taker data.Account, ledgerIndex interface{}, pays, g
 // Synchronously subscribe to streams and receive a confirmation message
 // Streams are recived asynchronously over the Incoming channel
 func (r *Remote) Subscribe(ledger, transactions, transactionsProposed, server bool) (*SubscribeResult, error) {
-	if !r.IsConnected() {
-		return nil, ErrNotConnected
-	}
 	streams := []string{}
 	if ledger {
 		streams = append(streams, "ledger")
@@ -587,9 +510,6 @@ type OrderBookSubscription struct {
 }
 
 func (r *Remote) SubscribeOrderBooks(books []OrderBookSubscription) (*SubscribeResult, error) {
-	if !r.IsConnected() {
-		return nil, ErrNotConnected
-	}
 	cmd := &SubscribeCommand{
 		Command: newCommand("subscribe"),
 		Streams: []string{"ledger", "server"},
@@ -604,9 +524,6 @@ func (r *Remote) SubscribeOrderBooks(books []OrderBookSubscription) (*SubscribeR
 }
 
 func (r *Remote) Fee() (*FeeResult, error) {
-	if !r.IsConnected() {
-		return nil, ErrNotConnected
-	}
 	cmd := &FeeCommand{
 		Command: newCommand("fee"),
 	}
@@ -621,20 +538,19 @@ func (r *Remote) Fee() (*FeeResult, error) {
 // readPump reads from the websocket and sends to inbound channel.
 // Expects to receive PONGs at specified interval, or logs an error and returns.
 func (r *Remote) readPump(inbound chan<- []byte) {
+	r.ws.SetReadDeadline(time.Now().Add(pongWait))
 	r.ws.SetPongHandler(func(string) error { r.ws.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 	for {
-		r.ws.SetReadDeadline(time.Now().Add(pongWait))
-		messageType, message, err := r.ws.ReadMessage()
+		_, message, err := r.ws.ReadMessage()
 		if err != nil {
 			log.Error("ws read message error", "remote", r.ws.RemoteAddr(), "err", err)
 			return
 		}
 		if params.IsDebugMode() {
-			log.Info("ws read message", "messageType", messageType, "message", dump(message))
+			log.Info("ws read message", "message", dump(message))
 		}
-		if messageType == websocket.TextMessage {
-			inbound <- message
-		}
+		r.ws.SetReadDeadline(time.Now().Add(pongWait))
+		inbound <- message
 	}
 }
 
@@ -651,7 +567,6 @@ func (r *Remote) writePump(outbound <-chan interface{}) {
 		// An outbound message is available to send
 		case message, ok := <-outbound:
 			if !ok {
-				r.ws.SetWriteDeadline(time.Now().Add(writeWait))
 				r.ws.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
@@ -665,7 +580,6 @@ func (r *Remote) writePump(outbound <-chan interface{}) {
 			if params.IsDebugMode() {
 				log.Info("ws write message", "message", dump(b))
 			}
-			r.ws.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := r.ws.WriteMessage(websocket.TextMessage, b); err != nil {
 				log.Error("ws write message error", "remote", r.ws.RemoteAddr(), "err", err)
 				return
@@ -673,7 +587,6 @@ func (r *Remote) writePump(outbound <-chan interface{}) {
 
 		// Time to send a ping
 		case <-ticker.C:
-			r.ws.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := r.ws.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
 				log.Error("ws write ping message error", "remote", r.ws.RemoteAddr(), "err", err)
 				return

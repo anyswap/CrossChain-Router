@@ -3,14 +3,12 @@ package ripple
 import (
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/ripple/rubblelabs/ripple/data"
-	"github.com/anyswap/CrossChain-Router/v3/tokens/ripple/rubblelabs/ripple/websockets"
 )
 
 var (
@@ -27,55 +25,6 @@ func convertToAsset(tokenAddr string) (*data.Asset, error) {
 // SetGatewayConfig set gateway config
 func (b *Bridge) SetGatewayConfig(gatewayCfg *tokens.GatewayConfig) {
 	b.CrossChainBridgeBase.SetGatewayConfig(gatewayCfg)
-	b.InitRemotes()
-}
-
-// InitRemotes set ripple remotes
-func (b *Bridge) InitRemotes() {
-	logErrFunc := log.GetLogFuncOr(router.DontPanicInLoading(), log.Error, log.Fatal)
-	remotes := make(map[string]*websockets.Remote)
-	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
-	for _, apiAddress := range urls {
-		if _, exist := remotes[apiAddress]; exist {
-			continue
-		}
-		for i := 0; i < 3; i++ { // with retry
-			remote, err := websockets.NewRemote(apiAddress)
-			if err != nil || remote == nil {
-				log.Warn("Cannot connect to ripple", "address", apiAddress, "error", err)
-				continue
-			}
-			log.Info("Connected to remote api success", "api", apiAddress)
-			remotes[apiAddress] = remote
-			break
-		}
-	}
-	if len(remotes) < 1 {
-		logErrFunc("No available remote api")
-		return
-	}
-	b.Remotes = remotes
-	log.Infof("connected remotes are %v", b.Remotes)
-	go b.CheckAndReconnectRemotes()
-}
-
-// CheckAndReconnectRemotes check and reconnect
-func (b *Bridge) CheckAndReconnectRemotes() {
-	for {
-		for url, r := range b.Remotes {
-			if r.IsConnected() {
-				continue
-			}
-			remote, err := websockets.NewRemote(url)
-			if err != nil || remote == nil {
-				log.Warn("reconnect to remote api failed", "url", url, "error", err)
-				continue
-			}
-			log.Info("reconnect to remote api success", "url", url)
-			b.Remotes[url] = remote
-		}
-		time.Sleep(30 * time.Second)
-	}
 }
 
 // SetTokenConfig set token config
