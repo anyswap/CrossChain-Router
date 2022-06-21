@@ -125,20 +125,14 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 
 func (b *Bridge) checkTxStatus(tx *ElectTx, swapInfo *tokens.SwapTxInfo, allowUnstable bool) error {
 	txStatus := tx.Status
-	// if txStatus.BlockHeight != nil {
-	// 	swapInfo.Height = *txStatus.BlockHeight // Height
-	// } else if !*txStatus.Confirmed {
-	// 	return tokens.ErrTxNotStable
-	// } else if *tx.Locktime != 0 {
-	// 	// tx with locktime should be on chain, prvent DDOS attack
-	// 	return tokens.ErrTxNotStable
-	// }
 	if txStatus.BlockHeight != nil {
 		swapInfo.Height = *txStatus.BlockHeight // Height
 	} else if *tx.Locktime != 0 {
 		// tx with locktime should be on chain, prvent DDOS attack
 		return tokens.ErrTxNotStable
-	}
+	}//else if !*txStatus.Confirmed {
+		//return tokens.ErrTxNotStable
+	//}
 	if txStatus.BlockTime != nil {
 		swapInfo.Timestamp = *txStatus.BlockTime // Timestamp
 	}
