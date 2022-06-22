@@ -165,9 +165,12 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 // GetBalance gets balance
 func (b *Bridge) GetBalance(accountAddress string) (*big.Int, error) {
 	acct, err := b.GetAccount(accountAddress)
-	if err != nil || acct == nil {
+	if err != nil {
 		log.Warn("get balance failed", "account", accountAddress, "err", err)
 		return nil, err
+	}
+	if acct == nil || acct.AccountData.Balance == nil {
+		return big.NewInt(0), nil
 	}
 	bal := big.NewInt(acct.AccountData.Balance.Drops())
 	return bal, nil
