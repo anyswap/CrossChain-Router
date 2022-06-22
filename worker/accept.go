@@ -56,11 +56,14 @@ func StartAcceptSignJob() {
 	}
 
 	openLeveldb()
+	defer closeLeveldb()
 
 	go startAcceptProducer()
 
 	utils.TopWaitGroup.Add(1)
 	go startAcceptConsumer()
+
+	utils.TopWaitGroup.Wait()
 }
 
 func startAcceptProducer() {
@@ -114,10 +117,7 @@ func startAcceptProducer() {
 }
 
 func startAcceptConsumer() {
-	defer func() {
-		closeLeveldb()
-		utils.TopWaitGroup.Done()
-	}()
+	defer utils.TopWaitGroup.Done()
 
 	wg := new(sync.WaitGroup)
 	wg.Add(workerCount)
@@ -139,12 +139,13 @@ func startAcceptConsumer() {
 
 				logWorker("accept", "process accept sign info start", "keyID", info.Key)
 				err := processAcceptInfo(info)
-				acceptInfosInQueue.Remove(info.Key)
 				if err == nil {
 					logWorker("accept", "process accept sign info finish", "keyID", info.Key)
 				} else {
 					logWorkerError("accept", "process accept sign info finish", err, "keyID", info.Key)
 				}
+
+				acceptInfosInQueue.Remove(info.Key)
 			}
 		}()
 	}
