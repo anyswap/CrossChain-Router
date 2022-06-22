@@ -22,14 +22,14 @@ var (
 )
 
 var TronMainnetChainID = uint64(112233)
-var TronShastaChainID = uint64(112244)
+var TronShastaChainID = uint64(2494104990)
 
 // Bridge eth bridge
 type Bridge struct {
 	CustomConfig
 	*tokens.CrossChainBridgeBase
 	SignerChainID *big.Int
-	TronChainID *big.Int
+	TronChainID   *big.Int
 }
 
 // NewCrossChainBridge new bridge
