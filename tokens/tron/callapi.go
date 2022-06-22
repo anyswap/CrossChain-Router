@@ -231,12 +231,13 @@ func (b *Bridge) GetTransactionLog(txHash string) ([]*types.RPCLog, error) {
 			rpcError.log(errors.New("parse error"))
 			continue
 		}
-		addr, _ := common.FromHex(tl["address"].(string))
-		data := hexutil.HexToBytes(tl["topics"].(string))
+		addr := common.HexToAddress(`0x` + tl["address"].(string))
+		data, _ := hex.DecodeString(`0x` + tl["topics"].(string))
+		hexdata := hexutil.Bytes(data)
 		ethlog := &types.RPCLog{
 			Address: &addr,
 			Topics:  []common.Hash{},
-			Data:    &data,
+			Data:    &hexdata,
 			Removed: new(bool),
 		}
 		topics, _ := tl["topics"].([]interface{})
@@ -244,7 +245,7 @@ func (b *Bridge) GetTransactionLog(txHash string) ([]*types.RPCLog, error) {
 			return nil, rpcError.Error()
 		}
 		for _, topic := range topics {
-			ethlog.Topics = append(ethlog.Topics, common.FromHex(topic.(string)))
+			ethlog.Topics = append(ethlog.Topics, common.HexToHash(topic.(string)))
 		}
 		logs = append(logs, ethlog)
 	}
@@ -332,9 +333,10 @@ func (b *Bridge) GetCode(contractAddress string) (data []byte, err error) {
 // GetBalance gets TRON token balance
 func (b *Bridge) GetBalance(account string) (balance *big.Int, err error) {
 	rpcError := &RPCError{[]error{}, "GetBalance"}
+	account = strings.TrimPrefix(account, "0x")
 	for _, endpoint := range b.GatewayConfig.APIAddress {
 		apiurl := strings.TrimSuffix(endpoint, "/") + `/wallet/getaccount`
-		res, err := post(apiurl, `{"value":"`+contractAddress+`","visible":false}`)
+		res, err := post(apiurl, `{"value":"`+account+`","visible":false}`)
 		if err != nil {
 			rpcError.log(err)
 			continue
@@ -364,19 +366,17 @@ func (b *Bridge) BuildTriggerConstantContractTx(from, contract string, selector 
 	if fromAddr.String() == "" {
 		return nil, errors.New("invalid from address")
 	}
-	fromAddr = strings.TrimPrefix(fromAddr, "0x")
 	contractAddr := tronaddress.HexToAddress(anyToEth(contract))
 	if contractAddr.String() == "" {
 		return nil, errors.New("invalid contract address")
 	}
-	contractAddr = strings.TrimPrefix(contractAddr, "0x")
 
 	rpcError := &RPCError{[]error{}, "BuildTriggerConstantContractTx"}
 
-	tx = &core.Transaction
+	tx = &core.Transaction{}
 	for _, endpoint := range b.GatewayConfig.APIAddress {
 		apiurl := strings.TrimSuffix(endpoint, "/") + `/wallet/triggersmartcontract`
-		res, err := post(apiurl, `{"owner_address":"`+fromAddr+`","contract_address":"`+contractAddr+`","function_selector":"`+selector+`","paramater":"`+paramater+`","fee_limit":"`+fee_limit+`"}`)
+		res, err := post(apiurl, `{"owner_address":"`+fromAddr.Hex()+`","contract_address":"`+contractAddr.Hex()+`","function_selector":"`+selector+`","paramater":"`+paramater+`","fee_limit":"`+fmt.Sprint(fee_limit)+`"}`)
 		if err != nil {
 			rpcError.log(err)
 			continue
@@ -392,8 +392,12 @@ func (b *Bridge) BuildTriggerConstantContractTx(from, contract string, selector 
 			rpcError.log(errors.New("parse error"))
 			continue
 		}
+		bz, err := hex.DecodeString(raw)
+		if err != nil {
+			panic(err)
+		}
 		rawdata := &core.TransactionRaw{}
-		err = proto.Unmarshal(raw, rawdata)
+		err = proto.Unmarshal(bz, rawdata)
 		if err != nil {
 			panic(err)
 		}

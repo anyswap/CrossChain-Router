@@ -19,7 +19,6 @@ import (
 // GetTransactionStatus returns tx status
 func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, err error) {
 	status = &tokens.TxStatus{}
-	var tx *core.TransactionInfo
 	rpcError := &RPCError{[]error{}, "GetTransactionStatus"}
 	defer func() {
 		if r := recover(); r != nil {
@@ -40,22 +39,30 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 		}
 	}
 
-	if tx.Result != core.TransactionInfo_SUCESS {
+	defer func() {
+		if r := recover(); r != nil {
+			status = nil
+			err = fmt.Errorf("%v", r)
+		}
+	}()
+
+	if txinfo["result"].(string) != "SUCCESS" {
 		return nil, errors.New("tron tx not success")
 	}
-	cres := tx.GetContractResult()
+	cres := txinfo["contractResult"].([]interface{})
 	if len(cres) < 1 {
 		return nil, errors.New("tron tx no result")
 	}
-	for _, r := range cres {
+	for _, cr := range cres {
+		r := []byte(cr.(string))
 		if len(r) > 0 && new(big.Int).SetBytes(r).Int64() != 1 {
 			return nil, errors.New("tron tx wrong result")
 		}
 	}
 
-	status.Receipt = tx
-	status.BlockHeight = uint64(tx.BlockNumber)
-	status.BlockTime = uint64(tx.BlockTimeStamp / 1000)
+	status.Receipt = txinfo
+	status.BlockHeight = uint64(txinfo["blockNumber"].(float64))
+	status.BlockTime = uint64(txinfo["blockTimeStamp"].(float64)) / 1000
 
 	if latest, err := b.GetLatestBlockNumber(); err == nil {
 		status.Confirmations = latest - status.BlockHeight
