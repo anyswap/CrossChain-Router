@@ -45,6 +45,7 @@ func StartAcceptSignJob() {
 	logWorker("accept", "start accept sign job")
 
 	openLeveldb()
+	defer closeLeveldb()
 
 	if mpcConfig := mpc.GetMPCConfig(false); mpcConfig != nil {
 		initAcceptWorkers(false)
@@ -63,6 +64,8 @@ func StartAcceptSignJob() {
 		utils.TopWaitGroup.Add(1)
 		go startAcceptConsumer(mpcConfig)
 	}
+
+	utils.TopWaitGroup.Wait()
 }
 
 func initAcceptWorkers(isFastMPC bool) {
@@ -135,10 +138,7 @@ func startAcceptProducer(mpcConfig *mpc.Config) {
 }
 
 func startAcceptConsumer(mpcConfig *mpc.Config) {
-	defer func() {
-		closeLeveldb()
-		utils.TopWaitGroup.Done()
-	}()
+	defer utils.TopWaitGroup.Done()
 
 	acceptWorker := acceptWorkers[mpcConfig.IsFastMPC]
 	acceptInfoQueue := acceptWorker.acceptInfoQueue
@@ -164,12 +164,13 @@ func startAcceptConsumer(mpcConfig *mpc.Config) {
 
 				logWorker("accept", "process accept sign info start", "keyID", info.Key)
 				err := processAcceptInfo(mpcConfig, info)
-				acceptInfosInQueue.Remove(info.Key)
 				if err == nil {
 					logWorker("accept", "process accept sign info finish", "keyID", info.Key)
 				} else {
 					logWorkerError("accept", "process accept sign info finish", err, "keyID", info.Key)
 				}
+
+				acceptInfosInQueue.Remove(info.Key)
 			}
 		}()
 	}
