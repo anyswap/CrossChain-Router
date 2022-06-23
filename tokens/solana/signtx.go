@@ -1,7 +1,6 @@
 package solana
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,7 +12,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/solana/types"
-	bin "github.com/streamingfast/binary"
 )
 
 func (b *Bridge) verifyTransactionWithArgs(tx *types.Transaction, args *tokens.BuildTxArgs) error {
@@ -50,11 +48,10 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 		return nil, "", tokens.ErrMissMPCPublicKey
 	}
 
-	buf := new(bytes.Buffer)
-	if err = bin.NewEncoder(buf).Encode(tx.Message); err != nil {
+	msgContent, err := tx.Message.Serialize()
+	if err != nil {
 		return nil, "", fmt.Errorf("unable to encode message for signing: %w", err)
 	}
-	msgContent := buf.Bytes()
 
 	jsondata, err := json.Marshal(args.GetExtraArgs())
 	if err != nil {
@@ -64,6 +61,7 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 
 	txid := args.SwapID
 	logPrefix := b.ChainConfig.BlockChain + " MPCSignTransaction "
+	log.Info(logPrefix+"start", "msgContent", common.ToHex(msgContent))
 	log.Info(logPrefix+"start", "txid", txid, "fromChainID", args.FromChainID, "toChainID", args.ToChainID)
 
 	mpcConfig := mpc.GetMPCConfig(b.UseFastMPC)
@@ -95,6 +93,21 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 
 // SignTransactionWithPrivateKey sign tx with ECDSA private key
 func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, privKey string) (signTx interface{}, txHash string, err error) {
-	// TODO implement
-	return nil, "", nil
+	tx, ok := rawTx.(*types.Transaction)
+	if !ok {
+		return nil, "", errors.New("wrong signed transaction type")
+	}
+	msgContent, err := tx.Message.Serialize()
+	if err != nil {
+		return nil, "", fmt.Errorf("unable to encode message for signing: %w", err)
+	}
+	signAccount, err := types.AccountFromPrivateKeyBase58(privKey)
+	if err != nil {
+		return nil, "", fmt.Errorf("unable to encode message for signing: %w", err)
+	}
+	signature, err := signAccount.PrivateKey.Sign(msgContent)
+
+	tx.Signatures = append(tx.Signatures, signature)
+	log.Info("SignTransactionWithPrivateKey", "signature", signature.String())
+	return tx, signature.String(), err
 }

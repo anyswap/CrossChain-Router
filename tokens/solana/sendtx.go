@@ -1,7 +1,6 @@
 package solana
 
 import (
-	"bytes"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -10,7 +9,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/solana/types"
-	bin "github.com/streamingfast/binary"
+	"github.com/mr-tron/base58"
 )
 
 var (
@@ -35,17 +34,13 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error
 
 // SendSignedTransaction call sendTransaction
 func (b *Bridge) SendSignedTransaction(tx *types.Transaction, opts *types.SendTransactionOptions) (txHash string, err error) {
-	buf := new(bytes.Buffer)
-	if err = bin.NewEncoder(buf).Encode(tx); err != nil {
-		return "", fmt.Errorf("sendtx encode tx error: %w", err)
+	txData, err := tx.SerializeAll()
+	if err != nil {
+		return "", err
 	}
-
-	txData := buf.Bytes()
 	b64TxData := base64.StdEncoding.EncodeToString(txData)
 
-	if params.IsDebugMode() {
-		log.Infof("SendTransaction rawtx is %v", b64TxData)
-	}
+	log.Info("SendTransaction: ", "length", len(txData), "b64TxData: ", b64TxData)
 
 	obj := map[string]interface{}{
 		"encoding":   "base64",
@@ -101,17 +96,22 @@ func sendRawTransaction(sendTxParams []interface{}, urls []string) (txHash strin
 
 // SimulateTransaction simulate tx
 func (b *Bridge) SimulateTransaction(tx *types.Transaction) (result *types.SimulateTransactionResponse, err error) {
-	buf := new(bytes.Buffer)
-	if err = bin.NewEncoder(buf).Encode(tx); err != nil {
+	signData, err := tx.Message.Serialize()
+	if err != nil {
 		return nil, fmt.Errorf("simulate tx encode tx error: %w", err)
 	}
+	log.Info("signData: ", "length", len(signData), "base58: ", base58.Encode(signData))
+	wireTransaction, err := tx.Serialize(signData)
+	if err != nil {
+		return nil, fmt.Errorf("simulate tx encode tx error: %w", err)
+	}
+	b64TxData := base64.StdEncoding.EncodeToString(wireTransaction)
 
-	txData := buf.Bytes()
-	b64TxData := base64.StdEncoding.EncodeToString(txData)
+	log.Info("simulateTx: ", "length", len(wireTransaction), "b64TxData: ", b64TxData)
 	obj := map[string]interface{}{
 		"encoding":   "base64",
 		"commitment": "confirmed",
-		"sigVerify":  true,
+		"sigVerify":  false,
 	}
 	sendTxParams := []interface{}{b64TxData, obj}
 

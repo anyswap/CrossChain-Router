@@ -125,7 +125,7 @@ func (b *Bridge) GetAccountInfo(account, encoding string) (result *types.GetAcco
 // GetBalance get balance
 func (b *Bridge) GetBalance(publicKey string) (*big.Int, error) {
 	obj := map[string]string{
-		"commitment": "confirmed",
+		"commitment": "finalized",
 	}
 	result := types.GetBalanceResult{}
 	callMethod := "getBalance"
@@ -152,4 +152,18 @@ func (b *Bridge) GetProgramAccounts(account, encoding string, filters []map[stri
 	callMethod := "getProgramAccounts"
 	err = RPCCall(&result, b.GatewayConfig.APIAddress, callMethod, account, obj)
 	return result, err
+}
+
+// AirDrop
+func (b *Bridge) AirDrop(publicKey string, amount uint64) (string, error) {
+	result := new(string)
+	callMethod := "requestAirdrop"
+	obj := map[string]interface{}{
+		"commitment": "finalized",
+	}
+	err := RPCCall(result, b.GatewayConfig.APIAddress, callMethod, publicKey, amount, obj)
+	if err != nil {
+		return "", err
+	}
+	return *result, nil
 }

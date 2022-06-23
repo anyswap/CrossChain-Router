@@ -15,8 +15,11 @@
 package types
 
 import (
+	"bytes"
 	"fmt"
 
+	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/mr-tron/base58"
 	bin "github.com/streamingfast/binary"
 )
 
@@ -41,6 +44,34 @@ func (t *Transaction) AccountMetaList() (out []*AccountMeta) { return t.Message.
 // ResolveProgramIDIndex resolve programID index
 func (t *Transaction) ResolveProgramIDIndex(programIDIndex uint8) (PublicKey, error) {
 	return t.Message.ResolveProgramIDIndex(programIDIndex)
+}
+
+func (t *Transaction) Serialize(signdata []byte) ([]byte, error) {
+	signerKeys := t.Message.SignerKeys()
+	buf := make([]byte, 0, 1+len(signerKeys)*64+len(signdata))
+	buf = append(buf, byte(len(signerKeys)))
+	for i := 0; i < len(signerKeys); i++ {
+		if t.Signatures != nil {
+			if len(t.Signatures) < i+1 {
+				return nil, fmt.Errorf("Transaction miss Signatures %d", i)
+			}
+			buf = append(buf, t.Signatures[i][:]...)
+		} else {
+			emptySignature := make([]byte, 64)
+			buf = append(buf, emptySignature...)
+		}
+	}
+	buf = append(buf, signdata...)
+	return buf, nil
+}
+
+func (t *Transaction) SerializeAll() ([]byte, error) {
+	signData, err := t.Message.Serialize()
+	log.Info("signData: ", "length", len(signData), "base58: ", base58.Encode(signData))
+	if err != nil {
+		return nil, err
+	}
+	return t.Serialize(signData)
 }
 
 // Message type
@@ -114,6 +145,15 @@ func (m *Message) IsWritable(account PublicKey) bool {
 // SignerKeys signer keys
 func (m *Message) SignerKeys() []PublicKey {
 	return m.AccountKeys[0:m.Header.NumRequiredSignatures]
+}
+
+// SignerKeys signer keys
+func (m *Message) Serialize() ([]byte, error) {
+	buf := new(bytes.Buffer)
+	if err := bin.NewEncoder(buf).Encode(m); err != nil {
+		return nil, fmt.Errorf("unable to encode message: %w", err)
+	}
+	return buf.Bytes(), nil
 }
 
 // MessageHeader type

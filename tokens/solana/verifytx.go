@@ -161,6 +161,11 @@ func (b *Bridge) verifySwapoutLogs(swapInfo *tokens.SwapTxInfo, logMessages []st
 	// matches parts is (to, mint, amount, to_chainid)
 	swapInfo.Bind = matches[2]
 	erc20SwapInfo.Token = matches[3]
+	tokenCfg := b.GetTokenConfig(erc20SwapInfo.Token)
+	if tokenCfg == nil {
+		return tokens.ErrMissTokenConfig
+	}
+	erc20SwapInfo.TokenID = tokenCfg.TokenID
 	value, err := common.GetUint64FromStr(matches[4])
 	if err != nil {
 		return err
@@ -172,13 +177,6 @@ func (b *Bridge) verifySwapoutLogs(swapInfo *tokens.SwapTxInfo, logMessages []st
 		return err
 	}
 	swapInfo.ToChainID = new(big.Int).SetUint64(toChainID)
-
-	tokenCfg := b.GetTokenConfig(erc20SwapInfo.Token)
-	if tokenCfg == nil {
-		return tokens.ErrMissTokenConfig
-	}
-	erc20SwapInfo.TokenID = tokenCfg.TokenID
-
 	return nil
 }
 

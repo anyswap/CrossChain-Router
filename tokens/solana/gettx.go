@@ -20,7 +20,7 @@ func (b *Bridge) GetTransactionStatus(txHash string) (*tokens.TxStatus, error) {
 	}
 
 	var txStatus tokens.TxStatus
-
+	// TODO The first message.header.numRequiredSignatures public keys must sign the transaction.
 	txStatus.Sender = txm.Transaction.Message.AccountKeys[0].String()
 	txStatus.BlockHeight = uint64(txm.Slot)
 	txStatus.BlockHash = txm.Transaction.Message.RecentBlockhash.String()

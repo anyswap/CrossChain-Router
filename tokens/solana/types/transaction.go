@@ -96,12 +96,12 @@ func NewTransaction(instructions []TransactionInstruction, blockHash Hash, opts 
 		uniqAccountsMap[acc.PublicKey] = len(uniqAccounts) - 1
 	}
 
-	log.Debug("unique account sorted", "account_count", len(uniqAccounts))
+	log.Info("unique account sorted", "account_count", len(uniqAccounts))
 	feePayerIndex := -1
 	if idx, exist := uniqAccountsMap[feePayer]; exist {
 		feePayerIndex = idx
 	}
-	log.Debug("current fee payer index", "fee_payer_index", feePayerIndex)
+	log.Info("current fee payer index", "fee_payer_index", feePayerIndex)
 
 	finalAccounts := uniqAccounts
 	// Move fee payer to the front
@@ -139,7 +139,7 @@ func NewTransaction(instructions []TransactionInstruction, blockHash Hash, opts 
 			message.Header.NumReadonlyUnsignedAccounts++
 		}
 	}
-	log.Debug("message header compiled",
+	log.Info("message header compiled",
 		"num_required_signatures", message.Header.NumRequiredSignatures,
 		"num_readonly_signed_accounts", message.Header.NumReadonlySignedAccounts,
 		"num_readonly_unsigned_accounts", message.Header.NumReadonlyUnsignedAccounts,

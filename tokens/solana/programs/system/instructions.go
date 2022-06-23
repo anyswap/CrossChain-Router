@@ -25,9 +25,10 @@ import (
 
 // programID constants
 var (
-	SystemProgramID      = types.MustPublicKeyFromBase58("11111111111111111111111111111111")
-	SysvarRentProgramID  = types.MustPublicKeyFromBase58("SysvarRent111111111111111111111111111111111")
-	SysvarC1ockProgramID = types.MustPublicKeyFromBase58("SysvarC1ock11111111111111111111111111111111")
+	SystemProgramID               = types.MustPublicKeyFromBase58("11111111111111111111111111111111")
+	SysvarRentProgramID           = types.MustPublicKeyFromBase58("SysvarRent111111111111111111111111111111111")
+	SysvarC1ockProgramID          = types.MustPublicKeyFromBase58("SysvarC1ock11111111111111111111111111111111")
+	SysvarRecentBlockhashesPubkey = types.MustPublicKeyFromBase58("SysvarRecentB1ockHashes11111111111111111111")
 )
 
 // typeID constants
@@ -102,6 +103,22 @@ func NewTransferSolanaInstruction(from, to types.PublicKey, lamports uint64) *In
 				Accounts: &TransferAccounts{
 					From: &types.AccountMeta{PublicKey: from, IsSigner: true, IsWritable: true},
 					To:   &types.AccountMeta{PublicKey: to, IsSigner: false, IsWritable: true},
+				},
+			},
+		},
+	}
+}
+
+// NewNonceAdvanceInstruction new NonceAdvance solana instruction
+func NewNonceAdvanceInstruction(noncePubkey, authorizedPubkey types.PublicKey) *Instruction {
+	return &Instruction{
+		BaseVariant: bin.BaseVariant{
+			TypeID: AdvanceNonceAccountTypeID,
+			Impl: &NonceAccount{
+				Accounts: &AdvanceNonceAccounts{
+					NoncePubkey:      &types.AccountMeta{PublicKey: noncePubkey, IsSigner: false, IsWritable: true},
+					BlockHash:        &types.AccountMeta{PublicKey: SysvarRecentBlockhashesPubkey, IsSigner: false, IsWritable: false},
+					AuthorizedPubkey: &types.AccountMeta{PublicKey: authorizedPubkey, IsSigner: true, IsWritable: false},
 				},
 			},
 		},
@@ -222,9 +239,16 @@ type CreateAccountWithSeed struct {
 	Owner    types.PublicKey
 }
 
-// AdvanceNonceAccount advance nonce account
-type AdvanceNonceAccount struct {
+type NonceAccount struct {
 	// Prefix with 0x04
+	Accounts *AdvanceNonceAccounts `bin:"-"`
+}
+
+// AdvanceNonceAccount advance nonce account
+type AdvanceNonceAccounts struct {
+	NoncePubkey      *types.AccountMeta
+	BlockHash        *types.AccountMeta
+	AuthorizedPubkey *types.AccountMeta
 }
 
 // WithdrawNonceAccount withdraw nonce account

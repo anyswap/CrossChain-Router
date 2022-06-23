@@ -208,7 +208,7 @@ func (b *Bridge) BuildSwapinNativeTransaction(args *tokens.BuildTxArgs, tokenCfg
 	if err != nil {
 		return nil, err
 	}
-
+	log.Info(recentBlockHash.String())
 	return types.NewTransaction(instructions, recentBlockHash, types.TransactionPayer(mpc))
 }
 
