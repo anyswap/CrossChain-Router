@@ -154,6 +154,7 @@ type OnchainConfig struct {
 	APIAddress  []string
 	WSServers   []string
 	ReloadCycle uint64 // seconds
+	IgnoreCheck bool
 }
 
 // MPCConfig mpc related config

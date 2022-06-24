@@ -281,7 +281,7 @@ func startSwapConsumer(chainID string) {
 			return
 		}
 
-		if i%10 == 0 {
+		if i%10 == 0 && taskQueue.Len() > 0 {
 			logWorker("doSwap", "tasks in queue", "chainID", chainID, "count", taskQueue.Len())
 		}
 		i++

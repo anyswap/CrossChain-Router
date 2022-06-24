@@ -172,7 +172,7 @@ func startReplaceConsumer(chainID string) {
 			return
 		}
 
-		if i%10 == 0 {
+		if i%10 == 0 && taskQueue.Len() > 0 {
 			logWorker("doReplace", "tasks in replace queue", "chainID", chainID, "count", taskQueue.Len())
 		}
 		i++

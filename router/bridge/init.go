@@ -52,6 +52,7 @@ func InitRouterBridges(isServer bool) {
 	client.InitHTTPClient()
 	router.InitRouterConfigClients()
 
+	log.Info("start get all chain ids")
 	allChainIDs, err := router.GetAllChainIDs()
 	if err != nil {
 		logErrFunc("call GetAllChainIDs failed", "err", err)
@@ -72,6 +73,7 @@ func InitRouterBridges(isServer bool) {
 		return
 	}
 
+	log.Info("start get all token ids")
 	allTokenIDs, err := router.GetAllTokenIDs()
 	if err != nil {
 		logErrFunc("call GetAllTokenIDs failed", "err", err)

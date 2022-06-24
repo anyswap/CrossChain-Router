@@ -140,7 +140,7 @@ func startStableConsumer(chainID string) {
 			return
 		}
 
-		if i%10 == 0 {
+		if i%10 == 0 && taskQueue.Len() > 0 {
 			logWorker("doStable", "tasks in stable queue", "chainID", chainID, "count", taskQueue.Len())
 		}
 		i++

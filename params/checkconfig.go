@@ -145,6 +145,7 @@ func (c *RouterOracleConfig) CheckConfig() (err error) {
 		return errors.New("oracle must config 'ServerAPIAddress'")
 	}
 	if c.NoCheckServerConnection {
+		log.Info("oracle ignore check server connection")
 		return nil
 	}
 	var version string
@@ -304,6 +305,10 @@ func (c *MongoDBConfig) CheckConfig() error {
 
 // CheckConfig check onchain config storing chain and token configs
 func (c *OnchainConfig) CheckConfig() error {
+	if c.IgnoreCheck {
+		log.Info("ignore check onchain config")
+		return nil
+	}
 	log.Info("start check onchain config connection")
 	if c.Contract == "" {
 		return errors.New("onchain must config 'Contract'")
