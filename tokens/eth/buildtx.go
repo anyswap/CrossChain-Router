@@ -187,7 +187,7 @@ func (b *Bridge) setDefaults(args *tokens.BuildTxArgs) (err error) {
 			log.Error(fmt.Sprintf("build %s tx estimate gas failed", args.SwapType.String()),
 				"swapID", args.SwapID, "from", args.From, "to", args.To,
 				"value", args.Value, "data", *args.Input, "err", errf)
-			return tokens.ErrEstimateGasFailed
+			return fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, tokens.ErrEstimateGasFailed)
 		}
 		esGasLimit += esGasLimit * 30 / 100
 		defGasLimit := b.getDefaultGasLimit()
