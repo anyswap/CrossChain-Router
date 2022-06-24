@@ -415,7 +415,7 @@ func (b *Bridge) CallContract(contract string, data hexutil.Bytes, blockNumber s
 	}
 
 	reqArgs := map[string]interface{}{
-		"to":   contract,
+		"to":   contractAddr,
 		"data": data,
 	}
 	gateway := b.GatewayConfig
