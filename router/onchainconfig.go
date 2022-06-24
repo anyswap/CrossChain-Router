@@ -67,6 +67,10 @@ func InitRouterConfigClientsWithArgs(configContract string, gateways []string) {
 			log.Fatal("init router config clients failed", "gateway", gateway, "err", err)
 		}
 	}
+	log.Info("init router config clients success", "gateway", gateways, "configContract", configContract)
+	if len(routerConfigClients) == 0 {
+		log.Fatal("no router config client")
+	}
 }
 
 // CallOnchainContract call onchain contract
@@ -78,10 +82,12 @@ func CallOnchainContract(data hexutil.Bytes, blockNumber string) (result []byte,
 	for _, cli := range routerConfigClients {
 		result, err = cli.CallContract(routerConfigCtx, msg, nil)
 		if err != nil && IsIniting {
+			log.Warn("call onchain contract failed", "contract", routerConfigContract, "data", data, "err", err)
 			for i := 0; i < RetryRPCCountInInit; i++ {
 				if result, err = cli.CallContract(routerConfigCtx, msg, nil); err == nil {
 					return result, nil
 				}
+				log.Warn("call onchain contract failed", "err", err)
 				time.Sleep(RetryRPCIntervalInInit)
 			}
 		}
