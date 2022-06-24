@@ -160,6 +160,42 @@ type AccountInfo struct {
 	RentEpoch  bin.Uint64  `json:"rentEpoch"`
 }
 
+// GetNonceAccountInfoResult get account info result
+type GetNonceAccountInfoResult struct {
+	RPCContext
+	Value *NonceAccountValue `json:"value"`
+}
+
+// AccountInfo account info
+type NonceAccountValue struct {
+	Lamports   bin.Uint64        `json:"lamports"`
+	Data       *NonceAccountData `json:"data"` // <[string, encoding]|object>
+	Owner      PublicKey         `json:"owner"`
+	Executable bool              `json:"executable"`
+	RentEpoch  bin.Uint64        `json:"rentEpoch"`
+}
+
+type NonceAccountData struct {
+	Info    *NonceAccountParsed `json:"parsed"`
+	Program string              `json:"program"`
+	Space   bin.Uint64          `json:"space"`
+}
+
+type NonceAccountParsed struct {
+	Info *NonceAccountInfo `json:"info"`
+	Type string            `json:"type"`
+}
+
+type NonceAccountInfo struct {
+	Authority     string           `json:"authority"`
+	Blockhash     string           `json:"blockhash"`
+	FeeCalculator *NonceAccountFee `json:"feeCalculator"`
+}
+
+type NonceAccountFee struct {
+	LamportsPerSignature string `json:"lamportsPerSignature"`
+}
+
 // GetProgramAccountsOpts get program account options
 type GetProgramAccountsOpts struct {
 	Commitment CommitmentType `json:"commitment,omitempty"`

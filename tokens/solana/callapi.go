@@ -122,6 +122,19 @@ func (b *Bridge) GetAccountInfo(account, encoding string) (result *types.GetAcco
 	return result, err
 }
 
+func (b *Bridge) GetNonceAccountInfo(account string) (result *types.GetNonceAccountInfoResult, err error) {
+	obj := map[string]interface{}{
+		"encoding":   "jsonParsed",
+		"commitment": "finalized",
+	}
+	callMethod := "getAccountInfo"
+	err = RPCCall(&result, b.GatewayConfig.APIAddress, callMethod, account, obj)
+	if err == nil && result != nil && result.Value == nil {
+		return nil, tokens.ErrNotFound
+	}
+	return result, err
+}
+
 // GetBalance get balance
 func (b *Bridge) GetBalance(publicKey string) (*big.Int, error) {
 	obj := map[string]string{
