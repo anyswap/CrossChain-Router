@@ -255,7 +255,8 @@ func (b *Bridge) checkNonNativeBalance(currency, issuer, account, receiver strin
 	}
 	_, err := b.GetAccountLine(currency, issuer, receiver)
 	if err != nil {
-		return fmt.Errorf("receiver account line: %w", err)
+		log.Error("get receiver account line failed", "currency", currency, "issuer", issuer, "receiver", receiver, "err", err)
+		return fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, "get receiver account line failed")
 	}
 
 	if issuer == account {

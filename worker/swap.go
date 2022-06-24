@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"sync"
 
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
@@ -142,6 +143,10 @@ func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
 	res, err := mongodb.FindRouterSwapResult(fromChainID, txid, logIndex)
 	if err != nil {
 		return err
+	}
+
+	if strings.HasPrefix(res.Memo, tokens.ErrBuildTxErrorAndDelay.Error()) && res.Timestamp+300 > now() {
+		return nil
 	}
 
 	logWorker("swap", "start process router swap", "fromChainID", fromChainID, "txid", txid, "logIndex", logIndex, "status", swap.Status, "value", res.Value)
@@ -364,6 +369,9 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 	rawTx, err := resBridge.BuildRawTransaction(args)
 	if err != nil {
 		logWorkerError("doSwap", "build tx failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex)
+		if errors.Is(err, tokens.ErrBuildTxErrorAndDelay) {
+			_ = updateSwapTimestamp(fromChainID, txid, logIndex)
+		}
 		return err
 	}
 	swapTxNonce := args.GetTxNonce() // assign after build tx
@@ -458,6 +466,9 @@ func doSwapParallel(args *tokens.BuildTxArgs) (err error) {
 	rawTx, err := resBridge.BuildRawTransaction(args)
 	if err != nil {
 		logWorkerError("doSwap", "build tx failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex)
+		if errors.Is(err, tokens.ErrBuildTxErrorAndDelay) {
+			_ = updateSwapTimestamp(fromChainID, txid, logIndex)
+		}
 		return err
 	}
 
