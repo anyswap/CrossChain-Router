@@ -23,7 +23,7 @@ type VariantDefinition struct {
 
 // NewVariantDefinition creates a variant definition based on the *ordered* provided types.
 func NewVariantDefinition(types []VariantType) *VariantDefinition {
-	if len(types) < 0 {
+	if len(types) == 0 {
 		panic("it's not valid to create a variant definition without any types")
 	}
 

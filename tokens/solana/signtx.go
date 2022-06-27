@@ -11,10 +11,35 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	routerprog "github.com/anyswap/CrossChain-Router/v3/tokens/solana/programs/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/solana/types"
+	bin "github.com/streamingfast/binary"
 )
 
 func (b *Bridge) verifyTransactionWithArgs(tx *types.Transaction, args *tokens.BuildTxArgs) error {
+	fmt.Println(tx.Message.Instructions[0].Data)
+
+	var inst routerprog.Instruction
+	if err := inst.UnmarshalBinary(bin.NewDecoder(tx.Message.Instructions[0].Data)); err != nil {
+		return fmt.Errorf("unable to decode instruction: %w", err)
+	}
+	params, ok := inst.Impl.(routerprog.ISwapinParams)
+	if !ok {
+		return fmt.Errorf("unable to decode ISwapinParams")
+	}
+	swapin := params.GetSwapinParams()
+
+	if swapin.FromChainID != args.FromChainID.Uint64() {
+		return fmt.Errorf("[sign] verify FromChainID failed")
+	}
+
+	if swapin.Amount != args.OriginValue.Uint64() {
+		return fmt.Errorf("[sign] verify Amount failed swapin.Amount %v args.OriginValue %v", swapin.Amount, args.OriginValue.Uint64())
+	}
+
+	if swapin.Tx.String() != args.SwapID {
+		return fmt.Errorf("[sign] verify Tx failed swapin tx: %v OriginFrom: %v ", swapin.Tx.String(), args.SwapID)
+	}
 
 	return nil
 }

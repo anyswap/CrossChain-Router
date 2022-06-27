@@ -153,6 +153,10 @@ func (i *Instruction) MarshalBinary(encoder *bin.Encoder) error {
 	return encoder.Encode(i.Impl)
 }
 
+type ISwapinParams interface {
+	GetSwapinParams() SwapinParams
+}
+
 // SwapinMint type
 type SwapinMint struct {
 	SwapinParams
@@ -166,6 +170,10 @@ type SwapinMintAccounts struct {
 	To            *types.AccountMeta `text:"linear,notype"`
 	TokenMint     *types.AccountMeta `text:"linear,notype"`
 	TokenProgram  *types.AccountMeta `text:"linear,notype"`
+}
+
+func (i *SwapinMint) GetSwapinParams() SwapinParams {
+	return i.SwapinParams
 }
 
 // NewSwapinMintInstruction new SwapinMint instruction
@@ -211,6 +219,10 @@ func (i *SwapinMint) SetAccounts(accounts []*types.AccountMeta) error {
 type SwapinTransfer struct {
 	SwapinParams
 	Accounts *SwapinTransferAccounts `bin:"-"`
+}
+
+func (i *SwapinTransfer) GetSwapinParams() SwapinParams {
+	return i.SwapinParams
 }
 
 // SwapinTransferAccounts type
@@ -268,6 +280,10 @@ func (i *SwapinTransfer) SetAccounts(accounts []*types.AccountMeta) error {
 type SwapinNative struct {
 	SwapinParams
 	Accounts *SwapinNativeAccounts `bin:"-"`
+}
+
+func (i *SwapinNative) GetSwapinParams() SwapinParams {
+	return i.SwapinParams
 }
 
 // SwapinNativeAccounts type

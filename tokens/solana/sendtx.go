@@ -24,9 +24,9 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error
 	}
 	txHash, err = b.SendSignedTransaction(tx, sendTxOpts)
 	if err != nil {
-		log.Info("SendTransaction failed", "err", err)
+		log.Info("Solana SendTransaction failed", "err", err)
 	} else {
-		log.Info("SendTransaction success", "hash", txHash)
+		log.Info("Solana SendTransaction success", "hash", txHash)
 
 	}
 	return txHash, err
@@ -40,7 +40,7 @@ func (b *Bridge) SendSignedTransaction(tx *types.Transaction, opts *types.SendTr
 	}
 	b64TxData := base64.StdEncoding.EncodeToString(txData)
 
-	log.Info("SendTransaction: ", "length", len(txData), "b64TxData: ", b64TxData)
+	log.Debug("SendSignedTransaction: ", "length", len(txData), "b64TxData: ", b64TxData)
 
 	obj := map[string]interface{}{
 		"encoding":   "base64",
@@ -80,10 +80,10 @@ func sendRawTransaction(sendTxParams []interface{}, urls []string) (txHash strin
 	for _, url := range urls {
 		err = client.RPCPost(&result, url, "sendTransaction", sendTxParams...)
 		if err != nil {
-			logFunc("call sendTransaction failed", "url", url, "err", err)
+			logFunc("SendSignedTransaction failed", "url", url, "err", err)
 			continue
 		}
-		logFunc("call sendTransaction success", "txHash", result, "url", url)
+		logFunc("SendSignedTransaction success", "txHash", result, "url", url)
 		if txHash == "" {
 			txHash = result
 		}
@@ -100,14 +100,14 @@ func (b *Bridge) SimulateTransaction(tx *types.Transaction) (result *types.Simul
 	if err != nil {
 		return nil, fmt.Errorf("simulate tx encode tx error: %w", err)
 	}
-	log.Info("signData: ", "length", len(signData), "base58: ", base58.Encode(signData))
+	log.Debug("signData: ", "length", len(signData), "base58: ", base58.Encode(signData))
 	wireTransaction, err := tx.Serialize(signData)
 	if err != nil {
 		return nil, fmt.Errorf("simulate tx encode tx error: %w", err)
 	}
 	b64TxData := base64.StdEncoding.EncodeToString(wireTransaction)
 
-	log.Info("simulateTx: ", "length", len(wireTransaction), "b64TxData: ", b64TxData)
+	log.Debug("simulateTx: ", "length", len(wireTransaction), "b64TxData: ", b64TxData)
 	obj := map[string]interface{}{
 		"encoding":   "base64",
 		"commitment": "confirmed",
@@ -118,11 +118,13 @@ func (b *Bridge) SimulateTransaction(tx *types.Transaction) (result *types.Simul
 	gateway := b.GatewayConfig
 	result, err = simulateTx(sendTxParams, gateway.APIAddress)
 	if err == nil {
+		log.Info("simulateTx", "success")
 		return result, nil
 	}
 	if len(gateway.APIAddressExt) > 0 {
 		result, err = simulateTx(sendTxParams, gateway.APIAddressExt)
 		if err == nil {
+			log.Info("simulateTx", "success")
 			return result, nil
 		}
 	}

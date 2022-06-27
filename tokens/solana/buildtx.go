@@ -208,7 +208,6 @@ func (b *Bridge) BuildSwapinNativeTransaction(args *tokens.BuildTxArgs, tokenCfg
 	if err != nil {
 		return nil, err
 	}
-	log.Info(recentBlockHash.String())
 	return types.NewTransaction(instructions, recentBlockHash, types.TransactionPayer(mpc))
 }
 
@@ -287,10 +286,11 @@ func (b *Bridge) BuildSendSolanaTransaction(lamports uint64, fromAddress, toAddr
 }
 
 func (b *Bridge) getRecentBlockhash() (types.Hash, error) {
-	resp, err := b.GetRecentBlockhash()
+	resp, err := b.GetLatestBlockhash()
 	if err != nil {
 		return types.Hash{}, err
 	}
 	blockHash := resp.Value.Blockhash
+	log.Info("getRecentBlockhash", "lastValidBlockHeight", resp.Value.LastValidBlockHeight, "blockHash", resp.Value.Blockhash)
 	return blockHash, nil
 }
