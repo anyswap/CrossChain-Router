@@ -139,11 +139,11 @@ https://developers.stellar.org/docs/issuing-assets/how-to-issue-an-asset/
 1.5 trustLine 
     go run ./tokens/stellar/tools/sendTrustLineTx/main.go -config ./build/bin/config.toml -chainID chainID -priKey edPriKey -pubkey ecPublicKey -limitAmount 10000 -assetCode assetCode -issuer assetIssuer
     //mpc调用的话，去掉priKey参数
-    go run ./tokens/stellar/tools/sendTrustLineTx/main.go -config ./build/bin/config-mpc.toml -chainID 5777 -pubkey 146f71db711bc259176f9bcba1756308d2a7af0f1c0b90deece65997a84c8f56 -limitAmount 100000 -code Ooxx -issuer SBG6Z5SAGW2HRMGOMCQUHQTLE6MG7BR6O3AH2FCCBL5WEO5DORSSY2XB
+    go run ./tokens/stellar/tools/sendTrustLineTx/main.go -config ./build/bin/config-mpc.toml -chainID 5777 -pubkey 146f71db711bc259176f9bcba1756308d2a7af0f1c0b90deece65997a84c8f56 -limitAmount 100000 -assetCode Ooxx -issuer SBG6Z5SAGW2HRMGOMCQUHQTLE6MG7BR6O3AH2FCCBL5WEO5DORSSY2XB
     //测试网txhash: 6f3f4a552f3d3239ec1b5c62d4ed0e848003ad45a503a5ad03753c4cb86a964e
 1.6 payment XLM/Token  
     go run ./tokens/stellar/tools/sendPaymentTx/main.go -config config.toml -chainID chainID -priKey edPriKey -pubkey edPublicKey -destination receiptAddr -amount 100000000 -assetCode assetCode -issuer assetIssuer
     //mpc调用的话，去掉priKey参数
-    go run ./tokens/stellar/tools/sendPaymentTx/main.go -config ./build/bin/config-mpc.toml -chainID chainid -pubkey edPublicKey -destination receiptAddr -amount 100000000  
+    go run ./tokens/stellar/tools/sendPaymentTx/main.go -config ./build/bin/config-mpc.toml -chainID chainid -pubkey edPublicKey -destination receiptAddr -amount 100000000 -assetCode Ooxx -issuer SBG6Z5SAGW2HRMGOMCQUHQTLE6MG7BR6O3AH2FCCBL5WEO5DORSSY2XB
     //测试网txhash: 3a0bca0aae8fa908f4eb16605ae17cf8fdec701c7b2e92d858ce03f9ac0c2694
 ```

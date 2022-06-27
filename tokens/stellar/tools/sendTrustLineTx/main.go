@@ -25,6 +25,8 @@ var (
 	paramPublicKey  string
 	paraFee         string
 
+	paramPriKey string
+
 	paramLimitAmount string
 	paramAssetCode   string
 	paramAssetIssuer string
@@ -39,16 +41,18 @@ func main() {
 
 	initAll()
 
-	pubkeyAddr, err := stellar.PublicKeyHexToAddress(paramPublicKey)
-	if err != nil {
-		log.Fatal("err", err)
+	var pubkeyAddr string
+	var err error
+	if paramPriKey != "" {
+		sourceKP := keypair.MustParseFull(paramPriKey)
+		pubkeyAddr = sourceKP.Address()
+	} else {
+		pubkeyAddr, err = stellar.PublicKeyHexToAddress(paramPublicKey)
+		if err != nil {
+			log.Fatal("err", err)
+		}
 	}
 	log.Infof("signer address is %v", pubkeyAddr)
-
-	paramPublicKey, err = stellar.FormatPublicKeyToPureHex(paramPublicKey)
-	if err != nil {
-		log.Fatal("err", err)
-	}
 	account, err := b.GetAccount(pubkeyAddr)
 	if err != nil {
 		log.Fatal("get account err", err)
@@ -69,7 +73,17 @@ func main() {
 		log.Fatal("build tx failed", "err", err)
 	}
 
-	signedTx, txHash, err := signTx(rawTx, paramPublicKey, b)
+	var signedTx interface{}
+	var txHash string
+	if paramPriKey != "" {
+		signedTx, txHash, err = b.SignTransactionWithPrivateKey(rawTx, paramPriKey)
+	} else {
+		paramPublicKey, err = stellar.FormatPublicKeyToPureHex(paramPublicKey)
+		if err != nil {
+			log.Fatal("err", err)
+		}
+		signedTx, txHash, err = signTx(rawTx, paramPublicKey, b)
+	}
 	if err != nil {
 		log.Fatal("sign tx failed", "err", err)
 	}
@@ -92,6 +106,7 @@ func initFlags() {
 	flag.StringVar(&paramConfigFile, "config", "", "config file to init mpc and gateway")
 	flag.StringVar(&paramChainID, "chainID", "", "chain id")
 	flag.StringVar(&paramPublicKey, "pubkey", "", "signer public key")
+	flag.StringVar(&paramPriKey, "priKey", "", "signer priKey key")
 	flag.StringVar(&paraFee, "fee", "10", "(optional) fee amount")
 	flag.StringVar(&paramLimitAmount, "limitAmount", "", "trust line LimitAmount")
 	flag.StringVar(&paramAssetCode, "assetCode", "", "trust asset code")
