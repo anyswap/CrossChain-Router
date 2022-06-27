@@ -132,7 +132,7 @@ func (b *Bridge) verifySwapoutTx(txHash string, _ int, allowUnstable bool) (*tok
 	}
 
 	if success := parseSwapMemos(swapInfo, payment.Memos); !success {
-		log.Info("wrong memos", "memos", payment.Memos)
+		log.Info("wrong memos", "memos", common.ToJSONString(payment.Memos, false))
 		return swapInfo, tokens.ErrWrongBindAddress
 	}
 
@@ -180,7 +180,7 @@ func (b *Bridge) checkToken(token *tokens.TokenConfig, txmeta *data.TransactionW
 
 func parseSwapMemos(swapInfo *tokens.SwapTxInfo, memos data.Memos) bool {
 	for _, memo := range memos {
-		memoStr := string(memo.Memo.MemoData.Bytes())
+		memoStr := strings.TrimSpace(string(memo.Memo.MemoData.Bytes()))
 		parts := strings.Split(memoStr, ":")
 		if len(parts) < 2 {
 			continue
