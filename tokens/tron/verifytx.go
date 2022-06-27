@@ -19,6 +19,7 @@ import (
 // GetTransactionStatus returns tx status
 func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, err error) {
 	status = &tokens.TxStatus{}
+	tx, err := b.GetTransaction(txHash)
 	rpcError := &RPCError{[]error{}, "GetTransactionStatus"}
 	defer func() {
 		if r := recover(); r != nil {
@@ -61,6 +62,7 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 	}
 
 	status.Receipt = txinfo
+	status.Receipt.(map[string]interface{})["tx"] = tx
 	status.BlockHeight = uint64(txinfo["blockNumber"].(float64))
 	status.BlockTime = uint64(txinfo["blockTimeStamp"].(float64)) / 1000
 
