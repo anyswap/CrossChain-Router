@@ -30,6 +30,13 @@ var (
 
 	anySwapOutUnderlyingWithPermitFuncHash         = common.FromHex("0x8d7d3eea")
 	anySwapOutUnderlyingWithTransferPermitFuncHash = common.FromHex("0x1b91a934")
+
+	// PauseSwapIntoTokenVersion pause swap into a dest token which is configed with this version
+	// usage: when we replace an old token with a new one,
+	// but the old token has some swapouts not processed,
+	// then we can replace temply to the old token and with this special version,
+	// after old token swapouts are processed, we should replace back to the new token config.
+	PauseSwapIntoTokenVersion = uint64(90000)
 )
 
 func (b *Bridge) verifyERC20SwapTx(txHash string, logIndex int, allowUnstable bool) (*tokens.SwapTxInfo, error) {
@@ -121,6 +128,9 @@ func (b *Bridge) checkERC20SwapInfo(swapInfo *tokens.SwapTxInfo) error {
 	if toTokenCfg == nil {
 		log.Warn("get token config failed", "chainID", swapInfo.ToChainID, "token", multichainToken)
 		return tokens.ErrMissTokenConfig
+	}
+	if toTokenCfg.ContractVersion == PauseSwapIntoTokenVersion {
+		return tokens.ErrPauseSwapInto
 	}
 	if erc20SwapInfo.ForUnderlying && common.HexToAddress(toTokenCfg.GetUnderlying()) == (common.Address{}) {
 		return tokens.ErrNoUnderlyingToken

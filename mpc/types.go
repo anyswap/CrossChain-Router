@@ -76,12 +76,12 @@ type SignInfoData struct {
 }
 
 // IsValid is valid
-func (s *SignInfoData) IsValid() bool {
+func (s *SignInfoData) IsValid(verifySignature bool) bool {
 	return s != nil &&
 		s.Key != "" &&
 		s.Account != "" &&
 		s.GroupID != "" &&
-		s.HasValidSignature()
+		((!verifySignature && len(s.MsgContext) == 1) || (verifySignature && s.HasValidSignature()))
 }
 
 // SignInfoResp sign info response

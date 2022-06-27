@@ -13,10 +13,10 @@ import (
 )
 
 var (
-	routerSwapType           SwapType
-	IsSwapoutToStringAddress bool = false
-	swapConfigMap                 = new(sync.Map) // key is tokenID,fromChainID,toChainID
-	feeConfigMap                  = new(sync.Map) // key is tokenID,fromChainID,toChainID
+	routerSwapType SwapType
+
+	swapConfigMap = new(sync.Map) // key is tokenID,fromChainID,toChainID
+	feeConfigMap  = new(sync.Map) // key is tokenID,fromChainID,toChainID
 
 	// StubChainIDBase stub chainID base value
 	StubChainIDBase = big.NewInt(1000000000000)

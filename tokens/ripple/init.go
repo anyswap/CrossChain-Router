@@ -9,7 +9,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/ripple/rubblelabs/ripple/data"
-	"github.com/anyswap/CrossChain-Router/v3/tokens/ripple/rubblelabs/ripple/websockets"
 )
 
 var (
@@ -26,27 +25,6 @@ func convertToAsset(tokenAddr string) (*data.Asset, error) {
 // SetGatewayConfig set gateway config
 func (b *Bridge) SetGatewayConfig(gatewayCfg *tokens.GatewayConfig) {
 	b.CrossChainBridgeBase.SetGatewayConfig(gatewayCfg)
-	b.InitRemotes()
-}
-
-// InitRemotes set ripple remotes
-func (b *Bridge) InitRemotes() {
-	logErrFunc := log.GetLogFuncOr(router.DontPanicInLoading(), log.Error, log.Fatal)
-	remotes := make(map[string]*websockets.Remote)
-	for _, apiAddress := range b.GetGatewayConfig().APIAddress {
-		remote, err := websockets.NewRemote(apiAddress)
-		if err != nil || remote == nil {
-			log.Warn("Cannot connect to ripple", "address", apiAddress, "error", err)
-			continue
-		}
-		log.Info("Connected to remote api success", "api", apiAddress)
-		remotes[apiAddress] = remote
-	}
-	if len(remotes) < 1 {
-		logErrFunc("No available remote api")
-		return
-	}
-	b.Remotes = remotes
 }
 
 // SetTokenConfig set token config

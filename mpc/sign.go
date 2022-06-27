@@ -251,11 +251,14 @@ func BuildMPCRawTx(nonce uint64, payload []byte, keyWrapper *keystore.Key) (stri
 // HasValidSignature has valid signature
 func (s *SignInfoData) HasValidSignature() bool {
 	msgContextLen := len(s.MsgContext)
-	if msgContextLen == 1 {
-		return true
+	if msgContextLen < 2 {
+		return false
 	}
 	msgContext := s.MsgContext[:msgContextLen-1]
 	msgSig := common.FromHex(s.MsgContext[msgContextLen-1])
+	if len(msgSig) != crypto.SignatureLength {
+		return false
+	}
 
 	txdata := SignData{
 		TxType:     "SIGN",
