@@ -416,16 +416,8 @@ func (c *ExtraConfig) CheckConfig() (err error) {
 	log.Info("check extra config success",
 		"minReserveFee", c.MinReserveFee,
 		"allowCallByContract", c.AllowCallByContract,
-		"callByContractWhitelist", c.CallByContractWhitelist,
-		"callByContractCodeHashWhitelist", c.CallByContractCodeHashWhitelist,
-		"bigValueWhitelist", c.BigValueWhitelist,
-		"dynamicFeeTxEnabledChains", c.DynamicFeeTxEnabledChains,
-		"enableCheckTxBlockHashChains", c.EnableCheckTxBlockHashChains,
-		"enableCheckTxBlockIndexChains", c.EnableCheckTxBlockIndexChains,
-		"initDisableUseFromChainIDInReceiptChains", c.DisableUseFromChainIDInReceiptChains,
 		"baseFeePercent", c.BaseFeePercent,
 		"usePendingBalance", c.UsePendingBalance,
-		"customs", c.Customs,
 	)
 	return nil
 }

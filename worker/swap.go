@@ -41,12 +41,9 @@ func StartSwapJob() {
 	// init all swap task queue
 	router.RouterBridges.Range(func(k, v interface{}) bool {
 		chainID := k.(string)
-
-		logWorker("swap", "init swap task queue", "chainID", chainID)
 		if _, exist := swapTaskQueues[chainID]; !exist {
 			swapTaskQueues[chainID] = fifo.NewQueue()
 		}
-
 		return true
 	})
 
@@ -287,7 +284,7 @@ func startSwapConsumer(chainID string) {
 		}
 
 		if i%10 == 0 && taskQueue.Len() > 0 {
-			logWorker("doSwap", "tasks in queue", "chainID", chainID, "count", taskQueue.Len())
+			logWorker("doSwap", "tasks in swap queue", "chainID", chainID, "count", taskQueue.Len())
 		}
 		i++
 
