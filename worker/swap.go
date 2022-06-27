@@ -367,7 +367,7 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 	if err != nil {
 		logWorkerError("doSwap", "build tx failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex)
 		if errors.Is(err, tokens.ErrBuildTxErrorAndDelay) {
-			_ = updateSwapTimestamp(fromChainID, txid, logIndex)
+			_ = updateSwapMemo(fromChainID, txid, logIndex, err.Error())
 		}
 		return err
 	}
@@ -464,7 +464,7 @@ func doSwapParallel(args *tokens.BuildTxArgs) (err error) {
 	if err != nil {
 		logWorkerError("doSwap", "build tx failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex)
 		if errors.Is(err, tokens.ErrBuildTxErrorAndDelay) {
-			_ = updateSwapTimestamp(fromChainID, txid, logIndex)
+			_ = updateSwapMemo(fromChainID, txid, logIndex, err.Error())
 		}
 		return err
 	}
