@@ -46,7 +46,7 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 		}
 	}()
 
-	if txinfo["result"].(string) != "SUCCESS" {
+	if txinfo["receipt"].(map[string]interface{})["result"].(string) != "SUCCESS" {
 		return nil, errors.New("tron tx not success")
 	}
 	cres := txinfo["contractResult"].([]interface{})

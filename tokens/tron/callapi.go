@@ -79,7 +79,49 @@ func (e *RPCError) Error() error {
 
 // GetLatestBlockNumberOf call eth_blockNumber
 func (b *Bridge) GetLatestBlockNumberOf(url string) (latest uint64, err error) {
-	return 0, nil
+	rpcError := &RPCError{[]error{}, "GetLatestBlockNumber"}
+	apiurl := strings.TrimSuffix(url, "/") + `/wallet/getblockbylatestnum`
+	res, err := post(apiurl, `{"num":1}`)
+	if err != nil {
+		rpcError.log(err)
+		return 0, rpcError.Error()
+	}
+	var blocks map[string]interface{}
+	err = json.Unmarshal(res, &blocks)
+	if err != nil {
+		rpcError.log(err)
+		return 0, rpcError.Error()
+	}
+	if blocks["block"] == nil {
+		rpcError.log(errors.New("parse error"))
+		return 0, rpcError.Error()
+	}
+	blockLs, ok := blocks["block"].([]interface{})
+	if !ok || len(blockLs) < 1 {
+		rpcError.log(errors.New("parse error"))
+		return 0, rpcError.Error()
+	}
+	block, ok := blockLs[0].(map[string]interface{})
+	if !ok {
+		rpcError.log(errors.New("parse error"))
+		return 0, rpcError.Error()
+	}
+	header, ok := block["block_header"].(map[string]interface{})
+	if !ok {
+		rpcError.log(errors.New("parse error"))
+		return 0, rpcError.Error()
+	}
+	raw, ok := header["raw_data"].(map[string]interface{})
+	if !ok {
+		rpcError.log(errors.New("parse error"))
+		return 0, rpcError.Error()
+	}
+	numberF, ok := raw["number"].(float64)
+	if !ok {
+		rpcError.log(errors.New("parse error"))
+		return 0, rpcError.Error()
+	}
+	return uint64(numberF), nil
 }
 
 // GetLatestBlockNumber returns current finalized block height
@@ -181,6 +223,7 @@ func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
 			if err != nil {
 				panic(err)
 			}
+			tx.RawData = rawdata
 			return tx, err
 		}(res)
 		if err != nil {
@@ -231,8 +274,8 @@ func (b *Bridge) GetTransactionLog(txHash string) ([]*types.RPCLog, error) {
 			rpcError.log(errors.New("parse error"))
 			continue
 		}
-		addr := common.HexToAddress(`0x` + tl["address"].(string))
-		data, _ := hex.DecodeString(`0x` + tl["topics"].(string))
+		addr := common.HexToAddress(tl["address"].(string))
+		data, _ := hex.DecodeString(tl["data"].(string))
 		hexdata := hexutil.Bytes(data)
 		ethlog := &types.RPCLog{
 			Address: &addr,
@@ -423,10 +466,10 @@ func (b *Bridge) CallContract(contract string, data hexutil.Bytes, blockNumber s
 	var err error
 	for _, apiAddress := range gateway.EVMAPIAddress {
 		url := apiAddress
-		err = ethclient.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_call", reqArgs, blockNumber)
+		err = ethclient.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_call", reqArgs, "latest")
 		if err != nil && router.IsIniting {
 			for i := 0; i < router.RetryRPCCountInInit; i++ {
-				if err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_call", reqArgs, blockNumber); err == nil {
+				if err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_call", reqArgs, "latest"); err == nil {
 					return result, nil
 				}
 				time.Sleep(router.RetryRPCIntervalInInit)

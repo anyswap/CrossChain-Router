@@ -131,10 +131,10 @@ func (b *Bridge) buildSwapAndExecTxInput(args *tokens.BuildTxArgs, multichainTok
 		common.HexToAddress(erc20SwapInfo.CallProxy),
 		erc20SwapInfo.CallData,
 	)
-	args.Input = (*hexutil.Bytes)(&input)          // input
+	args.Input = (*hexutil.Bytes)(&input) // input
 	routerContract := b.GetRouterContract(multichainToken)
-	args.To = anyToTron(routerContract) // to
-	args.SwapValue = amount                        // swapValue
+	args.To = anyToEth(routerContract) // to
+	args.SwapValue = amount            // swapValue
 
 	return nil
 }
@@ -159,10 +159,10 @@ func (b *Bridge) buildERC20SwapoutTxInput(args *tokens.BuildTxArgs, multichainTo
 		amount,
 		args.FromChainID,
 	)
-	args.Input = (*hexutil.Bytes)(&input)          // input
+	args.Input = (*hexutil.Bytes)(&input) // input
 	routerContract := b.GetRouterContract(multichainToken)
-	args.To = anyToTron(routerContract) // to
-	args.SwapValue = amount                        // swapValue
+	args.To = anyToEth(routerContract) // to
+	args.SwapValue = amount            // swapValue
 
 	return nil
 }
@@ -190,10 +190,10 @@ func (b *Bridge) buildERC20SwapTradeTxInput(args *tokens.BuildTxArgs, multichain
 		calcSwapDeadline(args),
 		args.FromChainID,
 	)
-	args.Input = (*hexutil.Bytes)(&input)          // input
+	args.Input = (*hexutil.Bytes)(&input) // input
 	routerContract := b.GetRouterContract(multichainToken)
-	args.To = anyToTron(routerContract) // to
-	args.SwapValue = amount                        // swapValue
+	args.To = anyToEth(routerContract) // to
+	args.SwapValue = amount            // swapValue
 
 	return nil
 }

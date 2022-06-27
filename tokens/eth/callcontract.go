@@ -91,7 +91,8 @@ func (b *Bridge) GetFactoryAddress(contractAddr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return common.BytesToAddress(common.GetData(common.FromHex(res), 0, 32)).LowerHex(), nil
+	bz := common.FromHex(res)
+	return common.BytesToAddress(common.GetData(bz, uint64(len(bz)-32), uint64(len(bz)))).LowerHex(), nil
 }
 
 // GetWNativeAddress call "wNATIVE()"
@@ -101,7 +102,8 @@ func (b *Bridge) GetWNativeAddress(contractAddr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return common.BytesToAddress(common.GetData(common.FromHex(res), 0, 32)).LowerHex(), nil
+	bz := common.FromHex(res)
+	return common.BytesToAddress(common.GetData(bz, uint64(len(bz)-32), uint64(len(bz)))).LowerHex(), nil
 }
 
 // GetUnderlyingAddress call "underlying()"
@@ -111,7 +113,8 @@ func (b *Bridge) GetUnderlyingAddress(contractAddr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return common.BytesToAddress(common.GetData(common.FromHex(res), 0, 32)).LowerHex(), nil
+	bz := common.FromHex(res)
+	return common.BytesToAddress(common.GetData(bz, uint64(len(bz)-32), uint64(len(bz)))).LowerHex(), nil
 }
 
 // GetMPCAddress call "mpc()"
@@ -121,7 +124,8 @@ func (b *Bridge) GetMPCAddress(contractAddr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return common.BytesToAddress(common.GetData(common.FromHex(res), 0, 32)).LowerHex(), nil
+	bz := common.FromHex(res)
+	return common.BytesToAddress(common.GetData(bz, uint64(len(bz)-32), uint64(len(bz)))).LowerHex(), nil
 }
 
 // GetVaultAddress call "vault()"
@@ -131,7 +135,8 @@ func (b *Bridge) GetVaultAddress(contractAddr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return common.BytesToAddress(common.GetData(common.FromHex(res), 0, 32)).LowerHex(), nil
+	bz := common.FromHex(res)
+	return common.BytesToAddress(common.GetData(bz, uint64(len(bz)-32), uint64(len(bz)))).LowerHex(), nil
 }
 
 // GetOwnerAddress call "owner()"
@@ -141,7 +146,8 @@ func (b *Bridge) GetOwnerAddress(contractAddr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return common.BytesToAddress(common.GetData(common.FromHex(res), 0, 32)).LowerHex(), nil
+	bz := common.FromHex(res)
+	return common.BytesToAddress(common.GetData(bz, uint64(len(bz)-32), uint64(len(bz)))).LowerHex(), nil
 }
 
 // IsMinter call "isMinter(address)"

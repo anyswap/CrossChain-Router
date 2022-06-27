@@ -102,6 +102,18 @@ func (b *Bridge) InitGatewayConfig(chainID *big.Int) {
 	log.Infof("[%5v] init gateway config success", chainID)
 }
 
+// SetTokenConfig set token config
+func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) {
+	tokenCfg.ContractAddress = anyToEth(tokenCfg.ContractAddress)
+	tokenCfg.RouterContract = anyToEth(tokenCfg.RouterContract)
+	tokenAddr = anyToEth(tokenAddr)
+	b.CrossChainBridgeBase.SetTokenConfig(tokenAddr, tokenCfg)
+
+	if tokenCfg == nil || !tokens.IsERC20Router() {
+		return
+	}
+}
+
 // InitChainConfig impl
 func (b *Bridge) InitChainConfig(chainID *big.Int) {
 	chainCfg, err := router.GetChainConfig(chainID)

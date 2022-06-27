@@ -14,8 +14,8 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens/eth/abicoder"
 	"github.com/anyswap/CrossChain-Router/v3/types"
 
-	"github.com/fbsobreira/gotron-sdk/pkg/proto/core"
 	tronaddress "github.com/fbsobreira/gotron-sdk/pkg/address"
+	"github.com/fbsobreira/gotron-sdk/pkg/proto/core"
 	"github.com/golang/protobuf/ptypes"
 )
 
@@ -203,7 +203,7 @@ func (b *Bridge) checkTxSuccess(swapInfo *tokens.SwapTxInfo, allowUnstable bool)
 func (b *Bridge) checkCallByContract(swapInfo *tokens.SwapTxInfo) error {
 	txTo := swapInfo.TxTo
 	routerContract := b.GetRouterContract(swapInfo.ERC20SwapInfo.Token)
-	routerContract = anyToTron(routerContract)
+	routerContract = anyToEth(routerContract)
 	if routerContract == "" {
 		return tokens.ErrMissRouterInfo
 	}
@@ -263,7 +263,7 @@ func (b *Bridge) verifyERC20SwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.R
 	if routerContract == "" {
 		return tokens.ErrMissRouterInfo
 	}
-	if !common.IsEqualIgnoreCase(rlog.Address.LowerHex(), routerContract) {
+	if !common.IsEqualIgnoreCase(rlog.Address.LowerHex(), anyToEth(routerContract)) {
 		log.Warn("router contract mismatch", "have", rlog.Address.LowerHex(), "want", routerContract)
 		return tokens.ErrTxWithWrongContract
 	}
@@ -446,7 +446,7 @@ func checkSwapTradePath(swapInfo *tokens.SwapTxInfo) error {
 		return tokens.ErrTxWithWrongPath
 	}
 	routerContract := dstBridge.GetRouterContract(multichainToken)
-	routerContract = anyToTron(routerContract)
+	routerContract = anyToEth(routerContract)
 	if routerContract == "" {
 		return tokens.ErrMissRouterInfo
 	}
