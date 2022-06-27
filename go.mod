@@ -26,5 +26,6 @@ require (
 	github.com/urfave/cli/v2 v2.10.2
 	go.mongodb.org/mongo-driver v1.9.1
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
+	google.golang.org/protobuf v1.25.0
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 )

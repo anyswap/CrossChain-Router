@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/fbsobreira/gotron-sdk/pkg/proto/core"
-	proto "github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
@@ -29,9 +29,9 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 	txinfo := make(map[string]interface{})
 	for _, endpoint := range b.GatewayConfig.APIAddress {
 		apiurl := strings.TrimSuffix(endpoint, "/") + `/walletsolidity/gettransactioninfobyid`
-		res, err := post(apiurl, `{"value":"`+txHash+`"}`)
-		if err != nil {
-			panic(err)
+		res, err1 := post(apiurl, `{"value":"`+txHash+`"}`)
+		if err1 != nil {
+			panic(err1)
 		}
 		err = json.Unmarshal(res, &txinfo)
 		if err != nil {
@@ -118,9 +118,12 @@ func CalcTxHash(tx *core.Transaction) string {
 	}
 
 	h256h := sha256.New()
-	h256h.Write(rawData)
+	_, err = h256h.Write(rawData)
+	if err != nil {
+		return ""
+	}
 	hash := h256h.Sum(nil)
-	txhash := common.ToHex(hash)
+	txhash := common.BytesToHexString(hash)
 
 	txhash = strings.TrimPrefix(txhash, "0x")
 	return txhash

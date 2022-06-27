@@ -9,8 +9,8 @@ import (
 
 	tronaddress "github.com/fbsobreira/gotron-sdk/pkg/address"
 	"github.com/fbsobreira/gotron-sdk/pkg/proto/core"
-	proto "github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -128,7 +128,10 @@ func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, priKey string)
 		return nil, "", err
 	}
 	h256h := sha256.New()
-	h256h.Write(rawData)
+	_, err = h256h.Write(rawData)
+	if err != nil {
+		return nil, "", err
+	}
 	hash := h256h.Sum(nil)
 	txhash := fmt.Sprintf("%X", hash)
 

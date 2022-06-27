@@ -31,9 +31,6 @@ var (
 	LogAnySwapTradeTokensForTokensTopic = common.FromHex("0xfea6abdf4fd32f20966dff7619354cd82cd43dc78a3bee479f04c74dbfc585b3")
 	// LogAnySwapTradeTokensForNative(address[] path, address from, address to, uint amountIn, uint amountOutMin, uint fromChainID, uint toChainID);
 	LogAnySwapTradeTokensForNativeTopic = common.FromHex("0x278277e0209c347189add7bd92411973b5f6b8644f7ac62ea1be984ce993f8f4")
-
-	anySwapOutUnderlyingWithPermitFuncHash         = common.FromHex("0x8d7d3eea")
-	anySwapOutUnderlyingWithTransferPermitFuncHash = common.FromHex("0x1b91a934")
 )
 
 func (b *Bridge) verifyERC20SwapTx(txHash string, logIndex int, allowUnstable bool) (*tokens.SwapTxInfo, error) {
@@ -194,7 +191,7 @@ func (b *Bridge) checkTxSuccess(swapInfo *tokens.SwapTxInfo, allowUnstable bool)
 		}
 		swapInfo.From = from
 	default:
-		errors.New("tron tx unknown error")
+		return errors.New("tron tx unknown error")
 	}
 
 	return nil
