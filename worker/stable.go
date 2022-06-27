@@ -24,8 +24,6 @@ func StartStableJob() {
 	// init all swap stable task queue
 	router.RouterBridges.Range(func(k, v interface{}) bool {
 		chainID := k.(string)
-
-		logWorker("swap", "init swap task queue", "chainID", chainID)
 		if _, exist := stableTaskQueues[chainID]; !exist {
 			stableTaskQueues[chainID] = fifo.NewQueue()
 		}

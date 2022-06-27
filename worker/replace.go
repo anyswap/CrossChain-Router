@@ -45,7 +45,6 @@ func StartReplaceJob() {
 
 	// init all replace swap task queue
 	for _, toChainID := range allChainIDs {
-		logWorker("replace", "init replace swap task queue", "chainID", toChainID)
 		if _, exist := replaceTaskQueues[toChainID.String()]; !exist {
 			replaceTaskQueues[toChainID.String()] = fifo.NewQueue()
 		}

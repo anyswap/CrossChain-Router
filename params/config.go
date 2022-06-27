@@ -1022,9 +1022,6 @@ func ReloadRouterConfig() {
 // SetDataDir set data dir
 func SetDataDir(dir string, isServer bool) {
 	if dir == "" {
-		if !isServer {
-			log.Warn("suggest specify '--datadir' to enhance accept job")
-		}
 		return
 	}
 	currDir, err := common.CurrentDir()

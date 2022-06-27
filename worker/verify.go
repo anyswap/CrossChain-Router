@@ -95,7 +95,7 @@ func dispatchVerifyTask(swap *mongodb.MgoSwap) error {
 	chainID := swap.FromChainID
 	taskQueue, exist := verifyTaskQueues[chainID]
 	if !exist {
-		return fmt.Errorf("no stable task queue for chainID '%v'", chainID)
+		return fmt.Errorf("no verify task queue for chainID '%v'", chainID)
 	}
 
 	logWorker("verify", "dispatch verify swap task", "fromChainID", swap.FromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex, "queue", taskQueue.Len())
@@ -122,8 +122,8 @@ func startVerifyConsumer(chainID string) {
 			return
 		}
 
-		if i%10 == 0 {
-			logWorker("doVerify", "tasks in stable queue", "chainID", chainID, "count", taskQueue.Len())
+		if i%10 == 0 && taskQueue.Len() > 0 {
+			logWorker("doVerify", "tasks in verify queue", "chainID", chainID, "count", taskQueue.Len())
 		}
 		i++
 
@@ -136,7 +136,7 @@ func startVerifyConsumer(chainID string) {
 		swap := front.(*mongodb.MgoSwap)
 
 		if swap.FromChainID != chainID {
-			logWorkerWarn("doVerify", "ignore stable task as fromChainID mismatch", "want", chainID, "swap", swap)
+			logWorkerWarn("doVerify", "ignore verify task as fromChainID mismatch", "want", chainID, "swap", swap)
 			continue
 		}
 
