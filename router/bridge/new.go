@@ -12,11 +12,9 @@ import (
 
 // NewCrossChainBridge new bridge
 func NewCrossChainBridge(chainID *big.Int) tokens.IBridge {
-	switch chainID.Uint64() {
-	case tron.TronMainnetChainID, tron.TronShastaChainID:
-		return tron.NewCrossChainBridge()
-	}
 	switch {
+	case tron.SupportsChainID(chainID):
+		return tron.NewCrossChainBridge()
 	case ripple.SupportsChainID(chainID):
 		return ripple.NewCrossChainBridge()
 	case chainID.Sign() <= 0:

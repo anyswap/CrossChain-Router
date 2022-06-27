@@ -40,6 +40,16 @@ func NewCrossChainBridge() *Bridge {
 	}
 }
 
+// SupportsChainID supports chainID
+func SupportsChainID(chainID *big.Int) bool {
+	switch chainID.Uint64() {
+	case TronMainnetChainID, TronShastaChainID:
+		return true
+	default:
+		return false
+	}
+}
+
 // CustomConfig custom config
 type CustomConfig struct {
 	// some chain's rpc is slow and need config a longer rpc timeout
