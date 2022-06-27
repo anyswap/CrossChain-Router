@@ -912,6 +912,12 @@ func GetRegisteredRouterSwap(fromChainID, txid string, logIndex int) (oldSwap *M
 		return nil, false
 	}
 	if oldSwap.Status.IsRegisteredOk() {
+		if oldSwap.Status == TxNotSwapped {
+			now := time.Now().Unix()
+			if oldSwap.Timestamp+3*24*3600 < now {
+				_, _ = collRouterSwap.UpdateByID(clientCtx, oldSwap.Key, bson.M{"$set": bson.M{"timestamp": now}})
+			}
+		}
 		return oldSwap, true
 	}
 	oldSwapRes, err := FindRouterSwapResult(fromChainID, txid, logIndex)
