@@ -2,7 +2,6 @@ package tron
 
 import (
 	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -12,14 +11,12 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 
 	"github.com/fbsobreira/gotron-sdk/pkg/proto/core"
-	proto "github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
 	retryRPCCount    = 3
 	retryRPCInterval = 1 * time.Second
-
-	latestGasPrice *big.Int
 )
 
 // BuildRawTransaction build raw tx
@@ -64,8 +61,7 @@ var SwapinFeeLimit int32 = 300000000 // 300 TRX
 
 func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error) {
 	var (
-		to = args.To
-		//input     = *args.Input
+		to        = args.To
 		extra     = args.Extra.EthExtra
 		gasLimit  = *extra.Gas
 		gasPrice  = extra.GasPrice
@@ -99,7 +95,13 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 			"amounts", args.NFTSwapInfo.Amounts,
 			"batch", args.NFTSwapInfo.Batch)
 	}
+	if err != nil {
+		ctx = append(ctx, "err", err)
+	}
 	log.Info(fmt.Sprintf("build %s raw tx", args.SwapType.String()), ctx...)
+	if err != nil {
+		return nil, err
+	}
 	txmsg, err := proto.Marshal(rawTx.(*core.Transaction))
 	if err != nil {
 		return nil, err

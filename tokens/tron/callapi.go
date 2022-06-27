@@ -1,6 +1,7 @@
 package tron
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -23,7 +24,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	ethclient "github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/types"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 var GRPC_TIMEOUT = time.Second * 15
@@ -43,7 +44,7 @@ var GRPC_TIMEOUT = time.Second * 15
 func post(url string, data string) ([]byte, error) {
 	client := &http.Client{}
 	var dataReader = strings.NewReader(data)
-	req, err := http.NewRequest("POST", url, dataReader)
+	req, err := http.NewRequestWithContext(context.Background(), "POST", url, dataReader)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +53,9 @@ func post(url string, data string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	bodyText, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
@@ -211,9 +214,9 @@ func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
 				}
 			}
 			for _, sig := range txi["signature"].([]interface{}) {
-				bz, err := hex.DecodeString(sig.(string))
-				if err != nil {
-					panic(err)
+				bz, err1 := hex.DecodeString(sig.(string))
+				if err1 != nil {
+					panic(err1)
 				}
 				tx.Signature = append(tx.Signature, bz)
 			}
@@ -247,9 +250,9 @@ func (b *Bridge) GetTransactionLog(txHash string) ([]*types.RPCLog, error) {
 	var err error
 	for _, endpoint := range b.GatewayConfig.APIAddress {
 		apiurl := strings.TrimSuffix(endpoint, "/") + `/walletsolidity/gettransactioninfobyid`
-		res, err := post(apiurl, `{"value":"`+txHash+`"}`)
-		if err != nil {
-			panic(err)
+		res, err1 := post(apiurl, `{"value":"`+txHash+`"}`)
+		if err1 != nil {
+			panic(err1)
 		}
 		txinfo := make(map[string]interface{})
 		err = json.Unmarshal(res, &txinfo)

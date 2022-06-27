@@ -141,7 +141,10 @@ func ethToTron(ethAddress string) (string, error) {
 	if ok {
 		ethAddress = common.BigToAddress(intaddr).String()
 	}
-	bz, _ := troncommon.FromHex(ethAddress)
+	bz, err := troncommon.FromHex(ethAddress)
+	if err != nil {
+		return "", err
+	}
 	tronaddr := tronaddress.Address(append([]byte{0x41}, bz...))
 	return tronaddr.String(), nil
 }
