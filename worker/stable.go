@@ -1,73 +1,85 @@
 package worker
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
+	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/anyswap/CrossChain-Router/v3/tools/fifo"
+	mapset "github.com/deckarep/golang-set"
 )
 
 var (
-	stableChanSize          = 50
-	routerStableTaskChanMap = make(map[string]chan *mongodb.MgoSwapResult) // key is chainID
-
-	errStableChannelIsFull = errors.New("stable task channel is full")
+	stableTaskQueues   = make(map[string]*fifo.Queue) // key is toChainID
+	stableTasksInQueue = mapset.NewSet()
 )
 
 // StartStableJob stable job
 func StartStableJob() {
 	logWorker("stable", "start router swap stable job")
 
+	// init all swap stable task queue
+	router.RouterBridges.Range(func(k, v interface{}) bool {
+		chainID := k.(string)
+		if _, exist := stableTaskQueues[chainID]; !exist {
+			stableTaskQueues[chainID] = fifo.NewQueue()
+		}
+		return true
+	})
+
+	// start comsumers
 	router.RouterBridges.Range(func(k, v interface{}) bool {
 		chainID := k.(string)
 
-		if _, exist := routerStableTaskChanMap[chainID]; !exist {
-			routerStableTaskChanMap[chainID] = make(chan *mongodb.MgoSwapResult, stableChanSize)
-			utils.TopWaitGroup.Add(1)
-			go processStableTask(chainID, routerStableTaskChanMap[chainID])
-		}
-
 		mongodb.MgoWaitGroup.Add(1)
-		go startStableJob(chainID)
+		go startStableConsumer(chainID)
 
 		return true
 	})
+
+	// start producer
+	go startStableProducer()
 }
 
-func startStableJob(chainID string) {
-	defer mongodb.MgoWaitGroup.Done()
+func startStableProducer() {
 	for {
-		res, err := findRouterSwapResultsToStable(chainID)
+		res, err := findRouterSwapResultsToStable()
 		if err != nil {
-			logWorkerError("stable", "find router swap results error", err, "chainID", chainID)
+			logWorkerError("stable", "find router swap results error", err)
 		}
 		if len(res) > 0 {
-			logWorker("stable", "find router swap results to stable", "count", len(res), "chainID", chainID)
+			logWorker("stable", "find router swap results to stable", "count", len(res))
 		}
 		for _, swap := range res {
 			if utils.IsCleanuping() {
-				logWorker("stable", "stop router swap stable job", "chainID", chainID)
+				logWorker("stable", "stop router swap stable job")
 				return
 			}
+
+			if stableTasksInQueue.Contains(swap.Key) {
+				logWorkerTrace("stable", "ignore swap in queue", "key", swap.Key)
+				continue
+			}
+
 			err = dispatchSwapResultToStable(swap)
-			if err != nil && !errors.Is(err, errStableChannelIsFull) {
-				logWorkerError("stable", "process router swap stable error", err, "chainID", swap.FromChainID, "txid", swap.TxID, "logIndex", swap.LogIndex, "toChainID", chainID)
+			if err != nil {
+				logWorkerError("stable", "process router swap stable error", err, "chainID", swap.FromChainID, "txid", swap.TxID, "logIndex", swap.LogIndex, "toChainID", swap.ToChainID)
 			}
 		}
 		if utils.IsCleanuping() {
-			logWorker("stable", "stop router swap stable job", "chainID", chainID)
+			logWorker("stable", "stop router swap stable job")
 			return
 		}
 		restInJob(restIntervalInStableJob)
 	}
 }
 
-func findRouterSwapResultsToStable(chainID string) ([]*mongodb.MgoSwapResult, error) {
+func findRouterSwapResultsToStable() ([]*mongodb.MgoSwapResult, error) {
 	septime := getSepTimeInFind(maxStableLifetime)
-	return mongodb.FindRouterSwapResultsToStable(chainID, septime)
+	return mongodb.FindRouterSwapResultsWithStatus(mongodb.MatchTxNotStable, septime)
 }
 
 func isTxOnChain(txStatus *tokens.TxStatus) bool {
@@ -95,47 +107,64 @@ func getSwapTxStatus(resBridge tokens.IBridge, swap *mongodb.MgoSwapResult) *tok
 	return txStatus
 }
 
-func dispatchSwapResultToStable(swap *mongodb.MgoSwapResult) error {
-	chainID := swap.ToChainID
-	ch, exist := routerStableTaskChanMap[chainID]
+func dispatchSwapResultToStable(res *mongodb.MgoSwapResult) error {
+	chainID := res.ToChainID
+	taskQueue, exist := stableTaskQueues[chainID]
 	if !exist {
-		return fmt.Errorf("no stable channel for chainID %v", chainID)
+		return fmt.Errorf("no stable task queue for chainID '%v'", chainID)
 	}
 
-	ctx := []interface{}{
-		"fromChainID", swap.FromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex, "value", swap.Value, "swapNonce", swap.SwapNonce,
-	}
+	logWorker("stable", "dispatch stable router swap task", "fromChainID", res.FromChainID, "toChainID", res.ToChainID, "txid", res.TxID, "logIndex", res.LogIndex, "value", res.SwapValue, "swapNonce", res.SwapNonce, "queue", taskQueue.Len())
 
-	select {
-	case ch <- swap:
-		logWorker("stable", "dispatch router stable task", ctx...)
-	default:
-		logWorkerWarn("stable", "stable task channel is full", ctx...)
-		return errStableChannelIsFull
-	}
+	taskQueue.Add(res)
+	stableTasksInQueue.Add(res.Key)
 
 	return nil
 }
 
-func processStableTask(chainID string, swapChan <-chan *mongodb.MgoSwapResult) {
-	defer utils.TopWaitGroup.Done()
+func startStableConsumer(chainID string) {
+	defer mongodb.MgoWaitGroup.Done()
+	logWorker("doStable", "start process swap task", "chainID", chainID)
+
+	taskQueue, exist := stableTaskQueues[chainID]
+	if !exist {
+		log.Fatal("no task queue", "chainID", chainID)
+	}
+
+	i := 0
 	for {
-		select {
-		case <-utils.CleanupChan:
-			logWorker("stable", "stop process swap task", "chainID", chainID)
+		if utils.IsCleanuping() {
+			logWorker("doStable", "stop process swap task", "chainID", chainID)
 			return
-		case swap := <-swapChan:
-			if swap.ToChainID != chainID {
-				logWorkerWarn("stable", "ignore stable task as toChainID mismatch", "want", chainID, "have", swap.ToChainID)
-				continue
-			}
-			err := processRouterSwapStable(swap)
-			switch {
-			case err == nil, errors.Is(err, tokens.ErrNoBridgeForChainID):
-			default:
-				logWorkerError("stable", "process router swap failed", err, "swap", swap)
-			}
 		}
+
+		if i%10 == 0 && taskQueue.Len() > 0 {
+			logWorker("doStable", "tasks in stable queue", "chainID", chainID, "count", taskQueue.Len())
+		}
+		i++
+
+		front := taskQueue.Next()
+		if front == nil {
+			sleepSeconds(3)
+			continue
+		}
+
+		swap := front.(*mongodb.MgoSwapResult)
+
+		if swap.ToChainID != chainID {
+			logWorkerWarn("doStable", "ignore stable task as toChainID mismatch", "want", chainID, "swap", swap)
+			continue
+		}
+
+		ctx := []interface{}{"fromChainID", swap.FromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex}
+		err := processRouterSwapStable(swap)
+		if err == nil {
+			logWorker("doStable", "process router swap success", ctx...)
+		} else {
+			logWorkerError("doStable", "process router swap failed", err, ctx...)
+		}
+
+		stableTasksInQueue.Remove(swap.Key)
 	}
 }
 

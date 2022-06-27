@@ -240,7 +240,7 @@ type AccountLinesCommand struct {
 type AccountLinesResult struct {
 	LedgerSequence *uint32               `json:"ledger_index"`
 	Account        data.Account          `json:"account"`
-	Marker         *data.Hash256         `json:"marker"`
+	Marker         *string               `json:"marker"`
 	Lines          data.AccountLineSlice `json:"lines"`
 }
 
@@ -298,4 +298,9 @@ type FeeResult struct {
 	} `json:"levels"`
 	MaxQueueSize uint32 `json:"max_queue_size,string"`
 	Status       string `json:"status"`
+}
+
+type LedgerCurrentResult struct {
+	LedgerSequence uint32 `json:"ledger_current_index"`
+	Status         string `json:"status"`
 }

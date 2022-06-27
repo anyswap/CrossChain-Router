@@ -64,10 +64,6 @@ type RouterServerConfig struct {
 	MongoDB    *MongoDBConfig
 	APIServer  *APIServerConfig
 
-	ChainIDBlackList []string `toml:",omitempty" json:",omitempty"`
-	TokenIDBlackList []string `toml:",omitempty" json:",omitempty"`
-	AccountBlackList []string `toml:",omitempty" json:",omitempty"`
-
 	AutoSwapNonceEnabledChains []string `toml:",omitempty" json:",omitempty"`
 
 	// extras
@@ -113,6 +109,10 @@ type RouterConfig struct {
 	MPC            *MPCConfig
 	FastMPC        *MPCConfig   `toml:",omitempty" json:",omitempty"`
 	Extra          *ExtraConfig `toml:",omitempty" json:",omitempty"`
+
+	ChainIDBlackList []string `toml:",omitempty" json:",omitempty"`
+	TokenIDBlackList []string `toml:",omitempty" json:",omitempty"`
+	AccountBlackList []string `toml:",omitempty" json:",omitempty"`
 }
 
 // ExtraConfig extra config
@@ -155,6 +155,7 @@ type OnchainConfig struct {
 	APIAddress  []string
 	WSServers   []string
 	ReloadCycle uint64 // seconds
+	IgnoreCheck bool
 }
 
 // MPCConfig mpc related config
@@ -592,8 +593,8 @@ func initBigValueWhitelist() {
 	for tid, whitelist := range GetExtraConfig().BigValueWhitelist {
 		whitelistMap := make(map[string]struct{}, len(whitelist))
 		for _, address := range whitelist {
-			if !common.IsHexAddress(address) {
-				log.Fatal("initBigValueWhitelist wrong address", "tokenID", tid, "address", address)
+			if address == "" {
+				log.Fatal("initBigValueWhitelist empty address", "tokenID", tid)
 			}
 			whitelistMap[strings.ToLower(address)] = struct{}{}
 		}
@@ -726,13 +727,11 @@ func AddOrRemoveChainIDBlackList(chainIDs []string, isAdd bool) {
 			delete(chainIDBlacklistMap, chainID)
 		}
 	}
-	if GetRouterServerConfig() != nil {
-		blacklist := make([]string, 0, len(chainIDBlacklistMap))
-		for chainID := range chainIDBlacklistMap {
-			blacklist = append(blacklist, chainID)
-		}
-		GetRouterServerConfig().ChainIDBlackList = blacklist
+	blacklist := make([]string, 0, len(chainIDBlacklistMap))
+	for chainID := range chainIDBlacklistMap {
+		blacklist = append(blacklist, chainID)
 	}
+	GetRouterConfig().ChainIDBlackList = blacklist
 }
 
 // IsTokenIDInBlackList is token id in black list
@@ -751,13 +750,11 @@ func AddOrRemoveTokenIDBlackList(tokenIDs []string, isAdd bool) {
 			delete(tokenIDBlacklistMap, key)
 		}
 	}
-	if GetRouterServerConfig() != nil {
-		blacklist := make([]string, 0, len(tokenIDBlacklistMap))
-		for tokenID := range tokenIDBlacklistMap {
-			blacklist = append(blacklist, tokenID)
-		}
-		GetRouterServerConfig().TokenIDBlackList = blacklist
+	blacklist := make([]string, 0, len(tokenIDBlacklistMap))
+	for tokenID := range tokenIDBlacklistMap {
+		blacklist = append(blacklist, tokenID)
 	}
+	GetRouterConfig().TokenIDBlackList = blacklist
 }
 
 // IsAccountInBlackList is account in black list
@@ -776,13 +773,11 @@ func AddOrRemoveAccountBlackList(accounts []string, isAdd bool) {
 			delete(accountBlacklistMap, key)
 		}
 	}
-	if GetRouterServerConfig() != nil {
-		blacklist := make([]string, 0, len(accountBlacklistMap))
-		for account := range accountBlacklistMap {
-			blacklist = append(blacklist, account)
-		}
-		GetRouterServerConfig().AccountBlackList = blacklist
+	blacklist := make([]string, 0, len(accountBlacklistMap))
+	for account := range accountBlacklistMap {
+		blacklist = append(blacklist, account)
 	}
+	GetRouterConfig().AccountBlackList = blacklist
 }
 
 func initAutoSwapNonceEnabledChains() {
@@ -949,6 +944,7 @@ func LoadRouterConfig(configFile string, isServer, check bool) *RouterConfig {
 		log.Fatalf("LoadRouterConfig error (toml DecodeFile): %v", err)
 	}
 
+	IsSwapServer = isServer
 	if !isServer {
 		config.Server = nil
 	} else {
