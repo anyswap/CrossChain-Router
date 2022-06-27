@@ -140,11 +140,9 @@ func (b *Bridge) checkERC20SwapInfo(swapInfo *tokens.SwapTxInfo) error {
 }
 
 func (b *Bridge) checkTxSuccess(swapInfo *tokens.SwapTxInfo, allowUnstable bool) (err error) {
-	itx, err := b.GetTransaction(swapInfo.Hash)
 	if err != nil {
 		return err
 	}
-	tx, _ := itx.(*core.Transaction)
 	txStatus, err := b.GetTransactionStatus(swapInfo.Hash)
 	if err != nil {
 		return err
@@ -159,6 +157,8 @@ func (b *Bridge) checkTxSuccess(swapInfo *tokens.SwapTxInfo, allowUnstable bool)
 	if txStatus.BlockHeight < b.ChainConfig.InitialHeight {
 		return tokens.ErrTxBeforeInitialHeight
 	}
+	receipt := txStatus.Receipt.(map[string]interface{})
+	tx := receipt["tx"].(*core.Transaction)
 
 	swapInfo.Height = txStatus.BlockHeight  // Height
 	swapInfo.Timestamp = txStatus.BlockTime // Timestamp
@@ -186,8 +186,8 @@ func (b *Bridge) checkTxSuccess(swapInfo *tokens.SwapTxInfo, allowUnstable bool)
 			return errors.New("tx inconsistent")
 		}
 		from := fmt.Sprintf("%v", tronaddress.Address(c.OwnerAddress))
-		contractAddress := fmt.Sprintf("%v", tronaddress.Address(c.ContractAddress))
-		if common.BytesToAddress(c.ContractAddress) == (common.Address{}) && !params.AllowCallByConstructor() {
+		contractAddress := anyToEth(tronaddress.Address(c.ContractAddress).String())
+		if contractAddress == "" && !params.AllowCallByConstructor() {
 			return tokens.ErrTxWithWrongContract
 		} else {
 			swapInfo.TxTo = contractAddress
@@ -284,11 +284,7 @@ func (b *Bridge) parseERC20SwapoutTxLog(swapInfo *tokens.SwapTxInfo, rlog *types
 	swapInfo.From = common.BytesToAddress(logTopics[2].Bytes()).LowerHex()
 	swapInfo.Bind = common.BytesToAddress(logTopics[3].Bytes()).LowerHex()
 	swapInfo.Value = common.GetBigInt(logData, 0, 32)
-	if params.IsUseFromChainIDInReceiptDisabled(b.ChainConfig.ChainID) {
-		swapInfo.FromChainID = b.ChainConfig.GetChainID()
-	} else {
-		swapInfo.FromChainID = common.GetBigInt(logData, 32, 32)
-	}
+	swapInfo.FromChainID = b.ChainConfig.GetChainID()
 	swapInfo.ToChainID = common.GetBigInt(logData, 64, 32)
 
 	tokenCfg := b.GetTokenConfig(erc20SwapInfo.Token)

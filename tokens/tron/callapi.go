@@ -182,7 +182,7 @@ func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
 	rpcError := &RPCError{[]error{}, "GetTransaction"}
 	for _, endpoint := range b.GatewayConfig.APIAddress {
 		apiurl := strings.TrimSuffix(endpoint, "/") + `/wallet/gettransactionbyid`
-		res, err := post(apiurl, `{"value":"724f8f853b5824e477435faa4b4ee6f0691ec005abc0b105c55e82c6c78031cb"}`)
+		res, err := post(apiurl, `{"value":"`+txHash+`"}`)
 		if err != nil {
 			rpcError.log(err)
 			continue
