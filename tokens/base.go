@@ -37,6 +37,8 @@ func InitRouterSwapType(swapTypeStr string) {
 		routerSwapType = NFTSwapType
 	case "anycallswap":
 		routerSwapType = AnyCallSwapType
+	case "gasconvert":
+		routerSwapType = GasConvertSwapType
 	default:
 		log.Fatalf("invalid router swap type '%v'", swapTypeStr)
 	}
@@ -61,6 +63,11 @@ func IsNFTRouter() bool {
 // IsAnyCallRouter is anycall router
 func IsAnyCallRouter() bool {
 	return routerSwapType == AnyCallSwapType
+}
+
+// IsGasConvertRouter is anycall router
+func IsGasConvertRouter() bool {
+	return routerSwapType == GasConvertSwapType
 }
 
 // CrossChainBridgeBase base bridge
@@ -205,7 +212,7 @@ func GetBigValueThreshold(tokenID, fromChainID, toChainID string, fromDecimals u
 
 // CheckTokenSwapValue check swap value is in right range
 func CheckTokenSwapValue(swapInfo *SwapTxInfo, fromDecimals, toDecimals uint8) bool {
-	if !IsERC20Router() {
+	if !IsGasConvertRouter() {
 		return true
 	}
 	value := swapInfo.Value

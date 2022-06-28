@@ -20,6 +20,8 @@ func (b *Bridge) RegisterSwap(txHash string, args *tokens.RegisterArgs) ([]*toke
 		return b.registerNFTSwapTx(txHash, logIndex)
 	case tokens.AnyCallSwapType:
 		return b.registerAnyCallSwapTx(txHash, logIndex)
+	case tokens.GasConvertSwapType:
+		return b.registerGasConvertTx(txHash, logIndex)
 	default:
 		return nil, []error{tokens.ErrSwapTypeNotSupported}
 	}

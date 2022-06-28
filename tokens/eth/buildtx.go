@@ -47,6 +47,8 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		err = b.buildNFTSwapTxInput(args)
 	case tokens.AnyCallSwapType:
 		err = b.buildAnyCallSwapTxInput(args)
+	case tokens.GasConvertSwapType:
+		err = b.buildGasConvertTxInput(args)
 	default:
 		return nil, tokens.ErrSwapTypeNotSupported
 	}
