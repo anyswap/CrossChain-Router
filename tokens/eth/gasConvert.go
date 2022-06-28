@@ -21,7 +21,6 @@ import (
 var (
 	// LogGasConvertOut(address from, string to, uint256 amount, uint256 fromChainID, uint256 toChainID);
 	LogGasConvertOut     = common.FromHex("0x524033a372247e0bfbc5115a280f31c0c70e7494547fb6c915ed992a9c8bbbdc")
-	NativeToken          = "0x0000000000000000000000000000000000000000"
 	GasConvertInFuncHash = common.FromHex("0x0ac4f61f")
 )
 
@@ -92,7 +91,7 @@ func (b *Bridge) verifyGasConvertTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.
 		return tokens.ErrTxWithRemovedLog
 	}
 
-	routerContract := b.GetRouterContract(swapInfo.GasConvertSwapInfo.Token)
+	routerContract := b.GetChainConfig().RouterContract
 	if routerContract == "" {
 		return tokens.ErrMissRouterInfo
 	}
@@ -114,7 +113,8 @@ func (b *Bridge) parseGasConvertTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.R
 	}
 
 	gasConvertSwapInfo := swapInfo.GasConvertSwapInfo
-	gasConvertSwapInfo.Token = NativeToken
+	gasConvertSwapInfo.TokenID = b.GetChainConfig().Extra
+
 	swapInfo.From = common.BytesToAddress(logTopics[1].Bytes()).LowerHex()
 	swapInfo.Bind, err = abicoder.ParseStringInData(logData, 0)
 	if err != nil {
@@ -130,12 +130,19 @@ func (b *Bridge) parseGasConvertTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.R
 	if err != nil {
 		return err
 	}
-	tokenCfg := b.GetTokenConfig(gasConvertSwapInfo.Token)
-	if tokenCfg == nil {
-		return tokens.ErrMissTokenConfig
+
+	srcCurrencyCfg, err := router.GetTokenConfig(swapInfo.FromChainID, gasConvertSwapInfo.TokenID)
+	if err != nil {
+		return err
 	}
-	gasConvertSwapInfo.TokenID = tokenCfg.TokenID
-	log.Warn("parseGasConvertTxLog", "tokenCfg.TokenID", tokenCfg.TokenID, "swapInfo.Value", swapInfo.Value, "swapInfo.Bind", swapInfo.Bind, "swapInfo.From", swapInfo.From)
+	gasConvertSwapInfo.SrcCurrencySymbol = srcCurrencyCfg.ContractAddress
+	destCurrencyCfg, err := router.GetTokenConfig(swapInfo.ToChainID, gasConvertSwapInfo.TokenID)
+	if err != nil {
+		return err
+	}
+	gasConvertSwapInfo.DestCurrencySymbol = destCurrencyCfg.ContractAddress
+
+	log.Warn("parseGasConvertTxLog", "Value", swapInfo.Value, "TokenID", gasConvertSwapInfo.TokenID, "Bind", swapInfo.Bind, "From", swapInfo.From, "SrcCurrencySymbol", gasConvertSwapInfo.SrcCurrencySymbol, "DestCurrencySymbol", gasConvertSwapInfo.DestCurrencySymbol)
 
 	return nil
 }
@@ -191,7 +198,8 @@ func (b *Bridge) verifyGasConvertTx(txHash string, logIndex int, allowUnstable b
 			"txid", txHash, "logIndex", logIndex,
 			"height", swapInfo.Height, "timestamp", swapInfo.Timestamp,
 			"fromChainID", swapInfo.FromChainID, "toChainID", swapInfo.ToChainID,
-			"token", swapInfo.GasConvertSwapInfo.Token, "tokenID", swapInfo.GasConvertSwapInfo.TokenID,
+			"SrcCurrencySymbol", swapInfo.GasConvertSwapInfo.SrcCurrencySymbol,
+			"DestCurrencySymbol", swapInfo.GasConvertSwapInfo.DestCurrencySymbol,
 		}
 		log.Info("verify router swap tx stable pass", ctx...)
 	}
@@ -200,25 +208,21 @@ func (b *Bridge) verifyGasConvertTx(txHash string, logIndex int, allowUnstable b
 }
 
 func (b *Bridge) buildGasConvertTxInput(args *tokens.BuildTxArgs) (err error) {
-	//todo get currencySymbol by chainID
-	currencySymbol := "ethereum"
-	price, err := GetNativePrice(currencySymbol)
+	srcPrice, err := GetNativePrice(args.GasConvertSwapInfo.SrcCurrencySymbol)
 	if err != nil {
 		return err
 	}
 
-	destCurrencySymbol := "ethereum"
-	destPrice, err := GetNativePrice(destCurrencySymbol)
+	destPrice, err := GetNativePrice(args.GasConvertSwapInfo.DestCurrencySymbol)
 	if err != nil {
 		return err
 	}
-	log.Warn("buildGasConvertTxInput", "price", price, "destPrice", destPrice)
+	log.Warn("buildGasConvertTxInput", "srcPrice", srcPrice, "destPrice", destPrice)
 
-	priceRate := big.NewFloat(price / destPrice)
+	priceRate := big.NewFloat(srcPrice / destPrice)
 	floatAmount := new(big.Float).SetInt(args.OriginValue)
 	result, accuracy := priceRate.Mul(priceRate, floatAmount).Int64()
 	amount := big.NewInt(result)
-	log.Warn("buildGasConvertTxInput", "priceRate", priceRate, "floatAmount", floatAmount, "amount", amount, "accuracy", accuracy, "result", result)
 
 	input := abicoder.PackDataWithFuncHash(GasConvertInFuncHash,
 		common.HexToHash(args.SwapID),
@@ -226,9 +230,11 @@ func (b *Bridge) buildGasConvertTxInput(args *tokens.BuildTxArgs) (err error) {
 		amount,
 		args.FromChainID,
 	)
-	args.Input = (*hexutil.Bytes)(&input)                        // input
-	args.To = b.GetRouterContract(args.GasConvertSwapInfo.Token) // to
-	args.SwapValue = amount                                      // swapValue
+	args.Input = (*hexutil.Bytes)(&input)  // input
+	args.To = b.ChainConfig.RouterContract // to
+	args.SwapValue = amount                // swapValue
+
+	log.Warn("buildGasConvertTxInput", "priceRate", priceRate, "floatAmount", floatAmount, "amount", amount, "accuracy", accuracy)
 
 	return nil
 

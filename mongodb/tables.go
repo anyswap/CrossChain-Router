@@ -94,6 +94,7 @@ type SwapInfo struct {
 	NFTSwapInfo          *NFTSwapInfo          `bson:"nftSwapInfo,omitempty"     json:"nftSwapInfo,omitempty"`
 	AnyCallSwapInfo      *AnyCallSwapInfo      `bson:"anycallSwapInfo,omitempty" json:"anycallSwapInfo,omitempty"`
 	CurveAnyCallSwapInfo *CurveAnyCallSwapInfo `bson:"anycallSwapInfo2,omitempty" json:"anycallSwapInfo2,omitempty"`
+	GasConvertSwapInfo   *GasConvertSwapInfo   `bson:"gasConvertSwapInfo,omitempty" json:"gasConvertSwapInfo,omitempty"`
 }
 
 // ERC20SwapInfo struct
@@ -135,6 +136,12 @@ type CurveAnyCallSwapInfo struct {
 	Fallback string `json:"fallback"`
 }
 
+type GasConvertSwapInfo struct {
+	TokenID            string `bson:"tokenID" json:"tokenID"`
+	SrcCurrencySymbol  string `bson:"srcCurrencySymbol" json:"srcCurrencySymbol"`
+	DestCurrencySymbol string `bson:"destCurrencySymbol" json:"destCurrencySymbol"`
+}
+
 // GetToken get token
 func (s *SwapInfo) GetToken() string {
 	if s.ERC20SwapInfo != nil {
@@ -153,6 +160,9 @@ func (s *SwapInfo) GetTokenID() string {
 	}
 	if s.NFTSwapInfo != nil {
 		return s.NFTSwapInfo.TokenID
+	}
+	if s.GasConvertSwapInfo != nil {
+		return s.GasConvertSwapInfo.TokenID
 	}
 	return ""
 }

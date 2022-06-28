@@ -303,6 +303,7 @@ func startSwapConsumer(chainID string) {
 			logWorkerWarn("doSwap", "ignore swap task as toChainID mismatch", "want", chainID, "args", args)
 			continue
 		}
+		log.Warn("startSwapConsumer", "SwapArgs", args.SwapArgs, "SwapInfo", args.SwapInfo)
 		logWorker("doSwap", "process router swap start", "args", args)
 		ctx := []interface{}{"fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex}
 		err := doSwap(args)
@@ -365,7 +366,7 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 	if resBridge == nil {
 		return tokens.ErrNoBridgeForChainID
 	}
-
+	log.Warn("doSwap", "GasConvertSwapInfo", args.GasConvertSwapInfo)
 	rawTx, err := resBridge.BuildRawTransaction(args)
 	if err != nil {
 		logWorkerError("doSwap", "build tx failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex)

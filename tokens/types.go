@@ -87,8 +87,9 @@ type CurveAnyCallSwapInfo struct {
 }
 
 type GasConvertSwapInfo struct {
-	Token   string `json:"token"`
-	TokenID string `json:"tokenID"`
+	TokenID            string `json:"tokenID"`
+	SrcCurrencySymbol  string `json:"srcCurrencySymbol"`
+	DestCurrencySymbol string `json:"destCurrencySymbol"`
 }
 
 // SwapInfo struct
