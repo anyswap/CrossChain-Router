@@ -91,7 +91,7 @@ func (b *Bridge) GetFactoryAddress(contractAddr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return common.BytesToAddress(common.GetData(common.FromHex(res), 32, 32)).LowerHex(), nil
+	return common.BytesToAddress(common.GetData(common.FromHex(res), 0, 32)).LowerHex(), nil
 }
 
 // GetWNativeAddress call "wNATIVE()"
@@ -101,7 +101,7 @@ func (b *Bridge) GetWNativeAddress(contractAddr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return common.BytesToAddress(common.GetData(common.FromHex(res), 32, 32)).LowerHex(), nil
+	return common.BytesToAddress(common.GetData(common.FromHex(res), 0, 32)).LowerHex(), nil
 }
 
 // GetUnderlyingAddress call "underlying()"
@@ -111,7 +111,7 @@ func (b *Bridge) GetUnderlyingAddress(contractAddr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return common.BytesToAddress(common.GetData(common.FromHex(res), 32, 32)).LowerHex(), nil
+	return common.BytesToAddress(common.GetData(common.FromHex(res), 0, 32)).LowerHex(), nil
 }
 
 // GetMPCAddress call "mpc()"
@@ -121,7 +121,7 @@ func (b *Bridge) GetMPCAddress(contractAddr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return common.BytesToAddress(common.GetData(common.FromHex(res), 32, 32)).LowerHex(), nil
+	return common.BytesToAddress(common.GetData(common.FromHex(res), 0, 32)).LowerHex(), nil
 }
 
 // GetVaultAddress call "vault()"
@@ -131,7 +131,7 @@ func (b *Bridge) GetVaultAddress(contractAddr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return common.BytesToAddress(common.GetData(common.FromHex(res), 32, 32)).LowerHex(), nil
+	return common.BytesToAddress(common.GetData(common.FromHex(res), 0, 32)).LowerHex(), nil
 }
 
 // GetOwnerAddress call "owner()"
