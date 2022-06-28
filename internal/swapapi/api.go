@@ -35,11 +35,15 @@ func newRPCInternalError(err error) error {
 
 // GetServerInfo get server info
 func GetServerInfo() *ServerInfo {
+	extra := params.GetExtraConfig()
+	extraCfg := &params.ExtraConfig{
+		CallByContractWhitelist:         extra.CallByContractWhitelist,
+		CallByContractCodeHashWhitelist: extra.CallByContractCodeHashWhitelist,
+	}
 	return &ServerInfo{
 		Identifier:     params.GetIdentifier(),
 		Version:        params.VersionWithMeta,
-		ConfigContract: params.GetOnchainContract(),
-		ExtraConfig:    params.GetExtraConfig(),
+		ExtraConfig:    extraCfg,
 		AllChainIDs:    router.AllChainIDs,
 		PausedChainIDs: router.GetPausedChainIDs(),
 	}
@@ -124,6 +128,7 @@ func RegisterRouterSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, e
 		SwapType: swapType,
 		LogIndex: logIndex,
 	}
+	log.Debug("[api] register swap start", "chainid", fromChainID, "txid", txid, "logIndex", logIndexStr, "swapType", swapType.String())
 	swapInfos, errs := bridge.RegisterSwap(txid, registerArgs)
 	for i, swapInfo := range swapInfos {
 		var memo string
@@ -173,6 +178,7 @@ func RegisterRouterSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, e
 			log.Info("register swap db error", "chainid", fromChainID, "txid", txid, "logIndex", logIndexStr, "err", err)
 		}
 	}
+	log.Debug("[api] register swap finished", "chainid", fromChainID, "txid", txid, "logIndex", logIndexStr, "swapType", swapType.String())
 	return &result, nil
 }
 

@@ -68,9 +68,8 @@ func doPassBigValueJob() {
 }
 
 func findBigValRouterSwaps() ([]*mongodb.MgoSwap, error) {
-	status := mongodb.TxWithBigValue
 	septime := getSepTimeInFind(maxPassBigValueLifetime)
-	return mongodb.FindRouterSwapsWithStatus(status, septime)
+	return mongodb.FindRouterSwapsWithStatus(mongodb.TxWithBigValue, septime)
 }
 
 func processPassBigValRouterSwap(swap *mongodb.MgoSwap) (err error) {
