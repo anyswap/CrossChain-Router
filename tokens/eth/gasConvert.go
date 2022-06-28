@@ -91,12 +91,19 @@ func (b *Bridge) verifyGasConvertTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.
 		return tokens.ErrTxWithRemovedLog
 	}
 
-	routerContract := b.GetChainConfig().RouterContract
-	if routerContract == "" {
+	tokenID := b.GetChainConfig().Extra
+	if tokenID == "" {
+		return tokens.ErrEmptyTokenID
+	}
+	currencyCfg, err := router.GetTokenConfig(swapInfo.FromChainID, tokenID)
+	if err != nil {
+		return err
+	}
+	if currencyCfg.RouterContract == "" {
 		return tokens.ErrMissRouterInfo
 	}
-	if !common.IsEqualIgnoreCase(rlog.Address.LowerHex(), routerContract) {
-		log.Warn("router contract mismatch", "have", rlog.Address.LowerHex(), "want", routerContract)
+	if !common.IsEqualIgnoreCase(rlog.Address.LowerHex(), currencyCfg.RouterContract) {
+		log.Warn("router contract mismatch", "have", rlog.Address.LowerHex(), "want", currencyCfg.RouterContract)
 		return tokens.ErrTxWithWrongContract
 	}
 	return nil
@@ -113,8 +120,11 @@ func (b *Bridge) parseGasConvertTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.R
 	}
 
 	gasConvertSwapInfo := swapInfo.GasConvertSwapInfo
-	gasConvertSwapInfo.TokenID = b.GetChainConfig().Extra
-
+	tokenID := b.GetChainConfig().Extra
+	if tokenID == "" {
+		return tokens.ErrEmptyTokenID
+	}
+	gasConvertSwapInfo.TokenID = tokenID
 	swapInfo.From = common.BytesToAddress(logTopics[1].Bytes()).LowerHex()
 	swapInfo.Bind, err = abicoder.ParseStringInData(logData, 0)
 	if err != nil {

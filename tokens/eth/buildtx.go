@@ -31,7 +31,6 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	if args.From == "" {
 		return nil, fmt.Errorf("forbid empty sender")
 	}
-	log.Warn("GetRouterMPC", "GetTokenID", args.GetTokenID(), "gas", args.GasConvertSwapInfo.TokenID)
 	routerMPC, err := router.GetRouterMPC(args.GetTokenID(), b.ChainConfig.ChainID)
 	if err != nil {
 		return nil, err
