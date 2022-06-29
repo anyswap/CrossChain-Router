@@ -132,11 +132,18 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 			log.Warn("get router wNative address failed", "chainID", chainID, "routerContract", routerContract, "err", err)
 		}
 	}
-	routerMPC, err := b.GetMPCAddress(routerContract)
-	if err != nil {
-		log.Warn("get router mpc address failed", "chainID", chainID, "routerContract", routerContract, "err", err)
-		return err
+
+	var routerMPC string
+	if tokens.IsGasSwapRouter() {
+		routerMPC = routerContract
+	} else {
+		routerMPC, err = b.GetMPCAddress(routerContract)
+		if err != nil {
+			log.Warn("get router mpc address failed", "chainID", chainID, "routerContract", routerContract, "err", err)
+			return err
+		}
 	}
+
 	if common.HexToAddress(routerMPC) == (common.Address{}) {
 		log.Warn("get router mpc address return an empty address", "chainID", chainID, "routerContract", routerContract, "routerMPC", routerMPC)
 		return fmt.Errorf("empty router mpc address of router contract %v on chain %v", routerContract, chainID)

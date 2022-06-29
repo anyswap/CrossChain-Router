@@ -15,7 +15,7 @@ const (
 	ERC20SwapType
 	NFTSwapType
 	AnyCallSwapType
-
+	GasSwapType
 	MaxValidSwapType
 )
 
@@ -32,6 +32,8 @@ func (s SwapType) String() string {
 		return "nftswap"
 	case AnyCallSwapType:
 		return "anycallswap"
+	case GasSwapType:
+		return "gasswap"
 	default:
 		return "unknownswap"
 	}
@@ -83,12 +85,18 @@ type CurveAnyCallSwapInfo struct {
 	Fallback string        `json:"fallback"`
 }
 
+type GasSwapInfo struct {
+	SrcCurrencyPrice  *big.Int `json:"srcCurrencyPrice"`
+	DestCurrencyPrice *big.Int `json:"destCurrencyPrice"`
+}
+
 // SwapInfo struct
 type SwapInfo struct {
 	ERC20SwapInfo        *ERC20SwapInfo        `json:"routerSwapInfo,omitempty"`
 	NFTSwapInfo          *NFTSwapInfo          `json:"nftSwapInfo,omitempty"`
 	AnyCallSwapInfo      *AnyCallSwapInfo      `json:"anycallSwapInfo,omitempty"`
 	CurveAnyCallSwapInfo *CurveAnyCallSwapInfo `json:"anycallSwapInfo2,omitempty"`
+	GasSwapInfo          *GasSwapInfo          `json:"gasSwapInfo,omitempty"`
 }
 
 // GetTokenID get tokenID

@@ -94,6 +94,7 @@ type SwapInfo struct {
 	NFTSwapInfo          *NFTSwapInfo          `bson:"nftSwapInfo,omitempty"     json:"nftSwapInfo,omitempty"`
 	AnyCallSwapInfo      *AnyCallSwapInfo      `bson:"anycallSwapInfo,omitempty" json:"anycallSwapInfo,omitempty"`
 	CurveAnyCallSwapInfo *CurveAnyCallSwapInfo `bson:"anycallSwapInfo2,omitempty" json:"anycallSwapInfo2,omitempty"`
+	GasSwapInfo          *GasSwapInfo          `bson:"gasSwapInfo,omitempty" json:"gasSwapInfo,omitempty"`
 }
 
 // ERC20SwapInfo struct
@@ -133,6 +134,11 @@ type CurveAnyCallSwapInfo struct {
 	CallTo   string `json:"callTo"`
 	CallData string `json:"callData"`
 	Fallback string `json:"fallback"`
+}
+
+type GasSwapInfo struct {
+	SrcCurrencyPrice  string `bson:"srcCurrencyPrice"          json:"srcCurrencyPrice"`
+	DestCurrencyPrice string `bson:"destCurrencyPrice"          json:"destCurrencyPrice"`
 }
 
 // GetToken get token

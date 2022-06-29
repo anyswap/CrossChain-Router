@@ -2,7 +2,7 @@
 Identifier = "routerswap#test"
 
 # router swap type (eg. erc20swap, nftswap, anycallswap)
-SwapType = "erc20swap"
+SwapType = "gasswap"
 
 # test module name
 Module = "eth"
@@ -21,36 +21,32 @@ AllowCallByContract = false
 IsDebugMode = true
 
 # all chain ids (pass 'miss token config' checking)
-AllChainIDs = ["56", "25"]
-
+AllChainIDs = ["4", "97"]
 
 [Gateway]
-APIAddress = ["http://127.0.0.1:6711"]
-
+APIAddress = ["https://rinkeby.infura.io/v3/8e1493b73b104925b1d3b95abd3fd767"]
 
 # chain config
 [Chain]
-ChainID = "56"
-BlockChain = "bsc"
-RouterContract = "0x92c079d3155c2722dbf7e65017a5baf9cd15561c"
-Confirmations  = 1
-InitialHeight  = 0
-
+BlockChain = "rinkeby"
+ChainID = "4"
+Confirmations = 1
+InitialHeight = 0
+RouterContract = "0x2E0cf4B9b3bb159e4fa568d47eA42eeb1800a848"
 
 # token config
 [Token]
-TokenID         = "anyBNB"
-Decimals        = 18
+ContractAddress = "0x0000000000000000000000000000000000000000"
 ContractVersion = 6
-ContractAddress = "0x49974c3c99f4e74d08845c31d3f4f16fdc264ebd"
-Underlying      = "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c"
-RouterContract  = "0x92c079d3155c2722dbf7e65017a5baf9cd15561c"
-
+Decimals = 0
+RouterContract = "0x2E0cf4B9b3bb159e4fa568d47eA42eeb1800a848"
+TokenID = "gasswap"
+Underlying = "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c"
 
 [Swap]
-SwapFeeRatePerMillion = 0
-MaximumSwapFee    = "0"
-MinimumSwapFee    = "0"
-MaximumSwap       = "10000000000000000000000000"
 BigValueThreshold = "10000000000000000000000000"
-MinimumSwap       = "1"
+MaximumSwap = "10000000000000000000000000"
+MaximumSwapFee = "0"
+MinimumSwap = "1"
+MinimumSwapFee = "0"
+SwapFeeRatePerMillion = 0

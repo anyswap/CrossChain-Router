@@ -31,10 +31,12 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	if args.From == "" {
 		return nil, fmt.Errorf("forbid empty sender")
 	}
+
 	routerMPC, err := router.GetRouterMPC(args.GetTokenID(), b.ChainConfig.ChainID)
 	if err != nil {
 		return nil, err
 	}
+
 	if !common.IsEqualIgnoreCase(args.From, routerMPC) {
 		log.Error("build tx mpc mismatch", "have", args.From, "want", routerMPC)
 		return nil, tokens.ErrSenderMismatch
@@ -47,6 +49,8 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		err = b.buildNFTSwapTxInput(args)
 	case tokens.AnyCallSwapType:
 		err = b.buildAnyCallSwapTxInput(args)
+	case tokens.GasSwapType:
+		err = b.buildGasSwapTxInput(args)
 	default:
 		return nil, tokens.ErrSwapTypeNotSupported
 	}

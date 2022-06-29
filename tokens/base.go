@@ -37,6 +37,8 @@ func InitRouterSwapType(swapTypeStr string) {
 		routerSwapType = NFTSwapType
 	case "anycallswap":
 		routerSwapType = AnyCallSwapType
+	case "gasswap":
+		routerSwapType = GasSwapType
 	default:
 		log.Fatalf("invalid router swap type '%v'", swapTypeStr)
 	}
@@ -61,6 +63,11 @@ func IsNFTRouter() bool {
 // IsAnyCallRouter is anycall router
 func IsAnyCallRouter() bool {
 	return routerSwapType == AnyCallSwapType
+}
+
+// IsGasSwapRouter is anycall router
+func IsGasSwapRouter() bool {
+	return routerSwapType == GasSwapType
 }
 
 // CrossChainBridgeBase base bridge

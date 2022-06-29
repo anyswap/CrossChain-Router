@@ -77,6 +77,12 @@ func ConvertToSwapInfo(info *tokens.SwapInfo) SwapInfo {
 			CallData: common.ToHex(anycallSwapInfo.CallData),
 			Fallback: anycallSwapInfo.Fallback,
 		}
+	case info.GasSwapInfo != nil:
+		gasSwapInfo := info.GasSwapInfo
+		swapinfo.GasSwapInfo = &GasSwapInfo{
+			SrcCurrencyPrice:  gasSwapInfo.SrcCurrencyPrice.String(),
+			DestCurrencyPrice: gasSwapInfo.DestCurrencyPrice.String(),
+		}
 	}
 	return swapinfo
 }
@@ -152,6 +158,20 @@ func ConvertFromSwapInfo(swapinfo *SwapInfo) (tokens.SwapInfo, error) {
 			CallTo:   anyCallSwapInfo.CallTo,
 			CallData: common.FromHex(anyCallSwapInfo.CallData),
 			Fallback: anyCallSwapInfo.Fallback,
+		}
+	case swapinfo.GasSwapInfo != nil:
+		gasSwapInfo := swapinfo.GasSwapInfo
+		srcCurrencyPrice, err := common.GetBigIntFromStr(gasSwapInfo.SrcCurrencyPrice)
+		if err != nil {
+			return info, err
+		}
+		destCurrencyPrice, err := common.GetBigIntFromStr(gasSwapInfo.DestCurrencyPrice)
+		if err != nil {
+			return info, err
+		}
+		info.GasSwapInfo = &tokens.GasSwapInfo{
+			SrcCurrencyPrice:  srcCurrencyPrice,
+			DestCurrencyPrice: destCurrencyPrice,
 		}
 	}
 	return info, nil

@@ -85,7 +85,7 @@ func GetTokenRouterContract(tokenID, chainID string) (string, error) {
 		return "", tokens.ErrNoBridgeForChainID
 	}
 	multichainToken := ""
-	if !tokens.IsAnyCallRouter() {
+	if !tokens.IsAnyCallRouter() && !tokens.IsGasSwapRouter() {
 		multichainToken = GetCachedMultichainToken(tokenID, chainID)
 		if multichainToken == "" {
 			log.Warn("GetTokenRouterContract get multichain token failed", "tokenID", tokenID, "chainID", chainID)

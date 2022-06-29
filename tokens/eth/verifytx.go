@@ -69,6 +69,8 @@ func (b *Bridge) VerifyTransaction(txHash string, args *tokens.VerifyArgs) (*tok
 		return b.verifyNFTSwapTx(txHash, logIndex, allowUnstable)
 	case tokens.AnyCallSwapType:
 		return b.verifyAnyCallSwapTx(txHash, logIndex, allowUnstable)
+	case tokens.GasSwapType:
+		return b.verifyGasSwapTx(txHash, logIndex, allowUnstable)
 	default:
 		return nil, tokens.ErrSwapTypeNotSupported
 	}
