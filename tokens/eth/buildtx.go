@@ -187,12 +187,20 @@ func (b *Bridge) setDefaults(args *tokens.BuildTxArgs) (err error) {
 			log.Error(fmt.Sprintf("build %s tx estimate gas failed", args.SwapType.String()),
 				"swapID", args.SwapID, "from", args.From, "to", args.To,
 				"value", args.Value, "data", *args.Input, "err", errf)
-			return tokens.ErrEstimateGasFailed
+			return fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, tokens.ErrEstimateGasFailed)
 		}
 		esGasLimit += esGasLimit * 30 / 100
 		defGasLimit := b.getDefaultGasLimit()
 		if esGasLimit < defGasLimit {
 			esGasLimit = defGasLimit
+		}
+		maxGasLimit := params.GetMaxGasLimit(b.ChainConfig.ChainID)
+		if maxGasLimit > 0 && esGasLimit > maxGasLimit {
+			return fmt.Errorf("%w %v on chain %v", tokens.ErrBuildTxErrorAndDelay, "estimated gas is too large", b.ChainConfig.ChainID)
+		}
+		maxTokenGasLimit := params.GetMaxTokenGasLimit(args.GetTokenID(), b.ChainConfig.ChainID)
+		if maxTokenGasLimit > 0 && esGasLimit > maxTokenGasLimit {
+			return fmt.Errorf("%w %v %v on chain %v", tokens.ErrBuildTxErrorAndDelay, "estimated gas is too large for token", args.GetTokenID(), b.ChainConfig.ChainID)
 		}
 		extra.Gas = new(uint64)
 		*extra.Gas = esGasLimit
@@ -216,6 +224,10 @@ func (b *Bridge) getGasPrice(args *tokens.BuildTxArgs) (price *big.Int, err erro
 	if fixedGasPrice != nil {
 		price = fixedGasPrice
 		if args.GetReplaceNum() == 0 {
+			return price, nil
+		}
+		maxGasPrice := params.GetMaxGasPrice(b.ChainConfig.ChainID)
+		if maxGasPrice != nil && price.Cmp(maxGasPrice) == 0 {
 			return price, nil
 		}
 	} else {
@@ -296,13 +308,13 @@ func (b *Bridge) getAccountNonce(args *tokens.BuildTxArgs) (nonceptr *uint64, er
 		return &nonce, err
 	}
 
-	if params.IsAutoSwapNonceEnabled(b.ChainConfig.ChainID) { // increase automatically
-		nonce = b.GetSwapNonce(args.From)
-		return &nonce, nil
+	getPoolNonceBlockNumberOpt := "pending" // latest or pending
+	if params.IsAutoSwapNonceEnabled(b.ChainConfig.ChainID) {
+		getPoolNonceBlockNumberOpt = "latest"
 	}
 
 	for i := 0; i < retryRPCCount; i++ {
-		nonce, err = b.GetPoolNonce(args.From, "pending")
+		nonce, err = b.GetPoolNonce(args.From, getPoolNonceBlockNumberOpt)
 		if err == nil {
 			break
 		}

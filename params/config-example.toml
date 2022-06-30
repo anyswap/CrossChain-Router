@@ -9,8 +9,8 @@ SwapSubType = ""
 [Server]
 # administrators who can do admin work
 Admins = [
-	"0x3dfaef310a1044fd7d96750b42b44cf3775c00bf",
-	"0x46cbe22b687d4b72c8913e4784dfe5b20fdc2b0e"
+	"0x1111111111111111111111111111111111111111",
+	"0x2222222222222222222222222222222222222222"
 ]
 Assistants = [
 	"0x6666666666666666666666666666666666666666"
@@ -60,6 +60,14 @@ AutoSwapNonceEnabledChains = ["25"]
 [Server.DefaultGasLimit]
 4     = 90000
 46688 = 90000
+# config maximum gas limit. key is chainID.
+[Server.MaxGasLimit]
+4     = 200000
+46688 = 90000
+# config maximum token gas limit. key is chainID. the last part (USDC here) is tokenID.
+[Server.MaxTokenGasLimit.USDC]
+4     = 2000000
+46688 = 900000
 # use fixed gas price (no adjust). key is chainID.
 [Server.FixedGasPrice]
 4     = "1000000001"
@@ -87,7 +95,7 @@ MaxGasFeeCap         = "10000000000"
 [Server.MongoDB]
 # DBURLs is prefered if exists. forbids set both DBURL and DBURLs.
 #DBURL = "localhost:27017,localhost:12345"
-#DBURLs = ["localhost:27017", "localhost:12345"]
+DBURLs = ["localhost:27017", "localhost:12345"]
 DBName = "databasename"
 UserName = "username"
 Password = "password"
@@ -184,7 +192,7 @@ MIM  = ["0x2222222222222222222222222222222222222222"]
 [OnChain]
 # 0: disable, min:600, unit is seconds
 ReloadCycle = 0
-Contract = "0x77bc292e465cfff6dda1fd5ca67a2a1320d2657e"
+Contract = "0x3333333333333333333333333333333333333333"
 APIAddress = ["http://127.0.0.1:8711", "http://127.0.0.1:8722"]
 #WSServers = ["ws://127.0.0.1:7711"]
 
@@ -219,7 +227,7 @@ MinIntervalToAddSignGroup = 3600
 VerifySignatureInAccept = false
 
 # mpc group ID
-GroupID = "74245ef03937fa75b979bdaa6a5952a93f53e021e0832fca4c2ad8952572c9b70f49e291de7e024b0f7fc54ec5875210db2ac775dba44448b3972b75af074d17"
+GroupID = "11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"
 
 # mpc threshold (NeededOracles=2,TotalOracles=3 represent '2/3' threshold)
 NeededOracles = 2
@@ -230,7 +238,7 @@ Mode = 0
 
 # initiators of mpc sign
 Initiators = [
-	"0x897a9980808a2cae0d09ff693f02a4f80abb2233"
+	"0x1111111111111111111111111111111111111111"
 ]
 
 # use private key instead (use for testing)
@@ -244,8 +252,8 @@ SignWithPrivateKey = false
 [MPC.DefaultNode]
 # mpc sub groups for signing (server only)
 SignGroups = [
-	"38a93f457c793ac3ee242b2c050a403774738e6558cfaa620fe5577bb15a28f63c39adcc0778497e5009a9ee776a0778ffcad4e95827e69efa21b893b8a78793",
-	"bb1dfe1ec046cc3a3b88408ae03976aabffe459b40e5def09e76f5d4c7a917133241da9da7fc05e3e172fab54ce3129a9a492d52a5a09494d0b9c1e608f661bf"
+	"22222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222",
+	"33333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333"
 ]
 
 # mpc user keystore and password file (suggest using absolute path)

@@ -269,6 +269,9 @@ func (s *SignInfoData) HasValidSignature() bool {
 	}
 	msgContext := s.MsgContext[:msgContextLen-1]
 	msgSig := common.FromHex(s.MsgContext[msgContextLen-1])
+	if len(msgSig) != crypto.SignatureLength {
+		return false
+	}
 
 	txdata := SignData{
 		TxType:     "SIGN",

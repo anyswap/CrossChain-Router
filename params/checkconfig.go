@@ -91,6 +91,7 @@ func (c *RouterOracleConfig) CheckConfig() (err error) {
 		return errors.New("oracle must config 'ServerAPIAddress'")
 	}
 	if c.NoCheckServerConnection {
+		log.Info("oracle ignore check server connection")
 		return nil
 	}
 	var version string
@@ -122,6 +123,12 @@ func (s *RouterServerConfig) CheckConfig() error {
 	}
 	if err := s.MongoDB.CheckConfig(); err != nil {
 		return err
+	}
+	for cid, defGasLimit := range s.DefaultGasLimit {
+		masGasLimit := s.MaxGasLimit[cid]
+		if masGasLimit > 0 && defGasLimit > masGasLimit {
+			return fmt.Errorf("chain %v default gas limit %v is greater than its max gas limit %v", cid, defGasLimit, masGasLimit)
+		}
 	}
 	initAutoSwapNonceEnabledChains()
 	for _, chainID := range s.ChainIDBlackList {
@@ -204,8 +211,10 @@ func (s *RouterServerConfig) CheckConfig() error {
 	}
 	log.Info("check server config success",
 		"defaultGasLimit", s.DefaultGasLimit,
-		"fixedGasPriceMap", fixedGasPriceMap,
-		"maxGasPriceMap", maxGasPriceMap,
+		"maxGasLimit", s.MaxGasLimit,
+		"maxTokenGasLimit", s.MaxTokenGasLimit,
+		"fixedGasPrice", fixedGasPriceMap,
+		"maxGasPrice", maxGasPriceMap,
 		"noncePassedConfirmInterval", s.NoncePassedConfirmInterval,
 	)
 	return nil
@@ -290,6 +299,10 @@ func (c *MongoDBConfig) CheckConfig() error {
 
 // CheckConfig check onchain config storing chain and token configs
 func (c *OnchainConfig) CheckConfig() error {
+	if c.IgnoreCheck {
+		log.Info("ignore check onchain config")
+		return nil
+	}
 	log.Info("start check onchain config connection")
 	if c.Contract == "" {
 		return errors.New("onchain must config 'Contract'")
@@ -299,9 +312,6 @@ func (c *OnchainConfig) CheckConfig() error {
 	}
 	if c.ReloadCycle > 0 && c.ReloadCycle < 600 {
 		return errors.New("onchain config wrong 'ReloadCycle' value (must be 0 or >= 600)")
-	}
-	if len(c.WSServers) == 0 {
-		log.Warn("onchain does not config web socket server, so do not support reload config.")
 	}
 	callGetAllChainIDs := common.FromHex("0xe27112d5")
 	for _, apiAddress := range c.APIAddress {
@@ -399,16 +409,8 @@ func (c *ExtraConfig) CheckConfig() (err error) {
 	log.Info("check extra config success",
 		"minReserveFee", c.MinReserveFee,
 		"allowCallByContract", c.AllowCallByContract,
-		"callByContractWhitelist", c.CallByContractWhitelist,
-		"callByContractCodeHashWhitelist", c.CallByContractCodeHashWhitelist,
-		"bigValueWhitelist", c.BigValueWhitelist,
-		"dynamicFeeTxEnabledChains", c.DynamicFeeTxEnabledChains,
-		"enableCheckTxBlockHashChains", c.EnableCheckTxBlockHashChains,
-		"enableCheckTxBlockIndexChains", c.EnableCheckTxBlockIndexChains,
-		"initDisableUseFromChainIDInReceiptChains", c.DisableUseFromChainIDInReceiptChains,
 		"baseFeePercent", c.BaseFeePercent,
 		"usePendingBalance", c.UsePendingBalance,
-		"customs", c.Customs,
 	)
 	return nil
 }

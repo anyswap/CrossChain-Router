@@ -35,11 +35,15 @@ func newRPCInternalError(err error) error {
 
 // GetServerInfo get server info
 func GetServerInfo() *ServerInfo {
+	extra := params.GetExtraConfig()
+	extraCfg := &params.ExtraConfig{
+		CallByContractWhitelist:         extra.CallByContractWhitelist,
+		CallByContractCodeHashWhitelist: extra.CallByContractCodeHashWhitelist,
+	}
 	return &ServerInfo{
 		Identifier:     params.GetIdentifier(),
 		Version:        params.VersionWithMeta,
-		ConfigContract: params.GetOnchainContract(),
-		ExtraConfig:    params.GetExtraConfig(),
+		ExtraConfig:    extraCfg,
 		AllChainIDs:    router.AllChainIDs,
 		PausedChainIDs: router.GetPausedChainIDs(),
 	}

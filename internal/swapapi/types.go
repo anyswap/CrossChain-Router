@@ -14,7 +14,6 @@ type MapIntResult map[int]string
 type ServerInfo struct {
 	Identifier     string
 	Version        string
-	ConfigContract string
 	ExtraConfig    *params.ExtraConfig `json:",omitempty"`
 	AllChainIDs    []*big.Int
 	PausedChainIDs []*big.Int `json:",omitempty"`

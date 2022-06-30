@@ -53,6 +53,9 @@ func AdjustGatewayOrder(bridge tokens.IBridge, chainID string) {
 	// use block number as weight
 	var weightedAPIs tools.WeightedStringSlice
 	gateway := bridge.GetGatewayConfig()
+	if gateway == nil {
+		return
+	}
 	length := len(gateway.APIAddress)
 	for i := length; i > 0; i-- { // query in reverse order
 		apiAddress := gateway.APIAddress[i-1]
