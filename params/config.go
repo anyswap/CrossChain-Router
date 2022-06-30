@@ -76,7 +76,6 @@ type RouterServerConfig struct {
 	MaxPlusGasPricePercentage  uint64            `toml:",omitempty" json:",omitempty"`
 	MaxGasPriceFluctPercent    uint64            `toml:",omitempty" json:",omitempty"`
 	SwapDeadlineOffset         int64             `toml:",omitempty" json:",omitempty"` // seconds
-	DefaultGasLimit            map[string]uint64 `toml:",omitempty" json:",omitempty"` // key is chain ID
 	FixedGasPrice              map[string]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	MaxGasPrice                map[string]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	NoncePassedConfirmInterval map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID
@@ -84,6 +83,10 @@ type RouterServerConfig struct {
 	RetrySendTxLoopCount       map[string]int    `toml:",omitempty" json:",omitempty"` // key is chain ID
 	SendTxLoopCount            map[string]int    `toml:",omitempty" json:",omitempty"` // key is chain ID
 	SendTxLoopInterval         map[string]int    `toml:",omitempty" json:",omitempty"` // key is chain ID
+
+	DefaultGasLimit  map[string]uint64            `toml:",omitempty" json:",omitempty"` // key is chain ID
+	MaxGasLimit      map[string]uint64            `toml:",omitempty" json:",omitempty"` // key is chain ID
+	MaxTokenGasLimit map[string]map[string]uint64 `toml:",omitempty" json:",omitempty"` // key is tokenID,chainID
 
 	DynamicFeeTx map[string]*DynamicFeeTxConfig `toml:",omitempty" json:",omitempty"` // key is chain ID
 }
@@ -288,6 +291,24 @@ func GetMaxGasPrice(chainID string) *big.Int {
 		return new(big.Int).Set(maxGasPrice)
 	}
 	return nil
+}
+
+// GetMaxGasLimit get max gas limit of specified chain
+func GetMaxGasLimit(chainID string) uint64 {
+	serverCfg := GetRouterServerConfig()
+	if serverCfg == nil {
+		return 0
+	}
+	return serverCfg.MaxGasLimit[chainID]
+}
+
+// GetMaxTokenGasLimit get max token gas limit of specified tokenID and chainID
+func GetMaxTokenGasLimit(tokenID, chainID string) uint64 {
+	serverCfg := GetRouterServerConfig()
+	if serverCfg == nil {
+		return 0
+	}
+	return serverCfg.MaxTokenGasLimit[tokenID][chainID]
 }
 
 // GetNoncePassedConfirmInterval get nonce passed confirm interval

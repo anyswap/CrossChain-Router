@@ -178,6 +178,12 @@ func (s *RouterServerConfig) CheckConfig() error {
 	if err := s.MongoDB.CheckConfig(); err != nil {
 		return err
 	}
+	for cid, defGasLimit := range s.DefaultGasLimit {
+		masGasLimit := s.MaxGasLimit[cid]
+		if masGasLimit > 0 && defGasLimit > masGasLimit {
+			return fmt.Errorf("chain %v default gas limit %v is greater than its max gas limit %v", cid, defGasLimit, masGasLimit)
+		}
+	}
 	initAutoSwapNonceEnabledChains()
 	for chainID, fixedGasPriceStr := range s.FixedGasPrice {
 		biChainID, ok := new(big.Int).SetString(chainID, 0)
@@ -219,8 +225,10 @@ func (s *RouterServerConfig) CheckConfig() error {
 	}
 	log.Info("check server config success",
 		"defaultGasLimit", s.DefaultGasLimit,
-		"fixedGasPriceMap", fixedGasPriceMap,
-		"maxGasPriceMap", maxGasPriceMap,
+		"maxGasLimit", s.MaxGasLimit,
+		"maxTokenGasLimit", s.MaxTokenGasLimit,
+		"fixedGasPrice", fixedGasPriceMap,
+		"maxGasPrice", maxGasPriceMap,
 		"noncePassedConfirmInterval", s.NoncePassedConfirmInterval,
 	)
 	return nil
