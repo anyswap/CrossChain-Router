@@ -216,7 +216,7 @@ SENDTX_LOOP:
 		return txHash, err
 	}
 
-	if params.GetRouterServerConfig().SendTxLoopCount[args.ToChainID.String()] > 0 {
+	if params.GetRouterServerConfig().SendTxLoopCount[args.ToChainID.String()] >= 0 {
 		go sendTxLoopUntilSuccess(bridge, txHash, signedTx, args)
 	}
 
