@@ -43,14 +43,13 @@ func (b *Bridge) parseGasSwapTxMemo(swapInfo *tokens.SwapTxInfo, payload *hexuti
 	if !toBridge.IsValidAddress(bind) {
 		return tokens.ErrTxWithWrongReceiver
 	}
-	swapInfo.To = bind
 	swapInfo.Bind = bind
 	gasSwapInfo := swapInfo.GasSwapInfo
-	srcCurrencyPrice, err := GetNativePrice(swapInfo.FromChainID)
+	srcCurrencyPrice, err := tokens.GetNativePrice(swapInfo.FromChainID)
 	if err != nil {
 		return err
 	}
-	destCurrencyPrice, err := GetNativePrice(swapInfo.ToChainID)
+	destCurrencyPrice, err := tokens.GetNativePrice(swapInfo.ToChainID)
 	if err != nil {
 		return err
 	}
@@ -156,18 +155,21 @@ func (b *Bridge) verifyGasSwapTx(txHash string, _ int, allowUnstable bool) (*tok
 }
 
 func (b *Bridge) buildGasSwapTxInput(args *tokens.BuildTxArgs) (err error) {
+	srcPrice := new(big.Float).SetInt(args.GasSwapInfo.SrcCurrencyPrice)
+	destPrice := new(big.Float).SetInt(args.GasSwapInfo.DestCurrencyPrice)
+	srcFloat, _ := srcPrice.Float64()
+	destFloat, _ := destPrice.Float64()
 
-	priceRate := args.GasSwapInfo.DestCurrencyPrice.Div(args.GasSwapInfo.SrcCurrencyPrice, args.GasSwapInfo.DestCurrencyPrice)
-	amount := priceRate.Mul(priceRate, args.Value)
+	priceRate := big.NewFloat(srcFloat / destFloat)
+	amount, _ := priceRate.Mul(priceRate, new(big.Float).SetInt(args.OriginValue)).Int64()
 
-	args.SwapValue = amount // swapValue
+	input := []byte(args.SwapID)
+	args.Input = (*hexutil.Bytes)(&input)
+	args.To = args.Bind             // to
+	args.Value = big.NewInt(amount) // swapValue
 
 	log.Warn("buildGasSwapTxInput", "srcPrice", args.GasSwapInfo.SrcCurrencyPrice, "destPrice", args.GasSwapInfo.DestCurrencyPrice, "priceRate", priceRate, "amount", amount)
 
 	return nil
 
-}
-
-func GetNativePrice(chainID *big.Int) (*big.Int, error) {
-	return nil, nil
 }

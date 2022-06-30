@@ -103,6 +103,7 @@ type RouterConfig struct {
 	SwapType    string
 	SwapSubType string
 	Onchain     *OnchainConfig
+	PriceOracle *PriceOracleConfig
 	Gateways    map[string][]string // key is chain ID
 	GatewaysExt map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	MPC         *MPCConfig
@@ -146,6 +147,15 @@ type ExtraConfig struct {
 	RPCClientTimeout map[string]int `toml:",omitempty" json:",omitempty"` // key is chainID
 	// chainID,customKey => customValue
 	Customs map[string]map[string]string `toml:",omitempty" json:",omitempty"`
+}
+
+// OnchainConfig struct
+type PriceOracleConfig struct {
+	Contract    string
+	APIAddress  []string
+	WSServers   []string
+	ReloadCycle uint64 // seconds
+	IgnoreCheck bool
 }
 
 // OnchainConfig struct

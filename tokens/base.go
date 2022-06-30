@@ -1,15 +1,23 @@
 package tokens
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
 	cmath "github.com/anyswap/CrossChain-Router/v3/common/math"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/eth/abicoder"
+	ethclient "github.com/jowenshaw/gethclient"
+	ethcommon "github.com/jowenshaw/gethclient/common"
+	"github.com/jowenshaw/gethclient/types/ethereum"
 )
 
 var (
@@ -20,6 +28,7 @@ var (
 
 	// StubChainIDBase stub chainID base value
 	StubChainIDBase = big.NewInt(1000000000000)
+	routerConfigCtx = context.Background()
 )
 
 // IsNativeCoin is native coin
@@ -351,4 +360,36 @@ func CheckNativeBalance(b IBridge, account string, needValue *big.Int) (err erro
 		log.Warn("get balance error", "account", account, "err", err)
 	}
 	return err
+}
+
+func GetNativePrice(chainID *big.Int) (*big.Int, error) {
+	funcHash := common.FromHex("0xe7572230")
+	data := abicoder.PackDataWithFuncHash(funcHash, chainID)
+	res, err := CallContractGetNativePrice(data, "latest")
+	if err != nil {
+		return nil, err
+	}
+	return common.GetBigInt(res, 0, 32), nil
+}
+
+// CallOnchainContract call onchain contract
+func CallContractGetNativePrice(data hexutil.Bytes, blockNumber string) (result []byte, err error) {
+	priceOracleConfig := params.GetRouterConfig().PriceOracle
+	contract := ethcommon.HexToAddress(priceOracleConfig.Contract)
+	msg := ethereum.CallMsg{
+		To:   &contract,
+		Data: data,
+	}
+	for _, url := range priceOracleConfig.APIAddress {
+		cli, err := ethclient.Dial(url)
+		if err != nil {
+			log.Fatal("init price oracle web socket clients failed", "url", url, "err", err)
+		}
+		result, err = cli.CallContract(routerConfigCtx, msg, nil)
+		if err == nil {
+			return result, nil
+		}
+	}
+	log.Debug("call price contract error", "contract", contract.String(), "data", data, "err", err)
+	return nil, errors.New("call price contract error")
 }

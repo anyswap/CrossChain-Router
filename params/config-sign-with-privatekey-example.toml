@@ -1,36 +1,36 @@
 # router swap identifier, must have prefix 'routerswap'
 Identifier = "routerswap-test"
 # router swap type (eg. erc20swap, nftswap, anycallswap)
-SwapType = "erc20swap"
+SwapType = "gasswap"
 # default subtype is empty. anycall has subtype of 'curve'
 SwapSubType = ""
 
-
 # modgodb database connection config
 [Server.MongoDB]
-DBURLs = ["localhost:27017"]
 DBName = "testdb"
-UserName = "testuser"
-Password = "testpasswd"
-
+DBURLs = ["192.168.51.13:27017"]
+Password = "123456"
+UserName = "tester"
 
 # bridge API service
 [Server.APIServer]
 # listen port
 Port = 11556
 
-
 # OnChain config
 [OnChain]
-Contract = "0x1111111111111111111111111111111111111111"
-APIAddress = ["https://data-seed-prebsc-1-s1.binance.org:8545"]
+APIAddress = ["https://rinkeby.infura.io/v3/8e1493b73b104925b1d3b95abd3fd767"]
+Contract = "0x31a5aeda5b1aa4579f8dfec33d1cc29a9e318664"
 
+# OnChain config
+[PriceOracle]
+APIAddress = ["https://rinkeby.infura.io/v3/8e1493b73b104925b1d3b95abd3fd767"]
+Contract = "0xc43E552d37DfB7809B634118AfB41a2106500552"
 
 # Gateways config. key is chainID
 [Gateways]
+4 = ["https://rinkeby.infura.io/v3/8e1493b73b104925b1d3b95abd3fd767"]
 97 = ["https://data-seed-prebsc-1-s1.binance.org:8545/"]
-1000005788241 = ["wss://s.altnet.rippletest.net:51233"]
-
 
 # MPC config
 [MPC]
@@ -39,5 +39,5 @@ SignWithPrivateKey = true
 
 # set signer's private key, key is chain ID (use for testing)
 [MPC.SignerPrivateKeys]
-97            = "1111111111111111111111111111111111111111111111111111111111111111"
-1000005788241 = "1111111111111111111111111111111111111111111111111111111111111111"
+4 = "1380ad6b4394f646a868c8cfe17402c0e4d365b8ef0f1ecdfae4dd60a520f322"
+97 = "1380ad6b4394f646a868c8cfe17402c0e4d365b8ef0f1ecdfae4dd60a520f322"
