@@ -118,11 +118,11 @@ func (b *Bridge) BuildSwapinMintTransaction(args *tokens.BuildTxArgs, tokenCfg *
 	instruction.RouterProgramID = routerContractPubkey
 	instructions := []types.TransactionInstruction{instruction}
 
-	recentBlockHash, err := b.getRecentBlockhash()
+	recentBlockHash, blockHeight, err := b.getRecentBlockhash()
 	if err != nil {
 		return nil, err
 	}
-
+	setExtraArgs(args, &blockHeight)
 	return types.NewTransaction(instructions, recentBlockHash, types.TransactionPayer(mpc))
 }
 
@@ -165,11 +165,11 @@ func (b *Bridge) BuildSwapinTransferTransaction(args *tokens.BuildTxArgs, tokenC
 	instruction.RouterProgramID = routerContractPubkey
 	instructions := []types.TransactionInstruction{instruction}
 
-	recentBlockHash, err := b.getRecentBlockhash()
+	recentBlockHash, blockHeight, err := b.getRecentBlockhash()
 	if err != nil {
 		return nil, err
 	}
-
+	setExtraArgs(args, &blockHeight)
 	return types.NewTransaction(instructions, recentBlockHash, types.TransactionPayer(mpc))
 }
 
@@ -204,11 +204,21 @@ func (b *Bridge) BuildSwapinNativeTransaction(args *tokens.BuildTxArgs, tokenCfg
 	instruction.RouterProgramID = routerContractPubkey
 	instructions := []types.TransactionInstruction{instruction}
 
-	recentBlockHash, err := b.getRecentBlockhash()
+	recentBlockHash, blockHeight, err := b.getRecentBlockhash()
 	if err != nil {
 		return nil, err
 	}
+	setExtraArgs(args, &blockHeight)
 	return types.NewTransaction(instructions, recentBlockHash, types.TransactionPayer(mpc))
+}
+
+func setExtraArgs(args *tokens.BuildTxArgs, blockHeight *uint64) {
+	if args.Extra == nil {
+		args.Extra = &tokens.AllExtras{}
+	}
+	extra := args.Extra
+	extra.EthExtra = nil // clear this which may be set in replace job
+	extra.Sequence = blockHeight
 }
 
 // BuildMintSPLTransaction build mint spl token tx
@@ -229,11 +239,10 @@ func (b *Bridge) BuildMintSPLTransaction(amount uint64, mintAddr, toAddr, minter
 	instruction := token.NewMintToInstruction(amount, mint, to, minter)
 	instructions := []types.TransactionInstruction{instruction}
 
-	recentBlockHash, err := b.getRecentBlockhash()
+	recentBlockHash, _, err := b.getRecentBlockhash()
 	if err != nil {
 		return nil, err
 	}
-
 	return types.NewTransaction(instructions, recentBlockHash, types.TransactionPayer(minter))
 }
 
@@ -255,7 +264,7 @@ func (b *Bridge) BuildSendSPLTransaction(amount uint64, sourceAddr, destAddr, fr
 	instruction := token.NewTransferInstruction(amount, source, destination, from)
 	instructions := []types.TransactionInstruction{instruction}
 
-	recentBlockHash, err := b.getRecentBlockhash()
+	recentBlockHash, _, err := b.getRecentBlockhash()
 	if err != nil {
 		return nil, err
 	}
@@ -277,7 +286,7 @@ func (b *Bridge) BuildSendSolanaTransaction(lamports uint64, fromAddress, toAddr
 	instruction := system.NewTransferSolanaInstruction(from, to, lamports)
 	instructions := []types.TransactionInstruction{instruction}
 
-	recentBlockHash, err := b.getRecentBlockhash()
+	recentBlockHash, _, err := b.getRecentBlockhash()
 	if err != nil {
 		return nil, err
 	}
@@ -285,12 +294,12 @@ func (b *Bridge) BuildSendSolanaTransaction(lamports uint64, fromAddress, toAddr
 	return types.NewTransaction(instructions, recentBlockHash, types.TransactionPayer(from))
 }
 
-func (b *Bridge) getRecentBlockhash() (types.Hash, error) {
+func (b *Bridge) getRecentBlockhash() (types.Hash, uint64, error) {
 	resp, err := b.GetLatestBlockhash()
 	if err != nil {
-		return types.Hash{}, err
+		return types.Hash{}, 0, err
 	}
 	blockHash := resp.Value.Blockhash
 	log.Info("getRecentBlockhash", "lastValidBlockHeight", resp.Value.LastValidBlockHeight, "blockHash", resp.Value.Blockhash)
-	return blockHash, nil
+	return blockHash, uint64(resp.Value.LastValidBlockHeight), nil
 }

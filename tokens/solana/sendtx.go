@@ -62,14 +62,13 @@ func (b *Bridge) SendSignedTransaction(tx *types.Transaction, opts *types.SendTr
 
 	gateway := b.GatewayConfig
 	if len(gateway.APIAddressExt) > 0 {
-		txHash, _ = sendRawTransaction(sendTxParams, gateway.APIAddressExt)
+		txHash, err = sendRawTransaction(sendTxParams, gateway.APIAddressExt)
+	} else {
+		txHash, err = sendRawTransaction(sendTxParams, gateway.APIAddress)
 	}
-	txHash2, err := sendRawTransaction(sendTxParams, gateway.APIAddress)
+
 	if txHash != "" {
 		return txHash, nil
-	}
-	if txHash2 != "" {
-		return txHash2, nil
 	}
 	return "", err
 }

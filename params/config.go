@@ -88,6 +88,7 @@ type RouterServerConfig struct {
 	RetrySendTxLoopCount       map[string]int    `toml:",omitempty" json:",omitempty"` // key is chain ID
 	SendTxLoopCount            map[string]int    `toml:",omitempty" json:",omitempty"` // key is chain ID
 	SendTxLoopInterval         map[string]int    `toml:",omitempty" json:",omitempty"` // key is chain ID
+	AutoResignTxIfFailed       map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID
 
 	DynamicFeeTx map[string]*DynamicFeeTxConfig `toml:",omitempty" json:",omitempty"` // key is chain ID
 }

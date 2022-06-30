@@ -164,6 +164,19 @@ func markSwapResultFailed(fromChainID, txid string, logIndex int) (err error) {
 	return err
 }
 
+func markRouterSwapResgin(fromChainID, txid string, logIndex int) (err error) {
+	timestamp := now()
+	err = mongodb.UpdateRouterSwapResultStatus(fromChainID, txid, logIndex, mongodb.Reswapping, timestamp, "")
+	if err != nil {
+		logWorkerError("checkfailedswap", "markRouterSwapResgin failed", err, "chainid", fromChainID, "txid", txid, "logIndex", logIndex)
+	}
+	err = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxNotSwapped, timestamp, "")
+	if err != nil {
+		logWorkerError("checkfailedswap", "markRouterSwapResgin failed", err, "chainid", fromChainID, "txid", txid, "logIndex", logIndex)
+	}
+	return nil
+}
+
 func sendSignedTransaction(bridge tokens.IBridge, signedTx interface{}, args *tokens.BuildTxArgs) (txHash string, err error) {
 	var (
 		swapTxNonce = args.GetTxNonce()
@@ -203,7 +216,7 @@ SENDTX_LOOP:
 		return txHash, err
 	}
 
-	if params.GetRouterServerConfig().SendTxLoopCount[args.ToChainID.String()] >= 0 {
+	if params.GetRouterServerConfig().SendTxLoopCount[args.ToChainID.String()] > 0 {
 		go sendTxLoopUntilSuccess(bridge, txHash, signedTx, args)
 	}
 

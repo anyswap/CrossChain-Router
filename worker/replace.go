@@ -266,7 +266,7 @@ func checkIfSwapNonceHasPassed(bridge tokens.IBridge, res *mongodb.MgoSwapResult
 			iden = "[stable]"
 		}
 		fromChainID, txid, logIndex := res.FromChainID, res.TxID, res.LogIndex
-		noncePassedInterval := params.GetNoncePassedConfirmInterval(res.FromChainID)
+		noncePassedInterval := params.GetNoncePassedConfirmInterval(res.ToChainID)
 		if noncePassedInterval == 0 {
 			noncePassedInterval = treatAsNoncePassedInterval
 		}

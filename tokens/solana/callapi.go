@@ -167,12 +167,40 @@ func (b *Bridge) GetProgramAccounts(account, encoding string, filters []map[stri
 	return result, err
 }
 
+// IsBlockhashValid
+func (b *Bridge) IsBlockhashValid(blockhash string) (bool, error) {
+	result := new(bool)
+	callMethod := "isBlockhashValid"
+	obj := map[string]interface{}{
+		"commitment": "confirmed",
+	}
+	err := RPCCall(result, b.GatewayConfig.APIAddress, callMethod, blockhash, obj)
+	if err != nil {
+		return true, err
+	}
+	return *result, nil
+}
+
+// GetBlockHeight
+func (b *Bridge) GetBlockHeight() (uint64, error) {
+	result := new(uint64)
+	callMethod := "getBlockHeight"
+	obj := map[string]interface{}{
+		"commitment": "confirmed",
+	}
+	err := RPCCall(result, b.GatewayConfig.APIAddress, callMethod, obj)
+	if err != nil {
+		return 0, err
+	}
+	return *result, nil
+}
+
 // AirDrop
 func (b *Bridge) AirDrop(publicKey string, amount uint64) (string, error) {
 	result := new(string)
 	callMethod := "requestAirdrop"
 	obj := map[string]interface{}{
-		"commitment": "finalized",
+		"commitment": "confirmed",
 	}
 	err := RPCCall(result, b.GatewayConfig.APIAddress, callMethod, publicKey, amount, obj)
 	if err != nil {
