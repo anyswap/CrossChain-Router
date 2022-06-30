@@ -55,6 +55,8 @@ func (b *Bridge) VerifyTransaction(txHash string, args *tokens.VerifyArgs) (*tok
 	switch swapType {
 	case tokens.ERC20SwapType:
 		return b.verifySwapoutTx(txHash, logIndex, allowUnstable)
+	case tokens.GasSwapType:
+		return b.verifyGasSwapTx(txHash, logIndex, allowUnstable)
 	default:
 		return nil, tokens.ErrSwapTypeNotSupported
 	}

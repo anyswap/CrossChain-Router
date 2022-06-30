@@ -18,7 +18,7 @@ func (b *Bridge) registerGasSwapTx(txHash string, logIndex int) ([]*tokens.SwapT
 	return []*tokens.SwapTxInfo{swapInfo}, []error{err}
 }
 
-func (b *Bridge) parseGasSwapTxMemo(swapInfo *tokens.SwapTxInfo, payload *hexutil.Bytes) (err error) {
+func (b *Bridge) parseGasSwapTxMemo(swapInfo *tokens.SwapTxInfo, payload *hexutil.Bytes) error {
 	memoHex, err := hexutil.Decode(payload.String())
 	if err != nil {
 		return err
@@ -26,7 +26,7 @@ func (b *Bridge) parseGasSwapTxMemo(swapInfo *tokens.SwapTxInfo, payload *hexuti
 	memo := strings.Split(string(memoHex), ":")
 
 	if len(memo) != 2 {
-		return tokens.ErrTxInput
+		return tokens.ErrTxMemo
 	}
 
 	bind := memo[0]
@@ -40,10 +40,11 @@ func (b *Bridge) parseGasSwapTxMemo(swapInfo *tokens.SwapTxInfo, payload *hexuti
 		return tokens.ErrNoBridgeForChainID
 	}
 
-	if !toBridge.IsValidAddress(bind) {
+	if !toBridge.IsValidAddress(bind) || common.IsEqualIgnoreCase(bind, b.GetRouterContract("")) {
 		return tokens.ErrTxWithWrongReceiver
 	}
 	swapInfo.Bind = bind
+
 	gasSwapInfo := swapInfo.GasSwapInfo
 	srcCurrencyPrice, err := tokens.GetNativePrice(swapInfo.FromChainID)
 	if err != nil {
@@ -55,7 +56,6 @@ func (b *Bridge) parseGasSwapTxMemo(swapInfo *tokens.SwapTxInfo, payload *hexuti
 	}
 	gasSwapInfo.SrcCurrencyPrice = srcCurrencyPrice
 	gasSwapInfo.DestCurrencyPrice = destCurrencyPrice
-
 	return nil
 }
 
@@ -84,17 +84,13 @@ func (b *Bridge) checkGasSwapTx(swapInfo *tokens.SwapTxInfo, allowUnstable bool)
 		return tokens.ErrTxWithWrongReceipt
 	}
 
-	tokenCfg, err := router.GetTokenConfig(swapInfo.FromChainID, b.ChainConfig.Extra)
-	if err != nil {
-		return err
+	routerContract := b.GetRouterContract("")
+
+	if receipt.Recipient == nil || receipt.Recipient.LowerHex() != strings.ToLower(routerContract) {
+		return tokens.ErrTxWithWrongReceiver
 	}
 
-	if receipt.Recipient == nil || receipt.Recipient.LowerHex() != strings.ToLower(tokenCfg.RouterContract) {
-		return tokens.ErrTxWithWrongReceiver
-	} else {
-		swapInfo.TxTo = receipt.Recipient.LowerHex() // TxTo
-	}
-	swapInfo.From = receipt.From.LowerHex() // From
+	swapInfo.From = strings.ToLower(routerContract) // From
 	if *receipt.From == (common.Address{}) {
 		return tokens.ErrTxWithWrongSender
 	}
@@ -109,11 +105,15 @@ func (b *Bridge) getGasSwapTxInput(swapInfo *tokens.SwapTxInfo, allowUnstable bo
 		return nil, err
 	}
 	if txInfo.Payload == nil {
-		return nil, tokens.ErrTxInput
+		return nil, tokens.ErrTxMemo
 	}
 
-	swapInfo.Value = (*big.Int)(txInfo.Amount)
-
+	amount := (*big.Int)(txInfo.Amount)
+	if amount.Cmp(big.NewInt(0)) == 0 {
+		return nil, tokens.ErrNativeIsZero
+	}
+	swapInfo.Value = amount
+	log.Warn("getGasSwapTxInput", "value", swapInfo.Value)
 	return txInfo.Payload, nil
 }
 
@@ -155,21 +155,25 @@ func (b *Bridge) verifyGasSwapTx(txHash string, _ int, allowUnstable bool) (*tok
 }
 
 func (b *Bridge) buildGasSwapTxInput(args *tokens.BuildTxArgs) (err error) {
-	srcPrice := new(big.Float).SetInt(args.GasSwapInfo.SrcCurrencyPrice)
-	destPrice := new(big.Float).SetInt(args.GasSwapInfo.DestCurrencyPrice)
+	srcCurrencyPrice := args.GasSwapInfo.SrcCurrencyPrice
+	destCurrencyPrice := args.GasSwapInfo.DestCurrencyPrice
+
+	srcPrice := new(big.Float).SetInt(srcCurrencyPrice)
+	destPrice := new(big.Float).SetInt(destCurrencyPrice)
 	srcFloat, _ := srcPrice.Float64()
 	destFloat, _ := destPrice.Float64()
 
 	priceRate := big.NewFloat(srcFloat / destFloat)
-	amount, _ := priceRate.Mul(priceRate, new(big.Float).SetInt(args.OriginValue)).Int64()
+	value := new(big.Float).SetInt(args.OriginValue)
+	amount, _ := value.Mul(value, priceRate).Int64()
 
 	input := []byte(args.SwapID)
 	args.Input = (*hexutil.Bytes)(&input)
-	args.To = args.Bind             // to
+	args.To = args.Bind // to
+	//todo decimals calc
 	args.Value = big.NewInt(amount) // swapValue
 
-	log.Warn("buildGasSwapTxInput", "srcPrice", args.GasSwapInfo.SrcCurrencyPrice, "destPrice", args.GasSwapInfo.DestCurrencyPrice, "priceRate", priceRate, "amount", amount)
+	log.Warn("buildGasSwapTxInput", "srcPrice", srcCurrencyPrice, "destPrice", destCurrencyPrice, "priceRate", priceRate, "amount", amount)
 
 	return nil
-
 }

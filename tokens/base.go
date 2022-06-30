@@ -2,7 +2,6 @@ package tokens
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -369,6 +368,9 @@ func GetNativePrice(chainID *big.Int) (*big.Int, error) {
 	if err != nil {
 		return nil, err
 	}
+	if common.GetBigInt(res, 0, 32).Cmp(big.NewInt(0)) == 0 {
+		return nil, ErrCallPriceOracle
+	}
 	return common.GetBigInt(res, 0, 32), nil
 }
 
@@ -391,5 +393,5 @@ func CallContractGetNativePrice(data hexutil.Bytes, blockNumber string) (result 
 		}
 	}
 	log.Debug("call price contract error", "contract", contract.String(), "data", data, "err", err)
-	return nil, errors.New("call price contract error")
+	return nil, ErrCallPriceOracle
 }

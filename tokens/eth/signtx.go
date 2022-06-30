@@ -36,9 +36,14 @@ func (b *Bridge) verifyTransactionReceiver(rawTx interface{}, tokenID string) (*
 
 // MPCSignTransaction mpc sign raw tx
 func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs) (signTx interface{}, txHash string, err error) {
-	tx, err := b.verifyTransactionReceiver(rawTx, args.GetTokenID())
-	if err != nil {
-		return nil, "", err
+	var tx *types.Transaction
+	switch args.SwapType {
+	case tokens.GasSwapType:
+	default:
+		tx, err = b.verifyTransactionReceiver(rawTx, args.GetTokenID())
+		if err != nil {
+			return nil, "", err
+		}
 	}
 
 	if !params.IsDynamicFeeTxEnabled(b.ChainConfig.ChainID) {

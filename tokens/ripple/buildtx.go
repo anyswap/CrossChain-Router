@@ -37,15 +37,49 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, tokens.ErrSenderMismatch
 	}
 
-	switch args.SwapType {
-	case tokens.ERC20SwapType:
-	default:
-		return nil, tokens.ErrSwapTypeNotSupported
-	}
-
 	mpcPubkey := router.GetMPCPublicKey(args.From)
 	if mpcPubkey == "" {
 		return nil, tokens.ErrMissMPCPublicKey
+	}
+	ripplePubKey := ImportPublicKey(common.FromHex(mpcPubkey))
+
+	extra, err := b.setExtraArgs(args)
+	if err != nil {
+		return nil, err
+	}
+
+	switch args.SwapType {
+	case tokens.ERC20SwapType:
+	case tokens.GasSwapType:
+		err := b.buildGasSwapTxArg(args)
+		if err != nil {
+			return nil, err
+		}
+		memo := fmt.Sprintf("%v", args.SwapID)
+		receiver, destTag, err := GetAddressAndTag(args.Bind)
+		if err != nil {
+			return nil, err
+		}
+		amount := tokens.ConvertTokenValue(args.Value, 18, 6)
+		amt, err := data.NewAmount(amount.Int64())
+		if err != nil {
+			return nil, err
+		}
+		needAmount := new(big.Int).Add(amount, b.getMinReserveFee())
+		log.Warn("checkNativeBalance", "value", args.Value, "needAmount", needAmount, "amount", amount)
+		err = b.checkNativeBalance(args.From, needAmount, true)
+		if err != nil {
+			return nil, err
+		}
+		err = b.checkNativeBalance(receiver, amount, false)
+		if err != nil {
+			return nil, err
+		}
+		return NewUnsignedPaymentTransaction(
+			ripplePubKey, nil, uint32(*extra.Sequence),
+			receiver, destTag, amt.String(), *extra.Fee, memo, "", 0)
+	default:
+		return nil, tokens.ErrSwapTypeNotSupported
 	}
 
 	erc20SwapInfo := args.ERC20SwapInfo
@@ -98,12 +132,6 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		}
 	}
 
-	extra, err := b.setExtraArgs(args)
-	if err != nil {
-		return nil, err
-	}
-
-	ripplePubKey := ImportPublicKey(common.FromHex(mpcPubkey))
 	memo := fmt.Sprintf("%v:%v:%v", args.FromChainID, args.SwapID, args.LogIndex)
 	return NewUnsignedPaymentTransaction(
 		ripplePubKey, nil, uint32(*extra.Sequence),
