@@ -60,6 +60,14 @@ AutoSwapNonceEnabledChains = ["25"]
 [Server.DefaultGasLimit]
 4     = 90000
 46688 = 90000
+# config maximum gas limit. key is chainID.
+[Server.MaxGasLimit]
+4     = 200000
+46688 = 90000
+# config maximum token gas limit. key is chainID. the last part (USDC here) is tokenID.
+[Server.MaxTokenGasLimit.USDC]
+4     = 2000000
+46688 = 900000
 # use fixed gas price (no adjust). key is chainID.
 [Server.FixedGasPrice]
 4     = "1000000001"
@@ -87,7 +95,7 @@ MaxGasFeeCap         = "10000000000"
 [Server.MongoDB]
 # DBURLs is prefered if exists. forbids set both DBURL and DBURLs.
 #DBURL = "localhost:27017,localhost:12345"
-#DBURLs = ["localhost:27017", "localhost:12345"]
+DBURLs = ["localhost:27017", "localhost:12345"]
 DBName = "databasename"
 UserName = "username"
 Password = "password"

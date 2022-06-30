@@ -194,6 +194,14 @@ func (b *Bridge) setDefaults(args *tokens.BuildTxArgs) (err error) {
 		if esGasLimit < defGasLimit {
 			esGasLimit = defGasLimit
 		}
+		maxGasLimit := params.GetMaxGasLimit(b.ChainConfig.ChainID)
+		if maxGasLimit > 0 && esGasLimit > maxGasLimit {
+			return fmt.Errorf("%w %v on chain %v", tokens.ErrBuildTxErrorAndDelay, "estimated gas is too large", b.ChainConfig.ChainID)
+		}
+		maxTokenGasLimit := params.GetMaxTokenGasLimit(args.GetTokenID(), b.ChainConfig.ChainID)
+		if maxTokenGasLimit > 0 && esGasLimit > maxTokenGasLimit {
+			return fmt.Errorf("%w %v %v on chain %v", tokens.ErrBuildTxErrorAndDelay, "estimated gas is too large for token", args.GetTokenID(), b.ChainConfig.ChainID)
+		}
 		extra.Gas = new(uint64)
 		*extra.Gas = esGasLimit
 	}
