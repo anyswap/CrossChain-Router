@@ -141,6 +141,8 @@ func (c *Config) doSignImpl(mpcNode *NodeInfo, signGroupIndex int, signType, sig
 		return "", nil, err
 	}
 
+	log.Info("mpc sign begin", "signGroup", signGroup, "signPubkey", signPubkey, "nonce", nonce, "msgHash", msgHash, "msgContext", msgContext, "signType", signType, "keyID", keyID, "ts", txdata.TimeStamp)
+
 	rsvs, err = c.getSignResult(keyID, rpcAddr)
 	if err != nil {
 		if c.maxSignGroupFailures > 0 {
