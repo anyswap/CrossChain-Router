@@ -7,10 +7,10 @@ SwapSubType = ""
 
 # modgodb database connection config
 [Server.MongoDB]
-DBName = "testdb"
-DBURLs = ["192.168.50.13:27017"]
-Password = "123456"
-UserName = "tester"
+DBName = ""
+DBURLs = ["127.0.0.1:27017"]
+Password = ""
+UserName = ""
 
 # bridge API service
 [Server.APIServer]
@@ -40,6 +40,6 @@ SignWithPrivateKey = true
 
 # set signer's private key, key is chain ID (use for testing)
 [MPC.SignerPrivateKeys]
-1000005788241 = "1380ad6b4394f646a868c8cfe17402c0e4d365b8ef0f1ecdfae4dd60a520f322"
-4 = "1380ad6b4394f646a868c8cfe17402c0e4d365b8ef0f1ecdfae4dd60a520f322"
-97 = "1380ad6b4394f646a868c8cfe17402c0e4d365b8ef0f1ecdfae4dd60a520f322"
+1000005788241 = ""
+4 = ""
+97 = ""
