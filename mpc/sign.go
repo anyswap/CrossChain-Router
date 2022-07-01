@@ -149,7 +149,9 @@ func (c *Config) doSignImpl(mpcNode *NodeInfo, signGroupIndex int, signType, sig
 		return "", nil, errEmptyKeyID
 	}
 
-	rsvs, err = c.getSignResult(keyID, rpcAddr)
+	log.Info("mpc sign begin", "signGroup", signGroup, "signPubkey", signPubkey, "nonce", nonce, "msgHash", msgHash, "msgContext", msgContext, "signType", signType, "keyID", keyID, "ts", txdata.TimeStamp)
+
+	rsvs, err = c.getSignResult(keyID, rpcAddr, msgContext)
 	if err != nil {
 		if c.maxSignGroupFailures > 0 {
 			old := c.signGroupFailuresMap[signGroup]
@@ -189,10 +191,10 @@ func (c *Config) doSignImpl(mpcNode *NodeInfo, signGroupIndex int, signType, sig
 
 // GetSignStatusByKeyID get sign status by keyID
 func (c *Config) GetSignStatusByKeyID(keyID string) (rsvs []string, err error) {
-	return c.getSignResult(keyID, c.defaultMPCNode.mpcRPCAddress)
+	return c.getSignResult(keyID, c.defaultMPCNode.mpcRPCAddress, nil)
 }
 
-func (c *Config) getSignResult(keyID, rpcAddr string) (rsvs []string, err error) {
+func (c *Config) getSignResult(keyID, rpcAddr string, msgContext []string) (rsvs []string, err error) {
 	log.Info("start get sign status", "keyID", keyID)
 	var signStatus *SignStatus
 	i := 0

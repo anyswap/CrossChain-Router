@@ -241,7 +241,7 @@ func InitChainConfig(b tokens.IBridge, chainID *big.Int) {
 		return
 	}
 	b.SetChainConfig(chainCfg)
-	log.Info("init chain config success", "blockChain", chainCfg.BlockChain, "chainID", chainID, "isReload", isReload)
+	log.Info("init chain config success", "blockChain", chainCfg.BlockChain, "chainID", chainID, "isReload", isReload, "useFastMPC", params.IsUseFastMPC(chainCfg.ChainID))
 
 	routerContract := chainCfg.RouterContract
 	if !isRouterInfoLoaded(chainID.String(), routerContract) {
