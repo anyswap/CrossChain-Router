@@ -78,10 +78,10 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, tokens.ErrMissTokenConfig
 	}
 
-	extra := b.setExtraArgs(args)
+	b.setExtraArgs(args)
 
 	memo := buildMemo(args)
-	return NewUnsignedPaymentTransaction(fromAccount, b.NetworkStr, receiver, amt, *extra.Fee, memo, asset)
+	return NewUnsignedPaymentTransaction(args, fromAccount, b.NetworkStr, receiver, amt, memo, asset)
 }
 
 func buildMemo(args *tokens.BuildTxArgs) *txnbuild.MemoHash {
@@ -138,20 +138,29 @@ func (b *Bridge) setExtraArgs(args *tokens.BuildTxArgs) *tokens.AllExtras {
 		extra.Fee = &fee
 	}
 
+	if extra.Deadline == nil {
+		maxTime := txnbuild.NewTimeout(300).MaxTime
+		extra.Deadline = &maxTime
+	}
+
 	return extra
 }
 
 // NewUnsignedPaymentTransaction build stellar payment tx
-func NewUnsignedPaymentTransaction(
+func NewUnsignedPaymentTransaction(args *tokens.BuildTxArgs,
 	from txnbuild.Account, network,
-	dest, amt, fee string, memo txnbuild.Memo, asset txnbuild.Asset,
+	dest, amt string, memo txnbuild.Memo, asset txnbuild.Asset,
 ) (*txnbuild.Transaction, error) {
+	baseFee, err := strconv.ParseInt(*args.Extra.Fee, 10, 64)
+	if err != nil {
+		return nil, err
+	}
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        from,
 			IncrementSequenceNum: true,
-			BaseFee:              txnbuild.MinBaseFee,
-			Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewTimeout(300)},
+			BaseFee:              baseFee,
+			Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewTimebounds(0, *args.Extra.Deadline)},
 			Memo:                 memo,
 			Operations: []txnbuild.Operation{
 				&txnbuild.Payment{
@@ -172,7 +181,7 @@ func NewUnsignedPaymentTransaction(
 	}
 	log.Info("Build unsigned payment tx success",
 		"destination", dest, "amount", amt, "memo", memo,
-		"fee", fee,
+		"fee", baseFee, "deadline", *args.Extra.Deadline,
 		"signing hash", hash)
 
 	return tx, nil

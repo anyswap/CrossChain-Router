@@ -206,6 +206,7 @@ type AllExtras struct {
 	Sequence   *uint64       `json:"sequence,omitempty"`
 	Fee        *string       `json:"fee,omitempty"`
 	Gas        *uint64       `json:"gas,omitempty"`
+	Deadline   *int64        `json:"deadline,omitempty"`
 }
 
 // EthExtraArgs struct
