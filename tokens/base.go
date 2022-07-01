@@ -374,7 +374,6 @@ func GetNativePrice(chainID *big.Int) (*big.Int, error) {
 	return common.GetBigInt(res, 0, 32), nil
 }
 
-// CallOnchainContract call onchain contract
 func CallContractGetNativePrice(data hexutil.Bytes, blockNumber string) (result []byte, err error) {
 	priceOracleConfig := params.GetRouterConfig().PriceOracle
 	contract := ethcommon.HexToAddress(priceOracleConfig.Contract)
@@ -394,4 +393,45 @@ func CallContractGetNativePrice(data hexutil.Bytes, blockNumber string) (result 
 	}
 	log.Debug("call price contract error", "contract", contract.String(), "data", data, "err", err)
 	return nil, ErrCallPriceOracle
+}
+
+func CallContractGetCurrencyInfo(data hexutil.Bytes, blockNumber string) (result []byte, err error) {
+	priceOracleConfig := params.GetRouterConfig().PriceOracle
+	contract := ethcommon.HexToAddress(priceOracleConfig.Contract)
+	msg := ethereum.CallMsg{
+		To:   &contract,
+		Data: data,
+	}
+	for _, url := range priceOracleConfig.APIAddress {
+		cli, err := ethclient.Dial(url)
+		if err != nil {
+			log.Fatal("init price oracle web socket clients failed", "url", url, "err", err)
+		}
+		result, err = cli.CallContract(routerConfigCtx, msg, nil)
+		if err == nil {
+			return result, nil
+		}
+	}
+	log.Debug("call price contract error", "contract", contract.String(), "data", data, "err", err)
+	return nil, ErrCallPriceOracle
+}
+
+func GetCurrencyInfo(chainID *big.Int) (*CurrencyInfo, error) {
+	funcHash := common.FromHex("0x3cc7f0fa")
+	data := abicoder.PackDataWithFuncHash(funcHash, chainID)
+	res, err := CallContractGetCurrencyInfo(data, "latest")
+	if err != nil {
+		log.Warn("CallContractGetCurrencyInfo", "err", err)
+		return nil, err
+	}
+	price := common.GetBigInt(res, 0, 32)
+	decimal := common.GetBigInt(res, 32, 32)
+	log.Warn("CallContractGetCurrencyInfo", "chainID", chainID, "price", price, "decimal", decimal)
+	if price.Cmp(big.NewInt(0)) == 0 || decimal.Cmp(big.NewInt(0)) == 0 {
+		return nil, ErrCallPriceOracle
+	}
+	return &CurrencyInfo{
+		Price:   price,
+		Decimal: decimal,
+	}, nil
 }

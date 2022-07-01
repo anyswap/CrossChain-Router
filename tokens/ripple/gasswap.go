@@ -91,16 +91,18 @@ func (b *Bridge) verifyGasSwapTx(txHash string, _ int, allowUnstable bool) (*tok
 	swapInfo.Value = tokens.ToBits(txres.TransactionWithMetaData.MetaData.DeliveredAmount.Value.String(), 6)
 
 	gasSwapInfo := swapInfo.GasSwapInfo
-	srcCurrencyPrice, err := tokens.GetNativePrice(swapInfo.FromChainID)
+	srcCurrencyInfo, err := tokens.GetCurrencyInfo(swapInfo.FromChainID)
 	if err != nil {
 		return swapInfo, err
 	}
-	destCurrencyPrice, err := tokens.GetNativePrice(swapInfo.ToChainID)
+	destCurrencyInfo, err := tokens.GetCurrencyInfo(swapInfo.ToChainID)
 	if err != nil {
 		return swapInfo, err
 	}
-	gasSwapInfo.SrcCurrencyPrice = srcCurrencyPrice
-	gasSwapInfo.DestCurrencyPrice = destCurrencyPrice
+	gasSwapInfo.SrcCurrencyPrice = srcCurrencyInfo.Price
+	gasSwapInfo.DestCurrencyPrice = destCurrencyInfo.Price
+	gasSwapInfo.SrcCurrencyDecimal = srcCurrencyInfo.Decimal
+	gasSwapInfo.DestCurrencyDecimal = destCurrencyInfo.Decimal
 
 	if !allowUnstable {
 		log.Info("verify swapin pass",
@@ -114,7 +116,6 @@ func (b *Bridge) verifyGasSwapTx(txHash string, _ int, allowUnstable bool) (*tok
 func (b *Bridge) buildGasSwapTxArg(args *tokens.BuildTxArgs) (err error) {
 	srcCurrencyPrice := args.GasSwapInfo.SrcCurrencyPrice
 	destCurrencyPrice := args.GasSwapInfo.DestCurrencyPrice
-	log.Warn("GetNativePrice", "srcPrice", srcCurrencyPrice, "destPrice", destCurrencyPrice)
 
 	srcPrice := new(big.Float).SetInt(srcCurrencyPrice)
 	destPrice := new(big.Float).SetInt(destCurrencyPrice)

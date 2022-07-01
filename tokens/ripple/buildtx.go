@@ -60,13 +60,12 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		if err != nil {
 			return nil, err
 		}
-		amount := tokens.ConvertTokenValue(args.Value, 18, 6)
+		amount := tokens.ConvertTokenValue(args.Value, uint8(args.GasSwapInfo.SrcCurrencyDecimal.Uint64()), uint8(args.GasSwapInfo.DestCurrencyDecimal.Uint64()))
 		amt, err := data.NewAmount(amount.Int64())
 		if err != nil {
 			return nil, err
 		}
 		needAmount := new(big.Int).Add(amount, b.getMinReserveFee())
-		log.Warn("checkNativeBalance", "value", args.Value, "needAmount", needAmount, "amount", amount)
 		err = b.checkNativeBalance(args.From, needAmount, true)
 		if err != nil {
 			return nil, err

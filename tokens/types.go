@@ -86,8 +86,10 @@ type CurveAnyCallSwapInfo struct {
 }
 
 type GasSwapInfo struct {
-	SrcCurrencyPrice  *big.Int `json:"srcCurrencyPrice"`
-	DestCurrencyPrice *big.Int `json:"destCurrencyPrice"`
+	SrcCurrencyPrice    *big.Int `json:"srcCurrencyPrice"`
+	DestCurrencyPrice   *big.Int `json:"destCurrencyPrice"`
+	SrcCurrencyDecimal  *big.Int `json:"srcCurrencyDecimal"`
+	DestCurrencyDecimal *big.Int `json:"destCurrencyDecimal"`
 }
 
 // SwapInfo struct
@@ -164,6 +166,11 @@ func (s *TxStatus) IsSwapTxOnChainAndFailed() bool {
 		}
 	}
 	return false
+}
+
+type CurrencyInfo struct {
+	Price   *big.Int `json:"price,omitempty"`
+	Decimal *big.Int `json:"decimal,omitempty"`
 }
 
 // VerifyArgs struct

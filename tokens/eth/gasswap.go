@@ -46,16 +46,18 @@ func (b *Bridge) parseGasSwapTxMemo(swapInfo *tokens.SwapTxInfo, payload *hexuti
 	swapInfo.Bind = bind
 
 	gasSwapInfo := swapInfo.GasSwapInfo
-	srcCurrencyPrice, err := tokens.GetNativePrice(swapInfo.FromChainID)
+	srcCurrencyInfo, err := tokens.GetCurrencyInfo(swapInfo.FromChainID)
 	if err != nil {
 		return err
 	}
-	destCurrencyPrice, err := tokens.GetNativePrice(swapInfo.ToChainID)
+	destCurrencyInfo, err := tokens.GetCurrencyInfo(swapInfo.ToChainID)
 	if err != nil {
 		return err
 	}
-	gasSwapInfo.SrcCurrencyPrice = srcCurrencyPrice
-	gasSwapInfo.DestCurrencyPrice = destCurrencyPrice
+	gasSwapInfo.SrcCurrencyPrice = srcCurrencyInfo.Price
+	gasSwapInfo.DestCurrencyPrice = destCurrencyInfo.Price
+	gasSwapInfo.SrcCurrencyDecimal = srcCurrencyInfo.Decimal
+	gasSwapInfo.DestCurrencyDecimal = destCurrencyInfo.Decimal
 	return nil
 }
 
@@ -170,8 +172,7 @@ func (b *Bridge) buildGasSwapTxInput(args *tokens.BuildTxArgs) (err error) {
 	input := []byte(args.SwapID)
 	args.Input = (*hexutil.Bytes)(&input)
 	args.To = args.Bind // to
-	//todo decimals calc
-	args.Value = big.NewInt(amount) // swapValue
+	args.Value = tokens.ConvertTokenValue(big.NewInt(amount), uint8(args.GasSwapInfo.SrcCurrencyDecimal.Uint64()), uint8(args.GasSwapInfo.DestCurrencyDecimal.Uint64()))
 
 	log.Warn("buildGasSwapTxInput", "srcPrice", srcCurrencyPrice, "destPrice", destCurrencyPrice, "priceRate", priceRate, "amount", amount)
 

@@ -137,8 +137,10 @@ type CurveAnyCallSwapInfo struct {
 }
 
 type GasSwapInfo struct {
-	SrcCurrencyPrice  string `bson:"srcCurrencyPrice"          json:"srcCurrencyPrice"`
-	DestCurrencyPrice string `bson:"destCurrencyPrice"          json:"destCurrencyPrice"`
+	SrcCurrencyPrice    string `bson:"srcCurrencyPrice"          json:"srcCurrencyPrice"`
+	DestCurrencyPrice   string `bson:"destCurrencyPrice"         json:"destCurrencyPrice"`
+	SrcCurrencyDecimal  string `bson:"srcCurrencyDecimal"         json:"srcCurrencyDecimal"`
+	DestCurrencyDecimal string `bson:"destCurrencyDecimal"         json:"destCurrencyDecimal"`
 }
 
 // GetToken get token
