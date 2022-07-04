@@ -42,6 +42,8 @@ var (
 	AnySwapInAndExecFuncHash = common.FromHex("0x86377115")
 	// anySwapInUnderlyingAndExec(bytes32 txs, address token, address to, uint amount, uint fromChainID, address anycallProxy, bytes calldata data)
 	AnySwapInUnderlyingAndExecFuncHash = common.FromHex("0x3a4ff8dc")
+	// anySwapIn(bytes32 txs, address pool, address token, address to, uint256 amount, uint256 fromChainID)
+	MixPoolAnySwapInFuncHash = common.FromHex("0xc2c1c700")
 )
 
 // GetSwapInFuncHash get swapin func hash
@@ -100,13 +102,16 @@ func (b *Bridge) buildERC20SwapTxInput(args *tokens.BuildTxArgs) (err error) {
 		return tokens.ErrMissTokenConfig
 	}
 
+	if erc20SwapInfo.MixPool != "" {
+		return b.buildMixPoolSwapinTxInput(args, multichainToken)
+	}
 	if erc20SwapInfo.CallProxy != "" {
 		return b.buildSwapAndExecTxInput(args, multichainToken)
 	}
 	if len(erc20SwapInfo.Path) > 0 {
 		return b.buildERC20SwapTradeTxInput(args, multichainToken)
 	}
-	return b.buildERC20SwapoutTxInput(args, multichainToken)
+	return b.buildERC20SwapinTxInput(args, multichainToken)
 }
 
 func (b *Bridge) buildSwapAndExecTxInput(args *tokens.BuildTxArgs, multichainToken string) (err error) {
@@ -140,7 +145,7 @@ func (b *Bridge) buildSwapAndExecTxInput(args *tokens.BuildTxArgs, multichainTok
 	return nil
 }
 
-func (b *Bridge) buildERC20SwapoutTxInput(args *tokens.BuildTxArgs, multichainToken string) (err error) {
+func (b *Bridge) buildERC20SwapinTxInput(args *tokens.BuildTxArgs, multichainToken string) (err error) {
 	receiver, amount, err := b.getReceiverAndAmount(args, multichainToken)
 	if err != nil {
 		return err
@@ -155,6 +160,34 @@ func (b *Bridge) buildERC20SwapoutTxInput(args *tokens.BuildTxArgs, multichainTo
 
 	input := abicoder.PackDataWithFuncHash(funcHash,
 		common.HexToHash(args.SwapID),
+		common.HexToAddress(multichainToken),
+		receiver,
+		amount,
+		args.FromChainID,
+	)
+	args.Input = (*hexutil.Bytes)(&input)          // input
+	args.To = b.GetRouterContract(multichainToken) // to
+	args.SwapValue = amount                        // swapValue
+
+	return nil
+}
+
+func (b *Bridge) buildMixPoolSwapinTxInput(args *tokens.BuildTxArgs, multichainToken string) (err error) {
+	receiver, amount, err := b.getReceiverAndAmount(args, multichainToken)
+	if err != nil {
+		return err
+	}
+
+	toTokenCfg := b.GetTokenConfig(multichainToken)
+	if toTokenCfg == nil {
+		return tokens.ErrMissTokenConfig
+	}
+
+	funcHash := MixPoolAnySwapInFuncHash
+
+	input := abicoder.PackDataWithFuncHash(funcHash,
+		common.HexToHash(args.SwapID),
+		common.HexToAddress(args.ERC20SwapInfo.MixPool),
 		common.HexToAddress(multichainToken),
 		receiver,
 		amount,

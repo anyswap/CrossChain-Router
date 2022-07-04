@@ -54,6 +54,8 @@ type ERC20SwapInfo struct {
 
 	CallProxy string        `json:"callProxy,omitempty"`
 	CallData  hexutil.Bytes `json:"callData,omitempty"`
+
+	MixPool string `json:"mixpool,omitempty"`
 }
 
 // NFTSwapInfo struct
