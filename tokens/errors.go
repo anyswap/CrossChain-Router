@@ -50,6 +50,7 @@ var (
 	ErrTxWithWrongPath   = errors.New("swap trade tx with wrong path")
 	ErrMissTokenConfig   = errors.New("miss token config")
 	ErrNoUnderlyingToken = errors.New("no underlying token")
+	ErrTxWithWrongMemo   = errors.New("tx with wrong memo")
 )
 
 // ShouldRegisterRouterSwapForError return true if this error should record in database
