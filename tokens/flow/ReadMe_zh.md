@@ -58,23 +58,23 @@ account.key即为：0x1234
 ## flow合约部署
 >0) 部署example合约（模拟underlying）
 ```shell
-go run ./tokens/flow/tools/deployContract/main.go -config xxx.toml -chainID xxx -address xxx -pubKey xxx -contract ExampleToken
+go run ./tokens/flow/tools/deployContract/main.go -config xxx.toml -chainID xxx -address xxx -pubKey xxx -contract ExampleToken -privKey(option) xxx
 ```
 >1) 部署anytoken合约规范  
 ```shell
-go run ./tokens/flow/tools/deployContract/main.go -config xxx.toml -chainID xxx -address xxx -pubKey xxx -contract AnyToken
+go run ./tokens/flow/tools/deployContract/main.go -config xxx.toml -chainID xxx -address xxx -pubKey xxx -contract AnyToken -privKey(option) xxx
 ```
 >2) 部署anytoken合约实现
 ```shell
-go run ./tokens/flow/tools/deployContract/main.go -config xxx.toml -chainID xxx -address xxx -pubKey xxx -contract AnyExampleToken
+go run ./tokens/flow/tools/deployContract/main.go -config xxx.toml -chainID xxx -address xxx -pubKey xxx -contract AnyExampleToken -privKey(option) xxx
 ```
 >3) 部署router合约实现
 ```shell
-go run ./tokens/flow/tools/deployContract/main.go -config xxx.toml -chainID xxx -address xxx -pubKey xxx -contract Router
+go run ./tokens/flow/tools/deployContract/main.go -config xxx.toml -chainID xxx -address xxx -pubKey xxx -contract Router -privKey(option) xxx
 ```
 4) mpc init 
 ```shell
-go run ./tokens/flow/tools/initMpc/main.go -config xxx.toml -chainID xxx -address xxx -pubKey xxx 
+go run ./tokens/flow/tools/initMpc/main.go -config xxx.toml -chainID xxx -address xxx -pubKey xxx  -privKey(option) xxx
 ```
 
 ## config 参考
