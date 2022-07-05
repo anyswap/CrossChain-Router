@@ -176,8 +176,9 @@ type InitializeMint struct {
 	Decimals uint8
 	/// The authority/multisignature to mint tokens.
 	MintAuthority types.PublicKey
+	Option        uint8
 	/// The freeze authority/multisignature of the mint.
-	FreezeAuthority *types.PublicKey        `bin:"optional"`
+	FreezeAuthority *types.PublicKey
 	Accounts        *InitializeMintAccounts `bin:"-"`
 }
 
@@ -189,12 +190,17 @@ func NewInitializeMintInstruction(
 	freezeAuthority *types.PublicKey,
 	rentProgram types.PublicKey,
 ) *Instruction {
+	var option uint8 = 0
+	if freezeAuthority != nil {
+		option = 1
+	}
 	return &Instruction{
 		BaseVariant: bin.BaseVariant{
 			TypeID: InitializeMintTypeID,
 			Impl: &InitializeMint{
 				Decimals:        decimals,
 				MintAuthority:   mintAuthority,
+				Option:          option,
 				FreezeAuthority: freezeAuthority,
 				Accounts: &InitializeMintAccounts{
 					Mint:        &types.AccountMeta{PublicKey: mint, IsWritable: true},

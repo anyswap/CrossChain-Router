@@ -218,7 +218,9 @@ func setExtraArgs(args *tokens.BuildTxArgs, blockHeight *uint64) {
 	}
 	extra := args.Extra
 	extra.EthExtra = nil // clear this which may be set in replace job
-	extra.Sequence = blockHeight
+	if extra.Sequence == nil {
+		extra.Sequence = blockHeight
+	}
 }
 
 // BuildMintSPLTransaction build mint spl token tx
@@ -302,4 +304,33 @@ func (b *Bridge) getRecentBlockhash() (types.Hash, uint64, error) {
 	blockHash := resp.Value.Blockhash
 	log.Info("getRecentBlockhash", "lastValidBlockHeight", resp.Value.LastValidBlockHeight, "blockHash", resp.Value.Blockhash)
 	return blockHash, uint64(resp.Value.LastValidBlockHeight), nil
+}
+
+func (b *Bridge) BuildChangeMpcTransaction(routerContract, routerMPC, routerPDA, newMpcAddress string) (*types.Transaction, error) {
+	mpc, err := types.PublicKeyFromBase58(routerMPC)
+	if err != nil {
+		return nil, err
+	}
+	routerAccount, err := types.PublicKeyFromBase58(routerPDA)
+	if err != nil {
+		return nil, err
+	}
+	routerContractPubkey, err := types.PublicKeyFromBase58(routerContract)
+	if err != nil {
+		return nil, err
+	}
+	newMpc, err := types.PublicKeyFromBase58(newMpcAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	instruction := routerprog.NewChangeMPCInstruction(mpc, routerAccount, newMpc)
+	instruction.RouterProgramID = routerContractPubkey
+	instructions := []types.TransactionInstruction{instruction}
+
+	recentBlockHash, _, err := b.getRecentBlockhash()
+	if err != nil {
+		return nil, err
+	}
+	return types.NewTransaction(instructions, recentBlockHash, types.TransactionPayer(mpc))
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/solana"
-	"github.com/anyswap/CrossChain-Router/v3/tokens/solana/types"
+	solanatools "github.com/anyswap/CrossChain-Router/v3/tokens/solana/tools"
 )
 
 var (
@@ -19,6 +19,11 @@ var (
 
 	paramConfigFile string
 	paramChainID    string
+
+	routerProgramID string
+	routerMPC       string
+	routerPDA       string
+
 	paramNewMpc     string
 	paramNewMpcAddr string
 
@@ -44,52 +49,17 @@ func main() {
 	}
 
 	fmt.Printf("newMpcAddress: %v\n", newMpcAddress)
-	tx, err := bridge.BuildChangeMpcTransaction(newMpcAddress)
+	tx, err := bridge.BuildChangeMpcTransaction(routerProgramID, routerMPC, routerPDA, newMpcAddress)
 	if err != nil {
 		log.Fatal("BuildChangeMpcTransaction err", err)
 	}
-	signerKeys := tx.Message.SignerKeys()
-	if len(signerKeys) != 1 {
-		log.Fatal("wrong number of signer keys", err)
+	signer := &solanatools.Signer{
+		PublicKey:  paramPublicKey,
+		PrivateKey: paramPriKey,
 	}
+	txHash := solanatools.SignAndSend(mpcConfig, bridge, []*solanatools.Signer{signer}, tx)
 
-	var txHash string
-	if paramPriKey != "" {
-		_, txHash, err = bridge.SignTransactionWithPrivateKey(tx, paramPriKey)
-		if err != nil {
-			log.Fatal("SignTransactionWithPrivateKey err", err)
-		}
-	} else {
-		var keyID string
-		var rsvs []string
-		msgContent, err := tx.Message.Serialize()
-		if err != nil {
-			log.Fatal("unable to encode message for signing", err)
-		}
-		keyID, rsvs, err = mpcConfig.DoSignOneED(paramPublicKey, common.ToHex(msgContent[:]), "solanaChangeMPC")
-		if len(rsvs) != 1 {
-			log.Fatal("get sign status require one rsv but return many", err)
-		}
-		rsv := rsvs[0]
-		sig, err := types.NewSignatureFromString(rsv)
-		if err != nil {
-			log.Fatal("get signature from rsv failed", "keyID", keyID, "txid", err)
-		}
-
-		tx.Signatures = append(tx.Signatures, sig)
-		txHash = sig.String()
-	}
-
-	sendTxHash, err := bridge.SendTransaction(tx)
-	if err != nil {
-		log.Fatal("SendTransaction err", err)
-	}
-
-	if sendTxHash != txHash {
-		log.Fatal("SendTransaction sendTxHash not same")
-	}
-
-	fmt.Printf("tx success: %v\n", sendTxHash)
+	fmt.Printf("tx success: %v\n", txHash)
 }
 
 func initAll() {
@@ -101,11 +71,16 @@ func initAll() {
 func initFlags() {
 	flag.StringVar(&paramConfigFile, "config", "", "config file to init mpc and gateway")
 	flag.StringVar(&paramChainID, "chainID", "", "chain id")
+
+	flag.StringVar(&routerProgramID, "router", "", "router program id")
+	flag.StringVar(&routerMPC, "routerMPC", "", "routerMPC address")
+	flag.StringVar(&routerPDA, "routerPDA", "", "routerPDA address")
+
 	flag.StringVar(&paramNewMpc, "newMpc", "", "new mpc public key")
+	flag.StringVar(&paramNewMpcAddr, "newMpcAddr", "", "new mpc base58 address")
+
 	flag.StringVar(&paramPublicKey, "pubkey", "", "signer public key")
 	flag.StringVar(&paramPriKey, "priKey", "", "signer priKey key")
-
-	flag.StringVar(&paramNewMpcAddr, "newMpcAddr", "", "new mpc base58 address")
 
 	flag.Parse()
 

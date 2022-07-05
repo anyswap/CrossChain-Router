@@ -208,3 +208,17 @@ func (b *Bridge) AirDrop(publicKey string, amount uint64) (string, error) {
 	}
 	return *result, nil
 }
+
+// getMinimumBalanceForRentExemption
+func (b *Bridge) GetMinimumBalanceForRentExemption(datalength uint64) (uint64, error) {
+	result := new(uint64)
+	callMethod := "getMinimumBalanceForRentExemption"
+	obj := map[string]interface{}{
+		"commitment": "confirmed",
+	}
+	err := RPCCall(result, b.GatewayConfig.APIAddress, callMethod, datalength, obj)
+	if err != nil {
+		return 0, err
+	}
+	return *result, nil
+}

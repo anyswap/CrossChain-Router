@@ -117,8 +117,14 @@ func (i *Instruction) Accounts() (out []*types.AccountMeta) {
 			accounts.To,
 			accounts.SystemProgram,
 		}
+	case ChangeMpcTypeID:
+		accounts := i.Impl.(*ChangeMpc).Accounts
+		out = []*types.AccountMeta{
+			accounts.MPC,
+			accounts.RouterAccount,
+			accounts.NewMPC,
+		}
 	}
-
 	return
 }
 
@@ -340,4 +346,53 @@ type SwapinParams struct {
 
 func (p *SwapinParams) String() string {
 	return fmt.Sprintf("tx:%v amount:%v fromChainID:%v", p.Tx.String(), p.Amount, p.FromChainID)
+}
+
+// ChangeMpcParams type
+type ChangeMpcParams struct {
+	New *types.PublicKey `text:"linear,notype"`
+}
+
+// ChangeMpc type
+type ChangeMpcAccounts struct {
+	MPC           *types.AccountMeta `text:"linear,notype"`
+	RouterAccount *types.AccountMeta `text:"linear,notype"`
+	NewMPC        *types.AccountMeta `text:"linear,notype"`
+}
+
+// ChangeMpc type
+type ChangeMpc struct {
+	ChangeMpcParams
+	Accounts *ChangeMpcAccounts `bin:"-"`
+}
+
+// SetAccounts set accounts
+func (i *ChangeMpc) SetAccounts(accounts []*types.AccountMeta) error {
+	i.Accounts = &ChangeMpcAccounts{
+		MPC:           accounts[0],
+		RouterAccount: accounts[1],
+		NewMPC:        accounts[2],
+	}
+	return nil
+}
+
+func NewChangeMPCInstruction(
+	mpc, routerAccount, newMpc types.PublicKey,
+) *Instruction {
+	impl := &ChangeMpc{
+		ChangeMpcParams: ChangeMpcParams{
+			New: &newMpc,
+		},
+		Accounts: &ChangeMpcAccounts{
+			MPC:           &types.AccountMeta{PublicKey: mpc, IsWritable: true, IsSigner: true},
+			RouterAccount: &types.AccountMeta{PublicKey: routerAccount, IsWritable: true},
+			NewMPC:        &types.AccountMeta{PublicKey: newMpc},
+		},
+	}
+	return &Instruction{
+		BaseVariant: BaseVariant{
+			TypeID: ChangeMpcTypeID,
+			Impl:   impl,
+		},
+	}
 }

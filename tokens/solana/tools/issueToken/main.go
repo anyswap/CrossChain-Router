@@ -1,10 +1,11 @@
 package main
 
 import (
-	"encoding/hex"
+	"encoding/base64"
 	"flag"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -12,8 +13,10 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/solana"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/solana/programs/system"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/solana/programs/token"
+	solanatools "github.com/anyswap/CrossChain-Router/v3/tokens/solana/tools"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/solana/types"
-	"github.com/mr-tron/base58"
 )
 
 var (
@@ -21,47 +24,100 @@ var (
 
 	paramConfigFile string
 	paramChainID    string
-	mpcConfig       *mpc.Config
-	chainID         = big.NewInt(0)
+
+	paramPublicKey string
+	paramPriKey    string
+	mintAuthority  string
+
+	mpcConfig *mpc.Config
+	chainID   = big.NewInt(0)
+	payer     types.PublicKey
 )
 
 func main() {
 
 	initAll()
+	space := 82
 
-	randomAccount := types.NewAccount()
-	fmt.Println(randomAccount.PrivateKey.String())
-	fmt.Println(randomAccount.PublicKey().String())
-
-	bs, _ := hex.DecodeString("be0d03d8022012a03d5535e8677681dbbd9bbd130a3593388a61454129f5c294")
-	fmt.Println("MPC ADDRESS:", base58.Encode(bs[:]))
-
-	//2MnpF8NgxhvMzH2nCx8MBVKhCSVhiqW63g2xZUQCuic1rUuxir5iJo9eaK4A8BQP5arfkecfLNDcT4QNCxn3o5G9
-	//3gScJGwn2GKoi8xjNoSDP6pb9qsnNVAXciWSv7E8yUt5
-	mpcAccount, err := types.AccountFromPrivateKeyBase58("2MnpF8NgxhvMzH2nCx8MBVKhCSVhiqW63g2xZUQCuic1rUuxir5iJo9eaK4A8BQP5arfkecfLNDcT4QNCxn3o5G9")
-	if err != nil {
-		log.Fatal("AccountFromPrivateKeyBase58 err", err)
+	if paramPriKey != "" {
+		payer = types.MustPrivateKeyFromBase58(paramPriKey).PublicKey()
+	} else {
+		payer = types.MustPublicKeyFromBase58(paramPublicKey)
 	}
-	mpcPublicKey := mpcAccount.PublicKey().String()
-	fmt.Println(mpcPublicKey)
-	fmt.Println(hex.EncodeToString(mpcAccount.PublicKey().ToSlice()))
+	payerAddr := payer.String()
+	fmt.Printf("payer: %v\n", payerAddr)
+	b1, _ := bridge.GetBalance(payerAddr)
+	fmt.Printf("payer sol: %v\n", b1)
 
+	mintPublicKey, mintPriKey, _ := types.NewRandomPrivateKey()
+	// mintPriKey := types.MustPrivateKeyFromBase58("4H7bWCFDeMhrAJdYWDvrqk9Sdd9Re7P4dbri3ND9xhapRUSJ735p2AsSEmXhbv9buYgP52MjrksbZsL22NKuvTWw")
+	// mintPublicKey := mintPriKey.PublicKey()
+
+	fmt.Printf("minter PriKey: %v\n", mintPriKey.String())
+	fmt.Printf("minter address: %v\n", mintPublicKey.String())
+	// needn't send sol to minter
+	// bridge.AirDrop(mintPublicKey.String(), 10000000000000)
+
+	b, _ := bridge.GetBalance(mintPublicKey.String())
+	fmt.Printf("minter sol: %v\n", b)
+
+	mintAuthPublicKey := types.MustPublicKeyFromBase58(mintAuthority)
+
+	lamports, err := bridge.GetMinimumBalanceForRentExemption(uint64(space))
+	if err != nil {
+		log.Fatalf("GetMinimumBalanceForRentExemption error %v", err)
+	}
+	fmt.Printf("space: %v lamports: %v\n", space, lamports)
+
+	createMintAccount := system.NewCreateAccountInstruction(lamports, uint64(space), token.TokenProgramID, payer, mintPublicKey)
+	initMintAccount := token.NewInitializeMintInstruction(9, mintPublicKey, mintAuthPublicKey, &mintAuthPublicKey, system.SysvarRentProgramID)
+
+	instructions := []types.TransactionInstruction{createMintAccount, initMintAccount}
+
+	m, _ := createMintAccount.Data()
+	fmt.Printf("instructions0 length %v %v \n", len(m), base64.StdEncoding.EncodeToString(m))
+	m1, _ := initMintAccount.Data()
+	fmt.Printf("instructions1 length %v %v \n", len(m1), base64.StdEncoding.EncodeToString(m1))
+
+	resp, err := bridge.GetLatestBlockhash()
+	if err != nil {
+		log.Fatalf("GetLatestBlockhash error %v", err)
+	}
+	blockHash := resp.Value.Blockhash
+	// blockHash = types.MustPublicKeyFromBase58("DQVWxKzTtA84shb4i4JXRFy7JPiohSZwaBZjrj9Hik6")
+	fmt.Printf("blockHash:  %v %v\n", resp.Value.LastValidBlockHeight, blockHash)
+
+	tx, err := types.NewTransaction(instructions, blockHash, types.TransactionPayer(payer))
+	if err != nil {
+		log.Fatalf("NewTransaction error %v", err)
+	}
+	signer := &solanatools.Signer{
+		PublicKey:  paramPublicKey,
+		PrivateKey: paramPriKey,
+	}
+	minter := &solanatools.Signer{
+		PublicKey:  "",
+		PrivateKey: mintPriKey.String(),
+	}
+
+	signData, _ := tx.Message.Serialize()
+	fmt.Printf("sign: %v %v\n", len(signData), base64.StdEncoding.EncodeToString(signData))
+
+	txHash := solanatools.SignAndSend(mpcConfig, bridge, []*solanatools.Signer{signer, minter}, tx)
+
+	fmt.Printf("tx success: %v\n", txHash)
+
+	var txm *types.TransactionWithMeta
 	for i := 0; i < 10; i++ {
-		hash, err := bridge.AirDrop(mpcPublicKey, 900000000)
-		if err != nil {
-			log.Fatal("AirDrop err", err)
+		txResult, _ := bridge.GetTransaction(txHash)
+		if txResult != nil {
+			txm, _ = txResult.(*types.TransactionWithMeta)
+			break
 		}
-		fmt.Println("AirDrop hash: ", hash)
+		time.Sleep(5 * time.Second)
 	}
-
-	balance, err := bridge.GetBalance(mpcPublicKey)
-	if err != nil {
-		log.Fatal("balance err", err)
-	}
-	fmt.Println("GetBalance : ", balance.String())
-
-	// account, _ := bridge.GetNonceAccountInfo("G3rPGz9Rb1u4uHedg3p5pTfGoSzmj8hxPrJZ7fvFDjnr")
-	// fmt.Println("blockhash : ", account.Value.Data.Info.Info.Blockhash)
+	fmt.Printf("txm success at : %v\n", uint64(txm.Slot))
+	fmt.Printf("token programId: %v\n", mintPublicKey.String())
 }
 
 func initAll() {
@@ -73,6 +129,10 @@ func initAll() {
 func initFlags() {
 	flag.StringVar(&paramConfigFile, "config", "", "config file to init mpc and gateway")
 	flag.StringVar(&paramChainID, "chainID", "", "chain id")
+
+	flag.StringVar(&paramPublicKey, "pubkey", "", "signer public key")
+	flag.StringVar(&paramPriKey, "priKey", "", "signer priKey key")
+	flag.StringVar(&mintAuthority, "mintAuthority", "", "mintAuthority address")
 
 	flag.Parse()
 

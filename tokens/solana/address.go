@@ -25,7 +25,7 @@ func (b *Bridge) IsNative(address string) bool {
 
 // VerifyMPCPubKey verify mpc address and public key is matching
 func (b *Bridge) VerifyMPCPubKey(mpcAddress, mpcPubkey string) error {
-	pubAddr, err := b.PublicKeyToAddress(mpcPubkey)
+	pubAddr, err := PublicKeyToAddress(mpcPubkey)
 	log.Info("VerifyMPCPubKey : ", pubAddr, mpcAddress)
 	if err != nil || pubAddr != mpcAddress {
 		return fmt.Errorf("mpc address %v and public key address %v is not match", mpcAddress, pubAddr)
@@ -35,6 +35,10 @@ func (b *Bridge) VerifyMPCPubKey(mpcAddress, mpcPubkey string) error {
 
 // PublicKeyToAddress impl
 func (b *Bridge) PublicKeyToAddress(pubKeyHex string) (string, error) {
+	return PublicKeyToAddress(pubKeyHex)
+}
+
+func PublicKeyToAddress(pubKeyHex string) (string, error) {
 	pubKey := pubKeyHex
 	if common.HasHexPrefix(pubKey) {
 		pubKey = pubKey[2:]
