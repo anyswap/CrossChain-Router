@@ -12,7 +12,7 @@ transaction() {
 
     prepare(acct: AuthAccount) {
         self.minterStoragePath= /storage/anyExampleTokenMinter
-        self.minterPrivatePath=/private/anyExampleTokenMinter
+        self.minterPrivatePath= /private/anyExampleTokenMinter
         self.mpcStoragePath=/storage/routerMpc
 
         acct.link<&{AnyToken.IMinter}>(

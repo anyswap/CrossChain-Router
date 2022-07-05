@@ -76,6 +76,10 @@ go run ./tokens/flow/tools/deployContract/main.go -config xxx.toml -chainID xxx 
 ```shell
 go run ./tokens/flow/tools/initMpc/main.go -config xxx.toml -chainID xxx -address xxx -pubKey xxx  -privKey(option) xxx
 ```
+5) token registry
+```shell
+go run ./tokens/flow/tools/registry/main.go -config xxx.toml -chainID xxx -address xxx -pubKey xxx  -privKey(option) xxx -tokenName xxx -creater xxx -storagePath xxx -publicPath xxx -balancePath xxx
+```
 
 ## config 参考
 ```shell
