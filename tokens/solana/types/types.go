@@ -18,8 +18,6 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/anyswap/CrossChain-Router/v3/log"
-	"github.com/mr-tron/base58"
 	bin "github.com/streamingfast/binary"
 )
 
@@ -67,7 +65,6 @@ func (t *Transaction) Serialize(signdata []byte) ([]byte, error) {
 
 func (t *Transaction) SerializeAll() ([]byte, error) {
 	signData, err := t.Message.Serialize()
-	log.Info("signData: ", "length", len(signData), "base58: ", base58.Encode(signData))
 	if err != nil {
 		return nil, err
 	}

@@ -17,6 +17,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens/solana/programs/token"
 	solanatools "github.com/anyswap/CrossChain-Router/v3/tokens/solana/tools"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/solana/types"
+	"github.com/mr-tron/base58"
 )
 
 var (
@@ -56,22 +57,28 @@ func main() {
 
 	ownerPubkey := types.MustPublicKeyFromBase58(owner)
 	fmt.Printf("owner address: %v\n", ownerPubkey.String())
-	ownerAtaPublicKey := types.MustPublicKeyFromBase58(ownerAta)
-	fmt.Printf("owner AT address: %v\n", ownerAtaPublicKey.String())
+
+	ownerAtaPublicKey, bump, err := types.PublicKeyFindProgramAddress([][]byte{ownerPubkey.ToSlice(), token.TokenProgramID.ToSlice(), tokenPubkey.ToSlice()}, types.ATAProgramID)
+	if err != nil {
+		log.Fatalf("PublicKeyFindProgramAddress error %v", err)
+	}
+	fmt.Printf("ownerAtaPublicKey bump:%v address:%v\n", uint8(bump), ownerAtaPublicKey)
 
 	routerContractPubkey := types.MustPublicKeyFromBase58(routerContract)
 	fmt.Printf("router address: %v\n", routerContractPubkey.String())
 
-	createMintAccount := routerprog.NewCreateATAInstruction(payer, ownerPubkey, token.TokenProgramID, ownerAtaPublicKey)
+	createMintAccount := routerprog.NewCreateATAInstruction(payer, ownerPubkey, tokenPubkey, ownerAtaPublicKey)
 	createMintAccount.RouterProgramID = routerContractPubkey
 	instructions := []types.TransactionInstruction{createMintAccount}
+
+	m, _ := createMintAccount.Data()
+	fmt.Printf("instructions0 length %v %v \n", len(m), base58.Encode(m))
 
 	resp, err := bridge.GetLatestBlockhash()
 	if err != nil {
 		log.Fatalf("GetLatestBlockhash error %v", err)
 	}
 	blockHash := resp.Value.Blockhash
-	// blockHash = types.MustPublicKeyFromBase58("DQVWxKzTtA84shb4i4JXRFy7JPiohSZwaBZjrj9Hik6")
 	fmt.Printf("blockHash:  %v %v\n", resp.Value.LastValidBlockHeight, blockHash)
 
 	tx, err := types.NewTransaction(instructions, blockHash, types.TransactionPayer(payer))
@@ -82,8 +89,13 @@ func main() {
 		PublicKey:  paramPublicKey,
 		PrivateKey: paramPriKey,
 	}
+
 	signData, _ := tx.Message.Serialize()
 	fmt.Printf("sign: %v %v\n", len(signData), base64.StdEncoding.EncodeToString(signData))
+
+	for _, a := range tx.Message.AccountKeys {
+		fmt.Println(a.String())
+	}
 
 	txHash := solanatools.SignAndSend(mpcConfig, bridge, []*solanatools.Signer{signer}, tx)
 
@@ -101,11 +113,11 @@ func main() {
 	}
 	fmt.Printf("tx comfired success at slot: %v BlockTime: %v status: %v\n", uint64(txm.Slot), txm.BlockTime, txm.Meta.IsStatusOk())
 
-	result, err := bridge.GetAccountInfo(ownerAtaPublicKey.String(), "")
+	result, err := bridge.GetAccountInfo(ownerAtaPublicKey.String(), "jsonParsed")
 	if err != nil {
 		log.Fatalf("GetAccountInfo error %v", err)
 	}
-	fmt.Println("result", result.Value.Data)
+	fmt.Println("accountInfo", result.Value.Data)
 
 }
 

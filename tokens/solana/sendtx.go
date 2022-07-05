@@ -9,7 +9,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/solana/types"
-	"github.com/mr-tron/base58"
 )
 
 var (
@@ -99,7 +98,6 @@ func (b *Bridge) SimulateTransaction(tx *types.Transaction) (result *types.Simul
 	if err != nil {
 		return nil, fmt.Errorf("simulate tx encode tx error: %w", err)
 	}
-	log.Debug("signData: ", "length", len(signData), "base58: ", base58.Encode(signData))
 	wireTransaction, err := tx.Serialize(signData)
 	if err != nil {
 		return nil, fmt.Errorf("simulate tx encode tx error: %w", err)

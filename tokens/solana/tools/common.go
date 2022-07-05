@@ -59,6 +59,7 @@ func SignAndSend(mpcConfig *mpc.Config, bridge *solana.Bridge, signers []*Signer
 			}
 		}
 	}
+	fmt.Println("txhash", calctxHash)
 
 	var sendTxHash string
 	for i := 0; i < 10; i++ {
