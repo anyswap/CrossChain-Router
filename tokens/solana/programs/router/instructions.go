@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/anyswap/CrossChain-Router/v3/tokens/solana/programs/system"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/solana/types"
 	bin "github.com/streamingfast/binary"
 )
@@ -123,6 +124,18 @@ func (i *Instruction) Accounts() (out []*types.AccountMeta) {
 			accounts.MPC,
 			accounts.RouterAccount,
 			accounts.NewMPC,
+		}
+	case CreateAssociatedTokenTypeID:
+		accounts := i.Impl.(*CreateAT).Accounts
+		out = []*types.AccountMeta{
+			accounts.Payer,
+			accounts.Authority,
+			accounts.Mint,
+			accounts.AssociatedToken,
+			accounts.Rent,
+			accounts.SystemProgram,
+			accounts.TokenProgram,
+			accounts.AssociatedTokenProgram,
 		}
 	}
 	return
@@ -392,6 +405,61 @@ func NewChangeMPCInstruction(
 	return &Instruction{
 		BaseVariant: BaseVariant{
 			TypeID: ChangeMpcTypeID,
+			Impl:   impl,
+		},
+	}
+}
+
+// ChangeMpc type
+type CreateATAccounts struct {
+	Payer                  *types.AccountMeta `text:"linear,notype"`
+	Authority              *types.AccountMeta `text:"linear,notype"`
+	Mint                   *types.AccountMeta `text:"linear,notype"`
+	AssociatedToken        *types.AccountMeta `text:"linear,notype"`
+	Rent                   *types.AccountMeta `text:"linear,notype"`
+	SystemProgram          *types.AccountMeta `text:"linear,notype"`
+	TokenProgram           *types.AccountMeta `text:"linear,notype"`
+	AssociatedTokenProgram *types.AccountMeta `text:"linear,notype"`
+}
+
+// ChangeMpc type
+type CreateAT struct {
+	Accounts *CreateATAccounts `bin:"-"`
+}
+
+// SetAccounts set accounts
+func (i *CreateAT) SetAccounts(accounts []*types.AccountMeta) error {
+	i.Accounts = &CreateATAccounts{
+		Payer:                  accounts[0],
+		Authority:              accounts[1],
+		Mint:                   accounts[2],
+		AssociatedToken:        accounts[3],
+		Rent:                   accounts[4],
+		SystemProgram:          accounts[5],
+		TokenProgram:           accounts[6],
+		AssociatedTokenProgram: accounts[7],
+	}
+	return nil
+}
+
+func NewCreateATAInstruction(
+	payer, owner, tokenProgramID, ownertokenATA types.PublicKey,
+) *Instruction {
+	impl := &CreateAT{
+		Accounts: &CreateATAccounts{
+			Payer:                  &types.AccountMeta{PublicKey: payer, IsWritable: true, IsSigner: true},
+			Authority:              &types.AccountMeta{PublicKey: owner},
+			Mint:                   &types.AccountMeta{PublicKey: tokenProgramID},
+			AssociatedToken:        &types.AccountMeta{PublicKey: ownertokenATA, IsWritable: true},
+			Rent:                   &types.AccountMeta{PublicKey: system.SysvarRentProgramID},
+			SystemProgram:          &types.AccountMeta{PublicKey: system.SystemProgramID},
+			TokenProgram:           &types.AccountMeta{PublicKey: types.TokenProgramID},
+			AssociatedTokenProgram: &types.AccountMeta{PublicKey: types.ATAProgramID},
+		},
+	}
+	return &Instruction{
+		BaseVariant: BaseVariant{
+			TypeID: CreateAssociatedTokenTypeID,
 			Impl:   impl,
 		},
 	}

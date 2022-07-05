@@ -1,6 +1,7 @@
 package solanatools
 
 import (
+	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -64,6 +65,7 @@ func SignAndSend(mpcConfig *mpc.Config, bridge *solana.Bridge, signers []*Signer
 		sendTxHash, err = bridge.SendTransaction(tx)
 		if err != nil {
 			if strings.Contains(err.Error(), "Blockhash not found") {
+				fmt.Println("send tx contiune after 5 sec ...")
 				time.Sleep(5 * time.Second)
 			} else {
 				break

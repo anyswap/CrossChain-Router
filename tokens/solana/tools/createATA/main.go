@@ -13,7 +13,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/solana"
-	"github.com/anyswap/CrossChain-Router/v3/tokens/solana/programs/system"
+	routerprog "github.com/anyswap/CrossChain-Router/v3/tokens/solana/programs/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/solana/programs/token"
 	solanatools "github.com/anyswap/CrossChain-Router/v3/tokens/solana/tools"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/solana/types"
@@ -27,7 +27,10 @@ var (
 
 	paramPublicKey string
 	paramPriKey    string
-	mintAuthority  string
+	owner          string
+	ownerAta       string
+	tokenProgramID string
+	routerContract string
 
 	mpcConfig *mpc.Config
 	chainID   = big.NewInt(0)
@@ -37,7 +40,6 @@ var (
 func main() {
 
 	initAll()
-	space := 82
 
 	if paramPriKey != "" {
 		payer = types.MustPrivateKeyFromBase58(paramPriKey).PublicKey()
@@ -49,24 +51,20 @@ func main() {
 	b1, _ := bridge.GetBalance(payerAddr)
 	fmt.Printf("payer sol: %v\n", b1)
 
-	mintPublicKey, mintPriKey, _ := types.NewRandomPrivateKey()
-	fmt.Printf("minter PriKey: %v\n", mintPriKey.String())
-	fmt.Printf("minter address: %v\n", mintPublicKey.String())
-	// needn't send sol to minter
-	// bridge.AirDrop(mintPublicKey.String(), 10000000000000)
-	mintAuthPublicKey := types.MustPublicKeyFromBase58(mintAuthority)
-	fmt.Printf("owner address: %v\n", mintAuthPublicKey.String())
+	tokenPubkey := types.MustPublicKeyFromBase58(tokenProgramID)
+	fmt.Printf("token programid: %v\n", tokenPubkey.String())
 
-	lamports, err := bridge.GetMinimumBalanceForRentExemption(uint64(space))
-	if err != nil {
-		log.Fatalf("GetMinimumBalanceForRentExemption error %v", err)
-	}
-	fmt.Printf("crate mint account space: %v lamports: %v\n", space, lamports)
+	ownerPubkey := types.MustPublicKeyFromBase58(owner)
+	fmt.Printf("owner address: %v\n", ownerPubkey.String())
+	ownerAtaPublicKey := types.MustPublicKeyFromBase58(ownerAta)
+	fmt.Printf("owner AT address: %v\n", ownerAtaPublicKey.String())
 
-	createMintAccount := system.NewCreateAccountInstruction(lamports, uint64(space), token.TokenProgramID, payer, mintPublicKey)
-	initMintAccount := token.NewInitializeMintInstruction(9, mintPublicKey, mintAuthPublicKey, &mintAuthPublicKey, system.SysvarRentProgramID)
+	routerContractPubkey := types.MustPublicKeyFromBase58(routerContract)
+	fmt.Printf("router address: %v\n", routerContractPubkey.String())
 
-	instructions := []types.TransactionInstruction{createMintAccount, initMintAccount}
+	createMintAccount := routerprog.NewCreateATAInstruction(payer, ownerPubkey, token.TokenProgramID, ownerAtaPublicKey)
+	createMintAccount.RouterProgramID = routerContractPubkey
+	instructions := []types.TransactionInstruction{createMintAccount}
 
 	resp, err := bridge.GetLatestBlockhash()
 	if err != nil {
@@ -84,15 +82,10 @@ func main() {
 		PublicKey:  paramPublicKey,
 		PrivateKey: paramPriKey,
 	}
-	minter := &solanatools.Signer{
-		PublicKey:  "",
-		PrivateKey: mintPriKey.String(),
-	}
-
 	signData, _ := tx.Message.Serialize()
 	fmt.Printf("sign: %v %v\n", len(signData), base64.StdEncoding.EncodeToString(signData))
 
-	txHash := solanatools.SignAndSend(mpcConfig, bridge, []*solanatools.Signer{signer, minter}, tx)
+	txHash := solanatools.SignAndSend(mpcConfig, bridge, []*solanatools.Signer{signer}, tx)
 
 	fmt.Printf("tx send success: %v\n", txHash)
 
@@ -107,13 +100,13 @@ func main() {
 		time.Sleep(5 * time.Second)
 	}
 	fmt.Printf("tx comfired success at slot: %v BlockTime: %v status: %v\n", uint64(txm.Slot), txm.BlockTime, txm.Meta.IsStatusOk())
-	fmt.Printf("token programId: %v\n", mintPublicKey.String())
 
-	ownerPDAPubkey, bump, err := types.PublicKeyFindProgramAddress([][]byte{mintAuthPublicKey.ToSlice(), token.TokenProgramID.ToSlice(), mintPublicKey.ToSlice()}, types.ATAProgramID)
+	result, err := bridge.GetAccountInfo(ownerAtaPublicKey.String(), "")
 	if err != nil {
-		log.Fatalf("PublicKeyFindProgramAddress error %v", err)
+		log.Fatalf("GetAccountInfo error %v", err)
 	}
-	fmt.Printf("ownerPDAPubkey bump:%v address:%v\n", uint8(bump), ownerPDAPubkey)
+	fmt.Println("result", result.Value.Data)
+
 }
 
 func initAll() {
@@ -128,7 +121,10 @@ func initFlags() {
 
 	flag.StringVar(&paramPublicKey, "pubkey", "", "signer public key")
 	flag.StringVar(&paramPriKey, "priKey", "", "signer priKey key")
-	flag.StringVar(&mintAuthority, "owner", "", "mint owner address")
+	flag.StringVar(&owner, "owner", "", "mint owner address")
+	flag.StringVar(&ownerAta, "ownerAta", "", "owner's associated token address")
+	flag.StringVar(&tokenProgramID, "token", "", "token address")
+	flag.StringVar(&routerContract, "router", "", "router address")
 
 	flag.Parse()
 
