@@ -102,15 +102,16 @@ type RouterConfig struct {
 	Server *RouterServerConfig `toml:",omitempty" json:",omitempty"`
 	Oracle *RouterOracleConfig `toml:",omitempty" json:",omitempty"`
 
-	Identifier  string
-	SwapType    string
-	SwapSubType string
-	Onchain     *OnchainConfig
-	Gateways    map[string][]string // key is chain ID
-	GatewaysExt map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
-	MPC         *MPCConfig
-	FastMPC     *MPCConfig   `toml:",omitempty" json:",omitempty"`
-	Extra       *ExtraConfig `toml:",omitempty" json:",omitempty"`
+	Identifier   string
+	SwapType     string
+	SwapSubType  string
+	Onchain      *OnchainConfig
+	Gateways     map[string][]string // key is chain ID
+	GatewaysExt  map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+	BlockGateway *BlockGatewayConfig // key is chain ID
+	MPC          *MPCConfig
+	FastMPC      *MPCConfig   `toml:",omitempty" json:",omitempty"`
+	Extra        *ExtraConfig `toml:",omitempty" json:",omitempty"`
 
 	ChainIDBlackList []string `toml:",omitempty" json:",omitempty"`
 	TokenIDBlackList []string `toml:",omitempty" json:",omitempty"`
@@ -158,6 +159,14 @@ type OnchainConfig struct {
 	WSServers   []string
 	ReloadCycle uint64 // seconds
 	IgnoreCheck bool
+}
+
+type BlockGatewayConfig struct {
+	APIAddress       string
+	DisableTLS       bool
+	RPCPassword      string
+	RPCUser          string
+	UTXOAPIAddresses string
 }
 
 // MPCConfig mpc related config

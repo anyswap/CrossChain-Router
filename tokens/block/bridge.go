@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/rpcclient"
@@ -132,6 +133,22 @@ func (b *Bridge) GetChainParams(chainID *big.Int) *chaincfg.Params {
 	}
 }
 
+// SetGatewayConfig set gateway config
+func (b *Bridge) SetGatewayConfig(gatewayCfg *tokens.GatewayConfig) {
+	if len(gatewayCfg.APIAddress) == 0 {
+		log.Fatal("empty gateway 'APIAddress'")
+	}
+	cfg := params.GetRouterConfig()
+	gatewayCfg.Extras = &params.BlockGatewayConfig{
+		APIAddress:       cfg.BlockGateway.APIAddress,
+		DisableTLS:       cfg.BlockGateway.DisableTLS,
+		RPCPassword:      cfg.BlockGateway.RPCPassword,
+		RPCUser:          cfg.BlockGateway.RPCUser,
+		UTXOAPIAddresses: cfg.BlockGateway.UTXOAPIAddresses,
+	}
+	b.GatewayConfig = gatewayCfg
+}
+
 // GetClient returns new Client
 func (b *Bridge) GetClient() *Client {
 	if blockClient != nil {
@@ -139,37 +156,34 @@ func (b *Bridge) GetClient() *Client {
 	}
 
 	cfg := b.GetGatewayConfig()
-	if cfg.Extras == nil || cfg.Extras.BlockExtra == nil {
+	if cfg.Extras == nil {
 		return nil
 	}
 
 	if len(cclis) == 0 {
-		for _, args := range cfg.Extras.BlockExtra.CoreAPIs {
-			connCfg := &rpcclient.ConnConfig{
-				Host:         args.APIAddress,
-				User:         args.RPCUser,
-				Pass:         args.RPCPassword,
-				HTTPPostMode: true,            // Bitcoin core only supports HTTP POST mode
-				DisableTLS:   args.DisableTLS, // Bitcoin core does not provide TLS by default
-			}
-
-			client, err := rpcclient.New(connCfg, nil)
-			if err != nil {
-				continue
-			}
-
-			ccli := CoreClient{
-				Client:  client,
-				Address: connCfg.Host,
-				Closer:  client.Shutdown,
-			}
-			cclis = append(cclis, ccli)
+		connCfg := &rpcclient.ConnConfig{
+			Host:         cfg.Extras.APIAddress,
+			User:         cfg.Extras.RPCUser,
+			Pass:         cfg.Extras.RPCPassword,
+			HTTPPostMode: true,                  // Bitcoin core only supports HTTP POST mode
+			DisableTLS:   cfg.Extras.DisableTLS, // Bitcoin core does not provide TLS by default
 		}
+		client, err := rpcclient.New(connCfg, nil)
+		if err != nil {
+			return nil
+		}
+
+		ccli := CoreClient{
+			Client:  client,
+			Address: connCfg.Host,
+			Closer:  client.Shutdown,
+		}
+		cclis = append(cclis, ccli)
 	}
 
 	blockClient = &Client{
 		CClients:         cclis,
-		UTXOAPIAddresses: cfg.Extras.BlockExtra.UTXOAPIAddresses,
+		UTXOAPIAddresses: []string{cfg.Extras.UTXOAPIAddresses},
 	}
 	return blockClient
 }

@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 )
 
 // ChainConfig struct
@@ -52,26 +53,7 @@ type FeeConfig struct {
 type GatewayConfig struct {
 	APIAddress    []string
 	APIAddressExt []string
-	Extras        *GatewayExtras `json:",omitempty"`
-}
-
-// GatewayExtras struct
-type GatewayExtras struct {
-	BlockExtra *BlockExtraArgs
-}
-
-// BlockExtraArgs struct
-type BlockExtraArgs struct {
-	CoreAPIs         []BlocknetCoreAPIArgs
-	UTXOAPIAddresses []string
-}
-
-// BlocknetCoreAPIArgs struct
-type BlocknetCoreAPIArgs struct {
-	APIAddress  string
-	RPCUser     string
-	RPCPassword string
-	DisableTLS  bool
+	Extras        *params.BlockGatewayConfig
 }
 
 // CheckConfig check chain config
