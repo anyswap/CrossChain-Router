@@ -361,41 +361,7 @@ func CheckNativeBalance(b IBridge, account string, needValue *big.Int) (err erro
 	return err
 }
 
-func GetNativePrice(chainID *big.Int) (*big.Int, error) {
-	funcHash := common.FromHex("0xe7572230")
-	data := abicoder.PackDataWithFuncHash(funcHash, chainID)
-	res, err := CallContractGetNativePrice(data, "latest")
-	if err != nil {
-		return nil, err
-	}
-	if common.GetBigInt(res, 0, 32).Cmp(big.NewInt(0)) == 0 {
-		return nil, ErrCallPriceOracle
-	}
-	return common.GetBigInt(res, 0, 32), nil
-}
-
-func CallContractGetNativePrice(data hexutil.Bytes, blockNumber string) (result []byte, err error) {
-	priceOracleConfig := params.GetRouterConfig().PriceOracle
-	contract := ethcommon.HexToAddress(priceOracleConfig.Contract)
-	msg := ethereum.CallMsg{
-		To:   &contract,
-		Data: data,
-	}
-	for _, url := range priceOracleConfig.APIAddress {
-		cli, err := ethclient.Dial(url)
-		if err != nil {
-			log.Fatal("init price oracle web socket clients failed", "url", url, "err", err)
-		}
-		result, err = cli.CallContract(routerConfigCtx, msg, nil)
-		if err == nil {
-			return result, nil
-		}
-	}
-	log.Debug("call price contract error", "contract", contract.String(), "data", data, "err", err)
-	return nil, ErrCallPriceOracle
-}
-
-func CallContractGetCurrencyInfo(data hexutil.Bytes, blockNumber string) (result []byte, err error) {
+func CallPriceOracleContract(data hexutil.Bytes, blockNumber string) (result []byte, err error) {
 	priceOracleConfig := params.GetRouterConfig().PriceOracle
 	contract := ethcommon.HexToAddress(priceOracleConfig.Contract)
 	msg := ethereum.CallMsg{
@@ -419,19 +385,69 @@ func CallContractGetCurrencyInfo(data hexutil.Bytes, blockNumber string) (result
 func GetCurrencyInfo(chainID *big.Int) (*CurrencyInfo, error) {
 	funcHash := common.FromHex("0x3cc7f0fa")
 	data := abicoder.PackDataWithFuncHash(funcHash, chainID)
-	res, err := CallContractGetCurrencyInfo(data, "latest")
+	res, err := CallPriceOracleContract(data, "latest")
 	if err != nil {
-		log.Warn("CallContractGetCurrencyInfo", "err", err)
 		return nil, err
 	}
 	price := common.GetBigInt(res, 0, 32)
 	decimal := common.GetBigInt(res, 32, 32)
-	log.Warn("CallContractGetCurrencyInfo", "chainID", chainID, "price", price, "decimal", decimal)
 	if price.Cmp(big.NewInt(0)) == 0 || decimal.Cmp(big.NewInt(0)) == 0 {
-		return nil, ErrCallPriceOracle
+		return nil, ErrOraclePrice
 	}
 	return &CurrencyInfo{
 		Price:   price,
 		Decimal: decimal,
 	}, nil
+}
+
+func GetSwapThreshold(chainID *big.Int) (*big.Int, error) {
+	funcHash := common.FromHex("0xd3857520")
+	data := abicoder.PackDataWithFuncHash(funcHash, chainID)
+	res, err := CallPriceOracleContract(data, "latest")
+	if err != nil {
+		return nil, err
+	}
+	high := common.GetBigInt(res, 64, 32)
+	return high, nil
+}
+
+func CheckGasSwapValue(fromChainID *big.Int, gasSwapInfo *GasSwapInfo, receiveValue *big.Int) (*big.Int, error) {
+	srcCurrencyPrice := gasSwapInfo.SrcCurrencyPrice
+	destCurrencyPrice := gasSwapInfo.DestCurrencyPrice
+	srcDecimal := uint8(gasSwapInfo.SrcCurrencyDecimal.Uint64())
+	destDecimal := uint8(gasSwapInfo.DestCurrencyDecimal.Uint64())
+	minReceiveValue := gasSwapInfo.MinReceiveValue
+
+	swapInTotalPrice := new(big.Int).Mul(srcCurrencyPrice, receiveValue)
+	swapInTotalPrice = ConvertTokenValue(swapInTotalPrice, srcDecimal, 0)
+
+	swapThreshold, err := GetSwapThreshold(fromChainID)
+	if err != nil {
+		return nil, err
+	}
+
+	if swapThreshold.Cmp(swapInTotalPrice) < 0 {
+		log.Error("CheckGasSwapValue", "swapThreshold", swapThreshold, "swapInTotalPrice", swapInTotalPrice)
+		return nil, ErrOutOfSwapThreshold
+	}
+
+	receiveTotalValue := srcCurrencyPrice.Mul(srcCurrencyPrice, receiveValue)
+	amount := receiveTotalValue.Div(receiveTotalValue, destCurrencyPrice)
+
+	realReceiveValue := ConvertTokenValue(amount, srcDecimal, destDecimal)
+
+	if realReceiveValue.Cmp(minReceiveValue) < 0 {
+		log.Error("CheckGasSwapValue", "minReceiveValue", minReceiveValue, "realReceiveValue", realReceiveValue)
+		return nil, ErrLessThanMinValue
+	}
+
+	upperThreshold := new(big.Int).Mul(minReceiveValue, big.NewInt(120))
+	upperThreshold = upperThreshold.Div(upperThreshold, big.NewInt(100))
+
+	if upperThreshold.Cmp(realReceiveValue) < 0 {
+		realReceiveValue = upperThreshold
+	}
+
+	log.Warn("buildGasSwapTxInput", "srcPrice", gasSwapInfo.SrcCurrencyPrice, "destPrice", gasSwapInfo.DestCurrencyPrice, "minReceiveValue", minReceiveValue, "realReceiveValue", realReceiveValue, "upperThreshold", upperThreshold)
+	return realReceiveValue, nil
 }

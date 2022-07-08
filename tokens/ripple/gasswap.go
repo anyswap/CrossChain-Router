@@ -2,7 +2,6 @@ package ripple
 
 import (
 	"fmt"
-	"math/big"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -87,22 +86,12 @@ func (b *Bridge) verifyGasSwapTx(txHash string, _ int, allowUnstable bool) (*tok
 		return swapInfo, tokens.ErrWrongBindAddress
 	}
 
-	swapInfo.From = routerContract // From
 	swapInfo.Value = tokens.ToBits(txres.TransactionWithMetaData.MetaData.DeliveredAmount.Value.String(), 6)
 
-	gasSwapInfo := swapInfo.GasSwapInfo
-	srcCurrencyInfo, err := tokens.GetCurrencyInfo(swapInfo.FromChainID)
-	if err != nil {
-		return swapInfo, err
-	}
-	destCurrencyInfo, err := tokens.GetCurrencyInfo(swapInfo.ToChainID)
-	if err != nil {
-		return swapInfo, err
-	}
-	gasSwapInfo.SrcCurrencyPrice = srcCurrencyInfo.Price
-	gasSwapInfo.DestCurrencyPrice = destCurrencyInfo.Price
-	gasSwapInfo.SrcCurrencyDecimal = srcCurrencyInfo.Decimal
-	gasSwapInfo.DestCurrencyDecimal = destCurrencyInfo.Decimal
+	// _, err = tokens.CheckGasSwapValue(swapInfo.GasSwapInfo, swapInfo.Value)
+	// if err != nil {
+	// 	return swapInfo, err
+	// }
 
 	if !allowUnstable {
 		log.Info("verify swapin pass",
@@ -114,28 +103,18 @@ func (b *Bridge) verifyGasSwapTx(txHash string, _ int, allowUnstable bool) (*tok
 }
 
 func (b *Bridge) buildGasSwapTxArg(args *tokens.BuildTxArgs) (err error) {
-	srcCurrencyPrice := args.GasSwapInfo.SrcCurrencyPrice
-	destCurrencyPrice := args.GasSwapInfo.DestCurrencyPrice
-
-	srcPrice := new(big.Float).SetInt(srcCurrencyPrice)
-	destPrice := new(big.Float).SetInt(destCurrencyPrice)
-	srcFloat, _ := srcPrice.Float64()
-	destFloat, _ := destPrice.Float64()
-
-	priceRate := big.NewFloat(srcFloat / destFloat)
-	value := new(big.Float).SetInt(args.OriginValue)
-	amount, _ := value.Mul(value, priceRate).Int64()
 
 	input := []byte(args.SwapID)
 	args.Input = (*hexutil.Bytes)(&input)
 	if !b.IsValidAddress(args.Bind) {
 		return tokens.ErrWrongBindAddress
 	}
-	args.To = args.Bind             // to
-	args.Value = big.NewInt(amount) // swapValue
-
-	log.Warn("buildGasSwapTx", "srcPrice", srcCurrencyPrice, "destPrice", destCurrencyPrice, "priceRate", priceRate, "amount", amount)
-
+	args.To = args.Bind // to
+	sendValue, err := tokens.CheckGasSwapValue(args.FromChainID, args.GasSwapInfo, args.OriginValue)
+	if err != nil {
+		return err
+	}
+	args.Value = sendValue
 	return nil
 }
 
@@ -143,12 +122,12 @@ func parseGasSwapTxMemo(routerContract string, swapInfo *tokens.SwapTxInfo, memo
 	for _, memo := range memos {
 		memoStr := strings.TrimSpace(string(memo.Memo.MemoData.Bytes()))
 		parts := strings.Split(memoStr, ":")
-		if len(parts) < 2 {
+		if len(parts) < 3 {
 			continue
 		}
 		bindStr := parts[0]
 		toChainIDStr := parts[1]
-		biToChainID, err := common.GetBigIntFromStr(toChainIDStr)
+		toChainID, err := common.GetBigIntFromStr(toChainIDStr)
 		if err != nil {
 			continue
 		}
@@ -160,8 +139,24 @@ func parseGasSwapTxMemo(routerContract string, swapInfo *tokens.SwapTxInfo, memo
 			if common.IsEqualIgnoreCase(bindStr, routerContract) {
 				return tokens.ErrTxWithWrongReceipt
 			}
-			swapInfo.Bind = bindStr          // Bind
-			swapInfo.ToChainID = biToChainID // ToChainID
+			swapInfo.Bind = bindStr        // Bind
+			swapInfo.ToChainID = toChainID // ToChainID
+
+			swapInfo.From = routerContract // From
+			gasSwapInfo := swapInfo.GasSwapInfo
+			srcCurrencyInfo, err := tokens.GetCurrencyInfo(swapInfo.FromChainID)
+			if err != nil {
+				return err
+			}
+			destCurrencyInfo, err := tokens.GetCurrencyInfo(swapInfo.ToChainID)
+			if err != nil {
+				return err
+			}
+			gasSwapInfo.SrcCurrencyPrice = srcCurrencyInfo.Price
+			gasSwapInfo.DestCurrencyPrice = destCurrencyInfo.Price
+			gasSwapInfo.SrcCurrencyDecimal = srcCurrencyInfo.Decimal
+			gasSwapInfo.DestCurrencyDecimal = destCurrencyInfo.Decimal
+			gasSwapInfo.MinReceiveValue = tokens.ToBits(parts[2], uint8(destCurrencyInfo.Decimal.Uint64()))
 			return nil
 		}
 	}

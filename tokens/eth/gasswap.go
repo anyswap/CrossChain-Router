@@ -25,7 +25,7 @@ func (b *Bridge) parseGasSwapTxMemo(swapInfo *tokens.SwapTxInfo, payload *hexuti
 	}
 	memo := strings.Split(string(memoHex), ":")
 
-	if len(memo) != 2 {
+	if len(memo) != 3 {
 		return tokens.ErrTxMemo
 	}
 
@@ -58,6 +58,8 @@ func (b *Bridge) parseGasSwapTxMemo(swapInfo *tokens.SwapTxInfo, payload *hexuti
 	gasSwapInfo.DestCurrencyPrice = destCurrencyInfo.Price
 	gasSwapInfo.SrcCurrencyDecimal = srcCurrencyInfo.Decimal
 	gasSwapInfo.DestCurrencyDecimal = destCurrencyInfo.Decimal
+	gasSwapInfo.MinReceiveValue = tokens.ToBits(memo[2], uint8(destCurrencyInfo.Decimal.Uint64()))
+
 	return nil
 }
 
@@ -115,7 +117,6 @@ func (b *Bridge) getGasSwapTxInput(swapInfo *tokens.SwapTxInfo, allowUnstable bo
 		return nil, tokens.ErrNativeIsZero
 	}
 	swapInfo.Value = amount
-	log.Warn("getGasSwapTxInput", "value", swapInfo.Value)
 	return txInfo.Payload, nil
 }
 
@@ -141,6 +142,11 @@ func (b *Bridge) verifyGasSwapTx(txHash string, _ int, allowUnstable bool) (*tok
 		return swapInfo, err
 	}
 
+	// _, err = tokens.CheckGasSwapValue(swapInfo.GasSwapInfo, swapInfo.Value)
+	// if err != nil {
+	// 	return swapInfo, err
+	// }
+
 	if !allowUnstable {
 		ctx := []interface{}{
 			"identifier", params.GetIdentifier(),
@@ -157,24 +163,15 @@ func (b *Bridge) verifyGasSwapTx(txHash string, _ int, allowUnstable bool) (*tok
 }
 
 func (b *Bridge) buildGasSwapTxInput(args *tokens.BuildTxArgs) (err error) {
-	srcCurrencyPrice := args.GasSwapInfo.SrcCurrencyPrice
-	destCurrencyPrice := args.GasSwapInfo.DestCurrencyPrice
-
-	srcPrice := new(big.Float).SetInt(srcCurrencyPrice)
-	destPrice := new(big.Float).SetInt(destCurrencyPrice)
-	srcFloat, _ := srcPrice.Float64()
-	destFloat, _ := destPrice.Float64()
-
-	priceRate := big.NewFloat(srcFloat / destFloat)
-	value := new(big.Float).SetInt(args.OriginValue)
-	amount, _ := value.Mul(value, priceRate).Int64()
 
 	input := []byte(args.SwapID)
 	args.Input = (*hexutil.Bytes)(&input)
 	args.To = args.Bind // to
-	args.Value = tokens.ConvertTokenValue(big.NewInt(amount), uint8(args.GasSwapInfo.SrcCurrencyDecimal.Uint64()), uint8(args.GasSwapInfo.DestCurrencyDecimal.Uint64()))
-
-	log.Warn("buildGasSwapTxInput", "srcPrice", srcCurrencyPrice, "destPrice", destCurrencyPrice, "priceRate", priceRate, "amount", amount)
+	sendValue, err := tokens.CheckGasSwapValue(args.FromChainID, args.GasSwapInfo, args.OriginValue)
+	if err != nil {
+		return err
+	}
+	args.Value = sendValue
 
 	return nil
 }

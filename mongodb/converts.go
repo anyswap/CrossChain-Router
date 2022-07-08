@@ -84,6 +84,7 @@ func ConvertToSwapInfo(info *tokens.SwapInfo) SwapInfo {
 			DestCurrencyPrice:   gasSwapInfo.DestCurrencyPrice.String(),
 			SrcCurrencyDecimal:  gasSwapInfo.SrcCurrencyDecimal.String(),
 			DestCurrencyDecimal: gasSwapInfo.DestCurrencyDecimal.String(),
+			MinReceiveValue:     gasSwapInfo.MinReceiveValue.String(),
 		}
 	}
 	return swapinfo
@@ -179,11 +180,16 @@ func ConvertFromSwapInfo(swapinfo *SwapInfo) (tokens.SwapInfo, error) {
 		if err != nil {
 			return info, err
 		}
+		minReceiveValue, err := common.GetBigIntFromStr(gasSwapInfo.MinReceiveValue)
+		if err != nil {
+			return info, err
+		}
 		info.GasSwapInfo = &tokens.GasSwapInfo{
 			SrcCurrencyPrice:    srcCurrencyPrice,
 			DestCurrencyPrice:   destCurrencyPrice,
 			SrcCurrencyDecimal:  srcCurrencyDecimal,
 			DestCurrencyDecimal: destCurrencyDecimal,
+			MinReceiveValue:     minReceiveValue,
 		}
 	}
 	return info, nil

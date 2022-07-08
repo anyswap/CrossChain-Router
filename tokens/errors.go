@@ -46,7 +46,10 @@ var (
 	ErrBuildTxErrorAndDelay  = errors.New("[build tx error]")
 	ErrTxMemo                = errors.New("tx memo is error")
 	ErrCallPriceOracle       = errors.New("call price contract error")
+	ErrOraclePrice           = errors.New("contract price is zero")
 	ErrNativeIsZero          = errors.New("native value is zero")
+	ErrLessThanMinValue      = errors.New("realReceiveValue less than minReceiveValue")
+	ErrOutOfSwapThreshold    = errors.New("swap value bigger than swap threshold")
 
 	// errors should register in router swap
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")

@@ -25,7 +25,7 @@ Contract = "0x31a5aeda5b1aa4579f8dfec33d1cc29a9e318664"
 # OnChain config
 [PriceOracle]
 APIAddress = ["https://rinkeby.infura.io/v3/8e1493b73b104925b1d3b95abd3fd767"]
-Contract = "0x25e312DAb0F46e1f1d6fe2A777ed1a73888beeC8"
+Contract = "0xb996f193c642503efffC28c38bA42b01E696026b"
 
 # Gateways config. key is chainID
 [Gateways]

@@ -141,6 +141,7 @@ type GasSwapInfo struct {
 	DestCurrencyPrice   string `bson:"destCurrencyPrice"         json:"destCurrencyPrice"`
 	SrcCurrencyDecimal  string `bson:"srcCurrencyDecimal"         json:"srcCurrencyDecimal"`
 	DestCurrencyDecimal string `bson:"destCurrencyDecimal"         json:"destCurrencyDecimal"`
+	MinReceiveValue     string `bson:"minReceiveValue"         json:"minReceiveValue"`
 }
 
 // GetToken get token

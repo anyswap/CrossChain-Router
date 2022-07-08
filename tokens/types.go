@@ -90,6 +90,7 @@ type GasSwapInfo struct {
 	DestCurrencyPrice   *big.Int `json:"destCurrencyPrice"`
 	SrcCurrencyDecimal  *big.Int `json:"srcCurrencyDecimal"`
 	DestCurrencyDecimal *big.Int `json:"destCurrencyDecimal"`
+	MinReceiveValue     *big.Int `json:"minReceiveValue"`
 }
 
 // SwapInfo struct
