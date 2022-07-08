@@ -155,9 +155,9 @@ func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable boo
 	swapInfo.Height = txStatus.BlockHeight  // Height
 	swapInfo.Timestamp = txStatus.BlockTime // Timestamp
 
-	if !allowUnstable && txStatus.Confirmations < b.ChainConfig.Confirmations {
-		return nil, tokens.ErrTxNotStable
-	}
+	// if !allowUnstable && txStatus.Confirmations < b.ChainConfig.Confirmations {
+	// return nil, tokens.ErrTxNotStable
+	// }
 
 	receipt, ok := txStatus.Receipt.(*types.RPCTxReceipt)
 	if !ok || !receipt.IsStatusOk() {

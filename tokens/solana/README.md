@@ -1,26 +1,11 @@
-# solana router specials
+# solana router
 
 ## github
 github: https://github.com/anyswap/CrossChain-Router/tree/feature/solana-support
 
-## router deploy
-https://github.com/anyswap/CrossChain-Router/tree/feature/near#readme
+## router contract
+https://github.com/anyswap/router-solana-contract
 
-## solana token config
-
-Native token `SOL` : `contract address` is `native`
-
-Token not issued by multichain : `contract version` is `0`
-
-AnyToken issued by multichain :  `contract version` > `0`
-
-## solana public key to solana address
-
-```shell
-go run tokens/solana/tools/publicKeyToAddress/main.go -p 0xedbe0d03d8022012a03d5535e8677681dbbd9bbd130a3593388a61454129f5c294
-# output
-address: DnsySaKza7ggR6RoviWNWb6WGLg6aKtmYo9dbeuhjQoV
-```
 
 ## router mechanism
 
@@ -171,19 +156,25 @@ address: DnsySaKza7ggR6RoviWNWb6WGLg6aKtmYo9dbeuhjQoV
 
 use `-h` option to get help info for each tool
 
-```text
+```shell
+# convert publickey HexString to solana address
 go run tokens/solana/tools/publicKeyToAddress/main.go -h
-	convert solana public key to solana address
-
+# change owner for router contract for mpc or privatekey signer
 go run tokens/solana/tools/changeMpc/main.go -h
-	change router contract owner by privateKey or mpc
-
+# issue new token by mpc or privatekey signer
 go run tokens/solana/tools/issueToken/main.go -h
-	issue Token by privateKey or mpc
+# create new token AssociatedTokenAccount for mpc in router contract to hold new token asset
+go run tokens/solana/tools/createRouterOwnerATA/main.go -h
+# gen new solana account
+go run tokens/solana/tools/genAccount/main.go
 
-go run tokens/solana/tools/createATA/main.go -h
-	create ass
+```
 
+```shell
+Example:
+go run tokens/solana/tools/publicKeyToAddress/main.go -p 0xedbe0d03d8022012a03d5535e8677681dbbd9bbd130a3593388a61454129f5c294
+# output
+address: DnsySaKza7ggR6RoviWNWb6WGLg6aKtmYo9dbeuhjQoV
 ```
 
 ## about solana 

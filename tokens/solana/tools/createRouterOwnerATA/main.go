@@ -117,6 +117,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("GetAccountInfo error %v", err)
 	}
+	fmt.Println("ownerAta address:", ownerAtaPublicKey)
 	fmt.Println("accountInfo", result.Value.Data)
 
 }

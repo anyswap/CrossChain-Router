@@ -13,7 +13,7 @@ var (
 )
 
 func initFlags() {
-	flag.StringVar(&paramPubKey, "p", "", "public key string")
+	flag.StringVar(&paramPubKey, "p", "", "public key hex string")
 
 	flag.Parse()
 }
