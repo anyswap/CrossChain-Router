@@ -89,7 +89,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, err
 	}
 	actions := createFunctionCall(args.SwapID, receiver, amount.String(), args.FromChainID.String(), args.LogIndex, *extra.Gas)
-	rawTx = CreateTransaction(args.From, nearPubKey, args.Bind, *extra.Sequence, blockHashBytes, actions)
+	rawTx = CreateTransaction(args.From, nearPubKey, multichainToken, *extra.Sequence, blockHashBytes, actions)
 	return rawTx, nil
 }
 

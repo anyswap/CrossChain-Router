@@ -36,7 +36,7 @@ func (b *Bridge) registerERC20SwapTx(txHash string, logIndex int) ([]*tokens.Swa
 
 	swapInfos := make([]*tokens.SwapTxInfo, 0)
 	errs := make([]error, 0)
-	startIndex, endIndex := 1, len(receipts)
+	startIndex, endIndex := 0, len(receipts)
 
 	if logIndex != 0 {
 		if logIndex >= endIndex || logIndex < 0 {
@@ -51,8 +51,8 @@ func (b *Bridge) registerERC20SwapTx(txHash string, logIndex int) ([]*tokens.Swa
 		*swapInfo = *commonInfo
 		swapInfo.ERC20SwapInfo = &tokens.ERC20SwapInfo{}
 		swapInfo.LogIndex = i // LogIndex
-		events, errv := b.fliterReceipts(&receipts[i])
-		if errv != nil {
+		events, err := b.fliterReceipts(&receipts[i])
+		if err != nil {
 			continue
 		}
 		err = b.parseNep141SwapoutTxEvent(swapInfo, events)

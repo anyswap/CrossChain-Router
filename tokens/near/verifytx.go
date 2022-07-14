@@ -217,8 +217,7 @@ func (b *Bridge) fliterReceipts(receipt *ReceiptsOutcome) ([]string, error) {
 		if len(log_0) != 6 || len(log_1) != 3 || log_0[0] != "Transfer" || log_0[5] != mpcAddress {
 			return nil, tokens.ErrSwapoutLogNotFound
 		}
-		strings.Join(log_0, receipt.Outcome.ExecutorID)
-		return append(log_0, log_1...), tokens.ErrSwapoutLogNotFound
+		return append(append(log_0, receipt.Outcome.ExecutorID), log_1...), nil
 	}
 	return nil, tokens.ErrSwapoutLogNotFound
 }

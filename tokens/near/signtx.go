@@ -8,8 +8,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -26,11 +24,6 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 	tx, ok := rawTx.(*RawTransaction)
 	if !ok {
 		return nil, "", tokens.ErrWrongRawTx
-	}
-
-	err = b.verifyTransactionReceiver(tx, args.GetTokenID())
-	if err != nil {
-		return nil, "", err
 	}
 
 	mpcParams := params.GetMPCConfig(b.UseFastMPC)
@@ -99,22 +92,12 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 // SignTransactionWithPrivateKey sign tx with ECDSA private key string
 func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, privKey string) (signedTx interface{}, txHash string, err error) {
 	tx := rawTx.(*RawTransaction)
+	log.Warn("SignTransactionWithPrivateKey", "privKey", privKey)
 	edPrivKey, err := StringToPrivateKey(privKey)
 	if err != nil {
 		return nil, "", err
 	}
 	return signTransaction(tx, edPrivKey)
-}
-
-func (b *Bridge) verifyTransactionReceiver(tx *RawTransaction, tokenID string) error {
-	checkReceiver, err := router.GetTokenRouterContract(tokenID, b.ChainConfig.ChainID)
-	if err != nil {
-		return err
-	}
-	if !strings.EqualFold(tx.ReceiverID, checkReceiver) {
-		return fmt.Errorf("[sign] tx receiver mismatch. have %v want %v", tx.ReceiverID, checkReceiver)
-	}
-	return nil
 }
 
 func signTransaction(tx *RawTransaction, privKey *ed25519.PrivateKey) (signedTx *SignedTransaction, txHash string, err error) {
