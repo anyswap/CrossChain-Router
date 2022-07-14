@@ -222,11 +222,11 @@ func createFunctionCall(txHash, to, amount, fromChainID string, logIndex int, ga
 }
 
 func buildTokenTransferArgs(txHash, to, amount, fromChainID string, logIndex int) []byte {
-	swapID := fmt.Sprintf("%s:%d:%s", txHash, logIndex, fromChainID)
+	memo := fmt.Sprintf("%s:%d:%s", txHash, logIndex, fromChainID)
 	callArgs := &FtTransfer{
 		ReceiverId: to,
 		Amount:     amount,
-		memo:       swapID,
+		Memo:       memo,
 	}
 	argsBytes, _ := json.Marshal(callArgs)
 	return argsBytes

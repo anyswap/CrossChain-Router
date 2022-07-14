@@ -169,7 +169,7 @@ type Signature struct {
 type FtTransfer struct {
 	ReceiverId string `json:"receiver_id"`
 	Amount     string `json:"amount"`
-	memo       string `json:"memo"`
+	Memo       string `json:"memo"`
 }
 
 type FunctionCallResult struct {
