@@ -16,9 +16,7 @@ import (
 )
 
 const (
-	defaultGasLimit    uint64 = 70_000_000_000_000
-	swapinMethod       string = "any_swap_in"
-	swapinNativeMethod string = "swap_in_native"
+	defaultGasLimit uint64 = 70_000_000_000_000
 )
 
 var (

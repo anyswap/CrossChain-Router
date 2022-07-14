@@ -12,10 +12,8 @@ import (
 )
 
 var (
-	GetFtMetadata        = "ft_metadata"
-	GetUnderlyingAddress = "underlying"
-	GetMPCAddress        = "mpc_id"
-	EmptyArgs            = "e30="
+	GetFtMetadata = "ft_metadata"
+	EmptyArgs     = "e30="
 )
 
 // InitAfterConfig init variables (ie. extra members) after loading config
@@ -30,11 +28,7 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 
 	chainID := b.ChainConfig.ChainID
 	log.Info(fmt.Sprintf("[%5v] start init router info", chainID), "routerContract", routerContract)
-	routerMPC, err := b.GetMPCAddress(routerContract)
-	if err != nil {
-		log.Warn("get router mpc address failed", "routerContract", routerContract, "err", err)
-		return err
-	}
+	routerMPC := b.GetChainConfig().RouterContract
 	if routerMPC == "" {
 		log.Warn("get router mpc address return an empty address", "routerContract", routerContract)
 		return fmt.Errorf("empty router mpc address")
@@ -96,14 +90,6 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 			return
 		}
 	}
-	underlying, err := b.GetUnderlyingAddress(tokenAddr)
-	if err != nil && tokenCfg.IsStandardTokenVersion() {
-		logErrFunc("get underlying address failed", "tokenID", tokenID, "tokenAddr", tokenAddr, "err", err)
-		if isReload {
-			return
-		}
-	}
-	tokenCfg.SetUnderlying(underlying) // init underlying address
 }
 
 // GetTokenDecimals query token decimals
@@ -121,28 +107,4 @@ func (b *Bridge) GetTokenDecimals(tokenAddr string) (uint8, error) {
 		}
 	}
 	return 0, tokens.ErrTokenDecimals
-}
-
-// GetUnderlyingAddress query underlying address
-func (b *Bridge) GetUnderlyingAddress(contractAddr string) (string, error) {
-	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
-	for _, url := range urls {
-		result, err := functionCall(url, contractAddr, GetUnderlyingAddress, EmptyArgs)
-		if err == nil {
-			return string(result[1 : len(result)-1]), nil
-		}
-	}
-	return "", tokens.ErrGetUnderlying
-}
-
-// GetMPCAddress query mpc address
-func (b *Bridge) GetMPCAddress(contractAddr string) (string, error) {
-	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
-	for _, url := range urls {
-		result, err := functionCall(url, contractAddr, GetMPCAddress, EmptyArgs)
-		if err == nil {
-			return string(result[1 : len(result)-1]), nil
-		}
-	}
-	return "", tokens.ErrGetMPC
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
-	borsh "github.com/near/borsh-go"
+	"github.com/near/borsh-go"
 )
 
 // VerifyMsgHash verify msg hash

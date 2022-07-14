@@ -31,8 +31,6 @@ anytoken: a2.crossdemo.testnet
 underlying: demotoken.crossdemo.testnet
 
 > 交易参考(bsc->near)  
-https://testnet.bscscan.com/tx/0x9174d19f6bea821da729b40afa28b6dcdb5e4ee12b317f2e1d1d4bdbaddfa6f0
-https://explorer.testnet.near.org/transactions/2XtpKiXfeQd6oy1Q7mQuShTDtpNyzCYfYK1mKfwdPCZD
 
 ***
 特别强调  
@@ -96,11 +94,7 @@ near deploy --wasmFile *.wasm --accountId CONTRACT_ID
 ```shell
 # nep141合约
 near call nep141.CONTRACT_ID new_default_meta '{"owner_id":"xxxx","total_supply":"xxxxx"}' --accountId ACCOUNT_ID 
-# router合约 
-near call router.CONTRACT_ID new '{"mpc":"xxxx","wnative":"xxxx","chain_id":"xxxxx"}' --accountId ACCOUNT_ID 
-# anytoken合约 
-near call anytoken.CONTRACT_ID new_default_meta '{"mpc":"xxxx","router_id":"router.CONTRACT_ID","underlying":"nep141.CONTRACT_ID","total_supply":"xxx"}' --accountId ACCOUNT_ID  
-```
+
 
 >7)注册存储
 ```shell
@@ -109,7 +103,7 @@ near call nep141.CONTRACT_ID storage_deposit '{"account_id":"xxx"}' --accountId 
 ```
 >8)跨出交易发起
 ```shell
-near call underlying.CONTRACT_ID ft_transfer_call '{"receiver_id": "r1.crossdemo.testnet","amount": "xxx","msg": "any_swap_out anytoken.CONTRACT_ID bindaddr tochainId"}' --accountId ACCOUNT_ID --gas 300000000000000 --depositYocto 1
+near call nep141.CONTRACT_ID ft_transfer '{"receiver_id": "mpc","amount": "xxx","memo": "bindaddr tochainId"}' --accountId ACCOUNT_ID --gas 300000000000000 --depositYocto 1
 ```
 
 ## 常见问题

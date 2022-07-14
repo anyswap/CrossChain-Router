@@ -18,7 +18,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/mr-tron/base58"
-	borsh "github.com/near/borsh-go"
+	"github.com/near/borsh-go"
 )
 
 // MPCSignTransaction mpc sign raw tx

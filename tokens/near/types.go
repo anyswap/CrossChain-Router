@@ -3,7 +3,7 @@ package near
 import (
 	"math/big"
 
-	borsh "github.com/near/borsh-go"
+	"github.com/near/borsh-go"
 )
 
 type TransactionResult struct {
