@@ -46,10 +46,17 @@ var (
 	ErrBuildTxErrorAndDelay  = errors.New("[build tx error]")
 
 	// errors should register in router swap
-	ErrTxWithWrongValue  = errors.New("tx with wrong value")
-	ErrTxWithWrongPath   = errors.New("swap trade tx with wrong path")
-	ErrMissTokenConfig   = errors.New("miss token config")
-	ErrNoUnderlyingToken = errors.New("no underlying token")
+	ErrTxWithWrongValue     = errors.New("tx with wrong value")
+	ErrTxWithWrongPath      = errors.New("swap trade tx with wrong path")
+	ErrMissTokenConfig      = errors.New("miss token config")
+	ErrNoUnderlyingToken    = errors.New("no underlying token")
+	ErrGetLatestBlockNumber = errors.New("get latest block number error")
+	ErrBroadcastTx          = errors.New("broadcast tx error")
+	ErrGetAccountNonce      = errors.New("get account nonce error")
+	ErrGetUnderlying        = errors.New("get underlying address error")
+	ErrGetMPC               = errors.New("get mpc address error")
+	ErrTokenDecimals        = errors.New("get token decimals error")
+	ErrGetLatestBlockHash   = errors.New("get latest block hash error")
 )
 
 // ShouldRegisterRouterSwapForError return true if this error should record in database
