@@ -129,7 +129,7 @@ func (b *Bridge) checkERC20SwapInfo(swapInfo *tokens.SwapTxInfo) error {
 	if dstBridge == nil {
 		return tokens.ErrNoBridgeForChainID
 	}
-	if !dstBridge.IsValidAddress(swapInfo.Bind) {
+	if !dstBridge.IsValidAddress(anyToEth(swapInfo.Bind)) {
 		log.Warn("wrong bind address in erc20 swap", "txid", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "bind", swapInfo.Bind)
 		return tokens.ErrWrongBindAddress
 	}
