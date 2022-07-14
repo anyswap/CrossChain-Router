@@ -57,6 +57,7 @@ var (
 	ErrGetMPC               = errors.New("get mpc address error")
 	ErrTokenDecimals        = errors.New("get token decimals error")
 	ErrGetLatestBlockHash   = errors.New("get latest block hash error")
+	ErrTxResultType         = errors.New("tx type is not TransactionResult")
 )
 
 // ShouldRegisterRouterSwapForError return true if this error should record in database

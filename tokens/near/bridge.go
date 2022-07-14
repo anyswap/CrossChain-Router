@@ -132,9 +132,7 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 
 	txres, ok := tx.(*TransactionResult)
 	if !ok {
-		// unexpected
-		log.Warn("GetTransactionStatus", "error", errTxResultType)
-		return nil, errTxResultType
+		return nil, tokens.ErrTxResultType
 	}
 
 	// Check tx status
@@ -144,10 +142,10 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 	}
 
 	status.Receipt = nil
-	blockHeight, blockErr := b.GetBlockNumberByHash(txres.TransactionOutcome.BlockHash)
-	if blockErr != nil {
-		log.Warn("GetBlockNumberByHash", "error", blockErr)
-		return nil, errTxResultType
+	blockHeight, err := b.GetBlockNumberByHash(txres.TransactionOutcome.BlockHash)
+	if err != nil {
+		log.Warn("GetBlockNumberByHash", "error", err)
+		return nil, tokens.ErrTxResultType
 	}
 	status.BlockHeight = blockHeight
 

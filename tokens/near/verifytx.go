@@ -2,7 +2,6 @@ package near
 
 import (
 	"crypto/sha256"
-	"errors"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -11,13 +10,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	borsh "github.com/near/borsh-go"
-)
-
-var (
-	errTxResultType = errors.New("tx type is not TransactionResult")
-	errTxLogParse   = errors.New("tx logs is not LogSwapOut")
-	tokenLogSymbol  = "LogSwapOut"
-	nativeLogSymbol = "LogSwapOutNative"
 )
 
 // VerifyMsgHash verify msg hash
@@ -100,16 +92,6 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 	}
 
 	return swapInfo, nil
-}
-
-func fliterEvent(logs []string) ([]string, error) {
-	for _, log := range logs {
-		words := strings.Fields(log)
-		if len(words) == 13 && (words[0] == tokenLogSymbol || words[0] == nativeLogSymbol) {
-			return words, nil
-		}
-	}
-	return nil, errTxLogParse
 }
 
 func (b *Bridge) checkTxStatus(txres *TransactionResult, allowUnstable bool) error {
@@ -216,7 +198,7 @@ func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable boo
 
 	txres, ok := tx.(*TransactionResult)
 	if !ok {
-		return nil, errTxResultType
+		return nil, tokens.ErrTxResultType
 	}
 
 	statusErr := b.checkTxStatus(txres, allowUnstable)
