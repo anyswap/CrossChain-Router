@@ -125,7 +125,7 @@ func createFunctionCall() ([]near.Action, error) {
 	}
 	amount, err := common.GetBigIntFromStr(paramAmount)
 	if err != nil {
-		log.Fatalf("GetBigIntFromStr err", "err", err)
+		log.Fatalf("GetBigIntFromStr err: '%v'", err)
 	}
 	return []near.Action{{
 		Enum: 2,
