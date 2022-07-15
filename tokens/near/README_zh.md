@@ -43,7 +43,10 @@ INFO[2022-05-08T09:58:16.178] convert public key to address success
 INFO[2022-05-08T09:58:16.178] nearAddress is f353e1fe460864caf4d720e40e57f14d35f437c3e0b93d1f40a37e89ebdda3bf 
 INFO[2022-05-08T09:58:16.178] nearPublicKey is ed25519:HNrFuGeXk7WGXkX2BhRzVK2B7a9E6HLGSujF1uHZAvNa
 
->2) nep141和erc20的关系  
+>2) mpc公钥特殊注册方式
+go run ./tokens/near/tools/functionCall/main.go -config xxx.toml -chainID xxx -network testnet/near -functionName create_account -pubKey 签名账户公钥 -privKey 签名账户私钥 -newAccountId testmpc.testnet（mpc公钥要注册的名称） -newPublicKey mpc公钥的near公钥 -amount 注册资金 -accountId 签名人账户名
+
+>3) nep141和erc20的关系  
 nep141是near上的同质化代币协议，即near上的erc20  
 主要区别有以下几点:  
 ① nep141协议没有approve和transfer_from，所以只能通过ft_transfer_call发送到合约，合约做逻辑处理（也是我们的跨链处理逻辑）  

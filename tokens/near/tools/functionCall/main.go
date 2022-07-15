@@ -27,6 +27,7 @@ var (
 	paramPublicKey       string
 	paramPrivKey         string
 	paramNetwork         string
+	paramAccountId       string
 	paramNewAccountId    string
 	paramNewNewPublicKey string
 	paramAmount          string
@@ -84,7 +85,7 @@ func main() {
 	if err != nil {
 		log.Fatal("createFunctionCall failed", "err", err)
 	}
-	rawTx := near.CreateTransaction(nearPubKey.Address(), nearPubKey, paramNetwork, nonce, blockHashBytes, actions)
+	rawTx := near.CreateTransaction(paramAccountId, nearPubKey, paramNetwork, nonce, blockHashBytes, actions)
 
 	var signedTx interface{}
 	var txHash string
@@ -205,8 +206,9 @@ func initFlags() {
 	flag.StringVar(&paramFunctionName, "functionName", "", "function name")
 	flag.StringVar(&paramPublicKey, "pubKey", "", "signer public key")
 	flag.StringVar(&paramPrivKey, "privKey", "", "signer priv key")
+	flag.StringVar(&paramAccountId, "accountId", "", "signer account id")
 	flag.StringVar(&paramNewAccountId, "newAccountId", "", "(optional) new account id")
-	flag.StringVar(&paramNewNewPublicKey, "newNewPublicKey", "", "(optional) new public key")
+	flag.StringVar(&paramNewNewPublicKey, "newPublicKey", "", "(optional) new public key")
 	flag.StringVar(&paramAmount, "amount", "", "(optional) new account init amount")
 
 	flag.Parse()
