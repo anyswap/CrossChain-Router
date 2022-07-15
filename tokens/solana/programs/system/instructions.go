@@ -29,6 +29,8 @@ var (
 	SysvarRentProgramID           = types.MustPublicKeyFromBase58("SysvarRent111111111111111111111111111111111")
 	SysvarC1ockProgramID          = types.MustPublicKeyFromBase58("SysvarC1ock11111111111111111111111111111111")
 	SysvarRecentBlockhashesPubkey = types.MustPublicKeyFromBase58("SysvarRecentB1ockHashes11111111111111111111")
+	MemoProgramID                 = types.MustPublicKeyFromBase58("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr")
+	MemoProgramIDV2               = types.MustPublicKeyFromBase58("Memo1UhkJRfHyvLMcVucJwxXeuD728EqVDDwQDxFMNo")
 )
 
 // typeID constants

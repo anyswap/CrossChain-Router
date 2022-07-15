@@ -23,6 +23,8 @@ var (
 	SwapoutTransferTypeID       = calcSighash("global:swapout_transfer")        // 0x9152207ca5bb83bc
 	SwapoutNativeTypeID         = calcSighash("global:swapout_native")          // 0x3b8e03e8d609f08f
 	SkimLamportsTypeID          = calcSighash("global:skim_lamports")           // 0xff2ebac3ceab6f31
+	ApplyMpcTypeID              = calcSighash("global:apply_mpc")
+	EnableSwapTradeTypeID       = calcSighash("global:enable_swap_trade")
 )
 
 // SigHash the first 8 bytes to identify tx instruction
@@ -125,6 +127,13 @@ func (i *Instruction) Accounts() (out []*types.AccountMeta) {
 			accounts.RouterAccount,
 			accounts.NewMPC,
 		}
+	case ApplyMpcTypeID:
+		accounts := i.Impl.(*ChangeMpc).Accounts
+		out = []*types.AccountMeta{
+			accounts.MPC,
+			accounts.RouterAccount,
+			accounts.NewMPC,
+		}
 	case CreateAssociatedTokenTypeID:
 		accounts := i.Impl.(*CreateAT).Accounts
 		out = []*types.AccountMeta{
@@ -136,6 +145,12 @@ func (i *Instruction) Accounts() (out []*types.AccountMeta) {
 			accounts.SystemProgram,
 			accounts.TokenProgram,
 			accounts.AssociatedTokenProgram,
+		}
+	case EnableSwapTradeTypeID:
+		accounts := i.Impl.(*EnableSwapTrade).Accounts
+		out = []*types.AccountMeta{
+			accounts.MPC,
+			accounts.RouterAccount,
 		}
 	}
 	return
@@ -410,6 +425,27 @@ func NewChangeMPCInstruction(
 	}
 }
 
+func NewApplyMPCInstruction(
+	mpc, routerAccount, newMpc types.PublicKey,
+) *Instruction {
+	impl := &ChangeMpc{
+		ChangeMpcParams: ChangeMpcParams{
+			New: &newMpc,
+		},
+		Accounts: &ChangeMpcAccounts{
+			MPC:           &types.AccountMeta{PublicKey: mpc, IsWritable: true, IsSigner: true},
+			RouterAccount: &types.AccountMeta{PublicKey: routerAccount, IsWritable: true},
+			NewMPC:        &types.AccountMeta{PublicKey: newMpc},
+		},
+	}
+	return &Instruction{
+		BaseVariant: BaseVariant{
+			TypeID: ApplyMpcTypeID,
+			Impl:   impl,
+		},
+	}
+}
+
 // ChangeMpc type
 type CreateATAccounts struct {
 	Payer                  *types.AccountMeta `text:"linear,notype"`
@@ -460,6 +496,48 @@ func NewCreateATAInstruction(
 	return &Instruction{
 		BaseVariant: BaseVariant{
 			TypeID: CreateAssociatedTokenTypeID,
+			Impl:   impl,
+		},
+	}
+}
+
+type EnableSwapTradeParams struct {
+	Enable bool `text:"linear,notype"`
+}
+
+type EnableSwapTradeAccounts struct {
+	MPC           *types.AccountMeta `text:"linear,notype"`
+	RouterAccount *types.AccountMeta `text:"linear,notype"`
+}
+
+type EnableSwapTrade struct {
+	EnableSwapTradeParams
+	Accounts *EnableSwapTradeAccounts `bin:"-"`
+}
+
+func (i *EnableSwapTrade) SetAccounts(accounts []*types.AccountMeta) error {
+	i.Accounts = &EnableSwapTradeAccounts{
+		MPC:           accounts[0],
+		RouterAccount: accounts[1],
+	}
+	return nil
+}
+
+func NewEnableSwapTradeInstruction(
+	enable bool, mpc, routerAccount types.PublicKey,
+) *Instruction {
+	impl := &EnableSwapTrade{
+		EnableSwapTradeParams: EnableSwapTradeParams{
+			Enable: enable,
+		},
+		Accounts: &EnableSwapTradeAccounts{
+			MPC:           &types.AccountMeta{PublicKey: mpc, IsWritable: true, IsSigner: true},
+			RouterAccount: &types.AccountMeta{PublicKey: routerAccount},
+		},
+	}
+	return &Instruction{
+		BaseVariant: BaseVariant{
+			TypeID: EnableSwapTradeTypeID,
 			Impl:   impl,
 		},
 	}

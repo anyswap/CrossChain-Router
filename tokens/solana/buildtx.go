@@ -334,3 +334,57 @@ func (b *Bridge) BuildChangeMpcTransaction(routerContract, routerMPC, routerPDA,
 	}
 	return types.NewTransaction(instructions, recentBlockHash, types.TransactionPayer(mpc))
 }
+
+func (b *Bridge) BuildApplyMpcTransaction(routerContract, routerMPC, routerPDA, newMpcAddress string) (*types.Transaction, error) {
+	mpc, err := types.PublicKeyFromBase58(routerMPC)
+	if err != nil {
+		return nil, err
+	}
+	routerAccount, err := types.PublicKeyFromBase58(routerPDA)
+	if err != nil {
+		return nil, err
+	}
+	routerContractPubkey, err := types.PublicKeyFromBase58(routerContract)
+	if err != nil {
+		return nil, err
+	}
+	newMpc, err := types.PublicKeyFromBase58(newMpcAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	instruction := routerprog.NewApplyMPCInstruction(mpc, routerAccount, newMpc)
+	instruction.RouterProgramID = routerContractPubkey
+	instructions := []types.TransactionInstruction{instruction}
+
+	recentBlockHash, _, err := b.getRecentBlockhash()
+	if err != nil {
+		return nil, err
+	}
+	return types.NewTransaction(instructions, recentBlockHash, types.TransactionPayer(mpc))
+}
+
+func (b *Bridge) BuildEnableSwapTransaction(routerContract, routerMPC, routerPDA string, enable bool) (*types.Transaction, error) {
+	mpc, err := types.PublicKeyFromBase58(routerMPC)
+	if err != nil {
+		return nil, err
+	}
+	routerAccount, err := types.PublicKeyFromBase58(routerPDA)
+	if err != nil {
+		return nil, err
+	}
+	routerContractPubkey, err := types.PublicKeyFromBase58(routerContract)
+	if err != nil {
+		return nil, err
+	}
+
+	instruction := routerprog.NewEnableSwapTradeInstruction(enable, mpc, routerAccount)
+	instruction.RouterProgramID = routerContractPubkey
+	instructions := []types.TransactionInstruction{instruction}
+
+	recentBlockHash, _, err := b.getRecentBlockhash()
+	if err != nil {
+		return nil, err
+	}
+	return types.NewTransaction(instructions, recentBlockHash, types.TransactionPayer(mpc))
+}
