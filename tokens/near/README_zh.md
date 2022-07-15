@@ -19,23 +19,12 @@ https://github.com/anyswap/CrossChain-Router/tree/feature/near#readme
 ## mpc部署文档 
 https://github.com/anyswap/FastMulThreshold-DSA/wiki/keygen-and-sign-workflow
 
-## 合约参考(已验证)
-> bsc_testnet  
-config: 0x46De04FCd8ffA59B9F1eF773Ae8AD99FE8862990  
-router: 0xBa1Ccfd2Fd887302275Bb294fC2E1e8aEB613eA7  
-anyToken: 0xd5ec3ee2d81619896a65dd9e77e49602addc23bc
-
-> near_testnet  
-router: r2.crossdemo.testnet  
-anytoken: a2.crossdemo.testnet  
-underlying: demotoken.crossdemo.testnet
-
 > 交易参考(bsc->near)  
 
 ***
 特别强调  
 >1) mpc公钥和near公钥的关系  
-mpc申请ed公钥(32字节16进制编码字符串)后，公钥本身就是一个near的account，转入一笔初始金额后，即激活  
+mpc申请ed公钥(32字节16进制编码字符串)后，公钥本身就是一个near的account，也可以添加公钥到特定账户，转入一笔初始金额后，即激活  
 另外，mpc获取的公钥，通过  https://github.com/anyswap/CrossChain-Router/blob/feature/near/tokens/near/tools/publicKeyToAddress/main.go  工具可获得near publicKey  
 示例：  
 go run tokens/near/tools/publicKeyToAddress/main.go f353e1fe460864caf4d720e40e57f14d35f437c3e0b93d1f40a37e89ebdda3bf
@@ -43,10 +32,7 @@ INFO[2022-05-08T09:58:16.178] convert public key to address success
 INFO[2022-05-08T09:58:16.178] nearAddress is f353e1fe460864caf4d720e40e57f14d35f437c3e0b93d1f40a37e89ebdda3bf 
 INFO[2022-05-08T09:58:16.178] nearPublicKey is ed25519:HNrFuGeXk7WGXkX2BhRzVK2B7a9E6HLGSujF1uHZAvNa
 
->2) mpc公钥特殊注册方式
-go run ./tokens/near/tools/functionCall/main.go -config xxx.toml -chainID xxx -network testnet/near -functionName create_account -pubKey 签名账户公钥 -privKey 签名账户私钥 -newAccountId testmpc.testnet（mpc公钥要注册的名称） -newPublicKey mpc公钥的near公钥 -amount 注册资金 -accountId 签名人账户名
-
->3) nep141和erc20的关系  
+>2) nep141和erc20的关系  
 nep141是near上的同质化代币协议，即near上的erc20  
 主要区别有以下几点:  
 ① nep141协议没有approve和transfer_from，所以只能通过ft_transfer_call发送到合约，合约做逻辑处理（也是我们的跨链处理逻辑）  
@@ -54,6 +40,11 @@ nep141是near上的同质化代币协议，即near上的erc20
 ③ nep141的transfer有两种，ft_transfer转账，ft_transfer_call(接收方只能是合约)转账的同时，接收账户做逻辑处理  
 ④ nep141规定所有的transfer方法都必须支付1个yocto（1near=1*10**24yocto），即--depositYocto 1
 ***
+
+## mpc地址账户创建步骤
+>1) 调用go run tokens/near/tools/publicKeyToAddress/main.go 获取mpc对应的near公钥
+>2) 调用go run ./tokens/near/tools/functionCall/main.go -config xx.toml -chainID xx -network [testnet/near] -functionName create_account -pubKey [signerPublicKey] -privKey  [signerPrivKey] -newAccountId [newMpcAccountId] -newPublicKey [mpcNearPublicKey] -amount [initBalance] -accountId [signerAccountId]
+>3) newMpcAccountId即为mpc账户的accountId
 
 ## near部署步骤
 evm部署步骤这里不做赘述
