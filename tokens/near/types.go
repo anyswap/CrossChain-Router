@@ -189,3 +189,8 @@ type FungibleTokenMetadata struct {
 	ReferenceHash string `json:"reference_hash"`
 	Decimals      uint8  `json:"decimals"`
 }
+
+type CreateAccount struct {
+	NewAccountId string `json:"new_account_id"`
+	NewPublicKey string `json:"new_public_key"`
+}
