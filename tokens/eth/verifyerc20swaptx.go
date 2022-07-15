@@ -27,8 +27,8 @@ var (
 	LogAnySwapTradeTokensForTokensTopic = common.FromHex("0xfea6abdf4fd32f20966dff7619354cd82cd43dc78a3bee479f04c74dbfc585b3")
 	// LogAnySwapTradeTokensForNative(address[] path, address from, address to, uint amountIn, uint amountOutMin, uint fromChainID, uint toChainID);
 	LogAnySwapTradeTokensForNativeTopic = common.FromHex("0x278277e0209c347189add7bd92411973b5f6b8644f7ac62ea1be984ce993f8f4")
-	// LogAnySwapOut(address token, address from, string to, uint256 amount, uint256 fromChainID, uint256 toChainID, address pool)
-	MixPoolLogAnySwapOutTopic = common.FromHex("0x7850843d2a902a9beefdb6ca2664f891016eef0998b4b5a0bab2cca6c85a28a2")
+	// LogAnySwapOutMixPool(address token, address from, string to, uint256 amount, uint256 fromChainID, uint256 toChainID)
+	LogAnySwapOutMixPoolTopic = common.FromHex("0xb89f5e0fee14552a1edac7c525bc18eb2c5fad996def47de882b82fdea286fd7")
 
 	anySwapOutUnderlyingWithPermitFuncHash         = common.FromHex("0x8d7d3eea")
 	anySwapOutUnderlyingWithTransferPermitFuncHash = common.FromHex("0x1b91a934")
@@ -231,8 +231,9 @@ func (b *Bridge) verifyERC20SwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.R
 		err = b.parseERC20SwapoutTxLog(swapInfo, rlog)
 	case bytes.Equal(logTopic, LogAnySwapOut2Topic):
 		err = b.parseERC20Swapout2TxLog(swapInfo, rlog)
-	case bytes.Equal(logTopic, MixPoolLogAnySwapOutTopic):
-		err = b.parseMixPoolSwapoutTxLog(swapInfo, rlog)
+	case bytes.Equal(logTopic, LogAnySwapOutMixPoolTopic):
+		swapInfo.SwapType = tokens.ERC20SwapTypeMixPool // update SwapType
+		err = b.parseERC20Swapout2TxLog(swapInfo, rlog)
 	case bytes.Equal(logTopic, LogAnySwapOutAndCallTopic):
 		err = b.parseERC20SwapoutAndCallTxLog(swapInfo, rlog)
 	case bytes.Equal(logTopic, LogAnySwapTradeTokensForTokensTopic):
@@ -315,40 +316,6 @@ func (b *Bridge) parseERC20Swapout2TxLog(swapInfo *tokens.SwapTxInfo, rlog *type
 		swapInfo.FromChainID = common.GetBigInt(logData, 64, 32)
 	}
 	swapInfo.ToChainID = common.GetBigInt(logData, 96, 32)
-
-	tokenCfg := b.GetTokenConfig(erc20SwapInfo.Token)
-	if tokenCfg == nil {
-		return tokens.ErrMissTokenConfig
-	}
-	erc20SwapInfo.TokenID = tokenCfg.TokenID
-
-	return nil
-}
-
-func (b *Bridge) parseMixPoolSwapoutTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
-	logTopics := rlog.Topics
-	if len(logTopics) != 3 {
-		return tokens.ErrTxWithWrongTopics
-	}
-	logData := *rlog.Data
-	if len(logData) < 192 {
-		return abicoder.ErrParseDataError
-	}
-	erc20SwapInfo := swapInfo.ERC20SwapInfo
-	erc20SwapInfo.Token = common.BytesToAddress(logTopics[1].Bytes()).LowerHex()
-	swapInfo.From = common.BytesToAddress(logTopics[2].Bytes()).LowerHex()
-	swapInfo.Bind, err = abicoder.ParseStringInData(logData, 0)
-	if err != nil {
-		return err
-	}
-	swapInfo.Value = common.GetBigInt(logData, 32, 32)
-	if params.IsUseFromChainIDInReceiptDisabled(b.ChainConfig.ChainID) {
-		swapInfo.FromChainID = b.ChainConfig.GetChainID()
-	} else {
-		swapInfo.FromChainID = common.GetBigInt(logData, 64, 32)
-	}
-	swapInfo.ToChainID = common.GetBigInt(logData, 96, 32)
-	erc20SwapInfo.MixPool = common.BytesToAddress(common.GetData(logData, 128, 32)).LowerHex()
 
 	tokenCfg := b.GetTokenConfig(erc20SwapInfo.Token)
 	if tokenCfg == nil {

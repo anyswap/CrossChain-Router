@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
 )
 
@@ -16,6 +17,7 @@ const (
 	ERC20SwapType
 	NFTSwapType
 	AnyCallSwapType
+	ERC20SwapTypeMixPool
 
 	MaxValidSwapType
 )
@@ -55,8 +57,6 @@ type ERC20SwapInfo struct {
 
 	CallProxy string        `json:"callProxy,omitempty"`
 	CallData  hexutil.Bytes `json:"callData,omitempty"`
-
-	MixPool string `json:"mixpool,omitempty"`
 }
 
 // NFTSwapInfo struct
@@ -254,5 +254,11 @@ func (args *BuildTxArgs) GetTxNonce() uint64 {
 
 // GetUniqueSwapIdentifier get unique swap identifier
 func (args *BuildTxArgs) GetUniqueSwapIdentifier() string {
-	return fmt.Sprintf("%v:%v:%v", args.FromChainID, args.SwapID, args.LogIndex)
+	fromChainID := args.FromChainID
+	swapID := args.SwapID
+	logIndex := args.LogIndex
+	if common.IsHexHash(swapID) {
+		swapID = common.HexToHash(swapID).Hex()
+	}
+	return fmt.Sprintf("%v:%v:%v", fromChainID, swapID, logIndex)
 }

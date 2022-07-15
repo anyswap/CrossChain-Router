@@ -38,8 +38,11 @@ var (
 	AnySwapInExactTokensForTokensFuncHash = common.FromHex("0x2fc1e728")
 	// anySwapInExactTokensForNative(bytes32 txs, uint amountIn, uint amountOutMin, address[] path, address to, uint deadline, uint fromChainID)
 	AnySwapInExactTokensForNativeFuncHash = common.FromHex("0x52a397d5")
-	// anySwapIn(bytes32 txs, address pool, address token, address to, uint256 amount, uint256 fromChainID)
-	MixPoolAnySwapInFuncHash = common.FromHex("0xc2c1c700")
+
+	// ----------------------- The following is for mixpool router --------------------
+
+	// anySwapIn(string swapID, address token, address to, uint256 amount, uint256 fromChainID)
+	MixPoolAnySwapInFuncHash = common.FromHex("0x8619c43d")
 
 	// ----------------------- The following is for router(v7) + anycall --------------------
 
@@ -143,7 +146,7 @@ func (b *Bridge) buildERC20SwapTxInput(args *tokens.BuildTxArgs) (err error) {
 		return tokens.ErrMissTokenConfig
 	}
 
-	if erc20SwapInfo.MixPool != "" {
+	if args.SwapType == tokens.ERC20SwapTypeMixPool {
 		return b.buildMixPoolSwapinTxInput(args, multichainToken)
 	}
 	if erc20SwapInfo.CallProxy != "" {
@@ -241,8 +244,7 @@ func (b *Bridge) buildMixPoolSwapinTxInput(args *tokens.BuildTxArgs, multichainT
 	funcHash := MixPoolAnySwapInFuncHash
 
 	input := abicoder.PackDataWithFuncHash(funcHash,
-		common.HexToHash(args.SwapID),
-		common.HexToAddress(args.ERC20SwapInfo.MixPool),
+		args.GetUniqueSwapIdentifier(),
 		common.HexToAddress(multichainToken),
 		receiver,
 		amount,
