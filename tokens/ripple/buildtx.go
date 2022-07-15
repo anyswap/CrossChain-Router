@@ -104,7 +104,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	}
 
 	ripplePubKey := ImportPublicKey(common.FromHex(mpcPubkey))
-	memo := fmt.Sprintf("%v:%v:%v", args.FromChainID, args.SwapID, args.LogIndex)
+	memo := args.GetUniqueSwapIdentifier()
 	return NewUnsignedPaymentTransaction(
 		ripplePubKey, nil, uint32(*extra.Sequence),
 		receiver, toTag, amt.String(), *extra.Fee, memo, "", 0)

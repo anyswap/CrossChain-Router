@@ -1,6 +1,7 @@
 package tokens
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
@@ -249,4 +250,9 @@ func (args *BuildTxArgs) GetTxNonce() uint64 {
 		}
 	}
 	return 0
+}
+
+// GetUniqueSwapIdentifier get unique swap identifier
+func (args *BuildTxArgs) GetUniqueSwapIdentifier() string {
+	return fmt.Sprintf("%v:%v:%v", args.FromChainID, args.SwapID, args.LogIndex)
 }
