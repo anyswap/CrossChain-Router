@@ -161,13 +161,16 @@ use `-h` option to get help info for each tool
 go run tokens/solana/tools/publicKeyToAddress/main.go -h
 # change owner for router contract for mpc or privatekey signer
 go run tokens/solana/tools/changeMpc/main.go -h
+# apply owner for router contract for mpc or privatekey signer
+go run tokens/solana/tools/applyMpc/main.go -h
 # issue new token by mpc or privatekey signer
 go run tokens/solana/tools/issueToken/main.go -h
 # create new token AssociatedTokenAccount for mpc in router contract to hold new token asset
 go run tokens/solana/tools/createRouterOwnerATA/main.go -h
 # gen new solana account
-go run tokens/solana/tools/genAccount/main.go
-
+go run tokens/solana/tools/genAccount/main.go -h
+# enable or disable swap function 
+go run tokens/solana/tools/enableSwap/main.go -h
 ```
 
 ```shell
@@ -180,8 +183,10 @@ address: DnsySaKza7ggR6RoviWNWb6WGLg6aKtmYo9dbeuhjQoV
 ## about solana 
 API：https://docs.solana.com/developing/clients/jsonrpc-api
 cookbook: https://solanacookbook.com/references/token.html#how-to-create-a-token-account
-Anchor: https://project-serum.github.io/anchor
+contract sdk: https://github.com/coral-xyz/anchor
 
+### notice
+solana use ED25591 algorithm to create account
 
 > devnet  
 http:  https://api.devnet.solana.com
@@ -195,7 +200,28 @@ chain_id:  245022940
 http: https://api.mainnet-beta.solana.com
 chain_id: 245022934
 
-### notice
-solana use ED25591 algorithm to create account
+
+### js sdk
+web3: https://solana-labs.github.io/solana-web3.js/index.html
+call contract: https://www.npmjs.com/package/@project-serum/anchor
+
+after run `anchor build` (@See https://github.com/anyswap/router-solana-contract)
+copy router-solana-contract/target/idl/router.json to project 
+
+```
+#Example
+const provider = anchor.AnchorProvider.env();
+anchor.setProvider(provider);
+connection = provider.connection;
+
+const idl = JSON.parse(
+	fs.readFileSync("./target/idl/router.json", "utf8")
+);
+let programId = new anchor.web3.PublicKey("9t6JfntGXehxm7qzLZ71BisNNYCMAiRUgoECvZATVpos");
+router_program = new anchor.Program(idl, programId, provider);
+```
+More Example at https://github.com/anyswap/router-solana-contract/blob/main/app/client.js
+
+
 
 

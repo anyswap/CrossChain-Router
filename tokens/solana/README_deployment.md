@@ -1,6 +1,43 @@
 # solana router deploy instructions
 
-### 1. setup CrossChain-Router solana config
+## 1. Setup solana contract 
+### a. create payer account
+Strongly suggest to create sonala payer by local private for deploy, because delegetor pay is supported on solana
+```
+go run tokens/solana/tools/genAccount/main.go
+# output
+PriKey bytes:
+PriKey(base58):
+Address(base58):
+```
+copy output `PriKey bytes` to $home/.config/solana/id.json
+### b. router contract deploy
+See
+https://github.com/anyswap/router-solana-contract#install-and-config
+
+### c. init router contract
+Use client.js to init router contract
+https://github.com/anyswap/router-solana-contract/blob/main/app/client.js 
+
+```
+Usage: client init [options]
+
+Options:
+  -m --mpc <mpc>  mpc address
+  -h, --help      display help for command
+Examples:
+
+ANCHOR_PROVIDER_URL=http://localhost:8899 ANCHOR_WALLET=/Users/potti/.config/solana/id.json node app/client.js init -m CwsNP2KQw7KgZBcnTE6fabNAMipQe1XTS9vCNecyrdES
+```
+
+### d. issue new token
+Use tools issueToken to issue a token with privatekey or mpc key
+```
+go run tokens/solana/tools/issueToken/main.go -h
+```
+
+## 2. Setup CrossChain-Router Enviroment
+### a. setup solana config
 ```
 # auto resign tx if nonce passed, key: chainid  value: 1:on 0:off
 [Server.AutoResignTxIfFailed]
@@ -14,33 +51,14 @@
 245022926 = ["https://api.devnet.solana.com"] #devnet
 ```
 
-### 2. solana token config
+### b. config contract solana token config
 default token decimal is `9`
 
-Native token `SOL` : `contract address` is `native`
-Token not issued by multichain : `contract version` is `0`
-AnyToken issued by multichain :  `contract version` > `0`
+Native token `SOL` : `contract address` is `native`    
+Token not issued by multichain : `contract version` is `0`    
+AnyToken issued by multichain :  `contract version` > `0`    
 
-### 3. create payer account
-support delegetor pay is supported in solana,so strongly suggest to create sonala payer
-```
-go run tokens/solana/tools/genAccount/main.go
-# output
-PriKey bytes:
-PriKey(base58):
-Address(base58):
-```
- 
-### 4. router contract deploy
-See
-https://github.com/anyswap/router-solana-contract#install-and-config
-
-### 5. issue new token
-```
-go run tokens/solana/tools/issueToken/main.go -h
-```
-
-### 6. swapout 
+### c. swapout 
 see
 https://github.com/anyswap/router-solana-contract#Tools
 
