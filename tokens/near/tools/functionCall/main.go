@@ -50,7 +50,7 @@ func main() {
 	var err error
 	var nearPubKey *near.PublicKey
 
-	if paramPrivKey != " " {
+	if paramPrivKey != "" {
 		nearPubKey, err = near.PublicKeyFromString(paramPublicKey)
 		if err != nil {
 			log.Fatal("PublicKeyFromString", "err", err)

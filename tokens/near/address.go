@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
@@ -19,6 +20,8 @@ func (b *Bridge) GetAccountNonce(account, publicKey string) (uint64, error) {
 		result, err := GetAccountNonce(url, account, publicKey)
 		if err == nil {
 			return result, nil
+		} else {
+			log.Warn("GetAccountNonce", "err", err)
 		}
 	}
 	return 0, tokens.ErrGetAccountNonce
