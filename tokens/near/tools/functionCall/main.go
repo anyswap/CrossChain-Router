@@ -66,7 +66,7 @@ func main() {
 		}
 	}
 
-	nonce, err := bridge.GetAccountNonce(nearPubKey.Address(), nearPubKey.String())
+	nonce, err := bridge.GetAccountNonce(paramAccountId, nearPubKey.String())
 	if err != nil {
 		log.Fatal("get account nonce failed", "err", err)
 	}

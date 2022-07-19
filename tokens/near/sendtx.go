@@ -1,6 +1,7 @@
 package near
 
 import (
+	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/near/borsh-go"
@@ -32,6 +33,8 @@ func (b *Bridge) BroadcastTxCommit(signedTx []byte) (result string, err error) {
 		result, err = BroadcastTxCommit(url, signedTx)
 		if err == nil {
 			success = true
+		} else {
+			log.Error("BroadcastTxCommit", "err", err)
 		}
 	}
 	if success {
