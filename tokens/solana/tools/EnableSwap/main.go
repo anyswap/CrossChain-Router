@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"math/big"
+	"strconv"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -20,7 +21,7 @@ var (
 	paramConfigFile string
 	paramChainID    string
 
-	enable bool
+	paramEnable string
 
 	routerProgramID string
 	routerMPC       string
@@ -36,6 +37,10 @@ var (
 func main() {
 	initAll()
 
+	enable, err := strconv.ParseBool(paramEnable)
+	if err != nil {
+		log.Fatal("please input right enable flag", err)
+	}
 	tx, err := bridge.BuildEnableSwapTransaction(routerProgramID, routerMPC, routerPDA, enable)
 	if err != nil {
 		log.Fatal("BuildEnableSwapTransaction err", err)
@@ -51,7 +56,7 @@ func main() {
 
 func initAll() {
 	initFlags()
-	// initConfig()
+	initConfig()
 	initBridge()
 }
 
@@ -63,7 +68,7 @@ func initFlags() {
 	flag.StringVar(&routerMPC, "routerMPC", "", "routerMPC address")
 	flag.StringVar(&routerPDA, "routerPDA", "", "routerPDA address")
 
-	flag.BoolVar(&enable, "enable", true, "enable:true disable:false")
+	flag.StringVar(&paramEnable, "enable", "true", "enable:true disable:false")
 
 	flag.StringVar(&paramPublicKey, "pubkey", "", "signer public key")
 	flag.StringVar(&paramPriKey, "priKey", "", "signer priKey key")
@@ -88,7 +93,7 @@ func initConfig() {
 	} else {
 		mpcConfig = mpc.InitConfig(config.MPC, true)
 	}
-	log.Info("init config finished, IsFastMPC: %v", mpcConfig.IsFastMPC)
+	log.Info("init config finished")
 }
 
 func initBridge() {
