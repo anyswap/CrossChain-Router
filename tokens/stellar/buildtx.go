@@ -66,6 +66,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	if err != nil {
 		return nil, err
 	}
+	args.SwapValue = amount // SwapValue
 	amt := getPaymentAmount(amount, token)
 
 	fromAccount, err := b.GetAccount(args.From)
