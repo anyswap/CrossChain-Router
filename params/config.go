@@ -974,7 +974,7 @@ func LoadRouterConfig(configFile string, isServer, check bool) *RouterConfig {
 	if !common.FileExist(configFile) {
 		log.Fatalf("LoadRouterConfig error: config file '%v' not exist", configFile)
 	}
-	config := &RouterConfig{}
+	config := &RouterConfig{Extra: &ExtraConfig{}}
 	if _, err := toml.DecodeFile(configFile, &config); err != nil {
 		log.Fatalf("LoadRouterConfig error (toml DecodeFile): %v", err)
 	}
@@ -1012,7 +1012,7 @@ func ReloadRouterConfig() {
 
 	log.Info("reload router config file", "configFile", configFile, "isServer", isServer)
 
-	config := &RouterConfig{}
+	config := &RouterConfig{Extra: &ExtraConfig{}}
 	if _, err := toml.DecodeFile(configFile, &config); err != nil {
 		log.Errorf("ReloadRouterConfig error (toml DecodeFile): %v", err)
 		return

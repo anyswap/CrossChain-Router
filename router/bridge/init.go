@@ -108,6 +108,7 @@ func InitRouterBridges(isServer bool) {
 			InitChainConfig(bridge, chainID)
 
 			bridge.InitAfterConfig()
+			router.InitOnchainCustomConfig(chainID)
 			router.SetBridge(chainID.String(), bridge)
 
 			wg2 := new(sync.WaitGroup)
