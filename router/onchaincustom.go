@@ -1,6 +1,7 @@
 package router
 
 import (
+	"fmt"
 	"math/big"
 	"strconv"
 
@@ -13,16 +14,15 @@ const (
 	additionalSrcChainSwapFeeRateKey = "additionalSrcChainSwapFeeRate"
 )
 
+func getCustomConfigKey(tokenID, keyID string) string {
+	return fmt.Sprintf("%s/%s", tokenID, keyID)
+}
+
 // InitOnchainCustomConfig init onchain custom config
-func InitOnchainCustomConfig(chainID *big.Int) {
+func InitOnchainCustomConfig(chainID *big.Int, tokenID string) {
 	logErrFunc := log.GetLogFuncOr(DontPanicInLoading(), log.Error, log.Fatal)
 
-	ccConfig := tokens.GetOnchainCustomConfig(chainID.String())
-	if ccConfig == nil {
-		ccConfig = &tokens.OnchainCustomConfig{}
-	}
-
-	key := additionalSrcChainSwapFeeRateKey
+	key := getCustomConfigKey(tokenID, additionalSrcChainSwapFeeRateKey)
 	addtionalFeeRateStr, err := GetCustomConfig(chainID, key)
 	if err != nil {
 		logErrFunc("get custom config failed", "chainID", chainID, "key", key, "err", err)
@@ -35,11 +35,17 @@ func InitOnchainCustomConfig(chainID *big.Int) {
 
 	addtionalFeeRate, err := strconv.ParseFloat(addtionalFeeRateStr, 8)
 	if err != nil {
-		logErrFunc("wrong custom addtional fee rate", "chainID", chainID, "key", key, "value", addtionalFeeRateStr, "err", err)
+		logErrFunc("wrong custom addtional fee rate", "chainID", chainID, "tokenID", tokenID, "key", key, "value", addtionalFeeRateStr, "err", err)
 		return
 	}
+
+	ccConfig := tokens.GetOnchainCustomConfig(chainID.String(), tokenID)
+	if ccConfig == nil {
+		ccConfig = &tokens.OnchainCustomConfig{}
+	}
+
 	ccConfig.AdditionalSrcChainSwapFeeRate = addtionalFeeRate
 
-	tokens.SetOnchainCustomConfig(chainID.String(), ccConfig)
-	log.Info("set onchain custom config", "chainID", chainID, "config", ccConfig)
+	tokens.SetOnchainCustomConfig(chainID.String(), tokenID, ccConfig)
+	log.Info("set onchain custom config", "chainID", chainID, "tokenID", tokenID, "config", ccConfig)
 }
