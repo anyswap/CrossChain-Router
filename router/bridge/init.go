@@ -107,7 +107,6 @@ func InitRouterBridges(isServer bool) {
 			InitChainConfig(bridge, chainID)
 
 			bridge.InitAfterConfig()
-			router.InitOnchainCustomConfig(chainID)
 			router.SetBridge(chainID.String(), bridge)
 
 			wg2 := new(sync.WaitGroup)
@@ -430,6 +429,7 @@ func InitTokenConfig(b tokens.IBridge, tokenID string, chainID *big.Int) {
 		logErrFunc("check token config failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
 		return
 	}
+	router.InitOnchainCustomConfig(chainID, tokenID)
 	b.SetTokenConfig(tokenAddr, tokenCfg)
 
 	router.SetMultichainToken(tokenID, chainID.String(), tokenAddr)

@@ -17,7 +17,7 @@ var (
 
 	swapConfigMap    = new(sync.Map) // key is tokenID,fromChainID,toChainID
 	feeConfigMap     = new(sync.Map) // key is tokenID,fromChainID,toChainID
-	onchainCustomCfg = new(sync.Map) // key is chainID
+	onchainCustomCfg = new(sync.Map) // key is fromChainID,tokenID
 
 	// StubChainIDBase stub chainID base value
 	StubChainIDBase = big.NewInt(1000000000000)
@@ -200,15 +200,20 @@ func GetFeeConfig(tokenID, fromChainID, toChainID string) *FeeConfig {
 	return mmm.(*FeeConfig)
 }
 
-// SetOnchainCustomConfig set chain custom config
-func SetOnchainCustomConfig(chainID string, config *OnchainCustomConfig) {
-	onchainCustomCfg.Store(chainID, config)
+// SetOnchainCustomConfig set onchain custom config
+func SetOnchainCustomConfig(chainID, tokenID string, config *OnchainCustomConfig) {
+	m := new(sync.Map)
+	m.Store(tokenID, config)
+	onchainCustomCfg.Store(chainID, m)
 }
 
-// GetOnchainCustomConfig get chain custom config
-func GetOnchainCustomConfig(chainID string) *OnchainCustomConfig {
-	if config, exist := onchainCustomCfg.Load(chainID); exist {
-		return config.(*OnchainCustomConfig)
+// GetOnchainCustomConfig get onchain custom config
+func GetOnchainCustomConfig(chainID, tokenID string) *OnchainCustomConfig {
+	if m, exist := onchainCustomCfg.Load(chainID); exist {
+		mm := m.(*sync.Map)
+		if c, ok := mm.Load(tokenID); ok {
+			return c.(*OnchainCustomConfig)
+		}
 	}
 	return nil
 }
@@ -263,7 +268,7 @@ func CalcSwapValue(tokenID, fromChainID, toChainID string, value *big.Int, fromD
 
 	swapfeeRatePerMillion := feeCfg.SwapFeeRatePerMillion
 
-	ccConfig := GetOnchainCustomConfig(fromChainID)
+	ccConfig := GetOnchainCustomConfig(fromChainID, tokenID)
 	if ccConfig != nil && ccConfig.AdditionalSrcChainSwapFeeRate > 0 {
 		additionalRate := ccConfig.AdditionalSrcChainSwapFeeRate
 		swapfeeRatePerMillion += uint64(additionalRate * 1000000)
