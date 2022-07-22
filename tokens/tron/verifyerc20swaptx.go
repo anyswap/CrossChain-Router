@@ -129,7 +129,7 @@ func (b *Bridge) checkERC20SwapInfo(swapInfo *tokens.SwapTxInfo) error {
 	if dstBridge == nil {
 		return tokens.ErrNoBridgeForChainID
 	}
-	if !dstBridge.IsValidAddress(anyToEth(swapInfo.Bind)) {
+	if !dstBridge.IsValidAddress(anyToTron(swapInfo.Bind)) {
 		log.Warn("wrong bind address in erc20 swap", "txid", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "bind", swapInfo.Bind)
 		return tokens.ErrWrongBindAddress
 	}
@@ -183,7 +183,7 @@ func (b *Bridge) checkTxSuccess(swapInfo *tokens.SwapTxInfo, allowUnstable bool)
 			return errors.New("tx inconsistent")
 		}
 		from := fmt.Sprintf("%v", tronaddress.Address(c.OwnerAddress))
-		contractAddress := anyToEth(tronaddress.Address(c.ContractAddress).String())
+		contractAddress := anyToTron(tronaddress.Address(c.ContractAddress).String())
 		if contractAddress == "" && !params.AllowCallByConstructor() {
 			return tokens.ErrTxWithWrongContract
 		} else {
@@ -200,7 +200,7 @@ func (b *Bridge) checkTxSuccess(swapInfo *tokens.SwapTxInfo, allowUnstable bool)
 func (b *Bridge) checkCallByContract(swapInfo *tokens.SwapTxInfo) error {
 	txTo := swapInfo.TxTo
 	routerContract := b.GetRouterContract(swapInfo.ERC20SwapInfo.Token)
-	routerContract = anyToEth(routerContract)
+	routerContract = anyToTron(routerContract)
 	if routerContract == "" {
 		return tokens.ErrMissRouterInfo
 	}
@@ -260,7 +260,7 @@ func (b *Bridge) verifyERC20SwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.R
 	if routerContract == "" {
 		return tokens.ErrMissRouterInfo
 	}
-	if !common.IsEqualIgnoreCase(rlog.Address.LowerHex(), anyToEth(routerContract)) {
+	if !common.IsEqualIgnoreCase(rlog.Address.LowerHex(), anyToTron(routerContract)) {
 		log.Warn("router contract mismatch", "have", rlog.Address.LowerHex(), "want", routerContract)
 		return tokens.ErrTxWithWrongContract
 	}
@@ -439,7 +439,7 @@ func checkSwapTradePath(swapInfo *tokens.SwapTxInfo) error {
 		return tokens.ErrTxWithWrongPath
 	}
 	routerContract := dstBridge.GetRouterContract(multichainToken)
-	routerContract = anyToEth(routerContract)
+	routerContract = anyToTron(routerContract)
 	if routerContract == "" {
 		return tokens.ErrMissRouterInfo
 	}

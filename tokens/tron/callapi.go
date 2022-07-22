@@ -340,7 +340,7 @@ func (b *Bridge) NetworkID() (*big.Int, error) {
 
 // GetCode returns contract bytecode
 func (b *Bridge) GetCode(contractAddress string) (data []byte, err error) {
-	contractDesc := tronaddress.HexToAddress(anyToEth(contractAddress))
+	contractDesc := tronaddress.HexToAddress(anyToTron(contractAddress))
 	if contractDesc.String() == "" {
 		return nil, errors.New("invalid contract address")
 	}
@@ -408,11 +408,11 @@ func (b *Bridge) GetBalance(account string) (balance *big.Int, err error) {
 }
 
 func (b *Bridge) BuildTriggerConstantContractTx(from, contract string, selector string, paramater string, fee_limit int32) (tx *core.Transaction, err error) {
-	fromAddr := tronaddress.HexToAddress(anyToEth(from))
+	fromAddr := tronaddress.HexToAddress(anyToTron(from))
 	if fromAddr.String() == "" {
 		return nil, errors.New("invalid from address")
 	}
-	contractAddr := tronaddress.HexToAddress(anyToEth(contract))
+	contractAddr := tronaddress.HexToAddress(anyToTron(contract))
 	if contractAddr.String() == "" {
 		return nil, errors.New("invalid contract address")
 	}
@@ -455,13 +455,13 @@ func (b *Bridge) BuildTriggerConstantContractTx(from, contract string, selector 
 
 // CallContract
 func (b *Bridge) CallContract(contract string, data hexutil.Bytes, blockNumber string) (string, error) {
-	contractAddr := tronaddress.HexToAddress(anyToEth(contract))
+	contractAddr := tronaddress.HexToAddress(anyToTron(contract))
 	if contractAddr.String() == "" {
 		return "", errors.New("invalid contract address")
 	}
 
 	reqArgs := map[string]interface{}{
-		"to":   anyToEth(contract),
+		"to":   anyToTron(contract),
 		"data": data,
 	}
 	gateway := b.GatewayConfig

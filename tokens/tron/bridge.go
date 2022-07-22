@@ -118,16 +118,16 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 		return
 	}
 
-	tokenCfg.ContractAddress = anyToEth(tokenCfg.ContractAddress)
-	tokenCfg.RouterContract = anyToEth(tokenCfg.RouterContract)
-	tokenAddr = anyToEth(tokenAddr)
+	tokenCfg.ContractAddress = anyToTron(tokenCfg.ContractAddress)
+	tokenCfg.RouterContract = anyToTron(tokenCfg.RouterContract)
+	tokenAddr = anyToTron(tokenAddr)
 	b.CrossChainBridgeBase.SetTokenConfig(tokenAddr, tokenCfg)
 }
 
 // GetTokenConfig get token config
-func (b *Bridge) GetTokenConfig(token string) *TokenConfig {
-	if config, exist := b.TokenConfigMap.Load(strings.ToLower(anyToEth(token))); exist {
-		return config.(*TokenConfig)
+func (b *Bridge) GetTokenConfig(token string) *tokens.TokenConfig {
+	if config, exist := b.TokenConfigMap.Load(strings.ToLower(anyToTron(token))); exist {
+		return config.(*tokens.TokenConfig)
 	}
 	return nil
 }

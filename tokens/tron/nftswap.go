@@ -174,7 +174,7 @@ func (b *Bridge) verifyNFTSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPC
 	}
 
 	routerContract := b.GetRouterContract(swapInfo.NFTSwapInfo.Token)
-	routerContract = anyToEth(routerContract)
+	routerContract = anyToTron(routerContract)
 	if routerContract == "" {
 		return tokens.ErrMissRouterInfo
 	}
@@ -438,7 +438,7 @@ func (b *Bridge) buildNFTSwapTxInput(args *tokens.BuildTxArgs) (err error) {
 
 	args.Input = (*hexutil.Bytes)(&input) // input
 	routerContract := b.GetRouterContract(multichainToken)
-	args.To = anyToEth(routerContract) // to
+	args.To = anyToTron(routerContract) // to
 
 	return nil
 }
