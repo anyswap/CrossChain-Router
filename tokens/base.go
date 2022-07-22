@@ -25,7 +25,7 @@ var (
 
 // OnchainCustomConfig onchain custom config (in router config)
 type OnchainCustomConfig struct {
-	AdditionalSrcChainSwapFeeRate float64
+	AdditionalSrcChainSwapFeeRate uint64
 }
 
 // IsNativeCoin is native coin
@@ -271,7 +271,7 @@ func CalcSwapValue(tokenID, fromChainID, toChainID string, value *big.Int, fromD
 	ccConfig := GetOnchainCustomConfig(fromChainID, tokenID)
 	if ccConfig != nil && ccConfig.AdditionalSrcChainSwapFeeRate > 0 {
 		additionalRate := ccConfig.AdditionalSrcChainSwapFeeRate
-		swapfeeRatePerMillion += uint64(additionalRate * 1000000)
+		swapfeeRatePerMillion += additionalRate
 	}
 
 	valueLeft := value

@@ -3,8 +3,8 @@ package router
 import (
 	"fmt"
 	"math/big"
-	"strconv"
 
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
@@ -33,7 +33,7 @@ func InitOnchainCustomConfig(chainID *big.Int, tokenID string) {
 		return
 	}
 
-	addtionalFeeRate, err := strconv.ParseFloat(addtionalFeeRateStr, 8)
+	addtionalFeeRate, err := common.GetUint64FromStr(addtionalFeeRateStr)
 	if err != nil {
 		logErrFunc("wrong custom addtional fee rate", "chainID", chainID, "tokenID", tokenID, "key", key, "value", addtionalFeeRateStr, "err", err)
 		return
