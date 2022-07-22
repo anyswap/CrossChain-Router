@@ -1,13 +1,17 @@
 package iota
 
 import (
+	"context"
+	"encoding/hex"
 	"math/big"
 	"sync"
+	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/base"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/ripple/rubblelabs/ripple/websockets"
+	iotago "github.com/iotaledger/iota.go/v2"
 )
 
 var (
@@ -85,7 +89,32 @@ func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
 }
 
 // GetTransactionByHash call eth_getTransactionByHash
-func (b *Bridge) GetTransactionByHash(txHash string) (txRes *websockets.TxResult, err error) {
+func (b *Bridge) GetTransactionByHash(txHash string) (txRes *iotago.Message, err error) {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancelFunc()
+	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
+	for _, url := range urls {
+		nodeHTTPAPIClient := iotago.NewNodeHTTPAPIClient(url)
+		if messageID, err := hex.DecodeString(txHash); err != nil {
+			return nil, err
+		} else {
+			var msgID [32]byte
+			copy(msgID[:], messageID)
+			if metadataResponse, err := nodeHTTPAPIClient.MessageMetadataByMessageID(ctx, msgID); err != nil {
+				return nil, err
+			} else {
+				if *metadataResponse.LedgerInclusionState != "included" {
+					return nil, tokens.ErrTxIsNotValidated
+				} else {
+					if messageRes, err := nodeHTTPAPIClient.MessageByMessageID(ctx, msgID); err != nil {
+						return nil, err
+					} else {
+						return messageRes, nil
+					}
+				}
+			}
+		}
+	}
 	return
 }
 

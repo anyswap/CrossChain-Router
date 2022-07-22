@@ -84,8 +84,7 @@ var (
 	ErrReswapNotSupport       = errors.New("reswap not support")
 )
 
-// errors should register in router swap
-var (
+	// errors should register in router swap
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")
 	ErrTxWithWrongPath   = errors.New("swap trade tx with wrong path")
 	ErrMissTokenConfig   = errors.New("miss token config")
