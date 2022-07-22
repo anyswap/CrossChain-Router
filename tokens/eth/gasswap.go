@@ -59,7 +59,6 @@ func (b *Bridge) parseGasSwapTxMemo(swapInfo *tokens.SwapTxInfo, payload *hexuti
 	gasSwapInfo.SrcCurrencyDecimal = srcCurrencyInfo.Decimal
 	gasSwapInfo.DestCurrencyDecimal = destCurrencyInfo.Decimal
 	gasSwapInfo.MinReceiveValue = tokens.ToBits(memo[2], uint8(destCurrencyInfo.Decimal.Uint64()))
-
 	return nil
 }
 
@@ -142,10 +141,10 @@ func (b *Bridge) verifyGasSwapTx(txHash string, _ int, allowUnstable bool) (*tok
 		return swapInfo, err
 	}
 
-	// _, err = tokens.CheckGasSwapValue(swapInfo.GasSwapInfo, swapInfo.Value)
-	// if err != nil {
-	// 	return swapInfo, err
-	// }
+	_, err = tokens.CheckGasSwapValue(swapInfo.FromChainID, swapInfo.GasSwapInfo, swapInfo.Value)
+	if err != nil {
+		return swapInfo, err
+	}
 
 	if !allowUnstable {
 		ctx := []interface{}{

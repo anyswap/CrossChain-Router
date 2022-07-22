@@ -412,7 +412,7 @@ func GetSwapThreshold(chainID *big.Int) (*big.Int, error) {
 }
 
 func CheckGasSwapValue(fromChainID *big.Int, gasSwapInfo *GasSwapInfo, receiveValue *big.Int) (*big.Int, error) {
-	srcCurrencyPrice := gasSwapInfo.SrcCurrencyPrice
+	srcCurrencyPrice := new(big.Int).Set(gasSwapInfo.SrcCurrencyPrice)
 	destCurrencyPrice := gasSwapInfo.DestCurrencyPrice
 	srcDecimal := uint8(gasSwapInfo.SrcCurrencyDecimal.Uint64())
 	destDecimal := uint8(gasSwapInfo.DestCurrencyDecimal.Uint64())
@@ -425,7 +425,6 @@ func CheckGasSwapValue(fromChainID *big.Int, gasSwapInfo *GasSwapInfo, receiveVa
 	if err != nil {
 		return nil, err
 	}
-
 	if swapThreshold.Cmp(swapInTotalPrice) < 0 {
 		log.Error("CheckGasSwapValue", "swapThreshold", swapThreshold, "swapInTotalPrice", swapInTotalPrice)
 		return nil, ErrOutOfSwapThreshold
@@ -435,7 +434,6 @@ func CheckGasSwapValue(fromChainID *big.Int, gasSwapInfo *GasSwapInfo, receiveVa
 	amount := receiveTotalValue.Div(receiveTotalValue, destCurrencyPrice)
 
 	realReceiveValue := ConvertTokenValue(amount, srcDecimal, destDecimal)
-
 	if realReceiveValue.Cmp(minReceiveValue) < 0 {
 		log.Error("CheckGasSwapValue", "minReceiveValue", minReceiveValue, "realReceiveValue", realReceiveValue)
 		return nil, ErrLessThanMinValue
