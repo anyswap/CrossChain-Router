@@ -1,13 +1,8 @@
 package iota
 
 import (
-	"errors"
-
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
-	"github.com/anyswap/CrossChain-Router/v3/tokens/ripple/rubblelabs/ripple/data"
 )
-
-var errTxResultType = errors.New("tx type is not data.TxResult")
 
 // VerifyMsgHash verify msg hash
 func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) (err error) {
@@ -31,8 +26,4 @@ func (b *Bridge) VerifyTransaction(txHash string, args *tokens.VerifyArgs) (*tok
 //nolint:gocyclo,funlen // ok
 func (b *Bridge) verifySwapoutTx(txHash string, _ int, allowUnstable bool) (*tokens.SwapTxInfo, error) {
 	return nil, nil
-}
-
-func (b *Bridge) checkToken(token *tokens.TokenConfig, txmeta *data.TransactionWithMetaData) error {
-	return nil
 }

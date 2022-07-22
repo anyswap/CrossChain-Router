@@ -3,7 +3,6 @@ package iota
 import (
 	"math/big"
 	"sync"
-	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
@@ -19,11 +18,6 @@ var (
 
 	supportedChainIDs     = make(map[string]bool)
 	supportedChainIDsInit sync.Once
-
-	rpcRetryTimes    = 3
-	rpcRetryInterval = 1 * time.Second
-
-	wrapRPCQueryError = tokens.WrapRPCQueryError
 )
 
 const (
@@ -71,11 +65,6 @@ func GetStubChainID(network string) *big.Int {
 	stubChainID.Mod(stubChainID, tokens.StubChainIDBase)
 	stubChainID.Add(stubChainID, tokens.StubChainIDBase)
 	return stubChainID
-}
-
-// SetRPCRetryTimes set rpc retry times (used in cmd tools)
-func SetRPCRetryTimes(times int) {
-	rpcRetryTimes = times
 }
 
 // GetLatestBlockNumber gets latest block number
