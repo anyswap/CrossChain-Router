@@ -44,6 +44,7 @@ var (
 	ErrTxIsNotValidated      = errors.New("tx is not validated")
 	ErrPauseSwapInto         = errors.New("maintain: pause swap into")
 	ErrBuildTxErrorAndDelay  = errors.New("[build tx error]")
+	ErrTxResultType          = errors.New("tx type is not match")
 
 	// errors should register in router swap
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")

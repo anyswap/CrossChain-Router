@@ -106,15 +106,19 @@ func main() {
 			}
 			toEdAddr := iotago.AddressFromEd25519PubKey(toPublicKey)
 
-			message, err := iotago.NewTransactionBuilder().
+			if message, err := iotago.NewTransactionBuilder().
 				AddInput(&iotago.ToBeSignedUTXOInput{Address: &edAddr, Input: &inputUTXO1}).
 				AddOutput(&iotago.SigLockedSingleOutput{Address: &toEdAddr, Amount: needValue}).
 				AddOutput(&iotago.SigLockedSingleOutput{Address: &edAddr, Amount: returnValue}).
-				AddIndexationPayload(indexationPayload).BuildAndSwapToMessageBuilder(signer, nil).Build()
-			if err != nil {
+				AddIndexationPayload(indexationPayload).BuildAndSwapToMessageBuilder(signer, nil).Build(); err != nil {
 				log.Fatal("NewTransactionBuilder", "err", err)
+			} else {
+				if res, err := nodeHTTPAPIClient.SubmitMessage(ctx, message); err != nil {
+					log.Fatal("SubmitMessage", "err", err)
+				} else {
+					fmt.Printf("res: %+v\n", res)
+				}
 			}
-			nodeHTTPAPIClient.SubmitMessage(ctx, message)
 		}
 	}
 }
