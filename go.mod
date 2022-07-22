@@ -19,7 +19,7 @@ require (
 	github.com/mr-tron/base58 v1.2.0
 	github.com/pborman/uuid v1.2.1
 	github.com/sirupsen/logrus v1.8.1
-	github.com/stretchr/testify v1.7.5
+	github.com/stretchr/testify v1.8.0
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/urfave/cli/v2 v2.11.1
 	go.mongodb.org/mongo-driver v1.9.1
