@@ -11,6 +11,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/rpc v1.2.0
 	github.com/gorilla/websocket v1.5.0
+	github.com/iotaledger/iota.go/v2 v2.0.1
 	github.com/jonboulle/clockwork v0.3.0 // indirect
 	github.com/jowenshaw/gethclient v0.3.1
 	github.com/lestrrat-go/file-rotatelogs v2.4.0+incompatible
@@ -20,8 +21,8 @@ require (
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.7.5
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
-	github.com/urfave/cli/v2 v2.10.2
+	github.com/urfave/cli/v2 v2.11.1
 	go.mongodb.org/mongo-driver v1.9.1
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
-	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
+	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15
 )
