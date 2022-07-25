@@ -37,6 +37,6 @@ type Output struct {
 
 type Payload struct {
 	Type  uint64 `json:"type"`
-	Index uint64 `json:"index"`
+	Index string `json:"index"`
 	Data  string `json:"data"`
 }
