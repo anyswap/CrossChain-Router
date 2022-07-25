@@ -65,6 +65,8 @@ var (
 	ErrTokenDecimals          = errors.New("get token decimals error")
 	ErrGetLatestBlockHash     = errors.New("get latest block hash error")
 	ErrTxResultType           = errors.New("tx type is not TransactionResult")
+	ErrGetNodeInfo            = errors.New("err to get node info")
+	ErrPayloadType            = errors.New("payload type error")
 	ErrTxWithWrongAssetLength = errors.New("tx with wrong asset length")
 	ErrOutputLength           = errors.New("output lenght is zero")
 	ErrMpcAddrMissMatch       = errors.New("receiver addr not match mpc addr")

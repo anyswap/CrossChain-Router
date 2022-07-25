@@ -1,11 +1,8 @@
 package iota
 
 import (
-	"context"
-	"encoding/hex"
 	"math/big"
 	"sync"
-	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
@@ -74,13 +71,25 @@ func GetStubChainID(network string) *big.Int {
 // GetLatestBlockNumber gets latest block number
 // For ripple, GetLatestBlockNumber returns current ledger version
 func (b *Bridge) GetLatestBlockNumber() (num uint64, err error) {
-	return
+	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
+	for _, url := range urls {
+		if blockNumber, err := GetLatestBlockNumber(url); err == nil {
+			return blockNumber, nil
+		} else {
+			log.Error("GetLatestBlockNumber", "err", err)
+		}
+	}
+	return 0, tokens.ErrGetNodeInfo
 }
 
 // GetLatestBlockNumberOf gets latest block number from single api
 // For ripple, GetLatestBlockNumberOf returns current ledger version
 func (b *Bridge) GetLatestBlockNumberOf(url string) (num uint64, err error) {
-	return
+	if blockNumber, err := GetLatestBlockNumber(url); err == nil {
+		return blockNumber, nil
+	} else {
+		return 0, err
+	}
 }
 
 // GetTransaction impl
@@ -89,33 +98,37 @@ func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
 }
 
 // GetTransactionByHash call eth_getTransactionByHash
-func (b *Bridge) GetTransactionByHash(txHash string) (txRes *iotago.Message, err error) {
-	ctx, cancelFunc := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancelFunc()
+func (b *Bridge) GetTransactionMetadata(txHash string) (txRes *iotago.MessageMetadataResponse, err error) {
 	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
-	for _, url := range urls {
-		nodeHTTPAPIClient := iotago.NewNodeHTTPAPIClient(url)
-		if messageID, err := hex.DecodeString(txHash); err != nil {
-			return nil, err
-		} else {
-			var msgID [32]byte
-			copy(msgID[:], messageID)
-			if metadataResponse, err := nodeHTTPAPIClient.MessageMetadataByMessageID(ctx, msgID); err != nil {
-				return nil, err
+	if msgID, err := ConvertMessageID(txHash); err != nil {
+		return nil, err
+	} else {
+		for _, url := range urls {
+			if metadataResponse, err := GetTransactionMetadata(url, msgID); err == nil {
+				return metadataResponse, nil
 			} else {
-				if *metadataResponse.LedgerInclusionState != "included" {
-					return nil, tokens.ErrTxIsNotValidated
-				} else {
-					if messageRes, err := nodeHTTPAPIClient.MessageByMessageID(ctx, msgID); err != nil {
-						return nil, err
-					} else {
-						return messageRes, nil
-					}
-				}
+				log.Error("GetTransactionMetadata", "err", err)
 			}
 		}
+		return nil, tokens.ErrTxNotFound
 	}
-	return
+}
+
+// GetTransactionByHash call eth_getTransactionByHash
+func (b *Bridge) GetTransactionByHash(txHash string) (txRes *iotago.Message, err error) {
+	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
+	if msgID, err := ConvertMessageID(txHash); err != nil {
+		return nil, err
+	} else {
+		for _, url := range urls {
+			if messageResponse, err := GetTransactionByHash(url, msgID); err == nil {
+				return messageResponse, nil
+			} else {
+				log.Error("GetTransactionByHash", "err", err)
+			}
+		}
+		return nil, tokens.ErrTxNotFound
+	}
 }
 
 // GetTransactionStatus impl
