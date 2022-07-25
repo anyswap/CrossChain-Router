@@ -12,6 +12,13 @@ import (
 	"github.com/near/borsh-go"
 )
 
+const (
+	SWAPOUTLOG       = "SwapOut"
+	SWAPOUTNATIVELOG = "SwapOutNative"
+	TRANSFERLOG      = "Transfer"
+	NATIVETOKEN      = "near"
+)
+
 // VerifyMsgHash verify msg hash
 func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) (err error) {
 	txb, ok := rawTx.(*RawTransaction)
@@ -121,10 +128,51 @@ func (b *Bridge) checkTxStatus(txres *TransactionResult, allowUnstable bool) err
 	return nil
 }
 
-func (b *Bridge) parseNep141SwapoutTxEvent(swapInfo *tokens.SwapTxInfo, event []string) error {
+func (b *Bridge) parseNep141SwapoutTxEvent(swapInfo *tokens.SwapTxInfo, event []string) (err error) {
+	if len(event) != 10 {
+		return tokens.ErrSwapoutLogNotFound
+	}
+	switch event[0] {
+	case TRANSFERLOG:
+		err = b.parseUnderlyingTxEvent(swapInfo, event)
+	default:
+		err = b.parseAnyTokenOrNativeTxEvent(swapInfo, event)
+	}
+	if err != nil {
+		return err
+	}
+	tokenCfg := b.GetTokenConfig(swapInfo.ERC20SwapInfo.Token)
+	if tokenCfg == nil {
+		return tokens.ErrMissTokenConfig
+	}
+	swapInfo.ERC20SwapInfo.TokenID = tokenCfg.TokenID
+	swapInfo.To = swapInfo.Bind
+	return nil
+}
 
+func (b *Bridge) parseAnyTokenOrNativeTxEvent(swapInfo *tokens.SwapTxInfo, event []string) error {
+	swapInfo.ERC20SwapInfo.Token = event[9]
+	swapInfo.From = b.GetRouterContract("")
+	swapInfo.Bind = event[4]
+
+	amount, err := common.GetBigIntFromStr(event[6])
+	if err != nil {
+		return err
+	}
+	swapInfo.Value = amount
+
+	toChainID, err := common.GetBigIntFromStr(event[8])
+	if err != nil {
+		return err
+	}
+	swapInfo.ToChainID = toChainID
+	return nil
+}
+
+func (b *Bridge) parseUnderlyingTxEvent(swapInfo *tokens.SwapTxInfo, event []string) error {
 	swapInfo.ERC20SwapInfo.Token = event[6]
-	swapInfo.From = b.GetChainConfig().RouterContract
+	swapInfo.ERC20SwapInfo.ForUnderlying = true
+	swapInfo.From = b.GetRouterContract("")
 	swapInfo.Bind = event[8]
 
 	amount, err := common.GetBigIntFromStr(event[1])
@@ -138,13 +186,6 @@ func (b *Bridge) parseNep141SwapoutTxEvent(swapInfo *tokens.SwapTxInfo, event []
 		return err
 	}
 	swapInfo.ToChainID = toChainID
-
-	tokenCfg := b.GetTokenConfig(swapInfo.ERC20SwapInfo.Token)
-	if tokenCfg == nil {
-		return tokens.ErrMissTokenConfig
-	}
-	swapInfo.ERC20SwapInfo.TokenID = tokenCfg.TokenID
-	swapInfo.To = swapInfo.Bind
 	return nil
 }
 
@@ -210,11 +251,23 @@ func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable boo
 }
 
 func (b *Bridge) fliterReceipts(receipt *ReceiptsOutcome) ([]string, error) {
-	if len(receipt.Outcome.Logs) == 2 {
+	mpcAddress := b.GetRouterContract("")
+	if len(receipt.Outcome.Logs) == 1 {
+		log := strings.Split(receipt.Outcome.Logs[0], " ")
+		if len(log) != 9 {
+			return nil, tokens.ErrSwapoutLogNotFound
+		}
+		if tokenCfg := b.GetTokenConfig(log[0]); tokenCfg == nil {
+			return nil, tokens.ErrMissTokenConfig
+		} else {
+			if (log[0] == SWAPOUTLOG && tokenCfg.ContractVersion == 666) || (log[0] == SWAPOUTNATIVELOG && receipt.Outcome.ExecutorID == mpcAddress && tokenCfg.ContractVersion == 999) {
+				return append(log, receipt.Outcome.ExecutorID), nil
+			}
+		}
+	} else if len(receipt.Outcome.Logs) == 2 {
 		log_0 := strings.Split(receipt.Outcome.Logs[0], " ")
 		log_1 := strings.Split(receipt.Outcome.Logs[1], " ")
-		mpcAddress := b.GetChainConfig().RouterContract // in near routerMPC is routerContract
-		if len(log_0) != 6 || len(log_1) != 3 || log_0[0] != "Transfer" || log_0[5] != mpcAddress {
+		if len(log_0) != 6 || len(log_1) != 3 || log_0[0] != TRANSFERLOG || log_0[5] != mpcAddress {
 			return nil, tokens.ErrSwapoutLogNotFound
 		}
 		return append(append(log_0, receipt.Outcome.ExecutorID), log_1...), nil

@@ -28,7 +28,7 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 
 	chainID := b.ChainConfig.ChainID
 	log.Info(fmt.Sprintf("[%5v] start init router info", chainID), "routerContract", routerContract)
-	routerMPC := b.GetChainConfig().RouterContract
+	routerMPC := b.GetRouterContract("")
 	if routerMPC == "" {
 		log.Warn("get router mpc address return an empty address", "routerContract", routerContract)
 		return fmt.Errorf("empty router mpc address")

@@ -68,8 +68,8 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, tokens.ErrMissTokenConfig
 	}
 
-	token := b.GetTokenConfig(multichainToken)
-	if token == nil {
+	tokenCfg := b.GetTokenConfig(multichainToken)
+	if tokenCfg == nil {
 		return nil, tokens.ErrMissTokenConfig
 	}
 
@@ -79,18 +79,26 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	}
 	args.SwapValue = amount // SwapValue
 
-	extra, err := b.initExtra(args)
-	if err != nil {
+	if extra, err := b.initExtra(args); err != nil {
 		return nil, err
+	} else {
+		if blockHashBytes, err := base58.Decode(*extra.BlockHash); err != nil {
+			return nil, err
+		} else {
+			if to, actions, err := createFunctionCall(args.SwapID, receiver, amount.String(), args.FromChainID.String(), args.LogIndex, *extra.Gas, tokenCfg.ContractVersion); err != nil {
+				return nil, err
+			} else {
+				var target string
+				if to != "" {
+					target = to
+				} else {
+					target = multichainToken
+				}
+				rawTx = CreateTransaction(args.From, nearPubKey, target, *extra.Sequence, blockHashBytes, actions)
+			}
+			return rawTx, nil
+		}
 	}
-
-	blockHashBytes, err := base58.Decode(*extra.BlockHash)
-	if err != nil {
-		return nil, err
-	}
-	actions := createFunctionCall(args.SwapID, receiver, amount.String(), args.FromChainID.String(), args.LogIndex, *extra.Gas)
-	rawTx = CreateTransaction(args.From, nearPubKey, multichainToken, *extra.Sequence, blockHashBytes, actions)
-	return rawTx, nil
 }
 
 func (b *Bridge) initExtra(args *tokens.BuildTxArgs) (extra *tokens.AllExtras, err error) {
@@ -205,18 +213,41 @@ func CreateTransaction(
 	return &tx
 }
 
-func createFunctionCall(txHash, to, amount, fromChainID string, logIndex int, gas uint64) []Action {
+func createFunctionCall(txHash, to, amount, fromChainID string, logIndex int, gas, contractVersion uint64) (string, []Action, error) {
 	log.Info("createFunctionCall", "txHash", txHash, "to", to, "amount", amount, "fromChainID", fromChainID)
-	argsBytes := buildTokenTransferArgs(txHash, to, amount, fromChainID, logIndex)
-	return []Action{{
+	var methodName string
+	var argsBytes []byte
+	var deposit *big.Int
+	switch contractVersion {
+	case 666:
+		argsBytes = buildTokenSwapInArgs(txHash, to, amount, fromChainID)
+		methodName = "swap_in"
+		deposit = big.NewInt(0)
+	case 999:
+		argsBytes = buildTokenTransferArgs(txHash, to, amount, fromChainID, logIndex)
+		methodName = "ft_transfer"
+		deposit = big.NewInt(1)
+	default:
+		if value, err := common.GetBigIntFromStr(amount); err == nil {
+			return to, []Action{{
+				Enum: 3,
+				Transfer: Transfer{
+					Deposit: *value,
+				},
+			}}, nil
+		} else {
+			return "", nil, err
+		}
+	}
+	return "", []Action{{
 		Enum: 2,
 		FunctionCall: FunctionCall{
-			MethodName: "ft_transfer",
+			MethodName: methodName,
 			Args:       argsBytes,
 			Gas:        gas,
-			Deposit:    *big.NewInt(1),
+			Deposit:    *deposit,
 		},
-	}}
+	}}, nil
 }
 
 func buildTokenTransferArgs(txHash, to, amount, fromChainID string, logIndex int) []byte {
@@ -225,6 +256,17 @@ func buildTokenTransferArgs(txHash, to, amount, fromChainID string, logIndex int
 		ReceiverId: to,
 		Amount:     amount,
 		Memo:       memo,
+	}
+	argsBytes, _ := json.Marshal(callArgs)
+	return argsBytes
+}
+
+func buildTokenSwapInArgs(txHash, to, amount, fromChainID string) []byte {
+	callArgs := &FtSwapIn{
+		TxHash:      txHash,
+		ReceiverId:  to,
+		Amount:      amount,
+		FromChainId: fromChainID,
 	}
 	argsBytes, _ := json.Marshal(callArgs)
 	return argsBytes

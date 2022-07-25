@@ -172,6 +172,13 @@ type FtTransfer struct {
 	Memo       string `json:"memo"`
 }
 
+type FtSwapIn struct {
+	TxHash      string `json:"tx_hash"`
+	ReceiverId  string `json:"receiver_id"`
+	Amount      string `json:"amount"`
+	FromChainId string `json:"from_chain_id"`
+}
+
 type FunctionCallResult struct {
 	BlockHash   string   `json:"block_hash"`
 	BlockHeight uint64   `json:"block_height"`
