@@ -80,3 +80,12 @@ func GetOutPutByID(url string, outputID iotago.UTXOInputID, needValue uint64) (u
 		return utxoInput, flag, amount, nil
 	}
 }
+
+func CommitMessage(url string, message *iotago.Message) (string, error) {
+	nodeHTTPAPIClient := iotago.NewNodeHTTPAPIClient(url)
+	if res, err := nodeHTTPAPIClient.SubmitMessage(ctx, message); err != nil {
+		return iotago.MessageIDToHexString(res.MustID()), nil
+	} else {
+		return "", err
+	}
+}

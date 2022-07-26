@@ -1,7 +1,9 @@
 package iota
 
 import (
-	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"errors"
+
+	iotago "github.com/iotaledger/iota.go/v2"
 )
 
 // IsValidAddress check address
@@ -11,5 +13,15 @@ func (b *Bridge) IsValidAddress(addr string) bool {
 
 // PublicKeyToAddress impl
 func (b *Bridge) PublicKeyToAddress(pubKeyHex string) (string, error) {
-	return "", tokens.ErrNotImplemented
+	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
+	for _, url := range urls {
+		nodeHTTPAPIClient := iotago.NewNodeHTTPAPIClient(url)
+		// fetch the node's info to know the min. required PoW score
+		if info, err := nodeHTTPAPIClient.Info(ctx); err == nil {
+			edAddr := ConvertPubKeyToAddr(pubKeyHex)
+			bech32Addr := edAddr.Bech32(iotago.NetworkPrefix(info.Bech32HRP))
+			return bech32Addr, nil
+		}
+	}
+	return "", errors.New("PublicKeyToAddress eror")
 }
