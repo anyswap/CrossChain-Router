@@ -47,6 +47,8 @@ var (
 	ErrTxResultType          = errors.New("tx type is not match")
 	ErrGetNodeInfo           = errors.New("err to get node info")
 	ErrPayloadType           = errors.New("payload type error")
+	ErrGetOutPutIDs          = errors.New("get outPut id error")
+	ErrGetOutPutByID         = errors.New("get outPut by id error")
 
 	// errors should register in router swap
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")

@@ -2,6 +2,8 @@ package iota
 
 import (
 	"context"
+	"encoding/hex"
+	"encoding/json"
 
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	iotago "github.com/iotaledger/iota.go/v2"
@@ -11,7 +13,7 @@ var (
 	ctx = context.Background()
 )
 
-func GetTransactionMetadata(url string, msgID [32]byte) (txRes *iotago.MessageMetadataResponse, err error) {
+func GetTransactionMetadata(url string, msgID [32]byte) (*iotago.MessageMetadataResponse, error) {
 	nodeHTTPAPIClient := iotago.NewNodeHTTPAPIClient(url)
 	if metadataResponse, err := nodeHTTPAPIClient.MessageMetadataByMessageID(ctx, msgID); err != nil {
 		return nil, err
@@ -24,7 +26,7 @@ func GetTransactionMetadata(url string, msgID [32]byte) (txRes *iotago.MessageMe
 	}
 }
 
-func GetTransactionByHash(url string, msgID [32]byte) (txRes *iotago.Message, err error) {
+func GetTransactionByHash(url string, msgID [32]byte) (*iotago.Message, error) {
 	nodeHTTPAPIClient := iotago.NewNodeHTTPAPIClient(url)
 	if messageRes, err := nodeHTTPAPIClient.MessageByMessageID(ctx, msgID); err != nil {
 		return nil, err
@@ -33,11 +35,48 @@ func GetTransactionByHash(url string, msgID [32]byte) (txRes *iotago.Message, er
 	}
 }
 
-func GetLatestBlockNumber(url string) (num uint64, err error) {
+func GetLatestBlockNumber(url string) (uint64, error) {
 	nodeHTTPAPIClient := iotago.NewNodeHTTPAPIClient(url)
 	if nodeInfoResponse, err := nodeHTTPAPIClient.Info(ctx); err != nil {
 		return 0, err
 	} else {
 		return uint64(nodeInfoResponse.ConfirmedMilestoneIndex), nil
+	}
+}
+
+func GetOutPutIDs(url, addrPubKey string) ([]iotago.OutputIDHex, error) {
+	nodeHTTPAPIClient := iotago.NewNodeHTTPAPIClient(url)
+	if edAddr := ConvertPubKeyToAddr(addrPubKey); edAddr != nil {
+		if outputResponse, _, err := nodeHTTPAPIClient.OutputsByEd25519Address(ctx, edAddr, false); err != nil {
+			return nil, err
+		} else {
+			return outputResponse.OutputIDs, nil
+		}
+	}
+	return nil, tokens.ErrGetOutPutIDs
+}
+
+func GetOutPutByID(url string, outputID iotago.UTXOInputID, needValue uint64) (utxoInput *iotago.UTXOInput, flag bool, amount uint64, err error) {
+	nodeHTTPAPIClient := iotago.NewNodeHTTPAPIClient(url)
+	if outputRes, err := nodeHTTPAPIClient.OutputByID(ctx, outputID); err != nil {
+		return nil, false, 0, err
+	} else {
+		var rawType *RawType
+		rawOutPut, _ := outputRes.RawOutput.MarshalJSON()
+		if err := json.Unmarshal(rawOutPut, &rawType); err != nil {
+			return nil, false, 0, err
+		} else {
+			transactionID, _ := hex.DecodeString(outputRes.TransactionID)
+			copy(utxoInput.TransactionID[:], transactionID)
+			utxoInput.TransactionOutputIndex = outputRes.OutputIndex
+			if rawType.Amount < needValue {
+				amount = needValue - rawType.Amount
+				flag = false
+			} else {
+				amount = rawType.Amount - needValue
+				flag = true
+			}
+		}
+		return utxoInput, flag, amount, nil
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	iotago "github.com/iotaledger/iota.go/v2"
 )
 
 // BuildRawTransaction build raw tx
@@ -45,39 +46,83 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, tokens.ErrMissTokenConfig
 	}
 
-	token := b.GetTokenConfig(multichainToken)
-	if token == nil {
+	var inputs []*iotago.ToBeSignedUTXOInput
+	var outputs []*iotago.SigLockedSingleOutput
+	mpcEdAddr := ConvertPubKeyToAddr(args.From)
+	if mpcEdAddr == nil {
+		return nil, err
+	}
+	if token := b.GetTokenConfig(multichainToken); token == nil {
 		return nil, tokens.ErrMissTokenConfig
+	} else {
+		if receiver, amount, err := b.getReceiverAndAmount(args, multichainToken); err != nil {
+			return nil, err
+		} else {
+			if _, err = b.initExtra(args); err != nil {
+				return nil, err
+			} else {
+				args.SwapValue = amount // SwapValue
+				if outPutIDs, err := b.GetOutPutIDs(args.From); err != nil {
+					return nil, err
+				} else {
+					if edAddr := ConvertPubKeyToAddr(receiver); edAddr != nil {
+						needValue := amount.Uint64()
+						for _, outputID := range outPutIDs {
+							if outPut, finish, returnValue, err := b.GetOutPutByID(outputID, needValue); err == nil {
+								if finish {
+									inputs = append(inputs, &iotago.ToBeSignedUTXOInput{Address: edAddr, Input: outPut})
+									if returnValue != 0 {
+										outputs = append(outputs, &iotago.SigLockedSingleOutput{Address: mpcEdAddr, Amount: returnValue})
+									}
+									break
+								} else {
+									needValue = returnValue
+								}
+							}
+						}
+						outputs = append(outputs, &iotago.SigLockedSingleOutput{Address: mpcEdAddr, Amount: args.SwapValue.Uint64()})
+					}
+				}
+			}
+		}
 	}
+	return b.BuildMessage(inputs, outputs), nil
+}
 
-	_, amount, err := b.getReceiverAndAmount(args, multichainToken)
-	if err != nil {
-		return nil, err
+func (b *Bridge) BuildMessage(inputs []*iotago.ToBeSignedUTXOInput, outputs []*iotago.SigLockedSingleOutput) *iotago.TransactionBuilder {
+	transactionBuilder := iotago.NewTransactionBuilder()
+	for _, input := range inputs {
+		transactionBuilder.AddInput(input)
 	}
-
-	_, err = b.initExtra(args)
-	if err != nil {
-		return nil, err
+	for _, output := range outputs {
+		transactionBuilder.AddOutput(output)
 	}
-	args.SwapValue = amount // SwapValue
-
-	// if _, err := b.GetOutPuts(args.From); err != nil {
-
-	// } else {
-
-	// }
-	return rawTx, nil
+	return transactionBuilder
 }
 
 // GetTxBlockInfo impl NonceSetter interface
-func (b *Bridge) GetOutPuts(addr string) (blockHeight, blockTime uint64) {
-	// urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
-	// for _, url := range urls {
-	// 	nodeHTTPAPIClient := iotago.NewNodeHTTPAPIClient(url)
-	// 	nodeHTTPAPIClient.OutputsByEd25519Address(ctx)
-	// }
+func (b *Bridge) GetOutPutIDs(addr string) ([]iotago.OutputIDHex, error) {
+	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
+	for _, url := range urls {
+		if outPuts, err := GetOutPutIDs(url, addr); err == nil {
+			return outPuts, nil
+		} else {
+			log.Error("GetOutPutIDs", "err", err)
+		}
+	}
+	return nil, tokens.ErrGetOutPutIDs
+}
 
-	return
+func (b *Bridge) GetOutPutByID(id iotago.OutputIDHex, needValue uint64) (*iotago.UTXOInput, bool, uint64, error) {
+	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
+	for _, url := range urls {
+		if outPut, flag, amount, err := GetOutPutByID(url, id.MustAsUTXOInput().ID(), needValue); err == nil {
+			return outPut, flag, amount, nil
+		} else {
+			log.Error("GetOutPutByID", "err", err)
+		}
+	}
+	return nil, false, 0, tokens.ErrGetOutPutByID
 }
 
 // GetTxBlockInfo impl NonceSetter interface
