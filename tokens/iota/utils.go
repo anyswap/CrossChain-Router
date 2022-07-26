@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	iotago "github.com/iotaledger/iota.go/v2"
 )
 
 func ConvertMessageID(txHash string) ([32]byte, error) {
@@ -14,5 +15,14 @@ func ConvertMessageID(txHash string) ([32]byte, error) {
 	} else {
 		copy(msgID[:], messageID)
 		return msgID, nil
+	}
+}
+
+func ConvertPubKeyToAddr(addrPubKey string) *iotago.Ed25519Address {
+	if publicKey, err := hex.DecodeString(addrPubKey); err != nil {
+		return nil
+	} else {
+		eddr := iotago.AddressFromEd25519PubKey(publicKey)
+		return &eddr
 	}
 }

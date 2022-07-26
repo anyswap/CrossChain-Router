@@ -67,6 +67,8 @@ var (
 	ErrTxResultType           = errors.New("tx type is not TransactionResult")
 	ErrGetNodeInfo            = errors.New("err to get node info")
 	ErrPayloadType            = errors.New("payload type error")
+	ErrGetOutPutIDs           = errors.New("get output id error")
+	ErrGetOutPutByID          = errors.New("get output by id error")
 	ErrTxWithWrongAssetLength = errors.New("tx with wrong asset length")
 	ErrOutputLength           = errors.New("output lenght is zero")
 	ErrMpcAddrMissMatch       = errors.New("receiver addr not match mpc addr")
