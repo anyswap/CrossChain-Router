@@ -30,6 +30,9 @@ example:
 bindAddress: 0xC5107334A3Ae117E3DaD3570b419618C905Aa5eC  toChainID:5777
 
 [20 197 16 115 52 163 174 17 126 61 173 53 112 180 25 97 140 144 90 165 236 0 0 0 0 0 0 0 0 0 87 119]
+
+output:
+14c5107334a3ae117e3dad3570b419618c905aa5ec0000000000000000001691
 ```
 
 to specify route asset to which address (`bindAddress`)
