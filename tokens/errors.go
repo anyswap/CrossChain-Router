@@ -49,6 +49,7 @@ var (
 	ErrPayloadType           = errors.New("payload type error")
 	ErrGetOutPutIDs          = errors.New("get outPut id error")
 	ErrGetOutPutByID         = errors.New("get outPut by id error")
+	ErrCommitMessage         = errors.New("commit message error")
 
 	// errors should register in router swap
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")
