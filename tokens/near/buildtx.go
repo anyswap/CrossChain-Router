@@ -224,10 +224,6 @@ func createFunctionCall(txHash, to, amount, fromChainID string, logIndex int, ga
 		methodName = "swap_in"
 		deposit = big.NewInt(0)
 	case 999:
-		argsBytes = buildTokenTransferArgs(txHash, to, amount, fromChainID, logIndex)
-		methodName = "ft_transfer"
-		deposit = big.NewInt(1)
-	default:
 		if value, err := common.GetBigIntFromStr(amount); err == nil {
 			return to, []Action{{
 				Enum: 3,
@@ -238,6 +234,10 @@ func createFunctionCall(txHash, to, amount, fromChainID string, logIndex int, ga
 		} else {
 			return "", nil, err
 		}
+	default:
+		argsBytes = buildTokenTransferArgs(txHash, to, amount, fromChainID, logIndex)
+		methodName = "ft_transfer"
+		deposit = big.NewInt(1)
 	}
 	return "", []Action{{
 		Enum: 2,
