@@ -10,8 +10,8 @@ SwapSubType = ""
 [Server.MongoDB]
 DBURLs = ["localhost:27017"]
 DBName = "testdb"
-UserName = "testuser"
-Password = "testpasswd"
+UserName = "tester"
+Password = "123456"
 
 
 # bridge API service
@@ -22,14 +22,14 @@ Port = 11556
 
 # OnChain config
 [OnChain]
-Contract = "0x1111111111111111111111111111111111111111"
-APIAddress = ["https://data-seed-prebsc-1-s1.binance.org:8545"]
+Contract = "0x1716Dfa8B432475c6F0A5769C016be2a18d36b22"
+APIAddress = ["https://rinkeby.infura.io/v3/8e1493b73b104925b1d3b95abd3fd767"]
 
 
 # Gateways config. key is chainID
 [Gateways]
-97 = ["https://data-seed-prebsc-1-s1.binance.org:8545/"]
-1000005788241 = ["wss://s.altnet.rippletest.net:51233"]
+4 = ["https://rinkeby.infura.io/v3/8e1493b73b104925b1d3b95abd3fd767"]
+1001229935682 = ["https://api.lb-0.h.chrysalis-devnet.iota.cafe"]
 
 
 # MPC config
@@ -39,5 +39,5 @@ SignWithPrivateKey = true
 
 # set signer's private key, key is chain ID (use for testing)
 [MPC.SignerPrivateKeys]
-97            = "1111111111111111111111111111111111111111111111111111111111111111"
-1000005788241 = "1111111111111111111111111111111111111111111111111111111111111111"
+4            = "1111111111111111111111111111111111111111111111111111111111111111"
+1001229935682 = "1111111111111111111111111111111111111111111111111111111111111111"

@@ -25,3 +25,12 @@ func (b *Bridge) PublicKeyToAddress(pubKeyHex string) (string, error) {
 	}
 	return "", errors.New("PublicKeyToAddress eror")
 }
+
+// VerifyMPCPubKey verify mpc address and public key is matching
+func VerifyMPCPubKey(mpcAddress, mpcPubkey string) error {
+	edAddr := ConvertPubKeyToAddr(mpcPubkey)
+	if edAddr.String() == mpcAddress {
+		return nil
+	}
+	return errors.New("VerifyMPCPubKey eror")
+}
