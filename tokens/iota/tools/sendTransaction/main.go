@@ -15,20 +15,20 @@ import (
 )
 
 var (
-	paramNetwork  string
-	paramPubKey   string
-	paramPrivKey  string
-	paramToPubKey string
-	paramIndex    string
-	paramData     string
-	paramValue    string
+	paramNetwork string
+	paramPubKey  string
+	paramPrivKey string
+	paramTo      string
+	paramIndex   string
+	paramData    string
+	paramValue   string
 )
 
 func initFlags() {
 	flag.StringVar(&paramNetwork, "n", "", "network url")
 	flag.StringVar(&paramPubKey, "publicKey", "", "sign public key")
 	flag.StringVar(&paramPrivKey, "privKey", "", "sign privKey")
-	flag.StringVar(&paramToPubKey, "to", "", "target public key")
+	flag.StringVar(&paramTo, "to", "", "target addr")
 	flag.StringVar(&paramIndex, "index", "", "payload index")
 	flag.StringVar(&paramData, "data", "", "payload data")
 	flag.StringVar(&paramValue, "value", "", "send value")
@@ -99,16 +99,14 @@ func main() {
 					}
 				}
 			}
-
-			toPublicKey, err := hex.DecodeString(paramToPubKey)
+			_, toEdAddr, err := iotago.ParseBech32(paramTo)
 			if err != nil {
-				log.Fatal("DecodeString", "paramToPubKey", paramToPubKey, "err", err)
+				log.Fatal("ParseBech32", "paramTo", paramTo, "err", err)
 			}
-			toEdAddr := iotago.AddressFromEd25519PubKey(toPublicKey)
 
 			if message, err := iotago.NewTransactionBuilder().
 				AddInput(&iotago.ToBeSignedUTXOInput{Address: &edAddr, Input: &inputUTXO1}).
-				AddOutput(&iotago.SigLockedSingleOutput{Address: &toEdAddr, Amount: needValue}).
+				AddOutput(&iotago.SigLockedSingleOutput{Address: toEdAddr, Amount: needValue}).
 				AddOutput(&iotago.SigLockedSingleOutput{Address: &edAddr, Amount: returnValue}).
 				AddIndexationPayload(indexationPayload).BuildAndSwapToMessageBuilder(signer, nil).Build(); err != nil {
 				log.Fatal("NewTransactionBuilder", "err", err)
@@ -116,7 +114,7 @@ func main() {
 				if res, err := nodeHTTPAPIClient.SubmitMessage(ctx, message); err != nil {
 					log.Fatal("SubmitMessage", "err", err)
 				} else {
-					fmt.Printf("res: %+v\n", res)
+					fmt.Printf("res: %+v\n", iotago.MessageIDToHexString(res.MustID()))
 				}
 			}
 		}

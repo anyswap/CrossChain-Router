@@ -10,6 +10,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens/cardano"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmos"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/eth"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/iota"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/near"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/reef"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/ripple"
@@ -36,6 +37,8 @@ func NewCrossChainBridge(chainID *big.Int) tokens.IBridge {
 		return tron.NewCrossChainBridge()
 	case near.SupportsChainID(chainID):
 		return near.NewCrossChainBridge()
+	case iota.SupportsChainID(chainID):
+		return iota.NewCrossChainBridge()
 	case ripple.SupportsChainID(chainID):
 		return ripple.NewCrossChainBridge()
 	case chainID.Sign() <= 0:

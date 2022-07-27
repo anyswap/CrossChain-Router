@@ -53,6 +53,10 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 		log.Warn("get mpc public key failed", "mpc", routerMPC, "err", err)
 		return err
 	}
+	if err = VerifyMPCPubKey(routerMPC, routerMPCPubkey); err != nil {
+		log.Warn("verify mpc public key failed", "mpc", routerMPC, "mpcPubkey", routerMPCPubkey, "err", err)
+		return err
+	}
 	router.SetRouterInfo(
 		routerContract,
 		chainID,
