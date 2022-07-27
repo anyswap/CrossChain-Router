@@ -133,7 +133,21 @@ func (b *Bridge) GetTransactionByHash(txHash string) (txRes *iotago.Message, err
 
 // GetTransactionStatus impl
 func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, err error) {
-	return
+	status = new(tokens.TxStatus)
+
+	if tx, err := b.GetTransactionMetadata(txHash); err != nil {
+		return nil, err
+	} else {
+		status.Receipt = nil
+		inledger := tx.ReferencedByMilestoneIndex
+		status.BlockHeight = uint64(*inledger)
+
+		if latest, err := b.GetLatestBlockNumber(); err == nil && latest > uint64(*inledger) {
+			status.Confirmations = latest - uint64(*inledger)
+		}
+	}
+
+	return status, nil
 }
 
 // GetBalance gets balance
