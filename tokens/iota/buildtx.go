@@ -48,7 +48,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 
 	var inputs []*iotago.ToBeSignedUTXOInput
 	var outputs []*iotago.SigLockedSingleOutput
-	mpcEdAddr := ConvertPubKeyToAddr(args.From)
+	mpcEdAddr := ConvertStringToAddress(args.From)
 	if mpcEdAddr == nil {
 		return nil, err
 	}
@@ -62,15 +62,16 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 				return nil, err
 			} else {
 				args.SwapValue = amount // SwapValue
-				if outPutIDs, err := b.GetOutPutIDs(args.From); err != nil {
+				if outPutIDs, err := b.GetOutPutIDs(mpcEdAddr); err != nil {
 					return nil, err
 				} else {
-					if edAddr := ConvertPubKeyToAddr(receiver); edAddr != nil {
+					if edAddr, err := Bech32ToEdAddr(receiver); err == nil {
 						needValue := amount.Uint64()
 						for _, outputID := range outPutIDs {
 							if outPut, finish, returnValue, err := b.GetOutPutByID(outputID, needValue); err == nil {
+								inputs = append(inputs, &iotago.ToBeSignedUTXOInput{Address: mpcEdAddr, Input: outPut})
+								outputs = append(outputs, &iotago.SigLockedSingleOutput{Address: *edAddr, Amount: needValue})
 								if finish {
-									inputs = append(inputs, &iotago.ToBeSignedUTXOInput{Address: edAddr, Input: outPut})
 									if returnValue != 0 {
 										outputs = append(outputs, &iotago.SigLockedSingleOutput{Address: mpcEdAddr, Amount: returnValue})
 									}
@@ -80,7 +81,8 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 								}
 							}
 						}
-						outputs = append(outputs, &iotago.SigLockedSingleOutput{Address: mpcEdAddr, Amount: args.SwapValue.Uint64()})
+					} else {
+						return nil, err
 					}
 				}
 			}
@@ -92,6 +94,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 func (b *Bridge) BuildMessage(inputs []*iotago.ToBeSignedUTXOInput, outputs []*iotago.SigLockedSingleOutput) *iotago.TransactionBuilder {
 	transactionBuilder := iotago.NewTransactionBuilder()
 	for _, input := range inputs {
+		log.Warn("")
 		transactionBuilder.AddInput(input)
 	}
 	for _, output := range outputs {
@@ -101,7 +104,7 @@ func (b *Bridge) BuildMessage(inputs []*iotago.ToBeSignedUTXOInput, outputs []*i
 }
 
 // GetTxBlockInfo impl NonceSetter interface
-func (b *Bridge) GetOutPutIDs(addr string) ([]iotago.OutputIDHex, error) {
+func (b *Bridge) GetOutPutIDs(addr *iotago.Ed25519Address) ([]iotago.OutputIDHex, error) {
 	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
 	for _, url := range urls {
 		if outPuts, err := GetOutPutIDs(url, addr); err == nil {

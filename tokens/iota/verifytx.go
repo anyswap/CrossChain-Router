@@ -51,7 +51,7 @@ func (b *Bridge) verifySwapoutTx(txHash string, _ int, allowUnstable bool) (*tok
 			if h, err := b.GetLatestBlockNumber(); err != nil {
 				return swapInfo, err
 			} else {
-				if h < uint64(*tx.MilestoneIndex)+b.GetChainConfig().Confirmations {
+				if h < uint64(*tx.ReferencedByMilestoneIndex)+b.GetChainConfig().Confirmations {
 					return swapInfo, tokens.ErrTxNotStable
 				}
 				if h < b.ChainConfig.InitialHeight {
@@ -89,7 +89,7 @@ func (b *Bridge) verifySwapoutTx(txHash string, _ int, allowUnstable bool) (*tok
 			"height", swapInfo.Height, "timestamp", swapInfo.Timestamp, "logIndex", swapInfo.LogIndex)
 	}
 
-	return nil, nil
+	return swapInfo, nil
 }
 
 func (b *Bridge) ParseMessagePayload(swapInfo *tokens.SwapTxInfo, payload []byte) error {

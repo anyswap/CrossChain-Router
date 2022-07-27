@@ -44,19 +44,16 @@ func GetLatestBlockNumber(url string) (uint64, error) {
 	}
 }
 
-func GetOutPutIDs(url, addrPubKey string) ([]iotago.OutputIDHex, error) {
+func GetOutPutIDs(url string, edAddr *iotago.Ed25519Address) ([]iotago.OutputIDHex, error) {
 	nodeHTTPAPIClient := iotago.NewNodeHTTPAPIClient(url)
-	if edAddr := ConvertPubKeyToAddr(addrPubKey); edAddr != nil {
-		if outputResponse, _, err := nodeHTTPAPIClient.OutputsByEd25519Address(ctx, edAddr, false); err != nil {
-			return nil, err
-		} else {
-			return outputResponse.OutputIDs, nil
-		}
+	if outputResponse, _, err := nodeHTTPAPIClient.OutputsByEd25519Address(ctx, edAddr, false); err != nil {
+		return nil, err
+	} else {
+		return outputResponse.OutputIDs, nil
 	}
-	return nil, tokens.ErrGetOutPutIDs
 }
 
-func GetOutPutByID(url string, outputID iotago.UTXOInputID, needValue uint64) (utxoInput *iotago.UTXOInput, flag bool, amount uint64, err error) {
+func GetOutPutByID(url string, outputID iotago.UTXOInputID, needValue uint64) (*iotago.UTXOInput, bool, uint64, error) {
 	nodeHTTPAPIClient := iotago.NewNodeHTTPAPIClient(url)
 	if outputRes, err := nodeHTTPAPIClient.OutputByID(ctx, outputID); err != nil {
 		return nil, false, 0, err
@@ -66,24 +63,30 @@ func GetOutPutByID(url string, outputID iotago.UTXOInputID, needValue uint64) (u
 		if err := json.Unmarshal(rawOutPut, &rawType); err != nil {
 			return nil, false, 0, err
 		} else {
-			transactionID, _ := hex.DecodeString(outputRes.TransactionID)
-			copy(utxoInput.TransactionID[:], transactionID)
-			utxoInput.TransactionOutputIndex = outputRes.OutputIndex
-			if rawType.Amount < needValue {
-				amount = needValue - rawType.Amount
-				flag = false
+			if transactionID, err := hex.DecodeString(outputRes.TransactionID); err != nil {
+				return nil, false, 0, err
 			} else {
-				amount = rawType.Amount - needValue
-				flag = true
+				var utxoInput iotago.UTXOInput
+				var flag bool
+				var amount uint64
+				copy(utxoInput.TransactionID[:], transactionID)
+				utxoInput.TransactionOutputIndex = outputRes.OutputIndex
+				if rawType.Amount < needValue {
+					amount = needValue - rawType.Amount
+					flag = false
+				} else {
+					amount = rawType.Amount - needValue
+					flag = true
+				}
+				return &utxoInput, flag, amount, nil
 			}
 		}
-		return utxoInput, flag, amount, nil
 	}
 }
 
 func CommitMessage(url string, message *iotago.Message) (string, error) {
 	nodeHTTPAPIClient := iotago.NewNodeHTTPAPIClient(url)
-	if res, err := nodeHTTPAPIClient.SubmitMessage(ctx, message); err != nil {
+	if res, err := nodeHTTPAPIClient.SubmitMessage(ctx, message); err == nil {
 		return iotago.MessageIDToHexString(res.MustID()), nil
 	} else {
 		return "", err

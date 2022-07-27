@@ -18,7 +18,7 @@ func (b *Bridge) PublicKeyToAddress(pubKeyHex string) (string, error) {
 		nodeHTTPAPIClient := iotago.NewNodeHTTPAPIClient(url)
 		// fetch the node's info to know the min. required PoW score
 		if info, err := nodeHTTPAPIClient.Info(ctx); err == nil {
-			edAddr := ConvertPubKeyToAddr(pubKeyHex)
+			edAddr := ConvertStringToAddress(pubKeyHex)
 			bech32Addr := edAddr.Bech32(iotago.NetworkPrefix(info.Bech32HRP))
 			return bech32Addr, nil
 		}
@@ -33,4 +33,12 @@ func VerifyMPCPubKey(mpcAddress, mpcPubkey string) error {
 		return nil
 	}
 	return errors.New("VerifyMPCPubKey eror")
+}
+
+func Bech32ToEdAddr(bech32 string) (*iotago.Address,error) {
+	if _, edAddr, err := iotago.ParseBech32(bech32); err == nil {
+		return &edAddr,nil
+	}else{
+		return nil,err
+	}
 }
