@@ -10,6 +10,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/iotaledger/hive.go/serializer"
 	iotago "github.com/iotaledger/iota.go/v2"
 )
 
@@ -65,13 +66,13 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 				if outPutIDs, err := b.GetOutPutIDs(mpcEdAddr); err != nil {
 					return nil, err
 				} else {
-					if edAddr, err := Bech32ToEdAddr(receiver); err == nil {
+					if toEdAddr, err := Bech32ToEdAddr(receiver); err == nil {
 						needValue := amount.Uint64()
 						for _, outputID := range outPutIDs {
 							if outPut, finish, returnValue, err := b.GetOutPutByID(outputID, needValue); err == nil {
 								inputs = append(inputs, &iotago.ToBeSignedUTXOInput{Address: mpcEdAddr, Input: outPut})
-								outputs = append(outputs, &iotago.SigLockedSingleOutput{Address: *edAddr, Amount: needValue})
 								if finish {
+									outputs = append(outputs, &iotago.SigLockedSingleOutput{Address: *toEdAddr, Amount: amount.Uint64()})
 									if returnValue != 0 {
 										outputs = append(outputs, &iotago.SigLockedSingleOutput{Address: mpcEdAddr, Amount: returnValue})
 									}
@@ -88,18 +89,36 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 			}
 		}
 	}
-	return b.BuildMessage(inputs, outputs), nil
+
+	return BuildMessage(inputs, outputs, nil), nil
 }
 
-func (b *Bridge) BuildMessage(inputs []*iotago.ToBeSignedUTXOInput, outputs []*iotago.SigLockedSingleOutput) *iotago.TransactionBuilder {
-	transactionBuilder := iotago.NewTransactionBuilder()
+func NewMessageBuilder() *MessageBuilder {
+	return &MessageBuilder{
+		TransactionBuilder: iotago.NewTransactionBuilder(),
+		Essence: &iotago.TransactionEssence{
+			Inputs:  serializer.Serializables{},
+			Outputs: serializer.Serializables{},
+			Payload: nil,
+		},
+	}
+}
+
+func BuildMessage(inputs []*iotago.ToBeSignedUTXOInput, outputs []*iotago.SigLockedSingleOutput, indexationPayload *iotago.Indexation) *MessageBuilder {
+	messageBuilder := NewMessageBuilder()
 	for _, input := range inputs {
-		transactionBuilder.AddInput(input)
+		messageBuilder.TransactionBuilder.AddInput(input)
+		messageBuilder.Essence.Inputs = append(messageBuilder.Essence.Inputs, input.Input)
 	}
 	for _, output := range outputs {
-		transactionBuilder.AddOutput(output)
+		messageBuilder.TransactionBuilder.AddOutput(output)
+		messageBuilder.Essence.Outputs = append(messageBuilder.Essence.Outputs, output)
 	}
-	return transactionBuilder
+	if indexationPayload != nil {
+		messageBuilder.TransactionBuilder.AddIndexationPayload(indexationPayload)
+		messageBuilder.Essence.Payload = indexationPayload
+	}
+	return messageBuilder
 }
 
 // GetTxBlockInfo impl NonceSetter interface

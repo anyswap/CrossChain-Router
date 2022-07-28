@@ -11,6 +11,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/rpc v1.2.0
 	github.com/gorilla/websocket v1.5.0
+	github.com/iotaledger/hive.go v0.0.0-20211011085923-fd2eb0a47bf8 // indirect
 	github.com/iotaledger/iota.go/v2 v2.0.1
 	github.com/jonboulle/clockwork v0.3.0 // indirect
 	github.com/jowenshaw/gethclient v0.3.1
