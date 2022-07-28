@@ -1,5 +1,7 @@
 package iota
 
+import iotago "github.com/iotaledger/iota.go/v2"
+
 type Address struct {
 	Type    uint64 `json:"type"`
 	Address string `json:"address"`
@@ -39,4 +41,9 @@ type Payload struct {
 	Type  uint64 `json:"type"`
 	Index string `json:"index"`
 	Data  string `json:"data"`
+}
+
+type MessageBuilder struct {
+	TransactionBuilder *iotago.TransactionBuilder `json:"transactionBuilder"`
+	Essence            *iotago.TransactionEssence `json:"essence"`
 }

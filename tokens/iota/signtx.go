@@ -1,22 +1,91 @@
 package iota
 
 import (
+	"crypto/ed25519"
 	"encoding/hex"
+	"encoding/json"
+	"errors"
 
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/mpc"
 	"github.com/anyswap/CrossChain-Router/v3/params"
+	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/iotaledger/hive.go/serializer"
 	iotago "github.com/iotaledger/iota.go/v2"
 )
 
 // MPCSignTransaction mpc sign raw tx
 func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs) (signTx interface{}, txHash string, err error) {
-	mpcParams := params.GetMPCConfig(b.UseFastMPC)
-	if mpcParams.SignWithPrivateKey {
-		priKey := mpcParams.GetSignerPrivateKey(b.ChainConfig.ChainID)
-		return b.SignTransactionWithPrivateKey(rawTx, priKey)
+	if messageBuilder, ok := rawTx.(*MessageBuilder); !ok {
+		return nil, "", tokens.ErrWrongRawTx
+	} else {
+		mpcParams := params.GetMPCConfig(b.UseFastMPC)
+		if mpcParams.SignWithPrivateKey {
+			priKey := mpcParams.GetSignerPrivateKey(b.ChainConfig.ChainID)
+			return b.SignTransactionWithPrivateKey(rawTx, priKey)
+		}
+
+		mpcPubkey := router.GetMPCPublicKey(args.From)
+		if mpcPubkey == "" {
+			return nil, "", tokens.ErrMissMPCPublicKey
+		}
+
+		if signMessage, err := messageBuilder.Essence.SigningMessage(); err != nil {
+			return nil, "", tokens.ErrWrongRawTx
+		} else {
+			jsondata, _ := json.Marshal(args.GetExtraArgs())
+			msgContext := string(jsondata)
+
+			txid := args.SwapID
+			logPrefix := b.ChainConfig.BlockChain + " MPCSignTransaction "
+			log.Info(logPrefix+"start", "txid", txid)
+
+			mpcConfig := mpc.GetMPCConfig(b.UseFastMPC)
+			keyID, rsvs, err := mpcConfig.DoSignOneED(mpcPubkey, common.ToHex(signMessage[:]), msgContext)
+			if err != nil {
+				return nil, "", err
+			}
+
+			if len(rsvs) != 1 {
+				log.Warn("get sign status require one rsv but return many",
+					"rsvs", len(rsvs), "keyID", keyID, "txid", txid)
+				return nil, "", errors.New("get sign status require one rsv but return many")
+			}
+
+			rsv := rsvs[0]
+			log.Trace(logPrefix+"get rsv signature success", "keyID", keyID, "txid", txid, "rsv", rsv)
+			sig := common.FromHex(rsv)
+			if len(sig) != ed25519.SignatureSize {
+				log.Error("wrong signature length", "keyID", keyID, "txid", txid, "have", len(sig), "want", ed25519.SignatureSize)
+				return nil, "", errors.New("wrong signature length")
+			}
+
+			signature := &iotago.Ed25519Signature{}
+			copy(signature.Signature[:], sig)
+			copy(signature.PublicKey[:], []byte(mpcPubkey))
+
+			unlockBlocks := serializer.Serializables{}
+			for i := 0; i < len(messageBuilder.Essence.Inputs); i++ {
+				switch i {
+				case 0:
+					unlockBlocks = append(unlockBlocks, &iotago.SignatureUnlockBlock{Signature: signature})
+				default:
+					unlockBlocks = append(unlockBlocks, &iotago.ReferenceUnlockBlock{Reference: uint16(0)})
+				}
+			}
+
+			sigTxPayload := &iotago.Transaction{Essence: messageBuilder.Essence, UnlockBlocks: unlockBlocks}
+			if message, err := iotago.NewMessageBuilder().Payload(sigTxPayload).Build(); err != nil {
+				return nil, "", errors.New("wrong signature length")
+			} else {
+				log.Info(logPrefix+"success", "keyID", keyID, "txid", txid, "txhash", txHash)
+				return message, txHash, nil
+			}
+		}
 	}
-	return
+
 }
 
 // SignTransactionWithPrivateKey sign tx with ECDSA private key
@@ -27,11 +96,11 @@ func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, privKey string
 		signKey := iotago.NewAddressKeysForEd25519Address(edAddr, priv)
 		signer := iotago.NewInMemoryAddressSigner(signKey)
 
-		tx := rawTx.(*iotago.TransactionBuilder)
-		if message, err := tx.BuildAndSwapToMessageBuilder(signer, nil).Build(); err == nil {
+		tx := rawTx.(*MessageBuilder)
+		if message, err := tx.TransactionBuilder.BuildAndSwapToMessageBuilder(signer, nil).Build(); err == nil {
 			return message, iotago.MessageIDToHexString(message.MustID()), nil
 		} else {
-			log.Warnf("BuildAndSwapToMessageBuilder err:%+v\n", err)
+			return nil, "", err
 		}
 	}
 	return nil, "", tokens.ErrCommitMessage
