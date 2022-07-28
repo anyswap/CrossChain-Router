@@ -53,9 +53,9 @@ func main() {
 			Build(); err != nil {
 			log.Fatal("NewMessageBuilder", "err", err)
 		} else {
-			if res, err := nodeHTTPAPIClient.SubmitMessage(ctx, message);err!=nil{
+			if res, err := nodeHTTPAPIClient.SubmitMessage(ctx, message); err != nil {
 				log.Fatal("SubmitMessage", "err", err)
-			}else{
+			} else {
 				fmt.Printf("res: %+v\n", res)
 			}
 		}

@@ -37,6 +37,7 @@ func initFlags() {
 
 var (
 	returnValue uint64 = 0
+	tempValue   uint64 = 0
 )
 
 func main() {
@@ -75,11 +76,13 @@ func main() {
 			signKey := iotago.NewAddressKeysForEd25519Address(&edAddr, priv)
 			signer := iotago.NewInMemoryAddressSigner(signKey)
 
-			var inputUTXO1 iotago.UTXOInput
 			outputResponse, _, err := nodeHTTPAPIClient.OutputsByEd25519Address(ctx, &edAddr, false)
 			if err != nil {
 				log.Fatal("OutputsByEd25519Address", "edAddr", edAddr, "err", err)
 			}
+
+			var inputUTXOList []*iotago.UTXOInput
+			tempValue = needValue
 			for _, outputID := range outputResponse.OutputIDs {
 				if outputRes, err := nodeHTTPAPIClient.OutputByID(ctx, outputID.MustAsUTXOInput().ID()); err != nil {
 					log.Fatal("OutputByID", "OutputID", outputID.MustAsUTXOInput().ID(), "err", err)
@@ -90,11 +93,17 @@ func main() {
 					if err != nil {
 						log.Fatal("Unmarshal", "rawOutPut", rawOutPut, "err", err)
 					}
-					if rawType.Amount > needValue {
-						returnValue = rawType.Amount - needValue
-						transactionID, _ := hex.DecodeString(outputRes.TransactionID)
-						copy(inputUTXO1.TransactionID[:], transactionID)
-						inputUTXO1.TransactionOutputIndex = outputRes.OutputIndex
+					inputUTXO := &iotago.UTXOInput{}
+					if rawType.Amount > tempValue {
+						returnValue = rawType.Amount - tempValue
+					} else {
+						tempValue = tempValue - rawType.Amount
+					}
+					transactionID, _ := hex.DecodeString(outputRes.TransactionID)
+					copy(inputUTXO.TransactionID[:], transactionID)
+					inputUTXO.TransactionOutputIndex = outputRes.OutputIndex
+					inputUTXOList = append(inputUTXOList, inputUTXO)
+					if returnValue > 0 || tempValue == 0 {
 						break
 					}
 				}
@@ -104,10 +113,16 @@ func main() {
 				log.Fatal("ParseBech32", "paramTo", paramTo, "err", err)
 			}
 
-			if message, err := iotago.NewTransactionBuilder().
-				AddInput(&iotago.ToBeSignedUTXOInput{Address: &edAddr, Input: &inputUTXO1}).
-				AddOutput(&iotago.SigLockedSingleOutput{Address: toEdAddr, Amount: needValue}).
-				AddOutput(&iotago.SigLockedSingleOutput{Address: &edAddr, Amount: returnValue}).
+			transactionBuilder := iotago.NewTransactionBuilder()
+			for _, input := range inputUTXOList {
+				transactionBuilder.AddInput(&iotago.ToBeSignedUTXOInput{Address: &edAddr, Input: input})
+			}
+			transactionBuilder.AddOutput(&iotago.SigLockedSingleOutput{Address: toEdAddr, Amount: needValue})
+			if returnValue > 0 {
+				transactionBuilder.AddOutput(&iotago.SigLockedSingleOutput{Address: &edAddr, Amount: returnValue})
+			}
+
+			if message, err := transactionBuilder.
 				AddIndexationPayload(indexationPayload).BuildAndSwapToMessageBuilder(signer, nil).Build(); err != nil {
 				log.Fatal("NewTransactionBuilder", "err", err)
 			} else {
