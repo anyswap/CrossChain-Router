@@ -94,7 +94,6 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 func (b *Bridge) BuildMessage(inputs []*iotago.ToBeSignedUTXOInput, outputs []*iotago.SigLockedSingleOutput) *iotago.TransactionBuilder {
 	transactionBuilder := iotago.NewTransactionBuilder()
 	for _, input := range inputs {
-		log.Warn("")
 		transactionBuilder.AddInput(input)
 	}
 	for _, output := range outputs {

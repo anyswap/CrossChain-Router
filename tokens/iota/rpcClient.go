@@ -66,7 +66,7 @@ func GetOutPutByID(url string, outputID iotago.UTXOInputID, needValue uint64) (*
 			if transactionID, err := hex.DecodeString(outputRes.TransactionID); err != nil {
 				return nil, false, 0, err
 			} else {
-				var utxoInput iotago.UTXOInput
+				utxoInput := &iotago.UTXOInput{}
 				var flag bool
 				var amount uint64
 				copy(utxoInput.TransactionID[:], transactionID)
@@ -78,7 +78,7 @@ func GetOutPutByID(url string, outputID iotago.UTXOInputID, needValue uint64) (*
 					amount = rawType.Amount - needValue
 					flag = true
 				}
-				return &utxoInput, flag, amount, nil
+				return utxoInput, flag, amount, nil
 			}
 		}
 	}
