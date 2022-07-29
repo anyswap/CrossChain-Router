@@ -7,10 +7,10 @@
 常用api文档：https://docs.near.org/docs/api/overview
 
 > testnet  
-rpc:  https://archival-rpc.testnet.near.org  
+rpc:  https://archival-rpc.testnet.near.org
 chain_id:  1001313161555  
 > mainnet  
-rpc: https://archival-rpc.mainnet.near.org  
+rpc: https://archival-rpc.mainnet.near.org
 chain_id: 1001313161554
 
 ## router部署文档 
@@ -45,6 +45,10 @@ nep141是near上的同质化代币协议，即near上的erc20
 >3) router config  
 anytoken: contractVersion=666
 native: contractVersion=999
+```
+```text
+>4) deploy mpcPool
+go run ./tokens/near/tools/deployContract/main.go -config ./build/bin/config-sign-with-privatekey-example.toml -chainID 1001313161555 -pubKey ed25519:7SVZCtsvrQmmAk9q5Ds4eZxKHWpgkQTSwNud5kn9JLiK -privKey ed25519:5NNdYaMoxpKZNTft2vrfx11tt9Lk5W7Zo3dkJkGRmZboEEHYEiJUzowdMWqTXSgfMKQcWNmD17zTdXrViRCsmTmH -accountId test.userdemo.testnet
 ```
 ***
 

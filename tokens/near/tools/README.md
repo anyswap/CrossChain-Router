@@ -1,5 +1,10 @@
 ## tools for call to near by mpc publicKey
 
+### deployContract
+```text
+go run ./tokens/near/tools/deployContract/main.go -config ./build/bin/config-sign-with-privatekey-example.toml -chainID 1001313161555 -pubKey ed25519:7SVZCtsvrQmmAk9q5Ds4eZxKHWpgkQTSwNud5kn9JLiK -privKey ed25519:5NNdYaMoxpKZNTft2vrfx11tt9Lk5W7Zo3dkJkGRmZboEEHYEiJUzowdMWqTXSgfMKQcWNmD17zTdXrViRCsmTmH -accountId test.userdemo.testnet
+```
+
 ### changeMpc
 > go run functionCall/main.go -config config.toml -chainID xxx -routerContract xxx -functionName change_mpc_id -newMpcId xxx -pubKey xxx
 
