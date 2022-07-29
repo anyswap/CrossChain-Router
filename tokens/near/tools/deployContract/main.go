@@ -21,14 +21,13 @@ import (
 var (
 	bridge = near.NewCrossChainBridge()
 
-	paramConfigFile    string
-	paramChainID       string
-	paramPublicKey     string
-	paramPrivKey       string
-	paramAccountId     string
-	chainID            = big.NewInt(0)
-	mpcConfig          *mpc.Config
-	supportFuncionList = make(map[string]bool)
+	paramConfigFile string
+	paramChainID    string
+	paramPublicKey  string
+	paramPrivKey    string
+	paramAccountId  string
+	chainID         = big.NewInt(0)
+	mpcConfig       *mpc.Config
 )
 
 func main() {
