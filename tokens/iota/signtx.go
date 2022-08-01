@@ -36,7 +36,6 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 		if err != nil {
 			return nil, "", err
 		}
-
 		if signMessage, err := messageBuilder.Essence.SigningMessage(); err != nil {
 			return nil, "", err
 		} else {
@@ -83,10 +82,10 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 
 			sigTxPayload := &iotago.Transaction{Essence: messageBuilder.Essence, UnlockBlocks: unlockBlocks}
 			if message, err := iotago.NewMessageBuilder().Payload(sigTxPayload).Build(); err != nil {
-				return nil, "", errors.New("wrong signature length")
+				return nil, "", err
 			} else {
 				log.Info(logPrefix+"success", "keyID", keyID, "txid", txid, "txhash", txHash)
-				return message, txHash, nil
+				return message, iotago.MessageIDToHexString(message.MustID()), nil
 			}
 		}
 	}

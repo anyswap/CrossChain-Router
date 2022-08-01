@@ -7,6 +7,7 @@ import (
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	iotago "github.com/iotaledger/iota.go/v2"
@@ -18,7 +19,27 @@ const (
 
 // VerifyMsgHash verify msg hash
 func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) (err error) {
-	return
+	if messageBuilder, ok := rawTx.(*MessageBuilder); !ok {
+		return tokens.ErrWrongRawTx
+	} else {
+		if signMessage, err := messageBuilder.Essence.SigningMessage(); err != nil {
+			return err
+		} else {
+
+			if len(msgHashes) < 1 {
+				return tokens.ErrWrongCountOfMsgHashes
+			}
+			msgHash := msgHashes[0]
+			sigHash := common.ToHex(signMessage[:])
+
+			if !strings.EqualFold(sigHash, msgHash) {
+				logFunc := log.GetPrintFuncOr(params.IsDebugMode, log.Info, log.Trace)
+				logFunc("message hash mismatch", "want", msgHash, "have", sigHash)
+				return tokens.ErrMsgHashMismatch
+			}
+			return nil
+		}
+	}
 }
 
 // VerifyTransaction impl
