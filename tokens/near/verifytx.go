@@ -151,7 +151,12 @@ func (b *Bridge) parseNep141SwapoutTxEvent(swapInfo *tokens.SwapTxInfo, event []
 }
 
 func (b *Bridge) parseAnyTokenOrNativeTxEvent(swapInfo *tokens.SwapTxInfo, event []string) error {
-	swapInfo.ERC20SwapInfo.Token = event[9]
+	mpc := b.GetRouterContract("")
+	if event[9] == mpc {
+		swapInfo.ERC20SwapInfo.Token = NATIVETOKEN
+	} else {
+		swapInfo.ERC20SwapInfo.Token = event[9]
+	}
 	swapInfo.From = b.GetRouterContract("")
 	swapInfo.Bind = event[4]
 
