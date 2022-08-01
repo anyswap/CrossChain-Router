@@ -94,7 +94,7 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 
 // GetTokenDecimals query token decimals
 func (b *Bridge) GetTokenDecimals(tokenAddr string) (uint8, error) {
-	if tokenAddr == "near" {
+	if tokenAddr == NATIVETOKEN {
 		return uint8(24), nil
 	}
 	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)

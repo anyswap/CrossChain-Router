@@ -257,11 +257,21 @@ func (b *Bridge) fliterReceipts(receipt *ReceiptsOutcome) ([]string, error) {
 		if len(log) != 9 {
 			return nil, tokens.ErrSwapoutLogNotFound
 		}
-		if tokenCfg := b.GetTokenConfig(log[2]); tokenCfg == nil {
-			return nil, tokens.ErrMissTokenConfig
-		} else {
-			if (log[0] == SWAPOUTLOG && tokenCfg.ContractVersion == 666 && log[2] == receipt.Outcome.ExecutorID) || (log[0] == SWAPOUTNATIVELOG && receipt.Outcome.ExecutorID == mpcAddress && tokenCfg.ContractVersion == 999) {
-				return append(log, receipt.Outcome.ExecutorID), nil
+		if log[0] == SWAPOUTLOG {
+			if tokenCfg := b.GetTokenConfig(receipt.Outcome.ExecutorID); tokenCfg == nil {
+				return nil, tokens.ErrMissTokenConfig
+			} else {
+				if tokenCfg.ContractVersion == 666 {
+					return append(log, receipt.Outcome.ExecutorID), nil
+				}
+			}
+		} else if log[0] == SWAPOUTNATIVELOG {
+			if tokenCfg := b.GetTokenConfig(NATIVETOKEN); tokenCfg == nil {
+				return nil, tokens.ErrMissTokenConfig
+			} else {
+				if receipt.Outcome.ExecutorID == mpcAddress && tokenCfg.ContractVersion == 999 {
+					return append(log, receipt.Outcome.ExecutorID), nil
+				}
 			}
 		}
 	} else if len(receipt.Outcome.Logs) == 2 {
