@@ -32,8 +32,13 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 			return nil, "", tokens.ErrMissMPCPublicKey
 		}
 
+		mpcPubkeyByte, err := hex.DecodeString(mpcPubkey)
+		if err != nil {
+			return nil, "", err
+		}
+
 		if signMessage, err := messageBuilder.Essence.SigningMessage(); err != nil {
-			return nil, "", tokens.ErrWrongRawTx
+			return nil, "", err
 		} else {
 			jsondata, _ := json.Marshal(args.GetExtraArgs())
 			msgContext := string(jsondata)
@@ -64,7 +69,7 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 
 			signature := &iotago.Ed25519Signature{}
 			copy(signature.Signature[:], sig)
-			copy(signature.PublicKey[:], []byte(mpcPubkey))
+			copy(signature.PublicKey[:], mpcPubkeyByte[:])
 
 			unlockBlocks := serializer.Serializables{}
 			for i := 0; i < len(messageBuilder.Essence.Inputs); i++ {

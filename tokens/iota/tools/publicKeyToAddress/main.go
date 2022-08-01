@@ -39,7 +39,7 @@ func main() {
 		fmt.Printf("info: %+v\n", info)
 
 		if publicKey, err := hex.DecodeString(paramPubKey); err != nil {
-			log.Fatal("DecodeString", "publicKey", publicKey, "err", err)
+			log.Fatal("DecodeString", "paramPubKey", paramPubKey, "err", err)
 		} else {
 			edAddr := iotago.AddressFromEd25519PubKey(publicKey)
 			bech32Addr := edAddr.Bech32(iotago.NetworkPrefix(info.Bech32HRP))
