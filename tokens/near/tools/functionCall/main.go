@@ -226,7 +226,7 @@ func initFlags() {
 
 func initConfig() {
 	config := params.LoadRouterConfig(paramConfigFile, true, false)
-	mpcConfig = mpc.InitConfig(config.MPC, true)
+	mpcConfig = mpc.InitConfig(config.FastMPC, true)
 	log.Info("init config finished")
 }
 
