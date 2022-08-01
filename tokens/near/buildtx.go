@@ -36,10 +36,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	if args.From == "" {
 		return nil, fmt.Errorf("forbid empty sender")
 	}
-	routerMPC, getMpcErr := router.GetRouterMPC(args.GetTokenID(), b.ChainConfig.ChainID)
-	if getMpcErr != nil {
-		return nil, getMpcErr
-	}
+	routerMPC := b.GetRouterContract("")
 	if !common.IsEqualIgnoreCase(args.From, routerMPC) {
 		log.Error("build tx mpc mismatch", "have", args.From, "want", routerMPC)
 		return nil, tokens.ErrSenderMismatch

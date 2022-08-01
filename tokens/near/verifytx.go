@@ -21,29 +21,28 @@ const (
 
 // VerifyMsgHash verify msg hash
 func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) (err error) {
-	txb, ok := rawTx.(*RawTransaction)
-	if !ok {
+	if txb, ok := rawTx.(*RawTransaction); !ok {
 		return tokens.ErrWrongRawTx
-	}
-	buf, errb := borsh.Serialize(*txb)
-	if errb != nil {
-		return errb
-	}
+	} else {
+		if buf, err := borsh.Serialize(*txb); err != nil {
+			return err
+		} else {
+			hash := sha256.Sum256(buf)
 
-	hash := sha256.Sum256(buf)
+			if len(msgHashes) < 1 {
+				return tokens.ErrWrongCountOfMsgHashes
+			}
+			msgHash := msgHashes[0]
+			sigHash := common.ToHex(hash[:])
 
-	if len(msgHashes) < 1 {
-		return tokens.ErrWrongCountOfMsgHashes
+			if !strings.EqualFold(sigHash, msgHash) {
+				logFunc := log.GetPrintFuncOr(params.IsDebugMode, log.Info, log.Trace)
+				logFunc("message hash mismatch", "want", msgHash, "have", sigHash)
+				return tokens.ErrMsgHashMismatch
+			}
+			return nil
+		}
 	}
-	msgHash := msgHashes[0]
-	sigHash := common.ToHex(hash[:])
-
-	if !strings.EqualFold(sigHash, msgHash) {
-		logFunc := log.GetPrintFuncOr(params.IsDebugMode, log.Info, log.Trace)
-		logFunc("message hash mismatch", "want", msgHash, "have", sigHash)
-		return tokens.ErrMsgHashMismatch
-	}
-	return nil
 }
 
 // VerifyTransaction impl
@@ -157,7 +156,7 @@ func (b *Bridge) parseAnyTokenOrNativeTxEvent(swapInfo *tokens.SwapTxInfo, event
 	} else {
 		swapInfo.ERC20SwapInfo.Token = event[9]
 	}
-	swapInfo.From = b.GetRouterContract("")
+	swapInfo.From = mpc
 	swapInfo.Bind = event[4]
 
 	amount, err := common.GetBigIntFromStr(event[6])
@@ -176,7 +175,6 @@ func (b *Bridge) parseAnyTokenOrNativeTxEvent(swapInfo *tokens.SwapTxInfo, event
 
 func (b *Bridge) parseUnderlyingTxEvent(swapInfo *tokens.SwapTxInfo, event []string) error {
 	swapInfo.ERC20SwapInfo.Token = event[6]
-	swapInfo.ERC20SwapInfo.ForUnderlying = true
 	swapInfo.From = b.GetRouterContract("")
 	swapInfo.Bind = event[8]
 
