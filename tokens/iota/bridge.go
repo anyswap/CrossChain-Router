@@ -7,7 +7,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/base"
-	"github.com/anyswap/CrossChain-Router/v3/tokens/ripple/rubblelabs/ripple/websockets"
 	iotago "github.com/iotaledger/iota.go/v2"
 )
 
@@ -148,14 +147,4 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 	}
 
 	return status, nil
-}
-
-// GetBalance gets balance
-func (b *Bridge) GetBalance(accountAddress string) (*big.Int, error) {
-	return nil, nil
-}
-
-// GetAccount returns account
-func (b *Bridge) GetAccount(address string) (acctRes *websockets.AccountInfoResult, err error) {
-	return
 }

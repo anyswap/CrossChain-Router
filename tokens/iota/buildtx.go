@@ -146,11 +146,6 @@ func (b *Bridge) GetOutPutByID(id iotago.OutputIDHex, needValue uint64) (*iotago
 	return nil, false, 0, tokens.ErrGetOutPutByID
 }
 
-// GetTxBlockInfo impl NonceSetter interface
-func (b *Bridge) GetTxBlockInfo(txHash string) (blockHeight, blockTime uint64) {
-	return
-}
-
 // GetPoolNonce impl NonceSetter interface
 func (b *Bridge) GetPoolNonce(address, _height string) (uint64, error) {
 	return 0, nil
