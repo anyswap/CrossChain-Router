@@ -76,9 +76,9 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 		return swapInfo, tokens.ErrLogIndexOutOfRange
 	}
 
-	events, errv := b.fliterReceipts(&receipts[logIndex])
-	if errv != nil {
-		return swapInfo, tokens.ErrSwapoutLogNotFound
+	events, err := b.fliterReceipts(&receipts[logIndex])
+	if err != nil {
+		return swapInfo, err
 	}
 
 	parseErr := b.parseNep141SwapoutTxEvent(swapInfo, events)
@@ -257,10 +257,10 @@ func (b *Bridge) fliterReceipts(receipt *ReceiptsOutcome) ([]string, error) {
 		if len(log) != 9 {
 			return nil, tokens.ErrSwapoutLogNotFound
 		}
-		if tokenCfg := b.GetTokenConfig(log[0]); tokenCfg == nil {
+		if tokenCfg := b.GetTokenConfig(log[2]); tokenCfg == nil {
 			return nil, tokens.ErrMissTokenConfig
 		} else {
-			if (log[0] == SWAPOUTLOG && tokenCfg.ContractVersion == 666) || (log[0] == SWAPOUTNATIVELOG && receipt.Outcome.ExecutorID == mpcAddress && tokenCfg.ContractVersion == 999) {
+			if (log[0] == SWAPOUTLOG && tokenCfg.ContractVersion == 666 && log[2] == receipt.Outcome.ExecutorID) || (log[0] == SWAPOUTNATIVELOG && receipt.Outcome.ExecutorID == mpcAddress && tokenCfg.ContractVersion == 999) {
 				return append(log, receipt.Outcome.ExecutorID), nil
 			}
 		}
