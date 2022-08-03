@@ -11,6 +11,10 @@ ChainIDBlackList = []
 TokenIDBlackList = []
 # account black list of string array
 AccountBlackList = []
+# token id black list on chain
+[TokenIDBlackListOnChain]
+43114 = []
+25    = []
 
 # router sever config (server only)
 [Server]
