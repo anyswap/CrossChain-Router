@@ -228,6 +228,8 @@ func IsBlacklistSwap(swapInfo *tokens.SwapTxInfo) bool {
 	return params.IsChainIDInBlackList(swapInfo.FromChainID.String()) ||
 		params.IsChainIDInBlackList(swapInfo.ToChainID.String()) ||
 		params.IsTokenIDInBlackList(swapInfo.GetTokenID()) ||
+		params.IsTokenIDInBlackListOnChain(swapInfo.FromChainID.String(), swapInfo.GetTokenID()) ||
+		params.IsTokenIDInBlackListOnChain(swapInfo.ToChainID.String(), swapInfo.GetTokenID()) ||
 		params.IsAccountInBlackList(swapInfo.From) ||
 		params.IsAccountInBlackList(swapInfo.Bind) ||
 		params.IsAccountInBlackList(swapInfo.TxTo)

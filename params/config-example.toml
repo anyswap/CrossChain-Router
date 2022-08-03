@@ -5,6 +5,11 @@ SwapType = "erc20swap"
 # default subtype is empty. anycall has subtype of 'curve'
 SwapSubType = ""
 
+# token id black list on chain
+[Server.TokenIDBlackListOnChain]
+43114 = []
+25    = []
+
 # router sever config (server only)
 [Server]
 # administrators who can do admin work
