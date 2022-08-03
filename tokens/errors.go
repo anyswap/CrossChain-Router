@@ -70,6 +70,7 @@ var (
 	ErrGetOutPutIDs           = errors.New("get output id error")
 	ErrGetOutPutByID          = errors.New("get output by id error")
 	ErrCommitMessage          = errors.New("commit message error")
+	ErrProofOfWork            = errors.New("proof of work error")
 	ErrTxWithWrongAssetLength = errors.New("tx with wrong asset length")
 	ErrOutputLength           = errors.New("output lenght is zero")
 	ErrMpcAddrMissMatch       = errors.New("receiver addr not match mpc addr")

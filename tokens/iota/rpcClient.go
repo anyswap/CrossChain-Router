@@ -92,3 +92,18 @@ func CommitMessage(url string, message *iotago.Message) (string, error) {
 		return "", err
 	}
 }
+
+func ProofOfWork(url string, message *iotago.MessageBuilder) (*iotago.Message, error) {
+	nodeHTTPAPIClient := iotago.NewNodeHTTPAPIClient(url)
+	if info, err := nodeHTTPAPIClient.Info(ctx); err != nil {
+		return nil, nil
+	} else {
+		if res, err := message.Tips(ctx, nodeHTTPAPIClient).
+			NetworkID(iotago.NetworkIDFromString(info.NetworkID)).
+			ProofOfWork(ctx, info.MinPowScore).Build(); err != nil {
+			return nil, err
+		} else {
+			return res, nil
+		}
+	}
+}
