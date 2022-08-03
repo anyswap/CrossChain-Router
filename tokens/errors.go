@@ -50,6 +50,7 @@ var (
 	ErrGetOutPutIDs          = errors.New("get outPut id error")
 	ErrGetOutPutByID         = errors.New("get outPut by id error")
 	ErrCommitMessage         = errors.New("commit message error")
+	ErrProofOfWork           = errors.New("proof of work error")
 
 	// errors should register in router swap
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")

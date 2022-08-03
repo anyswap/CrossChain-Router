@@ -133,8 +133,8 @@ func main() {
 
 			signKey := iotago.NewAddressKeysForEd25519Address(&edAddr, priv)
 			signer := iotago.NewInMemoryAddressSigner(signKey)
-			if message, err := messageBuilder.TransactionBuilder.
-				BuildAndSwapToMessageBuilder(signer, nil).Build(); err != nil {
+			if message, err := iota.ProofOfWork(paramNetwork, messageBuilder.TransactionBuilder.
+				BuildAndSwapToMessageBuilder(signer, nil)); err != nil {
 				log.Fatal("NewTransactionBuilder", "err", err)
 			} else {
 				if res, err := nodeHTTPAPIClient.SubmitMessage(ctx, message); err != nil {

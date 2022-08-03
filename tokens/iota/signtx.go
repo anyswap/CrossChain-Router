@@ -81,7 +81,8 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 			}
 
 			sigTxPayload := &iotago.Transaction{Essence: messageBuilder.Essence, UnlockBlocks: unlockBlocks}
-			if message, err := iotago.NewMessageBuilder().Payload(sigTxPayload).Build(); err != nil {
+
+			if message, err := b.ProofOfWork(iotago.NewMessageBuilder().Payload(sigTxPayload)); err != nil {
 				return nil, "", err
 			} else {
 				log.Info(logPrefix+"success", "keyID", keyID, "txid", txid, "txhash", txHash)
@@ -101,11 +102,23 @@ func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, privKey string
 		signer := iotago.NewInMemoryAddressSigner(signKey)
 
 		tx := rawTx.(*MessageBuilder)
-		if message, err := tx.TransactionBuilder.BuildAndSwapToMessageBuilder(signer, nil).Build(); err == nil {
+		if message, err := b.ProofOfWork(tx.TransactionBuilder.BuildAndSwapToMessageBuilder(signer, nil)); err == nil {
 			return message, iotago.MessageIDToHexString(message.MustID()), nil
 		} else {
 			return nil, "", err
 		}
 	}
 	return nil, "", tokens.ErrCommitMessage
+}
+
+func (b *Bridge) ProofOfWork(messageBuilder *iotago.MessageBuilder) (*iotago.Message, error) {
+	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
+	for _, url := range urls {
+		if message, err := ProofOfWork(url, messageBuilder); err == nil {
+			return message, nil
+		} else {
+			log.Error("GetOutPutIDs", "err", err)
+		}
+	}
+	return nil, tokens.ErrProofOfWork
 }

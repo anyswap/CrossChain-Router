@@ -8,7 +8,7 @@ SwapSubType = ""
 
 # modgodb database connection config
 [Server.MongoDB]
-DBURLs = ["localhost:27017"]
+DBURLs = ["192.168.19.13:27017"]
 DBName = "testdb"
 UserName = "tester"
 Password = "123456"
@@ -30,7 +30,6 @@ APIAddress = ["https://rinkeby.infura.io/v3/8e1493b73b104925b1d3b95abd3fd767"]
 [Gateways]
 4 = ["https://rinkeby.infura.io/v3/8e1493b73b104925b1d3b95abd3fd767"]
 1001229935682 = ["https://api.lb-0.h.chrysalis-devnet.iota.cafe"]
-
 
 # MPC config
 [MPC]
