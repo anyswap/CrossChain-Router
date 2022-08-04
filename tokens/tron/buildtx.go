@@ -61,26 +61,17 @@ var SwapinFeeLimit int32 = 300000000 // 300 TRX
 
 func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error) {
 	var (
-		to        = args.To
-		extra     = args.Extra.EthExtra
-		gasLimit  = *extra.Gas
-		gasPrice  = extra.GasPrice
-		gasTipCap = extra.GasTipCap
-		gasFeeCap = extra.GasFeeCap
+		to    = args.To
+		extra = getOrInitTronExtra(args)
 	)
 
-	rawTx, err = b.BuildTriggerConstantContractTx(args.From, args.To, args.Extra.TronExtra.Selector, args.Extra.TronExtra.Params, SwapinFeeLimit)
+	rawTx, err = b.BuildTriggerConstantContractTx(args.From, args.To, extra.Selector, extra.Params, SwapinFeeLimit)
 
 	ctx := []interface{}{
 		"identifier", args.Identifier, "swapID", args.SwapID,
 		"fromChainID", args.FromChainID, "toChainID", args.ToChainID,
 		"from", args.From, "to", to, "bind", args.Bind,
-		"gasLimit", gasLimit, "replaceNum", args.GetReplaceNum(),
-	}
-	if gasTipCap != nil || gasFeeCap != nil {
-		ctx = append(ctx, "gasTipCap", gasTipCap, "gasFeeCap", gasFeeCap)
-	} else {
-		ctx = append(ctx, "gasPrice", gasPrice)
+		"replaceNum", args.GetReplaceNum(),
 	}
 	switch {
 	case args.ERC20SwapInfo != nil:
@@ -106,7 +97,7 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 	if err != nil {
 		return nil, err
 	}
-	args.Extra.TronExtra.RawTx = fmt.Sprintf("%X", txmsg)
+	extra.RawTx = fmt.Sprintf("%X", txmsg)
 
 	return rawTx, nil
 }
