@@ -45,7 +45,7 @@ address: rDsvn6aJG4YMQdHnuJtP9NLrFp18JYTJUf
     3.1 ripple的router_contract都填写为mpc的ripple地址  
     3.2 ripple的token的contractaAddr填写格式为Current/issure  
     3.3 ripple的native(XRP)的contractAddress填写为XRP
-
+>4)如果issure发行设置了TransferRate,config的version设置为131072
 ## ripple测试步骤
 **evm部署步骤这里不做赘述**
 

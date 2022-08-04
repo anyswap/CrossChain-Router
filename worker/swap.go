@@ -139,6 +139,9 @@ func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
 
 	res, err := mongodb.FindRouterSwapResult(fromChainID, txid, logIndex)
 	if err != nil {
+		if errors.Is(err, mongodb.ErrItemNotFound) {
+			_ = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxNotStable, now(), "")
+		}
 		return err
 	}
 

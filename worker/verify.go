@@ -156,6 +156,8 @@ func isBlacked(swap *mongodb.MgoSwap) bool {
 	return params.IsChainIDInBlackList(swap.FromChainID) ||
 		params.IsChainIDInBlackList(swap.ToChainID) ||
 		params.IsTokenIDInBlackList(swap.GetTokenID()) ||
+		params.IsTokenIDInBlackListOnChain(swap.FromChainID, swap.GetTokenID()) ||
+		params.IsTokenIDInBlackListOnChain(swap.ToChainID, swap.GetTokenID()) ||
 		params.IsAccountInBlackList(swap.From) ||
 		params.IsAccountInBlackList(swap.Bind) ||
 		params.IsAccountInBlackList(swap.TxTo)

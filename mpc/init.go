@@ -302,6 +302,13 @@ func (ni *NodeInfo) deleteSignGroup(groupIndex int) {
 			return
 		}
 	}
+
+	if len(ni.usableSignGroupIndexes) == 0 { // reinit to all origins
+		ni.usableSignGroupIndexes = make([]int, len(ni.originSignGroups))
+		for i := range ni.originSignGroups {
+			ni.usableSignGroupIndexes[i] = i
+		}
+	}
 }
 
 // checkAndAddSignGroups add sign group

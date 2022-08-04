@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/didip/tollbooth/v6"
+	"github.com/didip/tollbooth/v6/libstring"
 	"github.com/didip/tollbooth/v6/limiter"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -51,6 +52,11 @@ func StartAPIServer() {
 			DefaultExpirationTTL: 600 * time.Second,
 		},
 	)
+	lmt.SetOnLimitReached(func(w http.ResponseWriter, r *http.Request) {
+		remoteIP := libstring.RemoteIP(lmt.GetIPLookups(), lmt.GetForwardedForIndexFromBehind(), r)
+		remoteIP = libstring.CanonicalizeIP(remoteIP)
+		log.Warnf("rpc limit reached: %v\n", remoteIP)
+	})
 	handler := tollbooth.LimitHandler(lmt, handlers.CORS(corsOptions...)(router))
 	svr := http.Server{
 		Addr:         fmt.Sprintf(":%v", apiPort),

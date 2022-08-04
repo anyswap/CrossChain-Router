@@ -200,32 +200,43 @@ func (b *Bridge) GetAccount(address string) (acctRes *websockets.AccountInfoResu
 func (b *Bridge) GetAccountLine(currency, issuer, accountAddress string) (line *data.AccountLine, err error) {
 	rpcParams := map[string]interface{}{
 		"account":      accountAddress,
+		"peer":         issuer,
+		"limit":        400,
 		"ledger_index": "current",
 	}
 	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
 	var acclRes *websockets.AccountLinesResult
-OUT_LOOP:
-	for i := 0; i < rpcRetryTimes; i++ {
-		for _, url := range urls {
-			var res *websockets.AccountLinesResult
-			err = client.RPCPostWithTimeout(b.RPCClientTimeout, &res, url, "account_lines", rpcParams)
-			if err == nil && res != nil {
-				acclRes = res
-				break OUT_LOOP
+PAGE_LOOP:
+	for {
+	RETRY_LOOP:
+		for i := 0; i < rpcRetryTimes; i++ {
+			for _, url := range urls {
+				var res *websockets.AccountLinesResult
+				err = client.RPCPostWithTimeout(b.RPCClientTimeout, &res, url, "account_lines", rpcParams)
+				if err == nil && res != nil {
+					acclRes = res
+					break RETRY_LOOP
+				}
+			}
+			time.Sleep(rpcRetryInterval)
+		}
+		if err != nil {
+			log.Error("GetAccountLine rpc error", "err", err)
+			return nil, err
+		}
+		for i := 0; i < len(acclRes.Lines); i++ {
+			accl := &acclRes.Lines[i]
+			asset := accl.Asset()
+			if asset.Currency == currency && asset.Issuer == issuer {
+				return accl, nil
 			}
 		}
-		time.Sleep(rpcRetryInterval)
-	}
-	if err != nil {
-		log.Error("GetAccountLine rpc error", "err", err)
-		return nil, err
-	}
-	for i := 0; i < len(acclRes.Lines); i++ {
-		accl := &acclRes.Lines[i]
-		asset := accl.Asset()
-		if asset.Currency == currency && asset.Issuer == issuer {
-			return accl, nil
+		if acclRes.Marker == nil {
+			break PAGE_LOOP
 		}
+		log.Debug("GetAccountLine pagination", "marker", *acclRes.Marker, "currency", currency, "issuer", issuer, "account", accountAddress)
+		rpcParams["marker"] = *acclRes.Marker
+		acclRes = nil
 	}
 	return nil, wrapRPCQueryError(err, "GetAccountLine", currency, issuer, accountAddress)
 }
