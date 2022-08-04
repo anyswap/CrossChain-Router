@@ -155,9 +155,9 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 		log.Warn("get router mpc address failed", "routerContract", routerContract, "err", err)
 		return err
 	}
-	if common.HexToAddress(routerMPC) == (common.Address{}) {
-		log.Warn("get router mpc address return an empty address", "routerContract", routerContract)
-		return fmt.Errorf("empty router mpc address")
+	if !b.IsValidAddress(routerMPC) {
+		log.Warn("get router mpc address return an invalid address", "routerContract", routerContract, "routerMPC", routerMPC)
+		return fmt.Errorf("invalid router mpc address")
 	}
 	log.Info("get router mpc address success", "routerContract", routerContract, "routerMPC", routerMPC)
 	routerMPCPubkey, err := router.GetMPCPubkey(routerMPC)
