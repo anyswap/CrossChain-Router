@@ -12,8 +12,6 @@ import (
 	"strings"
 	"time"
 
-	tronaddress "github.com/fbsobreira/gotron-sdk/pkg/address"
-	"github.com/fbsobreira/gotron-sdk/pkg/proto/api"
 	"github.com/fbsobreira/gotron-sdk/pkg/proto/core"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -70,8 +68,8 @@ type RPCError struct {
 
 func (e *RPCError) log(msg error) {
 	log.Warn("[Tron RPC error]", "method", e.method, "msg", msg)
-	if len(e.errs) < 1 {
-		e.errs = make([]error, 1)
+	if len(e.errs) == 0 {
+		e.errs = make([]error, 0, 1)
 	}
 	e.errs = append(e.errs, msg)
 }
@@ -257,7 +255,7 @@ func (b *Bridge) GetTransactionLog(txHash string) ([]*types.RPCLog, error) {
 		txinfo := make(map[string]interface{})
 		err = json.Unmarshal(res, &txinfo)
 		if err != nil {
-			rpcError.log(err)
+			rpcError.log(fmt.Errorf("json unmarshal error: %w", err))
 			continue
 		}
 		var ok bool
@@ -340,12 +338,6 @@ func (b *Bridge) NetworkID() (*big.Int, error) {
 
 // GetCode returns contract bytecode
 func (b *Bridge) GetCode(contractAddress string) (data []byte, err error) {
-	contractDesc := tronaddress.HexToAddress(anyToTron(contractAddress))
-	if contractDesc.String() == "" {
-		return nil, errors.New("invalid contract address")
-	}
-	message := new(api.BytesMessage)
-	message.Value = contractDesc
 	rpcError := &RPCError{[]error{}, "GetCode"}
 	for _, endpoint := range b.GatewayConfig.APIAddress {
 		apiurl := strings.TrimSuffix(endpoint, "/") + `/wallet/getcontract`
@@ -408,21 +400,12 @@ func (b *Bridge) GetBalance(account string) (balance *big.Int, err error) {
 }
 
 func (b *Bridge) BuildTriggerConstantContractTx(from, contract string, selector string, paramater string, fee_limit int32) (tx *core.Transaction, err error) {
-	fromAddr := tronaddress.HexToAddress(anyToTron(from))
-	if fromAddr.String() == "" {
-		return nil, errors.New("invalid from address")
-	}
-	contractAddr := tronaddress.HexToAddress(anyToTron(contract))
-	if contractAddr.String() == "" {
-		return nil, errors.New("invalid contract address")
-	}
-
 	rpcError := &RPCError{[]error{}, "BuildTriggerConstantContractTx"}
 
 	tx = &core.Transaction{}
 	for _, endpoint := range b.GatewayConfig.APIAddress {
 		apiurl := strings.TrimSuffix(endpoint, "/") + `/wallet/triggersmartcontract`
-		res, err := post(apiurl, `{"owner_address":"`+fromAddr.Hex()+`","contract_address":"`+contractAddr.Hex()+`","function_selector":"`+selector+`","paramater":"`+paramater+`","fee_limit":"`+fmt.Sprint(fee_limit)+`"}`)
+		res, err := post(apiurl, `{"owner_address":"`+from+`","contract_address":"`+contract+`","function_selector":"`+selector+`","paramater":"`+paramater+`","fee_limit":"`+fmt.Sprint(fee_limit)+`"}`)
 		if err != nil {
 			rpcError.log(err)
 			continue
@@ -455,18 +438,16 @@ func (b *Bridge) BuildTriggerConstantContractTx(from, contract string, selector 
 
 // CallContract
 func (b *Bridge) CallContract(contract string, data hexutil.Bytes, blockNumber string) (string, error) {
-	contractAddr := tronaddress.HexToAddress(anyToTron(contract))
-	if contractAddr.String() == "" {
-		return "", errors.New("invalid contract address")
+	ethAddress, err := tronToEth(contract)
+	if err != nil {
+		return "", err
 	}
-
 	reqArgs := map[string]interface{}{
-		"to":   anyToTron(contract),
+		"to":   ethAddress,
 		"data": data,
 	}
 	gateway := b.GatewayConfig
 	var result string
-	var err error
 	for _, apiAddress := range gateway.EVMAPIAddress {
 		url := apiAddress
 		err = ethclient.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_call", reqArgs, "latest")

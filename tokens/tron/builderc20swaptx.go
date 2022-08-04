@@ -104,7 +104,7 @@ func (b *Bridge) buildERC20SwapTxInput(args *tokens.BuildTxArgs) (err error) {
 	if len(erc20SwapInfo.Path) > 0 {
 		return b.buildERC20SwapTradeTxInput(args, multichainToken)
 	}
-	return b.buildERC20SwapoutTxInput(args, multichainToken)
+	return b.buildERC20SwapinTxInput(args, multichainToken)
 }
 
 func (b *Bridge) buildSwapAndExecTxInput(args *tokens.BuildTxArgs, multichainToken string) (err error) {
@@ -124,7 +124,7 @@ func (b *Bridge) buildSwapAndExecTxInput(args *tokens.BuildTxArgs, multichainTok
 
 	input := abicoder.PackDataWithFuncHash(funcHash,
 		common.HexToHash(args.SwapID),
-		common.HexToAddress(multichainToken),
+		convertToEthAddress(multichainToken),
 		receiver,
 		amount,
 		args.FromChainID,
@@ -133,13 +133,13 @@ func (b *Bridge) buildSwapAndExecTxInput(args *tokens.BuildTxArgs, multichainTok
 	)
 	args.Input = (*hexutil.Bytes)(&input) // input
 	routerContract := b.GetRouterContract(multichainToken)
-	args.To = anyToTron(routerContract) // to
-	args.SwapValue = amount             // swapValue
+	args.To = routerContract // to
+	args.SwapValue = amount  // swapValue
 
 	return nil
 }
 
-func (b *Bridge) buildERC20SwapoutTxInput(args *tokens.BuildTxArgs, multichainToken string) (err error) {
+func (b *Bridge) buildERC20SwapinTxInput(args *tokens.BuildTxArgs, multichainToken string) (err error) {
 	receiver, amount, err := b.getReceiverAndAmount(args, multichainToken)
 	if err != nil {
 		return err
@@ -154,15 +154,15 @@ func (b *Bridge) buildERC20SwapoutTxInput(args *tokens.BuildTxArgs, multichainTo
 
 	input := abicoder.PackDataWithFuncHash(funcHash,
 		common.HexToHash(args.SwapID),
-		common.HexToAddress(multichainToken),
+		convertToEthAddress(multichainToken),
 		receiver,
 		amount,
 		args.FromChainID,
 	)
 	args.Input = (*hexutil.Bytes)(&input) // input
 	routerContract := b.GetRouterContract(multichainToken)
-	args.To = anyToTron(routerContract) // to
-	args.SwapValue = amount             // swapValue
+	args.To = routerContract // to
+	args.SwapValue = amount  // swapValue
 
 	return nil
 }
@@ -192,8 +192,8 @@ func (b *Bridge) buildERC20SwapTradeTxInput(args *tokens.BuildTxArgs, multichain
 	)
 	args.Input = (*hexutil.Bytes)(&input) // input
 	routerContract := b.GetRouterContract(multichainToken)
-	args.To = anyToTron(routerContract) // to
-	args.SwapValue = amount             // swapValue
+	args.To = routerContract // to
+	args.SwapValue = amount  // swapValue
 
 	return nil
 }
@@ -215,10 +215,18 @@ func calcSwapDeadline(args *tokens.BuildTxArgs) int64 {
 
 func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken string) (receiver common.Address, amount *big.Int, err error) {
 	erc20SwapInfo := args.ERC20SwapInfo
-	receiver = common.HexToAddress(args.Bind)
-	if receiver == (common.Address{}) || !common.IsHexAddress(args.Bind) {
-		log.Warn("swapout to wrong receiver", "receiver", args.Bind)
-		return receiver, amount, errors.New("can not swapout to empty or invalid receiver")
+	ethAddress := args.Bind
+	if !common.IsHexAddress(ethAddress) {
+		ethAddress, err = tronToEth(args.Bind)
+		if err != nil {
+			log.Warn("swapout to wrong receiver", "receiver", args.Bind, "err", err)
+			return receiver, amount, err
+		}
+	}
+	receiver = common.HexToAddress(ethAddress)
+	if receiver == (common.Address{}) {
+		log.Warn("swapout to empty receiver", "receiver", args.Bind)
+		return receiver, amount, errors.New("can not swapout to empty receiver")
 	}
 	fromBridge := router.GetBridgeByChainID(args.FromChainID.String())
 	if fromBridge == nil {
