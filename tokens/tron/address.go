@@ -137,6 +137,14 @@ func tronToEth(tronAddress string) (string, error) {
 	return ethaddr.LowerHex(), nil
 }
 
+func tronToEthWithPrefix(tronAddress string) string {
+	addr, err := tronaddress.Base58ToAddress(tronAddress)
+	if err == nil && len(addr) == tronaddress.AddressLength {
+		return hex.EncodeToString(addr)
+	}
+	return ""
+}
+
 func convertToTronAddress(bs []byte) string {
 	ethAddress := common.BytesToAddress(bs).LowerHex()
 	tronAddress, _ := ethToTron(ethAddress)

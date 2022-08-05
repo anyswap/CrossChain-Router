@@ -341,7 +341,7 @@ func (b *Bridge) GetCode(contractAddress string) (data []byte, err error) {
 	rpcError := &RPCError{[]error{}, "GetCode"}
 	for _, endpoint := range b.GatewayConfig.APIAddress {
 		apiurl := strings.TrimSuffix(endpoint, "/") + `/wallet/getcontract`
-		res, err := post(apiurl, `{"value":"`+contractAddress+`","visible":false}`)
+		res, err := post(apiurl, `{"value":"`+tronToEthWithPrefix(contractAddress)+`","visible":false}`)
 		if err != nil {
 			rpcError.log(err)
 			continue
@@ -374,7 +374,7 @@ func (b *Bridge) GetBalance(account string) (balance *big.Int, err error) {
 	account = strings.TrimPrefix(account, "0x")
 	for _, endpoint := range b.GatewayConfig.APIAddress {
 		apiurl := strings.TrimSuffix(endpoint, "/") + `/wallet/getaccount`
-		res, err := post(apiurl, `{"value":"`+account+`","visible":false}`)
+		res, err := post(apiurl, `{"value":"`+tronToEthWithPrefix(account)+`","visible":false}`)
 		if err != nil {
 			rpcError.log(err)
 			continue
@@ -405,20 +405,20 @@ func (b *Bridge) BuildTriggerConstantContractTx(from, contract string, selector 
 	tx = &core.Transaction{}
 	for _, endpoint := range b.GatewayConfig.APIAddress {
 		apiurl := strings.TrimSuffix(endpoint, "/") + `/wallet/triggersmartcontract`
-		res, err := post(apiurl, `{"owner_address":"`+from+`","contract_address":"`+contract+`","function_selector":"`+selector+`","paramater":"`+paramater+`","fee_limit":"`+fmt.Sprint(fee_limit)+`"}`)
+		res, err := post(apiurl, `{"owner_address":"`+tronToEthWithPrefix(from)+`","contract_address":"`+tronToEthWithPrefix(contract)+`","function_selector":"`+selector+`","paramater":"`+paramater+`","fee_limit":"`+fmt.Sprint(fee_limit)+`"}`)
 		if err != nil {
-			rpcError.log(err)
+			rpcError.log(fmt.Errorf("post error: %w", err))
 			continue
 		}
 		result := make(map[string]interface{})
 		err = json.Unmarshal(res, &result)
 		if err != nil {
-			rpcError.log(errors.New("parse error"))
+			rpcError.log(errors.New("parse error: json"))
 			continue
 		}
 		raw, ok := result["raw_data_hex"].(string)
 		if !ok {
-			rpcError.log(errors.New("parse error"))
+			rpcError.log(errors.New("parse error: raw_data_hex"))
 			continue
 		}
 		bz, err := hex.DecodeString(raw)
