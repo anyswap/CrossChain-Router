@@ -1,6 +1,7 @@
 package tron
 
 import (
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -64,6 +65,20 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 		to    = args.To
 		extra = getOrInitTronExtra(args)
 	)
+
+	if extra.RawTx != "" {
+		var bz []byte
+		bz, err = hex.DecodeString(extra.RawTx)
+		if err != nil {
+			return nil, err
+		}
+		var raw core.Transaction
+		err = proto.Unmarshal(bz, &raw)
+		if err != nil {
+			return nil, err
+		}
+		return &raw, nil
+	}
 
 	rawTx, err = b.BuildTriggerConstantContractTx(args.From, args.To, extra.Selector, extra.Params, SwapinFeeLimit)
 

@@ -3,7 +3,6 @@ package tron
 import (
 	"errors"
 	"math/big"
-	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
@@ -16,8 +15,6 @@ import (
 
 // router contract's func hashs
 var (
-	defSwapDeadlineOffset = int64(36000)
-
 	ForceAnySwapInAutoTokenVersion             = uint64(10001)
 	ForceAnySwapInTokenVersion                 = uint64(10002)
 	ForceAnySwapInUnderlyingTokenVersion       = uint64(10003)
@@ -101,9 +98,6 @@ func (b *Bridge) buildERC20SwapTxInput(args *tokens.BuildTxArgs) (err error) {
 	if erc20SwapInfo.CallProxy != "" {
 		return b.buildSwapAndExecTxInput(args, multichainToken)
 	}
-	if len(erc20SwapInfo.Path) > 0 {
-		return b.buildERC20SwapTradeTxInput(args, multichainToken)
-	}
 	return b.buildERC20SwapinTxInput(args, multichainToken)
 }
 
@@ -165,52 +159,6 @@ func (b *Bridge) buildERC20SwapinTxInput(args *tokens.BuildTxArgs, multichainTok
 	args.SwapValue = amount  // swapValue
 
 	return nil
-}
-
-func (b *Bridge) buildERC20SwapTradeTxInput(args *tokens.BuildTxArgs, multichainToken string) (err error) {
-	receiver, amount, err := b.getReceiverAndAmount(args, multichainToken)
-	if err != nil {
-		return err
-	}
-	erc20SwapInfo := args.ERC20SwapInfo
-
-	var funcHash []byte
-	if erc20SwapInfo.ForNative {
-		funcHash = AnySwapInExactTokensForNativeFuncHash
-	} else {
-		funcHash = AnySwapInExactTokensForTokensFuncHash
-	}
-
-	input := abicoder.PackDataWithFuncHash(funcHash,
-		common.HexToHash(args.SwapID),
-		amount,
-		erc20SwapInfo.AmountOutMin,
-		toAddresses(erc20SwapInfo.Path),
-		receiver,
-		calcSwapDeadline(args),
-		args.FromChainID,
-	)
-	args.Input = (*hexutil.Bytes)(&input) // input
-	routerContract := b.GetRouterContract(multichainToken)
-	args.To = routerContract // to
-	args.SwapValue = amount  // swapValue
-
-	return nil
-}
-
-func calcSwapDeadline(args *tokens.BuildTxArgs) int64 {
-	var deadline int64
-	if args.Extra != nil && args.Extra.EthExtra != nil {
-		deadline = args.Extra.EthExtra.Deadline
-	} else if serverCfg := params.GetRouterServerConfig(); serverCfg != nil {
-		offset := serverCfg.SwapDeadlineOffset
-		if offset == 0 {
-			offset = defSwapDeadlineOffset
-		}
-		deadline = time.Now().Unix() + offset
-		getOrInitTronExtra(args).Deadline = deadline
-	}
-	return deadline
 }
 
 func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken string) (receiver common.Address, amount *big.Int, err error) {

@@ -224,7 +224,6 @@ type TronExtraArgs struct {
 	Selector string `json:"selector,omitempty"`
 	Params   string `json:"params,omitempty"`
 	RawTx    string `json:"rawTx,omitempty"`
-	Deadline int64  `json:"deadline,omitempty"`
 }
 
 // GetReplaceNum get rplace swap count
