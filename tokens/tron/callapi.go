@@ -399,6 +399,18 @@ func (b *Bridge) GetBalance(account string) (balance *big.Int, err error) {
 	return big.NewInt(0), rpcError.Error()
 }
 
+type rpcTx struct {
+	RawData    map[string]interface{} `json:"raw_data"`
+	RawDataHex string                 `json:"raw_data_hex"`
+	TxID       string                 `json:"txID"`
+	Visible    bool                   `json:"visible"`
+}
+
+type rpcTxResult struct {
+	Result map[string]interface{} `json:"result,omitempty"`
+	Tx     rpcTx                  `json:"transaction,omitempty"`
+}
+
 func (b *Bridge) BuildTriggerConstantContractTx(from, contract string, selector string, paramater string, fee_limit int32) (tx *core.Transaction, err error) {
 	rpcError := &RPCError{[]error{}, "BuildTriggerConstantContractTx"}
 
@@ -410,15 +422,16 @@ func (b *Bridge) BuildTriggerConstantContractTx(from, contract string, selector 
 			rpcError.log(fmt.Errorf("post error: %w", err))
 			continue
 		}
-		result := make(map[string]interface{})
+		var result rpcTxResult
 		err = json.Unmarshal(res, &result)
 		if err != nil {
+			log.Error("BuildTriggerConstantContractTx json unmarshal failed", "data", common.ToHex(res))
 			rpcError.log(errors.New("parse error: json"))
 			continue
 		}
-		raw, ok := result["raw_data_hex"].(string)
-		if !ok {
-			rpcError.log(errors.New("parse error: raw_data_hex"))
+		raw := result.Tx.RawDataHex
+		if raw == "" {
+			log.Error("BuildTriggerConstantContractTx post failed", "result", result)
 			continue
 		}
 		bz, err := hex.DecodeString(raw)
