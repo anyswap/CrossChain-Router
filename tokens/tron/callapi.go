@@ -178,6 +178,14 @@ func (b *Bridge) GetLatestBlockNumber() (height uint64, err error) {
 	return 0, rpcError.Error()
 }
 
+type rpcGetTxRes struct {
+	Ret        []map[string]interface{} `json:"ret"`
+	Signature  []string                 `json:"signature"`
+	TxID       string                   `json:"txID"`
+	RawData    map[string]interface{}   `json:"raw_data"`
+	RawDataHex string                   `json:"raw_data_hex"`
+}
+
 // GetTransaction impl
 func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
 	rpcError := &RPCError{[]error{}, "GetTransaction"}
@@ -194,35 +202,33 @@ func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
 					err = fmt.Errorf("%v", r)
 				}
 			}()
-			txi := make(map[string]interface{})
-			tx = &core.Transaction{}
+			var txi rpcGetTxRes
 			err = json.Unmarshal(res, &txi)
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
-			for _, reti := range txi["ret"].([]interface{}) {
-				ret := reti.(map[string]interface{})["ret"]
-				cret := reti.(map[string]interface{})["contractRet"]
-				switch {
-				case ret != nil:
-					tx.Ret = append(tx.Ret, &core.Transaction_Result{Ret: core.Transaction_ResultCode(core.Transaction_ResultCode_value[ret.(string)])})
-				case cret != nil:
+			tx = &core.Transaction{}
+			for _, reti := range txi.Ret {
+				cret := reti["contractRet"]
+				if cret != nil {
 					tx.Ret = append(tx.Ret, &core.Transaction_Result{ContractRet: core.Transaction_ResultContractResult(core.Transaction_ResultContractResult_value[cret.(string)])})
-				default:
 				}
 			}
-			for _, sig := range txi["signature"].([]interface{}) {
-				bz, err1 := hex.DecodeString(sig.(string))
+			for _, sig := range txi.Signature {
+				bz, err1 := hex.DecodeString(sig)
 				if err1 != nil {
-					panic(err1)
+					return nil, err1
 				}
 				tx.Signature = append(tx.Signature, bz)
 			}
-			bz, _ := hex.DecodeString(txi["raw_data_hex"].(string))
+			bz, err := hex.DecodeString(txi.RawDataHex)
+			if err != nil {
+				return nil, err
+			}
 			rawdata := &core.TransactionRaw{}
 			err = proto.Unmarshal(bz, rawdata)
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
 			tx.RawData = rawdata
 			return tx, err
@@ -236,64 +242,84 @@ func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
 	return
 }
 
-// GetTransactionLog
-func (b *Bridge) GetTransactionLog(txHash string) ([]*types.RPCLog, error) {
-	rpcError := &RPCError{[]error{}, "GetTransactionLog"}
+type rpcGetTxInfoRes struct {
+	TxID            string                   `json:"id"`
+	BlockNumber     uint64                   `json:"blockNumber"`
+	BlockTimeStamp  uint64                   `json:"blockTimeStamp"`
+	ContractResult  []string                 `json:"contractResult"`
+	ContractAddress string                   `json:"contract_address"`
+	Receipt         map[string]interface{}   `json:"receipt"`
+	Result          string                   `json:"result,omitempty"`
+	ResultMsg       string                   `json:"resMessage,omitempty"`
+	Log             rpcLogSlice              `json:"log"`
+	InternalTxs     []map[string]interface{} `json:"internal_transactions"`
+}
+
+type rpcLog struct {
+	Address string   `json:"address"`
+	Topics  []string `json:"topics"`
+	Data    string   `json:"data"`
+	Removed bool     `json:"removed"`
+}
+
+type rpcLogSlice []*rpcLog
+
+func (logs rpcLogSlice) toRPCLog() []*types.RPCLog {
+	res := make([]*types.RPCLog, len(logs))
+	for i, l := range logs {
+		address := common.HexToAddress(l.Address)
+		data, _ := hex.DecodeString(l.Data)
+		hexdata := hexutil.Bytes(data)
+		topics := make([]common.Hash, len(l.Topics))
+		for j, t := range l.Topics {
+			topics[j] = common.HexToHash(t)
+		}
+		res[i] = &types.RPCLog{
+			Address: &address,
+			Topics:  topics,
+			Data:    &hexdata,
+			Removed: &l.Removed,
+		}
+	}
+	return res
+}
+
+func (b *Bridge) GetTransactionInfo(txHash string) (*rpcGetTxInfoRes, error) {
+	rpcError := &RPCError{[]error{}, "GetTransactionInfo"}
 	defer func() {
 		if r := recover(); r != nil {
 			rpcError.log(fmt.Errorf("%v", r))
 		}
 	}()
-	var tronlogs []interface{}
-	var err error
 	for _, endpoint := range b.GatewayConfig.APIAddress {
 		apiurl := strings.TrimSuffix(endpoint, "/") + `/walletsolidity/gettransactioninfobyid`
-		res, err1 := post(apiurl, `{"value":"`+txHash+`"}`)
-		if err1 != nil {
-			panic(err1)
+		res, err := post(apiurl, `{"value":"`+txHash+`"}`)
+		if err != nil {
+			rpcError.log(fmt.Errorf("rpc post error: %w", err))
+			continue
 		}
-		txinfo := make(map[string]interface{})
-		err = json.Unmarshal(res, &txinfo)
+		var txInfo rpcGetTxInfoRes
+		err = json.Unmarshal(res, &txInfo)
 		if err != nil {
 			rpcError.log(fmt.Errorf("json unmarshal error: %w", err))
 			continue
 		}
-		var ok bool
-		tronlogs, ok = txinfo["log"].([]interface{})
-		if !ok {
-			rpcError.log(errors.New("parse error"))
-			continue
-		}
+		return &txInfo, nil
 	}
+	return nil, errors.New("tx log not found")
+}
+
+// GetTransactionLog
+func (b *Bridge) GetTransactionLog(txHash string) ([]*types.RPCLog, error) {
+	txInfo, err := b.GetTransactionInfo(txHash)
 	if err != nil {
-		return nil, rpcError.Error()
+		return nil, err
 	}
-	logs := make([]*types.RPCLog, 0)
-	for _, tlog := range tronlogs {
-		tl, ok := tlog.(map[string]interface{})
-		if !ok {
-			rpcError.log(errors.New("parse error"))
-			continue
-		}
-		addr := common.HexToAddress(tl["address"].(string))
-		data, _ := hex.DecodeString(tl["data"].(string))
-		hexdata := hexutil.Bytes(data)
-		ethlog := &types.RPCLog{
-			Address: &addr,
-			Topics:  []common.Hash{},
-			Data:    &hexdata,
-			Removed: new(bool),
-		}
-		topics, _ := tl["topics"].([]interface{})
-		if topics == nil && len(topics) == 0 {
-			return nil, rpcError.Error()
-		}
-		for _, topic := range topics {
-			ethlog.Topics = append(ethlog.Topics, common.HexToHash(topic.(string)))
-		}
-		logs = append(logs, ethlog)
+	status, ok := txInfo.Receipt["result"].(string)
+	if !ok || status != "SUCCESS" || txInfo.Result == "FAILED" {
+		return nil, errors.New("tx status is not success")
 	}
-	return logs, nil
+	return txInfo.Log.toRPCLog(), nil
 }
 
 // BroadcastTx broadcast tx to network

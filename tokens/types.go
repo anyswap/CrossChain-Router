@@ -132,12 +132,11 @@ type SwapTxInfo struct {
 
 // TxStatus struct
 type TxStatus struct {
-	Receipt            interface{} `json:"receipt,omitempty"`
-	CustomeCheckStable func(uint64) bool
-	Confirmations      uint64 `json:"confirmations"`
-	BlockHeight        uint64 `json:"block_height"`
-	BlockHash          string `json:"block_hash"`
-	BlockTime          uint64 `json:"block_time"`
+	Receipt       interface{} `json:"receipt,omitempty"`
+	Confirmations uint64      `json:"confirmations"`
+	BlockHeight   uint64      `json:"block_height"`
+	BlockHash     string      `json:"block_hash"`
+	BlockTime     uint64      `json:"block_time"`
 }
 
 // StatusInterface interface

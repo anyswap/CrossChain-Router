@@ -2,10 +2,7 @@ package tron
 
 import (
 	"crypto/sha256"
-	"encoding/json"
 	"errors"
-	"fmt"
-	"math/big"
 	"strings"
 
 	"github.com/fbsobreira/gotron-sdk/pkg/proto/core"
@@ -18,61 +15,27 @@ import (
 
 // GetTransactionStatus returns tx status
 func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, err error) {
-	status = &tokens.TxStatus{}
-	tx, err := b.GetTransaction(txHash)
-	rpcError := &RPCError{[]error{}, "GetTransactionStatus"}
-	defer func() {
-		if r := recover(); r != nil {
-			rpcError.log(fmt.Errorf("%v", r))
-		}
-	}()
-	txinfo := make(map[string]interface{})
-	for _, endpoint := range b.GatewayConfig.APIAddress {
-		apiurl := strings.TrimSuffix(endpoint, "/") + `/walletsolidity/gettransactioninfobyid`
-		res, err1 := post(apiurl, `{"value":"`+txHash+`"}`)
-		if err1 != nil {
-			panic(err1)
-		}
-		err = json.Unmarshal(res, &txinfo)
-		if err != nil {
-			rpcError.log(err)
-			continue
-		}
+	txInfo, err := b.GetTransactionInfo(txHash)
+	if err != nil {
+		return nil, err
 	}
 
-	defer func() {
-		if r := recover(); r != nil {
-			status = nil
-			err = fmt.Errorf("%v", r)
-		}
-	}()
-
-	if txinfo["receipt"].(map[string]interface{})["result"].(string) != "SUCCESS" {
+	stat, ok := txInfo.Receipt["result"].(string)
+	if !ok || stat != "SUCCESS" || txInfo.Result == "FAILED" {
 		return nil, errors.New("tron tx not success")
 	}
-	cres := txinfo["contractResult"].([]interface{})
-	if len(cres) < 1 {
-		return nil, errors.New("tron tx no result")
-	}
-	for _, cr := range cres {
-		r := []byte(cr.(string))
-		if len(r) > 0 && new(big.Int).SetBytes(r).Int64() != 1 {
-			return nil, errors.New("tron tx wrong result")
-		}
-	}
 
-	status.Receipt = txinfo
-	status.Receipt.(map[string]interface{})["tx"] = tx
-	status.BlockHeight = uint64(txinfo["blockNumber"].(float64))
-	status.BlockTime = uint64(txinfo["blockTimeStamp"].(float64)) / 1000
+	status = &tokens.TxStatus{}
+
+	status.Receipt = txInfo
+	status.BlockHeight = txInfo.BlockNumber
+	status.BlockTime = txInfo.BlockTimeStamp
+	status.BlockHash = txInfo.TxID
 
 	if latest, err := b.GetLatestBlockNumber(); err == nil {
 		status.Confirmations = latest - status.BlockHeight
 	}
-	status.CustomeCheckStable = func(confirmations uint64) bool {
-		return status.Confirmations >= confirmations
-	}
-	return
+	return status, nil
 }
 
 // VerifyMsgHash verify msg hash

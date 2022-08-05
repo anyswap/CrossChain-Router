@@ -150,7 +150,7 @@ func (b *Bridge) checkTxSuccess(swapInfo *tokens.SwapTxInfo, allowUnstable bool)
 	swapInfo.Height = txStatus.BlockHeight  // Height
 	swapInfo.Timestamp = txStatus.BlockTime // Timestamp
 
-	if !allowUnstable && !txStatus.CustomeCheckStable(b.ChainConfig.Confirmations) {
+	if !allowUnstable && txStatus.Confirmations < b.ChainConfig.Confirmations {
 		return tokens.ErrTxNotStable
 	}
 
