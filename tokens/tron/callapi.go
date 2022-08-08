@@ -188,6 +188,11 @@ type rpcGetTxRes struct {
 
 // GetTransaction impl
 func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
+	return b.GetTronTransaction(txHash)
+}
+
+// GetTronTransaction get tx
+func (b *Bridge) GetTronTransaction(txHash string) (tx *core.Transaction, err error) {
 	rpcError := &RPCError{[]error{}, "GetTransaction"}
 	for _, endpoint := range b.GatewayConfig.APIAddress {
 		apiurl := strings.TrimSuffix(endpoint, "/") + `/wallet/gettransactionbyid`

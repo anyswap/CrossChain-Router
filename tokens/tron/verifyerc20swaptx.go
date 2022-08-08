@@ -144,14 +144,17 @@ func (b *Bridge) checkTxSuccess(swapInfo *tokens.SwapTxInfo, allowUnstable bool)
 	if txStatus.BlockHeight < b.ChainConfig.InitialHeight {
 		return tokens.ErrTxBeforeInitialHeight
 	}
-	receipt := txStatus.Receipt.(map[string]interface{})
-	tx := receipt["tx"].(*core.Transaction)
 
 	swapInfo.Height = txStatus.BlockHeight  // Height
 	swapInfo.Timestamp = txStatus.BlockTime // Timestamp
 
 	if !allowUnstable && txStatus.Confirmations < b.ChainConfig.Confirmations {
 		return tokens.ErrTxNotStable
+	}
+
+	tx, err := b.GetTronTransaction(swapInfo.Hash)
+	if err != nil {
+		return err
 	}
 
 	ret := tx.GetRet()

@@ -87,6 +87,8 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 		"fromChainID", args.FromChainID, "toChainID", args.ToChainID,
 		"from", args.From, "to", to, "bind", args.Bind,
 		"replaceNum", args.GetReplaceNum(),
+		"selector", extra.Selector, "params", extra.Params,
+		"feeLimit", SwapinFeeLimit,
 	}
 	switch {
 	case args.ERC20SwapInfo != nil:
