@@ -444,13 +444,15 @@ type rpcTxResult struct {
 	Tx     rpcTx                  `json:"transaction,omitempty"`
 }
 
-func (b *Bridge) BuildTriggerConstantContractTx(from, contract string, selector string, paramater string, fee_limit int32) (tx *core.Transaction, err error) {
+func (b *Bridge) BuildTriggerConstantContractTx(from, contract string, selector string, parameter string, fee_limit int64) (tx *core.Transaction, err error) {
 	rpcError := &RPCError{[]error{}, "BuildTriggerConstantContractTx"}
 
 	tx = &core.Transaction{}
+	txdata := `{"owner_address":"` + tronToEthWithPrefix(from) + `","contract_address":"` + tronToEthWithPrefix(contract) + `","function_selector":"` + selector + `","parameter":"` + parameter + `","fee_limit":"` + fmt.Sprint(fee_limit) + `"}`
+	log.Trace("BuildTriggerConstantContractTx", "txdata", txdata)
 	for _, endpoint := range b.GatewayConfig.APIAddress {
 		apiurl := strings.TrimSuffix(endpoint, "/") + `/wallet/triggersmartcontract`
-		res, err := post(apiurl, `{"owner_address":"`+tronToEthWithPrefix(from)+`","contract_address":"`+tronToEthWithPrefix(contract)+`","function_selector":"`+selector+`","paramater":"`+paramater+`","fee_limit":"`+fmt.Sprint(fee_limit)+`"}`)
+		res, err := post(apiurl, txdata)
 		if err != nil {
 			rpcError.log(fmt.Errorf("post error: %w", err))
 			continue
@@ -477,6 +479,7 @@ func (b *Bridge) BuildTriggerConstantContractTx(from, contract string, selector 
 			panic(err)
 		}
 		tx.RawData = rawdata
+		log.Trace("BuildTriggerConstantContractTx post success", "result", result)
 		return tx, nil
 	}
 	return nil, rpcError.Error()

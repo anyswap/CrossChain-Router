@@ -21,20 +21,29 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tools/crypto"
 )
 
-func (b *Bridge) verifyTransactionReceiver(rawTx interface{}, tokenID string) (*core.Transaction, error) {
-	tx, ok := rawTx.(*core.Transaction)
-	if !ok {
-		return nil, errors.New("wrong raw tx param")
-	}
-
+func getTriggerSmartContract(tx *core.Transaction) (*core.TriggerSmartContract, error) {
 	rawdata := tx.GetRawData()
 	contracts := rawdata.GetContract()
 
 	var contract core.TriggerSmartContract
 	err := ptypes.UnmarshalAny(contracts[0].GetParameter(), &contract)
 	if err != nil {
-		return nil, fmt.Errorf("[sign] Decode tron contract error: %v", err)
+		return nil, fmt.Errorf("decode trigger smart contract tx error: %w", err)
 	}
+	return &contract, nil
+}
+
+func (b *Bridge) verifyTransactionReceiver(rawTx interface{}, tokenID string) (*core.Transaction, error) {
+	tx, ok := rawTx.(*core.Transaction)
+	if !ok {
+		return nil, errors.New("wrong raw tx param")
+	}
+
+	contract, err := getTriggerSmartContract(tx)
+	if err != nil {
+		return nil, err
+	}
+
 	txRecipient := tronaddress.Address(contract.ContractAddress).String()
 
 	checkReceiver, err := router.GetTokenRouterContract(tokenID, b.ChainConfig.ChainID)

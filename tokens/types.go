@@ -194,18 +194,19 @@ type BuildTxArgs struct {
 	SwapValue   *big.Int       `json:"swapValue,omitempty"`
 	Value       *big.Int       `json:"value,omitempty"`
 	Memo        string         `json:"memo,omitempty"`
+	Selector    string         `json:"selector,omitempty"`
 	Input       *hexutil.Bytes `json:"input,omitempty"`
 	Extra       *AllExtras     `json:"extra,omitempty"`
 }
 
 // AllExtras struct
 type AllExtras struct {
-	EthExtra   *EthExtraArgs  `json:"ethExtra,omitempty"`
-	ReplaceNum uint64         `json:"replaceNum,omitempty"`
-	TronExtra  *TronExtraArgs `json:"tronExtra,omitempty"`
-	Sequence   *uint64        `json:"sequence,omitempty"`
-	Fee        *string        `json:"fee,omitempty"`
-	Gas        *uint64        `json:"gas,omitempty"`
+	EthExtra   *EthExtraArgs `json:"ethExtra,omitempty"`
+	ReplaceNum uint64        `json:"replaceNum,omitempty"`
+	Sequence   *uint64       `json:"sequence,omitempty"`
+	Fee        *string       `json:"fee,omitempty"`
+	Gas        *uint64       `json:"gas,omitempty"`
+	RawTx      string        `json:"rawTx,omitempty"`
 }
 
 // EthExtraArgs struct
@@ -216,13 +217,6 @@ type EthExtraArgs struct {
 	GasFeeCap *big.Int `json:"gasFeeCap,omitempty"`
 	Nonce     *uint64  `json:"nonce,omitempty"`
 	Deadline  int64    `json:"deadline,omitempty"`
-}
-
-// TronExtraArgs struct
-type TronExtraArgs struct {
-	Selector string `json:"selector,omitempty"`
-	Params   string `json:"params,omitempty"`
-	RawTx    string `json:"rawTx,omitempty"`
 }
 
 // GetReplaceNum get rplace swap count
