@@ -325,7 +325,11 @@ func (b *Bridge) GetTransactionLog(txHash string) ([]*types.RPCLog, error) {
 // BroadcastTx broadcast tx to network
 func (b *Bridge) BroadcastTx(tx *core.Transaction) (err error) {
 	rpcError := &RPCError{[]error{}, "BroadcastTx"}
-	txhex := hex.EncodeToString(tx.GetRawData().GetData())
+	protoData, err := proto.Marshal(tx)
+	if err != nil {
+		return err
+	}
+	txhex := fmt.Sprintf("%X", protoData)
 	for _, endpoint := range b.GatewayConfig.APIAddress {
 		apiurl := strings.TrimSuffix(endpoint, "/") + `/wallet/broadcasthex`
 		res, err := post(apiurl, `{"transaction":"`+txhex+`"}`)
@@ -340,13 +344,11 @@ func (b *Bridge) BroadcastTx(tx *core.Transaction) (err error) {
 			continue
 		}
 		success, ok := result["result"].(bool)
-		if !ok {
-			rpcError.log(errors.New("parse error"))
-			continue
-		}
-		if success {
+		if ok && success {
 			return nil
 		}
+		rpcError.log(errors.New("parse error"))
+		log.Error("BroadcastTx failed", "result", result, "txhex", txhex)
 	}
 	return rpcError.Error()
 }
