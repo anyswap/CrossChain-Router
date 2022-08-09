@@ -106,7 +106,7 @@ func (b *Bridge) getContractCode(contract string) (code []byte, err error) {
 
 // VerifyMPCPubKey verify mpc address and public key is matching
 func VerifyMPCPubKey(mpcAddress, mpcPubkey string) error {
-	pkAddress, err := pubKeyToAddress(mpcPubkey)
+	pkAddress, err := PubKeyToAddress(mpcPubkey)
 	if err != nil {
 		return err
 	}
@@ -159,7 +159,18 @@ func convertToEthAddress(tronAddress string) string {
 	return ethAddress
 }
 
-func pubKeyToAddress(pubKeyHex string) (address string, err error) {
+// EthToTron eth address to tron address
+func EthToTron(ethAddress string) (string, error) {
+	return ethToTron(ethAddress)
+}
+
+// TronToEth tron address to eth address
+func TronToEth(tronAddress string) (string, error) {
+	return tronToEth(tronAddress)
+}
+
+// PubKeyToAddress tool
+func PubKeyToAddress(pubKeyHex string) (address string, err error) {
 	pubKeyHex = strings.TrimPrefix(pubKeyHex, "0x")
 	bz, err := hex.DecodeString(pubKeyHex)
 	if err != nil {
@@ -174,5 +185,5 @@ func pubKeyToAddress(pubKeyHex string) (address string, err error) {
 
 // PublicKeyToAddress returns cosmos public key address
 func (b *Bridge) PublicKeyToAddress(pubKeyHex string) (address string, err error) {
-	return pubKeyToAddress(pubKeyHex)
+	return PubKeyToAddress(pubKeyHex)
 }
