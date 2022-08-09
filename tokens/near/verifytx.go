@@ -18,7 +18,6 @@ const (
 	SWAPOUTNATIVELOG = "SwapOutNative"
 	TRANSFERLOG      = "Transfer"
 	TRANSFERV4LOG    = "ft_transfer"
-	NATIVETOKEN      = "near"
 )
 
 // VerifyMsgHash verify msg hash
