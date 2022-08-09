@@ -201,3 +201,17 @@ type CreateAccount struct {
 	NewAccountId string `json:"new_account_id"`
 	NewPublicKey string `json:"new_public_key"`
 }
+
+type Nep141V4TransferEvent struct {
+	Standard string                 `json:"standard"`
+	Version  string                 `json:"version"`
+	Event    string                 `json:"event"`
+	Data     []Nep141V4TransferMemo `json:"data"`
+}
+
+type Nep141V4TransferMemo struct {
+	OldOwnerId string `json:"old_owner_id"`
+	NewOwnerId string `json:"new_owner_id"`
+	Amount     string `json:"amount"`
+	Memo       string `json:"memo"`
+}

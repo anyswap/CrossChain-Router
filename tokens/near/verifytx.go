@@ -2,6 +2,7 @@ package near
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -16,6 +17,7 @@ const (
 	SWAPOUTLOG       = "SwapOut"
 	SWAPOUTNATIVELOG = "SwapOutNative"
 	TRANSFERLOG      = "Transfer"
+	TRANSFERV4LOG    = "ft_transfer"
 	NATIVETOKEN      = "near"
 )
 
@@ -128,69 +130,105 @@ func (b *Bridge) checkTxStatus(txres *TransactionResult, allowUnstable bool) err
 }
 
 func (b *Bridge) parseNep141SwapoutTxEvent(swapInfo *tokens.SwapTxInfo, event []string) (err error) {
-	if len(event) != 10 {
+	if len(event) != 5 {
 		return tokens.ErrSwapoutLogNotFound
 	}
-	switch event[0] {
-	case TRANSFERLOG:
-		err = b.parseUnderlyingTxEvent(swapInfo, event)
-	default:
-		err = b.parseAnyTokenOrNativeTxEvent(swapInfo, event)
-	}
-	if err != nil {
+	if err := b.parseTxEvent(swapInfo, event); err != nil {
 		return err
-	}
-	tokenCfg := b.GetTokenConfig(swapInfo.ERC20SwapInfo.Token)
-	if tokenCfg == nil {
-		return tokens.ErrMissTokenConfig
-	}
-	swapInfo.ERC20SwapInfo.TokenID = tokenCfg.TokenID
-	swapInfo.To = swapInfo.Bind
-	return nil
-}
-
-func (b *Bridge) parseAnyTokenOrNativeTxEvent(swapInfo *tokens.SwapTxInfo, event []string) error {
-	mpc := b.GetRouterContract("")
-	if event[9] == mpc {
-		swapInfo.ERC20SwapInfo.Token = NATIVETOKEN
 	} else {
-		swapInfo.ERC20SwapInfo.Token = event[9]
+		tokenCfg := b.GetTokenConfig(swapInfo.ERC20SwapInfo.Token)
+		if tokenCfg == nil {
+			return tokens.ErrMissTokenConfig
+		}
+		swapInfo.ERC20SwapInfo.TokenID = tokenCfg.TokenID
+		swapInfo.To = swapInfo.Bind
+		return nil
 	}
-	swapInfo.From = mpc
-	swapInfo.Bind = event[4]
-
-	amount, err := common.GetBigIntFromStr(event[6])
-	if err != nil {
-		return err
-	}
-	swapInfo.Value = amount
-
-	toChainID, err := common.GetBigIntFromStr(event[8])
-	if err != nil {
-		return err
-	}
-	swapInfo.ToChainID = toChainID
-	return nil
 }
 
-func (b *Bridge) parseUnderlyingTxEvent(swapInfo *tokens.SwapTxInfo, event []string) error {
-	swapInfo.ERC20SwapInfo.Token = event[6]
+func (b *Bridge) parseTxEvent(swapInfo *tokens.SwapTxInfo, event []string) error {
+	swapInfo.ERC20SwapInfo.Token = event[1]
 	swapInfo.From = b.GetRouterContract("")
-	swapInfo.Bind = event[8]
+	swapInfo.Bind = event[2]
 
-	amount, err := common.GetBigIntFromStr(event[1])
+	amount, err := common.GetBigIntFromStr(event[3])
 	if err != nil {
 		return err
 	}
 	swapInfo.Value = amount
 
-	toChainID, err := common.GetBigIntFromStr(event[9])
+	toChainID, err := common.GetBigIntFromStr(event[4])
 	if err != nil {
 		return err
 	}
 	swapInfo.ToChainID = toChainID
 	return nil
 }
+
+// func (b *Bridge) parseNep141SwapoutTxEvent(swapInfo *tokens.SwapTxInfo, event []string) (err error) {
+// 	if len(event) != 10 {
+// 		return tokens.ErrSwapoutLogNotFound
+// 	}
+// 	switch event[0] {
+// 	case TRANSFERLOG:
+// 		err = b.parseUnderlyingTxEvent(swapInfo, event)
+// 	default:
+// 		err = b.parseAnyTokenOrNativeTxEvent(swapInfo, event)
+// 	}
+// 	if err != nil {
+// 		return err
+// 	}
+// 	tokenCfg := b.GetTokenConfig(swapInfo.ERC20SwapInfo.Token)
+// 	if tokenCfg == nil {
+// 		return tokens.ErrMissTokenConfig
+// 	}
+// 	swapInfo.ERC20SwapInfo.TokenID = tokenCfg.TokenID
+// 	swapInfo.To = swapInfo.Bind
+// 	return nil
+// }
+
+// func (b *Bridge) parseAnyTokenOrNativeTxEvent(swapInfo *tokens.SwapTxInfo, event []string) error {
+// 	mpc := b.GetRouterContract("")
+// 	if event[9] == mpc {
+// 		swapInfo.ERC20SwapInfo.Token = NATIVETOKEN
+// 	} else {
+// 		swapInfo.ERC20SwapInfo.Token = event[9]
+// 	}
+// 	swapInfo.From = mpc
+// 	swapInfo.Bind = event[4]
+
+// 	amount, err := common.GetBigIntFromStr(event[6])
+// 	if err != nil {
+// 		return err
+// 	}
+// 	swapInfo.Value = amount
+
+// 	toChainID, err := common.GetBigIntFromStr(event[8])
+// 	if err != nil {
+// 		return err
+// 	}
+// 	swapInfo.ToChainID = toChainID
+// 	return nil
+// }
+
+// func (b *Bridge) parseUnderlyingTxEvent(swapInfo *tokens.SwapTxInfo, event []string) error {
+// 	swapInfo.ERC20SwapInfo.Token = event[6]
+// 	swapInfo.From = b.GetRouterContract("")
+// 	swapInfo.Bind = event[8]
+
+// 	amount, err := common.GetBigIntFromStr(event[1])
+// 	if err != nil {
+// 		return err
+// 	}
+// 	swapInfo.Value = amount
+
+// 	toChainID, err := common.GetBigIntFromStr(event[9])
+// 	if err != nil {
+// 		return err
+// 	}
+// 	swapInfo.ToChainID = toChainID
+// 	return nil
+// }
 
 func (b *Bridge) checkSwapoutInfo(swapInfo *tokens.SwapTxInfo) error {
 	if strings.EqualFold(swapInfo.From, swapInfo.To) {
@@ -255,35 +293,82 @@ func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable boo
 
 func (b *Bridge) fliterReceipts(receipt *ReceiptsOutcome) ([]string, error) {
 	mpcAddress := b.GetRouterContract("")
-	if len(receipt.Outcome.Logs) == 1 {
-		log := strings.Split(receipt.Outcome.Logs[0], " ")
-		if len(log) != 9 {
-			return nil, tokens.ErrSwapoutLogNotFound
-		}
-		if log[0] == SWAPOUTLOG {
-			if tokenCfg := b.GetTokenConfig(receipt.Outcome.ExecutorID); tokenCfg == nil {
-				return nil, tokens.ErrMissTokenConfig
-			} else {
-				if tokenCfg.ContractVersion == 666 {
-					return append(log, receipt.Outcome.ExecutorID), nil
+	executorID := receipt.Outcome.ExecutorID
+	if tokenCfg := b.GetTokenConfig(executorID); tokenCfg == nil {
+		return nil, tokens.ErrMissTokenConfig
+	} else {
+		switch tokenCfg.ContractVersion {
+		case 666:
+			if len(receipt.Outcome.Logs) == 1 {
+				log := strings.Split(receipt.Outcome.Logs[0], " ")
+				if log[0] == SWAPOUTLOG && len(log) == 9 {
+					return []string{SWAPOUTLOG, executorID, log[4], log[6], log[8]}, nil
 				}
 			}
-		} else if log[0] == SWAPOUTNATIVELOG {
-			if tokenCfg := b.GetTokenConfig(NATIVETOKEN); tokenCfg == nil {
-				return nil, tokens.ErrMissTokenConfig
-			} else {
-				if receipt.Outcome.ExecutorID == mpcAddress && tokenCfg.ContractVersion == 999 {
-					return append(log, receipt.Outcome.ExecutorID), nil
+		case 999:
+			if len(receipt.Outcome.Logs) == 1 {
+				log := strings.Split(receipt.Outcome.Logs[0], " ")
+				if log[0] == SWAPOUTNATIVELOG && len(log) == 9 && executorID == mpcAddress {
+					return []string{SWAPOUTNATIVELOG, executorID, log[4], log[6], log[8]}, nil
 				}
 			}
+		default:
+			switch len(receipt.Outcome.Logs) {
+			case 1:
+				var event Nep141V4TransferEvent
+				if err := json.Unmarshal([]byte(receipt.Outcome.Logs[0]), &event); err == nil {
+					if len(event.Data) == 1 {
+						log := strings.Split(event.Data[0].Memo, " ")
+						if event.Event == TRANSFERV4LOG && len(log) == 2 && event.Data[0].NewOwnerId == mpcAddress {
+							return []string{TRANSFERLOG, executorID, log[0], event.Data[0].Amount, log[1]}, nil
+						}
+					}
+				}
+			case 2:
+				log_0 := strings.Split(receipt.Outcome.Logs[0], " ")
+				log_1 := strings.Split(receipt.Outcome.Logs[1], " ")
+				if len(log_0) == 6 && len(log_1) == 3 && log_0[0] == TRANSFERLOG && log_0[5] == mpcAddress {
+					return []string{TRANSFERLOG, executorID, log_1[1], log_0[1], log_1[2]}, nil
+				}
+			default:
+				return nil, tokens.ErrSwapoutLogNotFound
+			}
 		}
-	} else if len(receipt.Outcome.Logs) == 2 {
-		log_0 := strings.Split(receipt.Outcome.Logs[0], " ")
-		log_1 := strings.Split(receipt.Outcome.Logs[1], " ")
-		if len(log_0) != 6 || len(log_1) != 3 || log_0[0] != TRANSFERLOG || log_0[5] != mpcAddress {
-			return nil, tokens.ErrSwapoutLogNotFound
-		}
-		return append(append(log_0, receipt.Outcome.ExecutorID), log_1...), nil
 	}
 	return nil, tokens.ErrSwapoutLogNotFound
 }
+
+// func (b *Bridge) fliterReceipts(receipt *ReceiptsOutcome) ([]string, error) {
+// 	mpcAddress := b.GetRouterContract("")
+// 	if len(receipt.Outcome.Logs) == 1 {
+// 		log := strings.Split(receipt.Outcome.Logs[0], " ")
+// 		if len(log) != 9 {
+// 			return nil, tokens.ErrSwapoutLogNotFound
+// 		}
+// 		if log[0] == SWAPOUTLOG {
+// 			if tokenCfg := b.GetTokenConfig(receipt.Outcome.ExecutorID); tokenCfg == nil {
+// 				return nil, tokens.ErrMissTokenConfig
+// 			} else {
+// 				if tokenCfg.ContractVersion == 666 {
+// 					return append(log, receipt.Outcome.ExecutorID), nil
+// 				}
+// 			}
+// 		} else if log[0] == SWAPOUTNATIVELOG {
+// 			if tokenCfg := b.GetTokenConfig(NATIVETOKEN); tokenCfg == nil {
+// 				return nil, tokens.ErrMissTokenConfig
+// 			} else {
+// 				if receipt.Outcome.ExecutorID == mpcAddress && tokenCfg.ContractVersion == 999 {
+// 					return append(log, receipt.Outcome.ExecutorID), nil
+// 				}
+// 			}
+// 		}
+// 	} else if len(receipt.Outcome.Logs) == 2 {
+// 		log_0 := strings.Split(receipt.Outcome.Logs[0], " ")
+// 		log_1 := strings.Split(receipt.Outcome.Logs[1], " ")
+// 		if len(log_0) != 6 || len(log_1) != 3 || log_0[0] != TRANSFERLOG || log_0[5] != mpcAddress {
+// 			return nil, tokens.ErrSwapoutLogNotFound
+// 		}
+// 		return append(append(log_0, receipt.Outcome.ExecutorID), log_1...), nil
+// 	}
+// 	return nil, tokens.ErrSwapoutLogNotFound
+// }
