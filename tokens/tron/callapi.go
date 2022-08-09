@@ -289,6 +289,12 @@ func (logs rpcLogSlice) toRPCLog() []*types.RPCLog {
 	return res
 }
 
+// IsStatusOk is status ok
+func (r *rpcGetTxInfoRes) IsStatusOk() bool {
+	stat, ok := r.Receipt["result"].(string)
+	return ok && stat == "SUCCESS" && r.Result != "FAILED"
+}
+
 func (b *Bridge) GetTransactionInfo(txHash string) (*rpcGetTxInfoRes, error) {
 	rpcError := &RPCError{[]error{}, "GetTransactionInfo"}
 	defer func() {

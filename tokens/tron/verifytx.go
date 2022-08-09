@@ -20,11 +20,6 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 		return nil, err
 	}
 
-	stat, ok := txInfo.Receipt["result"].(string)
-	if !ok || stat != "SUCCESS" || txInfo.Result == "FAILED" {
-		return nil, errors.New("tron tx not success")
-	}
-
 	status = &tokens.TxStatus{}
 
 	status.Receipt = txInfo
