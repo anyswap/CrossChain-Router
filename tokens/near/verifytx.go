@@ -315,7 +315,7 @@ func (b *Bridge) fliterReceipts(receipt *ReceiptsOutcome) ([]string, error) {
 			switch len(receipt.Outcome.Logs) {
 			case 1:
 				var event Nep141V4TransferEvent
-				if err := json.Unmarshal([]byte(receipt.Outcome.Logs[0]), &event); err == nil {
+				if err := json.Unmarshal([]byte(receipt.Outcome.Logs[0][11:]), &event); err == nil {
 					if len(event.Data) == 1 {
 						log := strings.Split(event.Data[0].Memo, " ")
 						if event.Event == TRANSFERV4LOG && len(log) == 2 && event.Data[0].NewOwnerId == mpcAddress {
