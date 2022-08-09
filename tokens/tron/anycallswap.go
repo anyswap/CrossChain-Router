@@ -302,3 +302,11 @@ func (b *Bridge) buildAnyCallSwapTxInput(args *tokens.BuildTxArgs) (err error) {
 
 	return nil
 }
+
+func toAddresses(path []string) []common.Address {
+	addresses := make([]common.Address, len(path))
+	for i, addr := range path {
+		addresses[i] = common.HexToAddress(addr)
+	}
+	return addresses
+}

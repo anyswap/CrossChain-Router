@@ -115,7 +115,7 @@ func (b *Bridge) buildSwapAndExecTxInput(args *tokens.BuildTxArgs, multichainTok
 
 	input := abicoder.PackData(
 		common.HexToHash(args.SwapID),
-		convertToEthAddress(multichainToken),
+		common.HexToAddress(convertToEthAddress(multichainToken)),
 		receiver,
 		amount,
 		args.FromChainID,
@@ -145,7 +145,7 @@ func (b *Bridge) buildERC20SwapinTxInput(args *tokens.BuildTxArgs, multichainTok
 
 	input := abicoder.PackData(
 		common.HexToHash(args.SwapID),
-		convertToEthAddress(multichainToken),
+		common.HexToAddress(convertToEthAddress(multichainToken)),
 		receiver,
 		amount,
 		args.FromChainID,
@@ -188,12 +188,4 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 	}
 	amount = tokens.CalcSwapValue(erc20SwapInfo.TokenID, args.FromChainID.String(), b.ChainConfig.ChainID, args.OriginValue, fromTokenCfg.Decimals, toTokenCfg.Decimals, args.OriginFrom, args.OriginTxTo)
 	return receiver, amount, err
-}
-
-func toAddresses(path []string) []common.Address {
-	addresses := make([]common.Address, len(path))
-	for i, addr := range path {
-		addresses[i] = common.HexToAddress(addr)
-	}
-	return addresses
 }
