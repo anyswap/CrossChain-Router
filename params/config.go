@@ -151,6 +151,13 @@ type ExtraConfig struct {
 	RPCClientTimeout map[string]int `toml:",omitempty" json:",omitempty"` // key is chainID
 	// chainID,customKey => customValue
 	Customs map[string]map[string]string `toml:",omitempty" json:",omitempty"`
+
+	LocalChainConfig map[string]LocalChainConfig `toml:",omitempty" json:",omitempty"` // key is chain ID
+}
+
+// LocalChainConfig local chain config
+type LocalChainConfig struct {
+	EstimatedGasMustBePositive bool `toml:",omitempty" json:",omitempty"`
 }
 
 // OnchainConfig struct
@@ -714,6 +721,14 @@ func GetRouterOracleConfig() *RouterOracleConfig {
 // GetMPCConfig get mpc config
 func GetMPCConfig() *MPCConfig {
 	return routerConfig.MPC
+}
+
+// GetLocalChainConfig get local chain config
+func GetLocalChainConfig(chainID string) LocalChainConfig {
+	if GetExtraConfig() != nil {
+		return GetExtraConfig().LocalChainConfig[chainID]
+	}
+	return LocalChainConfig{}
 }
 
 // GetOnchainContract get onchain config contract address
