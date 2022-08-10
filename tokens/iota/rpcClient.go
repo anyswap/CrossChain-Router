@@ -18,7 +18,9 @@ func GetTransactionMetadata(url string, msgID [32]byte) (*iotago.MessageMetadata
 	if metadataResponse, err := nodeHTTPAPIClient.MessageMetadataByMessageID(ctx, msgID); err != nil {
 		return nil, err
 	} else {
-		if *metadataResponse.LedgerInclusionState != "included" {
+		if metadataResponse == nil {
+			return nil, tokens.ErrRPCQueryError
+		} else if *metadataResponse.LedgerInclusionState != "included" {
 			return nil, tokens.ErrTxIsNotValidated
 		} else {
 			return metadataResponse, nil
