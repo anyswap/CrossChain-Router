@@ -75,23 +75,16 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, err
 	}
 	args.SwapValue = amount // SwapValue
-
 	if extra, err := b.initExtra(args); err != nil {
 		return nil, err
 	} else {
 		if blockHashBytes, err := base58.Decode(*extra.BlockHash); err != nil {
 			return nil, err
 		} else {
-			if to, actions, err := createFunctionCall(args.SwapID, receiver, amount.String(), args.FromChainID.String(), args.LogIndex, *extra.Gas, tokenCfg.ContractVersion); err != nil {
+			if to, actions, err := b.CreateFunctionCall(args.SwapID, multichainToken, receiver, amount.String(), args.FromChainID.String(), args.LogIndex, *extra.Gas, tokenCfg.ContractVersion); err != nil {
 				return nil, err
 			} else {
-				var target string
-				if to != "" {
-					target = to
-				} else {
-					target = multichainToken
-				}
-				rawTx = CreateTransaction(args.From, nearPubKey, target, *extra.Sequence, blockHashBytes, actions)
+				rawTx = CreateTransaction(args.From, nearPubKey, to, *extra.Sequence, blockHashBytes, actions)
 			}
 			return rawTx, nil
 		}
@@ -210,7 +203,7 @@ func CreateTransaction(
 	return &tx
 }
 
-func createFunctionCall(txHash, to, amount, fromChainID string, logIndex int, gas, contractVersion uint64) (string, []Action, error) {
+func (b *Bridge) CreateFunctionCall(txHash, multichainToken, to, amount, fromChainID string, logIndex int, gas, contractVersion uint64) (string, []Action, error) {
 	log.Info("createFunctionCall", "txHash", txHash, "to", to, "amount", amount, "fromChainID", fromChainID)
 	var methodName string
 	var argsBytes []byte
@@ -232,11 +225,14 @@ func createFunctionCall(txHash, to, amount, fromChainID string, logIndex int, ga
 			return "", nil, err
 		}
 	default:
+		if err := b.CheckTokenBalance(multichainToken, amount); err != nil {
+			return "", nil, err
+		}
 		argsBytes = buildTokenTransferArgs(txHash, to, amount, fromChainID, logIndex)
 		methodName = "ft_transfer"
 		deposit = big.NewInt(1)
 	}
-	return "", []Action{{
+	return multichainToken, []Action{{
 		Enum: 2,
 		FunctionCall: FunctionCall{
 			MethodName: methodName,

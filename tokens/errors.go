@@ -44,7 +44,8 @@ var (
 	ErrTxIsNotValidated      = errors.New("tx is not validated")
 	ErrPauseSwapInto         = errors.New("maintain: pause swap into")
 	ErrBuildTxErrorAndDelay  = errors.New("[build tx error]")
-
+	ErrQueryTokenBalance     = errors.New("query token balance error")
+	ErrTokenBalanceNotEnough = errors.New("token balance not enough")
 	// errors should register in router swap
 	ErrTxWithWrongValue     = errors.New("tx with wrong value")
 	ErrTxWithWrongPath      = errors.New("swap trade tx with wrong path")

@@ -13,6 +13,7 @@ import (
 
 var (
 	GetFtMetadata = "ft_metadata"
+	GetFtBalance  = "ft_balance_of"
 	EmptyArgs     = "e30="
 )
 

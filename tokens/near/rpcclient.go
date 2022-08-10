@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
@@ -138,4 +139,25 @@ func functionCall(url, accountID, methodName, args string) ([]byte, error) {
 		return nil, errors.New(result.Error)
 	}
 	return result.Result, nil
+}
+
+func CheckTokenBalance(url, token, account, amount string) error {
+	argsStr := fmt.Sprintf("{\"account_id\":\"%s\"}", account)
+	argsBase64 := base64.StdEncoding.EncodeToString([]byte(argsStr))
+	result, err := functionCall(url, token, GetFtBalance, argsBase64)
+	if err == nil {
+		if amountBigInt, err := common.GetBigIntFromStr(amount); err != nil {
+			return err
+		} else {
+			balanceStr := string(result)
+			if balance, err := common.GetBigIntFromStr(balanceStr[1 : len(balanceStr)-1]); err != nil {
+				return err
+			} else if balance.Cmp(amountBigInt) >= 0 {
+				return nil
+			} else {
+				return tokens.ErrTokenBalanceNotEnough
+			}
+		}
+	}
+	return tokens.ErrQueryTokenBalance
 }
