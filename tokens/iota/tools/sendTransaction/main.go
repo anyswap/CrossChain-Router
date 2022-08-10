@@ -34,11 +34,6 @@ func initFlags() {
 	flag.Parse()
 }
 
-var (
-	returnValue uint64 = 0
-	tempValue   uint64 = 0
-)
-
 func main() {
 	log.SetLogger(6, false, true)
 
