@@ -14,6 +14,10 @@ import (
 	iotago "github.com/iotaledger/iota.go/v2"
 )
 
+const (
+	KeepAlive uint64 = 1000000
+)
+
 // BuildRawTransaction build raw tx
 //nolint:funlen,gocyclo // ok
 func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{}, err error) {
@@ -59,26 +63,35 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		if receiver, amount, err := b.getReceiverAndAmount(args, multichainToken); err != nil {
 			return nil, err
 		} else {
+			if balance, err := b.CheckBalance(mpcEdAddr, amount.Uint64()); err != nil {
+				log.Warn("CheckBalance error", "balance", balance, "needAmount", amount)
+				return nil, err
+			}
 			if _, err = b.initExtra(args); err != nil {
 				return nil, err
 			} else {
-				args.SwapValue = amount // SwapValue
 				if outPutIDs, err := b.GetOutPutIDs(mpcEdAddr); err != nil {
 					return nil, err
 				} else {
 					if toEdAddr, err := Bech32ToEdAddr(receiver); err == nil {
-						needValue := amount.Uint64()
+						value := amount.Uint64()
+						finish := false
 						for _, outputID := range outPutIDs {
-							if outPut, finish, returnValue, err := b.GetOutPutByID(outputID, needValue); err == nil {
+							if outPut, needValue, returnValue, err := b.GetOutPutByID(outputID, value, finish); err == nil {
 								inputs = append(inputs, &iotago.ToBeSignedUTXOInput{Address: mpcEdAddr, Input: outPut})
-								if finish {
-									outputs = append(outputs, &iotago.SigLockedSingleOutput{Address: *toEdAddr, Amount: amount.Uint64()})
-									if returnValue != 0 {
-										outputs = append(outputs, &iotago.SigLockedSingleOutput{Address: mpcEdAddr, Amount: returnValue})
+								if needValue == 0 {
+									if returnValue == 0 || returnValue >= KeepAlive {
+										outputs = append(outputs, &iotago.SigLockedSingleOutput{Address: *toEdAddr, Amount: amount.Uint64()})
+										if returnValue != 0 {
+											outputs = append(outputs, &iotago.SigLockedSingleOutput{Address: mpcEdAddr, Amount: returnValue})
+										}
+										break
+									} else {
+										value = returnValue
+										finish = true
 									}
-									break
 								} else {
-									needValue = returnValue
+									value = needValue
 								}
 							}
 						}
@@ -90,7 +103,11 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		}
 	}
 
-	return BuildMessage(inputs, outputs, nil), nil
+	if messageBuilder := BuildMessage(inputs, outputs, nil); messageBuilder == nil {
+		return nil, tokens.ErrInputAndOutputLength
+	} else {
+		return messageBuilder, nil
+	}
 }
 
 func NewMessageBuilder() *MessageBuilder {
@@ -105,6 +122,9 @@ func NewMessageBuilder() *MessageBuilder {
 }
 
 func BuildMessage(inputs []*iotago.ToBeSignedUTXOInput, outputs []*iotago.SigLockedSingleOutput, indexationPayload *iotago.Indexation) *MessageBuilder {
+	if len(inputs) < 1 || len(outputs) < 1 {
+		return nil
+	}
 	messageBuilder := NewMessageBuilder()
 	for _, input := range inputs {
 		messageBuilder.TransactionBuilder.AddInput(input)
@@ -134,16 +154,16 @@ func (b *Bridge) GetOutPutIDs(addr *iotago.Ed25519Address) ([]iotago.OutputIDHex
 	return nil, tokens.ErrGetOutPutIDs
 }
 
-func (b *Bridge) GetOutPutByID(id iotago.OutputIDHex, needValue uint64) (*iotago.UTXOInput, bool, uint64, error) {
+func (b *Bridge) GetOutPutByID(id iotago.OutputIDHex, needValue uint64, finish bool) (*iotago.UTXOInput, uint64, uint64, error) {
 	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
 	for _, url := range urls {
-		if outPut, flag, amount, err := GetOutPutByID(url, id.MustAsUTXOInput().ID(), needValue); err == nil {
-			return outPut, flag, amount, nil
+		if outPut, needValue, returnValue, err := GetOutPutByID(url, id.MustAsUTXOInput().ID(), needValue, finish); err == nil {
+			return outPut, needValue, returnValue, nil
 		} else {
 			log.Error("GetOutPutByID", "err", err)
 		}
 	}
-	return nil, false, 0, tokens.ErrGetOutPutByID
+	return nil, 0, 0, tokens.ErrGetOutPutByID
 }
 
 // GetPoolNonce impl NonceSetter interface

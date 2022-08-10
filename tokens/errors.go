@@ -51,6 +51,10 @@ var (
 	ErrGetOutPutByID         = errors.New("get outPut by id error")
 	ErrCommitMessage         = errors.New("commit message error")
 	ErrProofOfWork           = errors.New("proof of work error")
+	ErrBalanceNoKeepAlive    = errors.New("balance can't keep alive")
+	ErrSwapValueTooLess      = errors.New("swap value must bigger than 1000000")
+	ErrCheckBalance          = errors.New("check balance error")
+	ErrInputAndOutputLength  = errors.New("input and output must bigger than one")
 
 	// errors should register in router swap
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")

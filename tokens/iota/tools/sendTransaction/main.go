@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/hex"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"strconv"
@@ -61,119 +60,66 @@ func main() {
 	}
 	edAddr := iotago.AddressFromEd25519PubKey(publicKey)
 
-	needValue, err := strconv.ParseUint(paramValue, 10, 64)
+	needAmount, err := strconv.ParseUint(paramValue, 10, 64)
 	if err != nil {
 		log.Fatal("ParseUint", "paramValue", paramValue, "err", err)
 	}
-	if balance, err := nodeHTTPAPIClient.BalanceByEd25519Address(ctx, &edAddr); err != nil || balance.Balance < needValue {
-		log.Fatal("BalanceByEd25519Address", "balance", balance.Balance, "needValue", needValue, "err", err)
+	if balance, err := iota.CheckBalance(paramNetwork, &edAddr, needAmount); err != nil {
+		log.Fatal("CheckBalance", "balance", balance, "needAmount", needAmount, "err", err)
 	}
-
+	var inputs []*iotago.ToBeSignedUTXOInput
+	var outputs []*iotago.SigLockedSingleOutput
 	// fetch the node's info to know the min. required PoW score
-	if info, err := nodeHTTPAPIClient.Info(ctx); err != nil {
-		log.Fatal("Info", "paramNetwork", paramNetwork, "err", err)
+
+	if outPutIDs, err := iota.GetOutPutIDs(paramNetwork, &edAddr); err != nil {
+		log.Fatal("GetOutPutIDs", "paramNetwork", paramNetwork, "edAddr", edAddr)
 	} else {
-		fmt.Printf("info: %+v\n", info)
-		// craft an indexation payload
+		value := needAmount
+		finish := false
+		for _, outputID := range outPutIDs {
+			if outPut, needValue, returnValue, err := iota.GetOutPutByID(paramNetwork, outputID.MustAsUTXOInput().ID(), value, finish); err == nil {
+				inputs = append(inputs, &iotago.ToBeSignedUTXOInput{Address: &edAddr, Input: outPut})
+				if needValue == 0 {
+					if returnValue == 0 || returnValue >= iota.KeepAlive {
+						outputs = append(outputs, &iotago.SigLockedSingleOutput{Address: toEdAddr, Amount: needAmount})
+						if returnValue != 0 {
+							outputs = append(outputs, &iotago.SigLockedSingleOutput{Address: &edAddr, Amount: returnValue})
+						}
+						break
+					} else {
+						value = returnValue
+						finish = true
+					}
+				} else {
+					value = needValue
+				}
+			}
+		}
 		indexationPayload := &iotago.Indexation{
 			Index: []byte(paramIndex),
 			Data:  []byte(paramData),
 		}
 
-		outputResponse, _, err := nodeHTTPAPIClient.OutputsByEd25519Address(ctx, &edAddr, false)
-		if err != nil {
-			log.Fatal("OutputsByEd25519Address", "edAddr", edAddr, "err", err)
-		}
-
-		var inputs []*iotago.ToBeSignedUTXOInput
-		var outputs []*iotago.SigLockedSingleOutput
-		tempValue = needValue
-		for _, outputID := range outputResponse.OutputIDs {
-			if outputRes, err := nodeHTTPAPIClient.OutputByID(ctx, outputID.MustAsUTXOInput().ID()); err != nil {
-				log.Fatal("OutputByID", "OutputID", outputID.MustAsUTXOInput().ID(), "err", err)
-			} else {
-				var rawType iota.RawType
-				rawOutPut, _ := outputRes.RawOutput.MarshalJSON()
-				err := json.Unmarshal(rawOutPut, &rawType)
-				if err != nil {
-					log.Fatal("Unmarshal", "rawOutPut", rawOutPut, "err", err)
-				}
-				inputUTXO := &iotago.ToBeSignedUTXOInput{
-					Address: &edAddr,
-					Input:   &iotago.UTXOInput{},
-				}
-				if rawType.Amount > tempValue {
-					returnValue = rawType.Amount - tempValue
-					tempValue = 0
+		if messageBuilder := iota.BuildMessage(inputs, outputs, indexationPayload); messageBuilder == nil {
+			log.Fatal("BuildMessage", "inputs", inputs, "outputs", outputs, "indexationPayload", indexationPayload)
+		} else {
+			if paramPrivKey != "" {
+				priv, _ := hex.DecodeString(paramPrivKey)
+				signKey := iotago.NewAddressKeysForEd25519Address(&edAddr, priv)
+				signer := iotago.NewInMemoryAddressSigner(signKey)
+				if message, err := iota.ProofOfWork(paramNetwork, messageBuilder.TransactionBuilder.
+					BuildAndSwapToMessageBuilder(signer, nil)); err != nil {
+					log.Fatal("NewTransactionBuilder", "err", err)
 				} else {
-					tempValue = tempValue - rawType.Amount
+					if res, err := nodeHTTPAPIClient.SubmitMessage(ctx, message); err != nil {
+						log.Fatal("SubmitMessage", "err", err)
+					} else {
+						fmt.Printf("res: %+v\n", iotago.MessageIDToHexString(res.MustID()))
+					}
 				}
-				transactionID, _ := hex.DecodeString(outputRes.TransactionID)
-				copy(inputUTXO.Input.TransactionID[:], transactionID)
-				inputUTXO.Input.TransactionOutputIndex = outputRes.OutputIndex
-				inputs = append(inputs, inputUTXO)
-				if returnValue > 0 || tempValue == 0 {
-					break
-				}
+			} else {
+				log.Fatal("not support mpc sign now")
 			}
 		}
-
-		outputs = append(outputs, &iotago.SigLockedSingleOutput{
-			Address: toEdAddr, Amount: needValue,
-		})
-		if returnValue > 0 {
-			outputs = append(outputs, &iotago.SigLockedSingleOutput{
-				Address: &edAddr, Amount: returnValue,
-			})
-		}
-		messageBuilder := iota.BuildMessage(inputs, outputs, indexationPayload)
-
-		if paramPrivKey != "" {
-			priv, _ := hex.DecodeString(paramPrivKey)
-
-			signKey := iotago.NewAddressKeysForEd25519Address(&edAddr, priv)
-			signer := iotago.NewInMemoryAddressSigner(signKey)
-			if message, err := iota.ProofOfWork(paramNetwork, messageBuilder.TransactionBuilder.
-				BuildAndSwapToMessageBuilder(signer, nil)); err != nil {
-				log.Fatal("NewTransactionBuilder", "err", err)
-			} else {
-				if res, err := nodeHTTPAPIClient.SubmitMessage(ctx, message); err != nil {
-					log.Fatal("SubmitMessage", "err", err)
-				} else {
-					fmt.Printf("res: %+v\n", iotago.MessageIDToHexString(res.MustID()))
-				}
-			}
-		}
-		//else {
-		// 	if signMessage, err := messageBuilder.Essence.SigningMessage(); err != nil {
-		// 		log.Fatal("get signMessage error", "err", err)
-		// 	} else {
-		// 		var signature serializer.Serializable
-		// 		unlockBlocks := serializer.Serializables{}
-		// 		signature, err = signer.Sign(&edAddr, signMessage)
-		// 		if err != nil {
-		// 			log.Fatal("Sign error", "err", err)
-		// 		} else {
-		// 			for i := 0; i < len(inputs); i++ {
-		// 				switch i {
-		// 				case 0:
-		// 					unlockBlocks = append(unlockBlocks, &iotago.SignatureUnlockBlock{Signature: signature})
-		// 				default:
-		// 					unlockBlocks = append(unlockBlocks, &iotago.ReferenceUnlockBlock{Reference: uint16(0)})
-		// 				}
-		// 			}
-		// 		}
-		// 		sigTxPayload := &iotago.Transaction{Essence: messageBuilder.Essence, UnlockBlocks: unlockBlocks}
-		// 		if message, err := iotago.NewMessageBuilder().Payload(sigTxPayload).Build(); err != nil {
-		// 			log.Fatal("NewTransactionBuilder", "err", err)
-		// 		} else {
-		// 			if res, err := nodeHTTPAPIClient.SubmitMessage(ctx, message); err != nil {
-		// 				log.Fatal("SubmitMessage", "err", err)
-		// 			} else {
-		// 				fmt.Printf("res: %+v\n", iotago.MessageIDToHexString(res.MustID()))
-		// 			}
-		// 		}
-		// 	}
-		// }
 	}
 }

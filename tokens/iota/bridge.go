@@ -148,3 +148,19 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 
 	return status, nil
 }
+
+// GetTransactionStatus impl
+func (b *Bridge) CheckBalance(edAddr *iotago.Ed25519Address, amount uint64) (uint64, error) {
+	if amount < KeepAlive {
+		return 0, tokens.ErrSwapValueTooLess
+	}
+	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
+	for _, url := range urls {
+		if balance, err := CheckBalance(url, edAddr, amount); err == nil {
+			return balance, nil
+		} else if err == tokens.ErrBalanceNoKeepAlive {
+			return balance, err
+		}
+	}
+	return 0, tokens.ErrCheckBalance
+}

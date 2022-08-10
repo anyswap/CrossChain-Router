@@ -53,32 +53,37 @@ func GetOutPutIDs(url string, edAddr *iotago.Ed25519Address) ([]iotago.OutputIDH
 	}
 }
 
-func GetOutPutByID(url string, outputID iotago.UTXOInputID, needValue uint64) (*iotago.UTXOInput, bool, uint64, error) {
+func GetOutPutByID(url string, outputID iotago.UTXOInputID, needValue uint64, finish bool) (*iotago.UTXOInput, uint64, uint64, error) {
 	nodeHTTPAPIClient := iotago.NewNodeHTTPAPIClient(url)
 	if outputRes, err := nodeHTTPAPIClient.OutputByID(ctx, outputID); err != nil {
-		return nil, false, 0, err
+		return nil, 0, 0, err
 	} else {
 		var rawType *RawType
 		rawOutPut, _ := outputRes.RawOutput.MarshalJSON()
 		if err := json.Unmarshal(rawOutPut, &rawType); err != nil {
-			return nil, false, 0, err
+			return nil, 0, 0, err
 		} else {
 			if transactionID, err := hex.DecodeString(outputRes.TransactionID); err != nil {
-				return nil, false, 0, err
+				return nil, 0, 0, err
 			} else {
 				utxoInput := &iotago.UTXOInput{}
-				var flag bool
 				var amount uint64
+				var returnValue uint64
 				copy(utxoInput.TransactionID[:], transactionID)
 				utxoInput.TransactionOutputIndex = outputRes.OutputIndex
-				if rawType.Amount < needValue {
-					amount = needValue - rawType.Amount
-					flag = false
+				if finish {
+					amount = 0
+					returnValue = rawType.Amount + needValue
 				} else {
-					amount = rawType.Amount - needValue
-					flag = true
+					if rawType.Amount < needValue {
+						amount = needValue - rawType.Amount
+						returnValue = 0
+					} else {
+						amount = 0
+						returnValue = rawType.Amount - needValue
+					}
 				}
-				return utxoInput, flag, amount, nil
+				return utxoInput, amount, returnValue, nil
 			}
 		}
 	}
@@ -105,5 +110,16 @@ func ProofOfWork(url string, message *iotago.MessageBuilder) (*iotago.Message, e
 		} else {
 			return res, nil
 		}
+	}
+}
+
+func CheckBalance(url string, edAddr *iotago.Ed25519Address, amount uint64) (uint64, error) {
+	nodeHTTPAPIClient := iotago.NewNodeHTTPAPIClient(url)
+	if balance, err := nodeHTTPAPIClient.BalanceByEd25519Address(ctx, edAddr); err != nil {
+		return 0, err
+	} else if balance.Balance < amount+KeepAlive {
+		return balance.Balance, tokens.ErrBalanceNoKeepAlive
+	} else {
+		return balance.Balance, nil
 	}
 }
