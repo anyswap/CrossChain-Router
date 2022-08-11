@@ -11,6 +11,10 @@ ChainIDBlackList = []
 TokenIDBlackList = []
 # account black list of string array
 AccountBlackList = []
+# token id black list on chain
+[TokenIDBlackListOnChain]
+43114 = []
+25    = []
 
 # router sever config (server only)
 [Server]
@@ -185,6 +189,9 @@ MIM  = ["0x2222222222222222222222222222222222222222"]
 4 = [
 	"0x1111111111111111111111111111111111111111111111111111111111111111"
 ]
+# the last key is chainID
+[Extra.LocalChainConfig.2025]
+EstimatedGasMustBePositive = true
 
 
 # OnChain config

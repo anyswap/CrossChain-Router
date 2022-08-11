@@ -189,6 +189,13 @@ func (b *Bridge) setDefaults(args *tokens.BuildTxArgs) (err error) {
 				"value", args.Value, "data", *args.Input, "err", errf)
 			return fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, tokens.ErrEstimateGasFailed)
 		}
+		// eg. ranger chain call eth_estimateGas return no error and 0 value in failure situation
+		if esGasLimit == 0 && params.GetLocalChainConfig(b.ChainConfig.ChainID).EstimatedGasMustBePositive {
+			log.Error(fmt.Sprintf("build %s tx estimate gas return 0", args.SwapType.String()),
+				"swapID", args.SwapID, "from", args.From, "to", args.To,
+				"value", args.Value, "data", *args.Input)
+			return fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, tokens.ErrEstimateGasFailed)
+		}
 		esGasLimit += esGasLimit * 30 / 100
 		defGasLimit := b.getDefaultGasLimit()
 		if esGasLimit < defGasLimit {

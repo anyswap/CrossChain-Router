@@ -107,6 +107,20 @@ func (config *RouterConfig) CheckBlacklistConfig() (err error) {
 	if len(chainIDBlacklistMap) > 0 {
 		log.Infof("chainID blacklist is %v", config.ChainIDBlackList)
 	}
+	for cid, tokenIDs := range config.TokenIDBlackListOnChain {
+		m := make(map[string]struct{})
+		tokenIDBlacklistOnChainMap[cid] = m
+		for _, tokenID := range tokenIDs {
+			if tokenID == "" {
+				return fmt.Errorf("empty token id in black list on chain %v", cid)
+			}
+			key := strings.ToLower(tokenID)
+			if _, exist := tokenIDBlacklistOnChainMap[key]; exist {
+				return fmt.Errorf("duplicate token id '%v' in black list on chain %v", key, cid)
+			}
+			m[key] = struct{}{}
+		}
+	}
 	for _, tokenID := range config.TokenIDBlackList {
 		if tokenID == "" {
 			return errors.New("empty token id in black list")

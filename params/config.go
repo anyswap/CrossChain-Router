@@ -27,11 +27,12 @@ var (
 	// IsSwapServer is swap server
 	IsSwapServer bool
 
-	chainIDBlacklistMap = make(map[string]struct{})
-	tokenIDBlacklistMap = make(map[string]struct{})
-	accountBlacklistMap = make(map[string]struct{})
-	fixedGasPriceMap    = make(map[string]*big.Int) // key is chainID
-	maxGasPriceMap      = make(map[string]*big.Int) // key is chainID
+	chainIDBlacklistMap        = make(map[string]struct{})
+	tokenIDBlacklistMap        = make(map[string]struct{})
+	tokenIDBlacklistOnChainMap = make(map[string]map[string]struct{})
+	accountBlacklistMap        = make(map[string]struct{})
+	fixedGasPriceMap           = make(map[string]*big.Int) // key is chainID
+	maxGasPriceMap             = make(map[string]*big.Int) // key is chainID
 
 	callByContractWhitelist         map[string]map[string]struct{} // chainID -> caller
 	callByContractCodeHashWhitelist map[string]map[string]struct{} // chainID -> codehash
@@ -112,9 +113,10 @@ type RouterConfig struct {
 	FastMPC     *MPCConfig   `toml:",omitempty" json:",omitempty"`
 	Extra       *ExtraConfig `toml:",omitempty" json:",omitempty"`
 
-	ChainIDBlackList []string `toml:",omitempty" json:",omitempty"`
-	TokenIDBlackList []string `toml:",omitempty" json:",omitempty"`
-	AccountBlackList []string `toml:",omitempty" json:",omitempty"`
+	ChainIDBlackList        []string            `toml:",omitempty" json:",omitempty"`
+	TokenIDBlackList        []string            `toml:",omitempty" json:",omitempty"`
+	TokenIDBlackListOnChain map[string][]string `toml:",omitempty" json:",omitempty"`
+	AccountBlackList        []string            `toml:",omitempty" json:",omitempty"`
 }
 
 // ExtraConfig extra config
@@ -149,6 +151,13 @@ type ExtraConfig struct {
 	RPCClientTimeout map[string]int `toml:",omitempty" json:",omitempty"` // key is chainID
 	// chainID,customKey => customValue
 	Customs map[string]map[string]string `toml:",omitempty" json:",omitempty"`
+
+	LocalChainConfig map[string]LocalChainConfig `toml:",omitempty" json:",omitempty"` // key is chain ID
+}
+
+// LocalChainConfig local chain config
+type LocalChainConfig struct {
+	EstimatedGasMustBePositive bool `toml:",omitempty" json:",omitempty"`
 }
 
 // OnchainConfig struct
@@ -688,6 +697,14 @@ func GetMPCConfig(isFastMPC bool) *MPCConfig {
 	return routerConfig.MPC
 }
 
+// GetLocalChainConfig get local chain config
+func GetLocalChainConfig(chainID string) LocalChainConfig {
+	if GetExtraConfig() != nil {
+		return GetExtraConfig().LocalChainConfig[chainID]
+	}
+	return LocalChainConfig{}
+}
+
 // GetOnchainContract get onchain config contract address
 func GetOnchainContract() string {
 	return routerConfig.Onchain.Contract
@@ -752,6 +769,16 @@ func AddOrRemoveChainIDBlackList(chainIDs []string, isAdd bool) {
 		blacklist = append(blacklist, chainID)
 	}
 	GetRouterConfig().ChainIDBlackList = blacklist
+}
+
+// IsTokenIDInBlackListOnChain is token id in black list on chain
+func IsTokenIDInBlackListOnChain(chainID, tokenID string) bool {
+	m, exist := tokenIDBlacklistOnChainMap[chainID]
+	if !exist {
+		return false
+	}
+	_, exist = m[strings.ToLower(tokenID)]
+	return exist
 }
 
 // IsTokenIDInBlackList is token id in black list
