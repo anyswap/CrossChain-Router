@@ -128,6 +128,34 @@ func RPCPostRequestWithContext(ctx context.Context, url string, req *Request, re
 	return err
 }
 
+func RPCPostBody(url string, params, headers map[string]string, body, result interface{}, timeout int) error {
+	resp, err := HTTPPostWithContext(httpCtx, url, body, params, headers, timeout)
+	if err != nil {
+		log.Trace("post rpc error", "url", url, "request", body, "err", err)
+		return err
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	const maxReadContentLength int64 = 1024 * 1024 * 10 // 10M
+	bodyBytes, err := ioutil.ReadAll(io.LimitReader(resp.Body, maxReadContentLength))
+	if err != nil {
+		return fmt.Errorf("read body error: %w", err)
+	}
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("wrong response status %v. message: %v", resp.StatusCode, string(bodyBytes))
+	}
+	if len(bodyBytes) == 0 {
+		return fmt.Errorf("empty response body")
+	}
+	err = json.Unmarshal(bodyBytes, &result)
+	if err != nil {
+		return fmt.Errorf("unmarshal body error, body is \"%v\" err=\"%w\"", string(bodyBytes), err)
+	}
+	return nil
+
+}
+
 func getResultFromJSONResponse(result interface{}, resp *http.Response) error {
 	defer func() {
 		_ = resp.Body.Close()
