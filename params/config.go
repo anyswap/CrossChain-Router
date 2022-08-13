@@ -15,6 +15,9 @@ const (
 	RouterSwapPrefixID = "routerswap"
 )
 
+// CustomizeConfigFunc customize config items
+var CustomizeConfigFunc func(*RouterConfig)
+
 // IsTestMode used for testing
 var IsTestMode bool
 
@@ -46,6 +49,8 @@ var (
 	disableUseFromChainIDInReceiptChains map[string]struct{}
 	useFastMPCChains                     map[string]struct{}
 	dontCheckReceivedTokenIDs            map[string]struct{}
+	dontCheckBalanceTokenIDs             map[string]struct{}
+	checkTokenBalanceEnabledChains       map[string]struct{}
 
 	isDebugMode           *bool
 	isNFTSwapWithData     *bool
@@ -147,6 +152,8 @@ type ExtraConfig struct {
 	DisableUseFromChainIDInReceiptChains []string `toml:",omitempty" json:",omitempty"`
 	UseFastMPCChains                     []string `toml:",omitempty" json:",omitempty"`
 	DontCheckReceivedTokenIDs            []string `toml:",omitempty" json:",omitempty"`
+	DontCheckBalanceTokenIDs             []string `toml:",omitempty" json:",omitempty"`
+	CheckTokenBalanceEnabledChains       []string `toml:",omitempty" json:",omitempty"`
 
 	RPCClientTimeout map[string]int `toml:",omitempty" json:",omitempty"` // key is chainID
 	// chainID,customKey => customValue
@@ -157,7 +164,8 @@ type ExtraConfig struct {
 
 // LocalChainConfig local chain config
 type LocalChainConfig struct {
-	EstimatedGasMustBePositive bool `toml:",omitempty" json:",omitempty"`
+	EstimatedGasMustBePositive bool   `toml:",omitempty" json:",omitempty"`
+	SmallestGasPriceUnit       uint64 `toml:",omitempty" json:",omitempty"`
 }
 
 // OnchainConfig struct
@@ -962,6 +970,43 @@ func DontCheckTokenReceived(tokenID string) bool {
 	return exist
 }
 
+func initDontCheckBalanceTokenIDs() {
+	dontCheckBalanceTokenIDs = make(map[string]struct{})
+	if GetExtraConfig() == nil || len(GetExtraConfig().DontCheckBalanceTokenIDs) == 0 {
+		return
+	}
+	for _, tid := range GetExtraConfig().DontCheckBalanceTokenIDs {
+		dontCheckBalanceTokenIDs[strings.ToLower(tid)] = struct{}{}
+	}
+	log.Info("initDontCheckBalanceTokenIDs success")
+}
+
+// DontCheckTokenBalance do not check token balance (a security enhance checking)
+func DontCheckTokenBalance(tokenID string) bool {
+	_, exist := dontCheckBalanceTokenIDs[strings.ToLower(tokenID)]
+	return exist
+}
+
+func initCheckTokenBalanceEnabledChains() {
+	checkTokenBalanceEnabledChains = make(map[string]struct{})
+	if GetExtraConfig() == nil || len(GetExtraConfig().CheckTokenBalanceEnabledChains) == 0 {
+		return
+	}
+	for _, cid := range GetExtraConfig().CheckTokenBalanceEnabledChains {
+		if _, err := common.GetBigIntFromStr(cid); err != nil {
+			log.Fatal("initCheckTokenBalanceEnabledChains wrong chainID", "chainID", cid, "err", err)
+		}
+		checkTokenBalanceEnabledChains[cid] = struct{}{}
+	}
+	log.Info("initCheckTokenBalanceEnabledChains success", "chains", GetExtraConfig().CheckTokenBalanceEnabledChains)
+}
+
+// IsCheckTokenBalanceEnabled is check token balance enabled
+func IsCheckTokenBalanceEnabled(chainID string) bool {
+	_, exist := checkTokenBalanceEnabledChains[chainID]
+	return exist
+}
+
 // GetDynamicFeeTxConfig get dynamic fee tx config (EIP-1559)
 func GetDynamicFeeTxConfig(chainID string) *DynamicFeeTxConfig {
 	if !IsDynamicFeeTxEnabled(chainID) {
@@ -996,6 +1041,10 @@ func LoadRouterConfig(configFile string, isServer, check bool) *RouterConfig {
 		config.Server = nil
 	} else {
 		config.Oracle = nil
+	}
+
+	if CustomizeConfigFunc != nil {
+		CustomizeConfigFunc(config)
 	}
 
 	routerConfig = config
@@ -1035,6 +1084,10 @@ func ReloadRouterConfig() {
 		config.Server = nil
 	} else {
 		config.Oracle = nil
+	}
+
+	if CustomizeConfigFunc != nil {
+		CustomizeConfigFunc(config)
 	}
 
 	if err := config.CheckConfig(isServer); err != nil {

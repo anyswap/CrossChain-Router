@@ -44,12 +44,16 @@ var (
 	ErrTxIsNotValidated      = errors.New("tx is not validated")
 	ErrPauseSwapInto         = errors.New("maintain: pause swap into")
 	ErrBuildTxErrorAndDelay  = errors.New("[build tx error]")
-
+	ErrSwapoutIDNotExist     = errors.New("swapoutID not exist")
+	ErrValidPublicKey        = errors.New("valid public key error")
+	ErrBroadcastTx           = errors.New("broadcast tx error")
+	ErrTxWithWrongMemo       = errors.New("tx with wrong memo")
 	// errors should register in router swap
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")
 	ErrTxWithWrongPath   = errors.New("swap trade tx with wrong path")
 	ErrMissTokenConfig   = errors.New("miss token config")
 	ErrNoUnderlyingToken = errors.New("no underlying token")
+	ErrVerifyTxUnsafe    = errors.New("[tx maybe unsafe]")
 )
 
 // ShouldRegisterRouterSwapForError return true if this error should record in database

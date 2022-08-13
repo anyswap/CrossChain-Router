@@ -31,9 +31,14 @@ var erc20CodeParts = map[string][]byte{
 
 // GetErc20TotalSupply get erc20 total supply of address
 func (b *Bridge) GetErc20TotalSupply(contract string) (*big.Int, error) {
+	return b.GetErc20TotalSupplyAtHeight(contract, "latest")
+}
+
+// GetErc20TotalSupplyAtHeight get erc20 total supply of address at specified height
+func (b *Bridge) GetErc20TotalSupplyAtHeight(contract, blockNumber string) (*big.Int, error) {
 	data := make(hexutil.Bytes, 4)
 	copy(data[:4], erc20CodeParts["totalSupply"])
-	result, err := b.CallContract(contract, data, "latest")
+	result, err := b.CallContract(contract, data, blockNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -42,10 +47,15 @@ func (b *Bridge) GetErc20TotalSupply(contract string) (*big.Int, error) {
 
 // GetErc20Balance get erc20 balacne of address
 func (b *Bridge) GetErc20Balance(contract, address string) (*big.Int, error) {
+	return b.GetErc20BalanceAtHeight(contract, address, params.GetBalanceBlockNumberOpt)
+}
+
+// GetErc20BalanceAtHeight get erc20 balacne of address at specified height
+func (b *Bridge) GetErc20BalanceAtHeight(contract, address, blockNumber string) (*big.Int, error) {
 	data := make(hexutil.Bytes, 36)
 	copy(data[:4], erc20CodeParts["balanceOf"])
 	copy(data[4:], common.HexToAddress(address).Hash().Bytes())
-	result, err := b.CallContract(contract, data, params.GetBalanceBlockNumberOpt)
+	result, err := b.CallContract(contract, data, blockNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -114,6 +124,16 @@ func (b *Bridge) GetUnderlyingAddress(contractAddr string) (string, error) {
 	return common.BytesToAddress(common.GetData(common.FromHex(res), 0, 32)).LowerHex(), nil
 }
 
+// IsUnderlyingMinted call "underlyingIsMinted()"
+func (b *Bridge) IsUnderlyingMinted(contractAddr string) (bool, error) {
+	data := common.FromHex("0xd6c79751")
+	res, err := b.CallContract(contractAddr, data, "latest")
+	if err != nil {
+		return false, err
+	}
+	return common.GetBigInt(common.FromHex(res), 0, 32).Sign() != 0, nil
+}
+
 // GetMPCAddress call "mpc()"
 func (b *Bridge) GetMPCAddress(contractAddr string) (string, error) {
 	data := common.FromHex("0xf75c2664")
@@ -150,6 +170,29 @@ func (b *Bridge) IsMinter(contractAddr, minterAddr string) (bool, error) {
 	data := make([]byte, 36)
 	copy(data[:4], funcHash)
 	copy(data[4:36], common.HexToAddress(minterAddr).Hash().Bytes())
+	res, err := b.CallContract(contractAddr, data, "latest")
+	if err != nil {
+		return false, err
+	}
+	return common.GetBigInt(common.FromHex(res), 0, 32).Sign() != 0, nil
+}
+
+// GetRouterSecurity call "routerSecurity()"
+func (b *Bridge) GetRouterSecurity(contractAddr string) (string, error) {
+	data := common.FromHex("0xa413387a")
+	res, err := b.CallContract(contractAddr, data, "latest")
+	if err != nil {
+		return "", err
+	}
+	return common.BytesToAddress(common.GetData(common.FromHex(res), 0, 32)).LowerHex(), nil
+}
+
+// IsSwapoutIDExist call "isSwapoutIDExist(bytes32)"
+func (b *Bridge) IsSwapoutIDExist(contractAddr, swapoutID string) (bool, error) {
+	funcHash := common.FromHex("0xbe6adb87")
+	data := make([]byte, 36)
+	copy(data[:4], funcHash)
+	copy(data[4:36], common.HexToHash(swapoutID).Bytes())
 	res, err := b.CallContract(contractAddr, data, "latest")
 	if err != nil {
 		return false, err
