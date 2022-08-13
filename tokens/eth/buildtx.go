@@ -233,6 +233,14 @@ func (b *Bridge) getDefaultGasLimit() uint64 {
 func (b *Bridge) getGasPrice(args *tokens.BuildTxArgs) (price *big.Int, err error) {
 	fixedGasPrice := params.GetFixedGasPrice(b.ChainConfig.ChainID)
 	if fixedGasPrice != nil {
+		if params.IsDebugMode() { // debug the get gas price function
+			if price1, err1 := b.SuggestPrice(); err1 == nil {
+				max := params.GetMaxGasPrice(b.ChainConfig.ChainID)
+				if max != nil && price1.Cmp(max) > 0 {
+					log.Debugf("call eth_gasPrice got gas price %v exceeded maximum limit %v", price1, max)
+				}
+			}
+		}
 		price = fixedGasPrice
 		if args.GetReplaceNum() == 0 {
 			return price, nil
