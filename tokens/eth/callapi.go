@@ -301,13 +301,13 @@ func (b *Bridge) SuggestPrice() (*big.Int, error) {
 
 func (b *Bridge) getGasPriceFromURL(url string) (*big.Int, error) {
 	logFunc := log.GetPrintFuncOr(params.IsDebugMode, log.Info, log.Trace)
-	var result hexutil.Big
 	var err error
 	for i := 0; i < 3; i++ {
+		var result hexutil.Big
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_gasPrice")
 		if err == nil {
 			gasPrice := result.ToInt()
-			logFunc("getGasPriceFromURL success", "url", url, "gasPrice", gasPrice)
+			logFunc("call eth_gasPrice success", "url", url, "gasPrice", gasPrice)
 			return gasPrice, nil
 		}
 		logFunc("call eth_gasPrice failed", "url", url, "err", err)
@@ -321,15 +321,16 @@ func (b *Bridge) getMaxGasPrice(urlsSlice ...[]string) (*big.Int, error) {
 	var maxGasPrice *big.Int
 	var maxGasPriceURL string
 
-	var result hexutil.Big
 	var err error
 	for _, urls := range urlsSlice {
 		for _, url := range urls {
+			var result hexutil.Big
 			if err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_gasPrice"); err != nil {
 				logFunc("call eth_gasPrice failed", "url", url, "err", err)
 				continue
 			}
 			gasPrice := result.ToInt()
+			logFunc("call eth_gasPrice success", "url", url, "gasPrice", gasPrice)
 			if maxGasPrice == nil || gasPrice.Cmp(maxGasPrice) > 0 {
 				maxGasPrice = gasPrice
 				maxGasPriceURL = url
@@ -351,16 +352,17 @@ func (b *Bridge) getMedianGasPrice(urlsSlice ...[]string) (*big.Int, error) {
 	allGasPrices := make([]*big.Int, 0, 10)
 	urlCount := 0
 
-	var result hexutil.Big
 	var err error
 	for _, urls := range urlsSlice {
 		urlCount += len(urls)
 		for _, url := range urls {
+			var result hexutil.Big
 			if err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_gasPrice"); err != nil {
 				logFunc("call eth_gasPrice failed", "url", url, "err", err)
 				continue
 			}
 			gasPrice := result.ToInt()
+			logFunc("call eth_gasPrice success", "url", url, "gasPrice", gasPrice)
 			allGasPrices = append(allGasPrices, gasPrice)
 		}
 	}
