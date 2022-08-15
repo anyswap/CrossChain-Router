@@ -35,6 +35,8 @@ func (s SwapType) String() string {
 		return "nftswap"
 	case AnyCallSwapType:
 		return "anycallswap"
+	case ERC20SwapTypeMixPool:
+		return "mixpool"
 	default:
 		return "unknownswap"
 	}
