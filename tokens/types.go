@@ -49,8 +49,9 @@ func (s SwapType) IsValidType() bool {
 
 // ERC20SwapInfo struct
 type ERC20SwapInfo struct {
-	Token   string `json:"token"`
-	TokenID string `json:"tokenID"`
+	Token     string `json:"token"`
+	TokenID   string `json:"tokenID"`
+	SwapoutID string `json:"swapoutID,omitempty"`
 
 	ForNative     bool     `json:"forNative,omitempty"`
 	ForUnderlying bool     `json:"forUnderlying,omitempty"`

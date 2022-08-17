@@ -19,16 +19,16 @@ import (
 var (
 	// LogAnySwapOut(address token, address from, address to, uint amount, uint fromChainID, uint toChainID);
 	LogAnySwapOutTopic = common.FromHex("0x97116cf6cd4f6412bb47914d6db18da9e16ab2142f543b86e207c24fbd16b23a")
-	// LogAnySwapOut(address token, address from, string to, uint amount, uint fromChainID, uint toChainID);
-	LogAnySwapOut2Topic = common.FromHex("0x409e0ad946b19f77602d6cf11d59e1796ddaa4828159a0b4fb7fa2ff6b161b79")
-	// LogAnySwapOutAndCall(address token, address from, string to, uint amount, uint fromChainID, uint toChainID, string anycallProxy, bytes data);
-	LogAnySwapOutAndCallTopic = common.FromHex("0x8e7e5695fff09074d4c7d6c71615fd382427677f75f460c522357233f3bd3ec3")
 	// LogAnySwapTradeTokensForTokens(address[] path, address from, address to, uint amountIn, uint amountOutMin, uint fromChainID, uint toChainID);
 	LogAnySwapTradeTokensForTokensTopic = common.FromHex("0xfea6abdf4fd32f20966dff7619354cd82cd43dc78a3bee479f04c74dbfc585b3")
 	// LogAnySwapTradeTokensForNative(address[] path, address from, address to, uint amountIn, uint amountOutMin, uint fromChainID, uint toChainID);
 	LogAnySwapTradeTokensForNativeTopic = common.FromHex("0x278277e0209c347189add7bd92411973b5f6b8644f7ac62ea1be984ce993f8f4")
 	// LogAnySwapOutMixPool(address token, address from, string to, uint256 amount, uint256 fromChainID, uint256 toChainID)
 	LogAnySwapOutMixPoolTopic = common.FromHex("0xb89f5e0fee14552a1edac7c525bc18eb2c5fad996def47de882b82fdea286fd7")
+	// LogAnySwapOut(bytes32 swapoutID, address token, address from, string receiver, uint256 amount, uint256 toChainID)
+	LogAnySwapOutV7Topic = common.FromHex("0x0d969ae475ff6fcaf0dcfa760d4d8607244e8d95e9bf426f8d5d69f9a3e525af")
+	// LogAnySwapOutAndCall(bytes32 swapoutID, address token, address from, string receiver, uint256 amount, uint256 toChainID, string anycallProxy, bytes data)
+	LogAnySwapOutAndCallV7Topic = common.FromHex("0x968608314ec29f6fd1a9f6ef9e96247a4da1a683917569706e2d2b60ca7c0a6d")
 
 	anySwapOutUnderlyingWithPermitFuncHash         = common.FromHex("0x8d7d3eea")
 	anySwapOutUnderlyingWithTransferPermitFuncHash = common.FromHex("0x1b91a934")
@@ -84,7 +84,6 @@ func (b *Bridge) verifyERC20SwapTx(txHash string, logIndex int, allowUnstable bo
 		if len(swapInfo.ERC20SwapInfo.Path) > 0 {
 			ctx = append(ctx,
 				"forNative", swapInfo.ERC20SwapInfo.ForNative,
-				"forUnderlying", swapInfo.ERC20SwapInfo.ForUnderlying,
 				"amountOutMin", swapInfo.ERC20SwapInfo.AmountOutMin,
 			)
 		} else if swapInfo.ERC20SwapInfo.CallProxy != "" {
@@ -229,13 +228,13 @@ func (b *Bridge) verifyERC20SwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.R
 	switch {
 	case bytes.Equal(logTopic, LogAnySwapOutTopic):
 		err = b.parseERC20SwapoutTxLog(swapInfo, rlog)
-	case bytes.Equal(logTopic, LogAnySwapOut2Topic):
-		err = b.parseERC20Swapout2TxLog(swapInfo, rlog)
+	case bytes.Equal(logTopic, LogAnySwapOutV7Topic):
+		err = b.parseERC20SwapoutV7TxLog(swapInfo, rlog, false)
+	case bytes.Equal(logTopic, LogAnySwapOutAndCallV7Topic):
+		err = b.parseERC20SwapoutV7TxLog(swapInfo, rlog, true)
 	case bytes.Equal(logTopic, LogAnySwapOutMixPoolTopic):
 		swapInfo.SwapType = tokens.ERC20SwapTypeMixPool // update SwapType
-		err = b.parseERC20Swapout2TxLog(swapInfo, rlog)
-	case bytes.Equal(logTopic, LogAnySwapOutAndCallTopic):
-		err = b.parseERC20SwapoutAndCallTxLog(swapInfo, rlog)
+		err = b.parseERC20SwapoutMixPoolTxLog(swapInfo, rlog)
 	case bytes.Equal(logTopic, LogAnySwapTradeTokensForTokensTopic):
 		err = b.parseERC20SwapTradeTxLog(swapInfo, rlog, false)
 	case bytes.Equal(logTopic, LogAnySwapTradeTokensForNativeTopic):
@@ -293,7 +292,7 @@ func (b *Bridge) parseERC20SwapoutTxLog(swapInfo *tokens.SwapTxInfo, rlog *types
 	return nil
 }
 
-func (b *Bridge) parseERC20Swapout2TxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
+func (b *Bridge) parseERC20SwapoutMixPoolTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
 	logTopics := rlog.Topics
 	if len(logTopics) != 3 {
 		return tokens.ErrTxWithWrongTopics
@@ -326,37 +325,36 @@ func (b *Bridge) parseERC20Swapout2TxLog(swapInfo *tokens.SwapTxInfo, rlog *type
 	return nil
 }
 
-func (b *Bridge) parseERC20SwapoutAndCallTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
+func (b *Bridge) parseERC20SwapoutV7TxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog, withCall bool) (err error) {
 	logTopics := rlog.Topics
-	if len(logTopics) != 3 {
+	if len(logTopics) != 4 {
 		return tokens.ErrTxWithWrongTopics
 	}
 	logData := *rlog.Data
-	if len(logData) < 288 {
+	if (!withCall && len(logData) < 128) || (withCall && len(logData) < 256) {
 		return abicoder.ErrParseDataError
 	}
 	erc20SwapInfo := swapInfo.ERC20SwapInfo
-	erc20SwapInfo.Token = common.BytesToAddress(logTopics[1].Bytes()).LowerHex()
-	swapInfo.From = common.BytesToAddress(logTopics[2].Bytes()).LowerHex()
+	erc20SwapInfo.SwapoutID = common.BytesToHash(logTopics[1].Bytes()).Hex()
+	erc20SwapInfo.Token = common.BytesToAddress(logTopics[2].Bytes()).LowerHex()
+	swapInfo.From = common.BytesToAddress(logTopics[3].Bytes()).LowerHex()
 	swapInfo.Bind, err = abicoder.ParseStringInData(logData, 0)
 	if err != nil {
 		return err
 	}
 	swapInfo.Value = common.GetBigInt(logData, 32, 32)
-	if params.IsUseFromChainIDInReceiptDisabled(b.ChainConfig.ChainID) {
-		swapInfo.FromChainID = b.ChainConfig.GetChainID()
-	} else {
-		swapInfo.FromChainID = common.GetBigInt(logData, 64, 32)
-	}
-	swapInfo.ToChainID = common.GetBigInt(logData, 96, 32)
+	swapInfo.FromChainID = b.ChainConfig.GetChainID()
+	swapInfo.ToChainID = common.GetBigInt(logData, 64, 32)
 
-	erc20SwapInfo.CallProxy, err = abicoder.ParseStringInData(logData, 128)
-	if err != nil {
-		return err
-	}
-	erc20SwapInfo.CallData, err = abicoder.ParseBytesInData(logData, 160)
-	if err != nil {
-		return err
+	if withCall {
+		erc20SwapInfo.CallProxy, err = abicoder.ParseStringInData(logData, 96)
+		if err != nil {
+			return err
+		}
+		erc20SwapInfo.CallData, err = abicoder.ParseBytesInData(logData, 128)
+		if err != nil {
+			return err
+		}
 	}
 
 	tokenCfg := b.GetTokenConfig(erc20SwapInfo.Token)

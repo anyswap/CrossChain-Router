@@ -46,18 +46,18 @@ var (
 
 	// ----------------------- The following is for router(v7) + anycall --------------------
 
-	// anySwapIn(string swapID, address token, address to, uint amount, uint fromChainID)
-	AnySwapInFuncHash2 = common.FromHex("0x8619c43d")
-	// anySwapInUnderlying(string swapID, address token, address to, uint amount, uint fromChainID)
-	AnySwapInUnderlyingFuncHash2 = common.FromHex("0x6e1f1a50")
-	// anySwapInNative(string swapID, address token, address to, uint amount, uint fromChainID)
-	AnySwapInNativeFuncHash2 = common.FromHex("0x174820bd")
-	// anySwapInAuto(string swapID, address token, address to, uint amount, uint fromChainID)
-	AnySwapInAutoFuncHash2 = common.FromHex("0xa5e4d7a1")
-	// anySwapInAndExec(string swapID, address token, address to, uint amount, uint fromChainID, address anycallProxy, bytes calldata data)
-	AnySwapInAndExecFuncHash = common.FromHex("0x988046dc")
-	// anySwapInUnderlyingAndExec(string swapID, address token, address to, uint amount, uint fromChainID, address anycallProxy, bytes calldata data)
-	AnySwapInUnderlyingAndExecFuncHash = common.FromHex("0x4c41e752")
+	// anySwapIn(string,(bytes32,address,address,uint256,uint256))
+	AnySwapInFuncHashV7 = common.FromHex("0x8fef8489")
+	// anySwapInUnderlying(string,(bytes32,address,address,uint256,uint256))
+	AnySwapInUnderlyingFuncHashV7 = common.FromHex("0x9ff1d3e8")
+	// anySwapInNative(string,(bytes32,address,address,uint256,uint256))
+	AnySwapInNativeFuncHashV7 = common.FromHex("0x5de26385")
+	// anySwapInAuto(string,(bytes32,address,address,uint256,uint256))
+	AnySwapInAutoFuncHashV7 = common.FromHex("0x81aa7a81")
+	// anySwapInAndExec(string,(bytes32,address,address,uint256,uint256),address,bytes)
+	AnySwapInAndExecFuncHashV7 = common.FromHex("0xf9ca3a5d")
+	// anySwapInUnderlyingAndExec(string,(bytes32,address,address,uint256,uint256),address,bytes)
+	AnySwapInUnderlyingAndExecFuncHashV7 = common.FromHex("0xcc95060a")
 )
 
 // GetSwapInFuncHash1 get swapin func hash
@@ -90,49 +90,45 @@ func GetSwapInFuncHash1(tokenCfg *tokens.TokenConfig, forUnderlying bool) []byte
 	return AnySwapInAutoFuncHash
 }
 
-// GetSwapInFuncHash2 get swapin func hash
-func GetSwapInFuncHash2(tokenCfg *tokens.TokenConfig, forUnderlying bool) []byte {
-	if forUnderlying {
-		return AnySwapInUnderlyingFuncHash2
-	}
-
+// GetSwapInFuncHashV7 get swapin func hash
+func GetSwapInFuncHashV7(tokenCfg *tokens.TokenConfig) []byte {
 	switch tokenCfg.ContractVersion {
 	case ForceAnySwapInAutoTokenVersion:
-		return AnySwapInAutoFuncHash2
+		return AnySwapInAutoFuncHashV7
 	case ForceAnySwapInTokenVersion, ForceAnySwapInAndCallTokenVersion, MintBurnWrapperTokenVersion:
-		return AnySwapInFuncHash2
+		return AnySwapInFuncHashV7
 	case ForceAnySwapInUnderlyingTokenVersion, ForceAnySwapInUnerlyingAndCallTokenVersion:
-		return AnySwapInUnderlyingFuncHash2
+		return AnySwapInUnderlyingFuncHashV7
 	case ForceAnySwapInNativeTokenVersion:
-		return AnySwapInNativeFuncHash2
+		return AnySwapInNativeFuncHashV7
 	case 0:
 		if common.HexToAddress(tokenCfg.GetUnderlying()) == (common.Address{}) {
 			// without underlying
-			return AnySwapInFuncHash2
+			return AnySwapInFuncHashV7
 		}
 	default:
 		if common.HexToAddress(tokenCfg.GetUnderlying()) == (common.Address{}) &&
 			!params.IsForceAnySwapInAuto() {
 			// without underlying, and not force swapinAuto
-			return AnySwapInFuncHash2
+			return AnySwapInFuncHashV7
 		}
 	}
-	return AnySwapInAutoFuncHash2
+	return AnySwapInAutoFuncHashV7
 }
 
-// GetSwapInAndExecFuncHash get swapin and call func hash
-func GetSwapInAndExecFuncHash(tokenCfg *tokens.TokenConfig) []byte {
+// GetSwapInAndExecFuncHashV7 get swapin and call func hash
+func GetSwapInAndExecFuncHashV7(tokenCfg *tokens.TokenConfig) []byte {
 	switch tokenCfg.ContractVersion {
 	case ForceAnySwapInAndCallTokenVersion, MintBurnWrapperTokenVersion:
-		return AnySwapInAndExecFuncHash
+		return AnySwapInAndExecFuncHashV7
 	case ForceAnySwapInUnerlyingAndCallTokenVersion:
-		return AnySwapInUnderlyingAndExecFuncHash
+		return AnySwapInUnderlyingAndExecFuncHashV7
 	default:
 		if common.HexToAddress(tokenCfg.GetUnderlying()) == (common.Address{}) {
-			return AnySwapInAndExecFuncHash
+			return AnySwapInAndExecFuncHashV7
 		}
 	}
-	return AnySwapInUnderlyingAndExecFuncHash
+	return AnySwapInUnderlyingAndExecFuncHashV7
 }
 
 func (b *Bridge) buildERC20SwapTxInput(args *tokens.BuildTxArgs) (err error) {
@@ -171,10 +167,11 @@ func (b *Bridge) buildSwapAndExecTxInput(args *tokens.BuildTxArgs, multichainTok
 
 	erc20SwapInfo := args.ERC20SwapInfo
 
-	funcHash := GetSwapInAndExecFuncHash(toTokenCfg)
+	funcHash := GetSwapInAndExecFuncHashV7(toTokenCfg)
 
 	input := abicoder.PackDataWithFuncHash(funcHash,
 		args.GetUniqueSwapIdentifier(),
+		common.HexToHash(erc20SwapInfo.SwapoutID),
 		common.HexToAddress(multichainToken),
 		receiver,
 		amount,
@@ -200,20 +197,23 @@ func (b *Bridge) buildERC20SwapinTxInput(args *tokens.BuildTxArgs, multichainTok
 		return tokens.ErrMissTokenConfig
 	}
 
+	erc20SwapInfo := args.ERC20SwapInfo
+
 	var funcHash, input []byte
 
 	switch params.GetSwapSubType() {
 	case "v7":
-		funcHash = GetSwapInFuncHash2(toTokenCfg, args.ERC20SwapInfo.ForUnderlying)
+		funcHash = GetSwapInFuncHashV7(toTokenCfg)
 		input = abicoder.PackDataWithFuncHash(funcHash,
 			args.GetUniqueSwapIdentifier(),
+			common.HexToHash(erc20SwapInfo.SwapoutID),
 			common.HexToAddress(multichainToken),
 			receiver,
 			amount,
 			args.FromChainID,
 		)
 	default:
-		funcHash = GetSwapInFuncHash1(toTokenCfg, args.ERC20SwapInfo.ForUnderlying)
+		funcHash = GetSwapInFuncHash1(toTokenCfg, erc20SwapInfo.ForUnderlying)
 		input = abicoder.PackDataWithFuncHash(funcHash,
 			common.HexToHash(args.SwapID),
 			common.HexToAddress(multichainToken),
