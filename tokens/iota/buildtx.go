@@ -63,6 +63,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		if receiver, amount, err := b.getReceiverAndAmount(args, multichainToken); err != nil {
 			return nil, err
 		} else {
+			args.SwapValue = amount // swapValue
 			if balance, err := b.CheckBalance(mpcEdAddr, amount.Uint64()); err != nil {
 				log.Warn("CheckBalance error", "balance", balance, "needAmount", amount)
 				return nil, err
