@@ -156,3 +156,26 @@ func (b *Bridge) IsMinter(contractAddr, minterAddr string) (bool, error) {
 	}
 	return common.GetBigInt(common.FromHex(res), 0, 32).Sign() != 0, nil
 }
+
+// GetRouterSecurity call "routerSecurity()"
+func (b *Bridge) GetRouterSecurity(contractAddr string) (string, error) {
+	data := common.FromHex("0xa413387a")
+	res, err := b.CallContract(contractAddr, data, "latest")
+	if err != nil {
+		return "", err
+	}
+	return common.BytesToAddress(common.GetData(common.FromHex(res), 0, 32)).LowerHex(), nil
+}
+
+// IsSwapoutIDExist call "isSwapoutIDExist(bytes32)"
+func (b *Bridge) IsSwapoutIDExist(contractAddr, swapoutID string) (bool, error) {
+	funcHash := common.FromHex("0xbe6adb87")
+	data := make([]byte, 36)
+	copy(data[:4], funcHash)
+	copy(data[4:36], common.HexToHash(swapoutID).Bytes())
+	res, err := b.CallContract(contractAddr, data, "latest")
+	if err != nil {
+		return false, err
+	}
+	return common.GetBigInt(common.FromHex(res), 0, 32).Sign() != 0, nil
+}

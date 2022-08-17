@@ -259,6 +259,21 @@ func (b *Bridge) verifyERC20SwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.R
 		log.Warn("router contract mismatch", "have", rlog.Address.LowerHex(), "want", routerContract)
 		return tokens.ErrTxWithWrongContract
 	}
+
+	swapoutID := swapInfo.ERC20SwapInfo.SwapoutID
+	if swapoutID != "" {
+		routerInfo := router.GetRouterInfo(routerContract, b.ChainConfig.ChainID)
+		if routerInfo == nil {
+			return tokens.ErrMissRouterInfo
+		}
+		exist, err := b.IsSwapoutIDExist(routerInfo.RouterSecurity, swapoutID)
+		if err != nil {
+			return err
+		}
+		if !exist {
+			return tokens.ErrSwapoutIDNotExist
+		}
+	}
 	return nil
 }
 

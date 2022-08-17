@@ -121,7 +121,7 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 
 	chainID := b.ChainConfig.ChainID
 	log.Info(fmt.Sprintf("[%5v] start init router info", chainID), "routerContract", routerContract)
-	var routerFactory, routerWNative string
+	var routerFactory, routerWNative, routerSecurity string
 	if tokens.IsERC20Router() {
 		routerFactory, err = b.GetFactoryAddress(routerContract)
 		if err != nil {
@@ -130,6 +130,13 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 		routerWNative, err = b.GetWNativeAddress(routerContract)
 		if err != nil {
 			log.Warn("get router wNative address failed", "chainID", chainID, "routerContract", routerContract, "err", err)
+		}
+		if params.GetSwapSubType() == "v7" {
+			routerSecurity, err = b.GetRouterSecurity(routerContract)
+			if err != nil {
+				log.Warn("get router security address failed", "chainID", chainID, "routerContract", routerContract, "err", err)
+				return err
+			}
 		}
 	}
 	routerMPC, err := b.GetMPCAddress(routerContract)
@@ -159,16 +166,18 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 		routerContract,
 		chainID,
 		&router.SwapRouterInfo{
-			RouterMPC:     routerMPC,
-			RouterFactory: routerFactory,
-			RouterWNative: routerWNative,
+			RouterMPC:      routerMPC,
+			RouterFactory:  routerFactory,
+			RouterWNative:  routerWNative,
+			RouterSecurity: routerSecurity,
 		},
 	)
 	router.SetMPCPublicKey(routerMPC, routerMPCPubkey)
 
 	log.Info(fmt.Sprintf("[%5v] init router info success", chainID),
 		"routerContract", routerContract, "routerMPC", routerMPC,
-		"routerFactory", routerFactory, "routerWNative", routerWNative)
+		"routerFactory", routerFactory, "routerWNative", routerWNative,
+		"routerSecurity", routerSecurity)
 
 	if mongodb.HasClient() {
 		var nextSwapNonce uint64
