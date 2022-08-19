@@ -1,6 +1,7 @@
 package aptos
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -67,4 +68,33 @@ func (account *Account) SignBytes(message []byte) (string, error) {
 		return "", err
 	}
 	return common.ToHex(signature[:64]), nil
+}
+
+func GetRouterModelId(mpcAddress string) string {
+	return fmt.Sprintf("%s::")
+}
+
+// IsValidAddress check address
+func (b *Bridge) IsValidAddress(address string) bool {
+	s := address
+	if common.HasHexPrefix(s) {
+		s = s[2:]
+	}
+	return len(s) == 32 && common.IsHex(s)
+}
+
+// PublicKeyToAddress impl
+func (b *Bridge) PublicKeyToAddress(pubKeyHex string) (string, error) {
+	return PublicKeyToAddress(pubKeyHex)
+}
+
+func PublicKeyToAddress(pubKeyHex string) (string, error) {
+	pubKey := pubKeyHex
+	if common.HasHexPrefix(pubKey) {
+		pubKey = pubKey[2:]
+	}
+	if !common.IsHex(pubKey) {
+		return "", fmt.Errorf("pubKeyHex format error : %v", pubKeyHex)
+	}
+	return NewAccountFromPubkey(pubKey).GetHexAddress(), nil
 }

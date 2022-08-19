@@ -18,11 +18,11 @@ func main() {
 		Timeout: 10000,
 	}
 
-	// resp0, _ := restClient.GetLedger()
-	// println(resp0.ChainId, resp0.LedgerTimestamp)
+	resp0, _ := restClient.GetLedger()
+	println(resp0.ChainId, resp0.LedgerTimestamp)
 
-	// resp, _ := restClient.GetAccount("0x1006a78099e019ca767bc617ec4e865149148bfebc944d2398f8c0d178931827")
-	// println(resp.AuthenticationKey, resp.SequenceNumber)
+	resp, _ := restClient.GetAccount("0x5ab890371ff7244913a2941098ba3238c9621d50ba2c80fbfa611a9e18c285b1")
+	println(resp.AuthenticationKey, resp.SequenceNumber)
 
 	// resp1, _ := restClient.GetAccountCoinStore("0x1006a78099e019ca767bc617ec4e865149148bfebc944d2398f8c0d178931827", "0x1::coin::CoinStore<0x1::aptos_coin::AptosCoin>")
 	// println(resp1.Data.Coin.Value)
@@ -41,6 +41,7 @@ func main() {
 	}
 	timeout := time.Now().Unix() + 600
 	requestBody.ExpirationTimestampSecs = strconv.FormatInt(timeout, 10)
+	requestBody.SequenceNumber = resp.SequenceNumber
 	resp4, err := restClient.GetSigningMessage(&requestBody)
 	if err != nil {
 		log.Fatal("GetSigningMessage", "err", err)

@@ -5,6 +5,8 @@ type LedgerInfo struct {
 	Epoch               string `json:"epoch"`
 	LedgerVersion       string `json:"ledger_version"`
 	OldestLedgerVersion string `json:"oldest_ledger_version"`
+	BlockHeight         string `json:"block_height"`
+	OldestBlockHeight   string `json:"oldest_block_height"`
 	LedgerTimestamp     string `json:"ledger_timestamp"`
 	NodeRole            string `json:"node_role"`
 }
@@ -40,21 +42,22 @@ type CoinValue struct {
 }
 
 type TransactionInfo struct {
-	Type                    string `json:"type"`
-	Version                 string `json:"version,omitempty"`
-	Hash                    string `json:"hash"`
-	StateRootHash           string `json:"state_root_hash,omitempty"`
-	EventRootHash           string `json:"event_root_hash,omitempty"`
-	GasUsed                 string `json:"gas_used,omitempty"`
-	Success                 bool   `json:"success,omitempty"`
-	VmStatus                string `json:"vm_status,omitempty"`
-	AccumulatorRootHash     string `json:"accumulator_root_hash,omitempty"`
-	Sender                  string `json:"sender"`
-	SequenceNumber          string `json:"sequence_number"`
-	MaxGasAmount            string `json:"max_gas_amount"`
-	GasUnitPrice            string `json:"gas_unit_price"`
-	ExpirationTimestampSecs string `json:"expiration_timestamp_secs"`
-	Timestamp               string `json:"timestamp,omitempty"`
+	Type                    string             `json:"type"`
+	Version                 string             `json:"version,omitempty"`
+	Hash                    string             `json:"hash"`
+	StateRootHash           string             `json:"state_root_hash,omitempty"`
+	EventRootHash           string             `json:"event_root_hash,omitempty"`
+	GasUsed                 string             `json:"gas_used,omitempty"`
+	Success                 bool               `json:"success,omitempty"`
+	VmStatus                string             `json:"vm_status,omitempty"`
+	AccumulatorRootHash     string             `json:"accumulator_root_hash,omitempty"`
+	Sender                  string             `json:"sender"`
+	SequenceNumber          string             `json:"sequence_number"`
+	MaxGasAmount            string             `json:"max_gas_amount"`
+	GasUnitPrice            string             `json:"gas_unit_price"`
+	ExpirationTimestampSecs string             `json:"expiration_timestamp_secs"`
+	Timestamp               string             `json:"timestamp,omitempty"`
+	PayLoad                 TransactionPayload `json:"payload,omitempty"`
 }
 
 type SigningMessage struct {

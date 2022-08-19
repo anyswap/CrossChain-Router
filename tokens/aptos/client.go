@@ -13,6 +13,8 @@ var (
 	GetTransactionsPath   = "/transactions/{txn_hash}"
 	GetSigningMessagePath = "/transactions/signing_message"
 	SubmitTranscationPath = "/transactions"
+
+	SCRIPT_FUNCTION_PAYLOAD = "script_function_payload"
 )
 
 type RestClient struct {
