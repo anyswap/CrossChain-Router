@@ -47,6 +47,8 @@ var (
 	ErrTxResultType          = errors.New("tx type is not TransactionResult")
 	ErrGetLatestBlockNumber  = errors.New("GetLatestBlockNumber error")
 	ErrOutputLength          = errors.New("output lenght is zero")
+	ErrMpcAddrMissMatch      = errors.New("receiver addr not match mpc addr")
+	ErrMetadataKeyMissMatch  = errors.New("metadata key not match 123")
 
 	// errors should register in router swap
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")
