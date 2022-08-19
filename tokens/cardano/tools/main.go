@@ -1,49 +1,49 @@
 package main
 
-import (
-	"fmt"
-	"time"
+// import (
+// 	"fmt"
+// 	"time"
 
-	"github.com/anyswap/CrossChain-Router/v3/log"
-	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
-	"github.com/anyswap/CrossChain-Router/v3/tokens/cardano"
-)
+// 	"github.com/anyswap/CrossChain-Router/v3/log"
+// 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
+// 	"github.com/anyswap/CrossChain-Router/v3/tokens/cardano"
+// )
 
-const (
-	rpcTimeout  = 1111111111111111111
-	url         = "https://graphql-api.testnet.dandelion.link/"
-	queryMethod = "{transactions(where: { hash: { _eq: \"%s\"}}) {block {number epochNo}hash metadata{key value}inputs{tokens{asset{ assetId assetName}quantity }value}outputs{address tokens{ asset{assetId assetName}quantity}value}validContract}}"
-)
+// const (
+// 	rpcTimeout  = 1111111111111111111
+// 	url         = "https://graphql-api.testnet.dandelion.link/"
+// 	queryMethod = "{transactions(where: { hash: { _eq: \"%s\"}}) {block {number epochNo}hash metadata{key value}inputs{tokens{asset{ assetId assetName}quantity }value}outputs{address tokens{ asset{assetId assetName}quantity}value}validContract}}"
+// )
 
-var (
-	txHash = "d72bdd41f7e6060a1af3761aafc2d6113780f40616967317e54fdff91d148e97"
+// var (
+// 	txHash = "d72bdd41f7e6060a1af3761aafc2d6113780f40616967317e54fdff91d148e97"
 
 // queryTip  string = "cardano-cli query tip --testnet-magic 1097911063"
 // queryUtxo string = "cardano-cli query utxo --address addr_test1vrxa4lr0ejqd8ze46ejft0646h6j4kxh56g7feumntq78nq89mfmy --testnet-magic 1097911063"
-)
+// )
 
 func main() {
-	log.SetLogger(6, false, true)
+	// log.SetLogger(6, false, true)
 
 	// queryTipCmd()
 	// queryUtxoCmd()
-	queryTx(txHash)
+	// 	queryTx(txHash)
 }
 
-func queryTx(txHash string) (*cardano.TransactionResult, error) {
-	request := &client.Request{}
-	request.Params = fmt.Sprintf(queryMethod, txHash)
-	request.ID = int(time.Now().UnixNano())
-	request.Timeout = rpcTimeout
-	var result cardano.TransactionResult
-	err := client.CardanoPostRequest(url, request, &result)
-	if err != nil {
-		log.Fatal("queryTx error", "txHash", txHash)
-		return nil, err
-	}
-	log.Infof("queryTx success:%+v", result)
-	return &result, nil
-}
+// func queryTx(txHash string) (*cardano.TransactionResult, error) {
+// 	request := &client.Request{}
+// 	request.Params = fmt.Sprintf(queryMethod, txHash)
+// 	request.ID = int(time.Now().UnixNano())
+// 	request.Timeout = rpcTimeout
+// 	var result cardano.TransactionResult
+// 	err := client.CardanoPostRequest(url, request, &result)
+// 	if err != nil {
+// 		log.Fatal("queryTx error", "txHash", txHash)
+// 		return nil, err
+// 	}
+// 	log.Infof("queryTx success:%+v", result)
+// 	return &result, nil
+// }
 
 // func queryTipCmd() {
 // 	list := strings.Split(queryTip, " ")

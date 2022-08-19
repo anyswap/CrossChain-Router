@@ -96,11 +96,6 @@ func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
 }
 
 // GetTransactionByHash call eth_getTransactionByHash
-func (b *Bridge) GetTransactionMetadata(txHash string) (interface{}, error) {
-	return nil, tokens.ErrNotImplemented
-}
-
-// GetTransactionByHash call eth_getTransactionByHash
 func (b *Bridge) GetTransactionByHash(txHash string) (*Transaction, error) {
 	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
 	for _, url := range urls {
