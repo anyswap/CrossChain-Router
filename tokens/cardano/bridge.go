@@ -77,7 +77,7 @@ func (b *Bridge) GetLatestBlockNumber() (num uint64, err error) {
 			log.Error("GetLatestBlockNumber", "err", err)
 		}
 	}
-	return 0, tokens.ErrNotImplemented
+	return 0, tokens.ErrGetLatestBlockNumber
 }
 
 // GetLatestBlockNumberOf gets latest block number from single api
@@ -101,8 +101,15 @@ func (b *Bridge) GetTransactionMetadata(txHash string) (interface{}, error) {
 }
 
 // GetTransactionByHash call eth_getTransactionByHash
-func (b *Bridge) GetTransactionByHash(txHash string) (txRes interface{}, err error) {
-	return nil, tokens.ErrNotImplemented
+func (b *Bridge) GetTransactionByHash(txHash string) (*Transaction, error) {
+	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	for _, url := range urls {
+		result, err := GetTransactionByHash(url, txHash)
+		if err == nil {
+			return result, nil
+		}
+	}
+	return nil, tokens.ErrTxNotFound
 }
 
 // GetTransactionStatus impl
