@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math/big"
 	"os/exec"
@@ -27,9 +28,13 @@ import (
 // 	queryMethod = "{transactions(where: { hash: { _eq: \"%s\"}}) {block {number epochNo}hash metadata{key value}inputs{tokens{asset{ assetId assetName}quantity }value}outputs{address tokens{ asset{assetId assetName}quantity}value}validContract}}"
 // )
 
+const (
+	RawPath    = "txDb/raw/"
+	AdaAssetId = "lovelace"
+)
+
 var (
-	adaAssetId   = "lovelace"
-	fixAdaAmount = big.NewInt(1000000)
+	FixAdaAmount = big.NewInt(1000000)
 	swapId       = "d72bdd41f7e6060a1af3761aafc2d6113780f40616967317e54fdff91d148e97-0"
 	// txHash   = "d72bdd41f7e6060a1af3761aafc2d6113780f40616967317e54fdff91d148e97"
 	sender   = "addr_test1vrxa4lr0ejqd8ze46ejft0646h6j4kxh56g7feumntq78nq89mfmy"
@@ -37,9 +42,10 @@ var (
 	assetId  = "f3f97a8f8af955089c1865de77f37d97cbaf4918fb19ce7b3718f3bd.55534454"
 	amount   = "12345678"
 	// queryTip string = "cardano-cli query tip --testnet-magic 1097911063"
-	buildRawTxWithoutMintCmd = "cardano-cli  transaction  build-raw  --fee  %s%s%s  --out-file  %s"
+	BuildRawTxWithoutMintCmd = "cardano-cli  transaction  build-raw  --fee  %s%s%s  --out-file  %s"
 	// buildRawTxWithMintCmd           = "cardano-cli  transaction  build-raw  --fee  %s%s%s  --mint=%s  --out-file  %s"
-	queryUtxo string = "cardano-cli query utxo --address %s --testnet-magic 1097911063"
+	CalcMinFeeCmd        = "cardano-cli transaction calculate-min-fee --tx-body-file %s --tx-in-count %d --tx-out-count %d --witness-count 1 --testnet-magic 1097911063 --protocol-params-file txDb/config/protocol.json"
+	QueryUtxo     string = "cardano-cli query utxo --address %s --testnet-magic 1097911063"
 )
 
 func main() {
@@ -57,30 +63,53 @@ func main() {
 	} else {
 		log.Info("\nbuildTx success", "rawTransaction", rawTransaction)
 		if txPath, err := createRawTx(rawTransaction); err != nil {
-			log.Info("createRawTx success", "txPath", txPath)
+			log.Fatal("createRawTx fails", "err", err)
+		} else {
+			if minFee, err := calcMinFee(rawTransaction, txPath); err != nil {
+				log.Fatal("calcMinFee fails", "err", err)
+			} else {
+				log.Info("calcMinFee", "minFee", minFee)
+			}
 		}
 	}
 }
 
-func createRawTx(rawTransaction cardano.RawTransaction) (string, error) {
+func calcMinFee(rawTransaction *cardano.RawTransaction, rawPath string) (string, error) {
+	if RawPath+rawTransaction.OutFile+".raw" != rawPath {
+		return "", errors.New("raw path not match")
+	}
+	cmdString := fmt.Sprintf(CalcMinFeeCmd, rawPath, len(rawTransaction.TxInts), len(rawTransaction.TxOuts))
+	log.Info("cmdString", "cmdString", cmdString)
+	list := strings.Split(cmdString, " ")
+	cmd := exec.Command(list[0], list[1:]...)
+	var cmdOut bytes.Buffer
+	var cmdErr bytes.Buffer
+	cmd.Stdout = &cmdOut
+	cmd.Stderr = &cmdErr
+	if err := cmd.Run(); err != nil {
+		log.Fatal("fails", "cmdErr", cmdErr.String())
+	}
+	return cmdOut.String(), nil
+}
+
+func createRawTx(rawTransaction *cardano.RawTransaction) (string, error) {
 	inputString := ""
 	for txHash, index := range rawTransaction.TxInts {
 		inputString = fmt.Sprintf("%s  --tx-in  %s#%s", inputString, txHash, index)
 	}
 	outputString := ""
 	for address, assets := range rawTransaction.TxOuts {
-		outputString = fmt.Sprintf("%s  --tx-out  %s+%s", outputString, address, assets[adaAssetId])
+		outputString = fmt.Sprintf("%s  --tx-out  %s+%s", outputString, address, assets[AdaAssetId])
 		for assetId, amount := range assets {
-			if assetId != adaAssetId {
+			if assetId != AdaAssetId {
 				outputString = fmt.Sprintf("%s+%s %s", outputString, amount, assetId)
 			}
 		}
 	}
-	cmdString := fmt.Sprintf(buildRawTxWithoutMintCmd, rawTransaction.Fee, inputString, outputString, "../txDb/"+rawTransaction.OutFile+".raw")
+	cmdString := fmt.Sprintf(BuildRawTxWithoutMintCmd, rawTransaction.Fee, inputString, outputString, RawPath+rawTransaction.OutFile+".raw")
 	log.Info("cmdString", "cmdString", cmdString)
 	list := strings.Split(cmdString, "  ")
 	cmd := exec.Command(list[0], list[1:]...)
-	log.Info("cmd", "cmd", cmd.String())
 	var cmdOut bytes.Buffer
 	var cmdErr bytes.Buffer
 	cmd.Stdout = &cmdOut
@@ -90,10 +119,10 @@ func createRawTx(rawTransaction cardano.RawTransaction) (string, error) {
 	} else {
 		log.Info("success", "cmdOut", cmdOut.String())
 	}
-	return "", nil
+	return RawPath + rawTransaction.OutFile + ".raw", nil
 }
 
-func buildTx(swapId, receiver, assetId, amount string, utxos map[string]cardano.UtxoMap) (cardano.RawTransaction, error) {
+func buildTx(swapId, receiver, assetId, amount string, utxos map[string]cardano.UtxoMap) (*cardano.RawTransaction, error) {
 	log.Infof("build Tx:\nreceiver:%+v\nassetId:%+v\namount:%+v\nutxos:%+v", receiver, assetId, amount, utxos)
 	rawTransaction := cardano.RawTransaction{
 		Fee:     "0",
@@ -116,14 +145,14 @@ func buildTx(swapId, receiver, assetId, amount string, utxos map[string]cardano.
 							rawTransaction.TxOuts[receiver] = map[string]string{}
 						}
 						rawTransaction.TxOuts[receiver][assetId] = amountValue.String()
-						rawTransaction.TxOuts[receiver][adaAssetId] = fixAdaAmount.String()
-						if adaAmount, err := common.GetBigIntFromStr(utxoInfo.Assets[adaAssetId]); err != nil {
+						rawTransaction.TxOuts[receiver][AdaAssetId] = FixAdaAmount.String()
+						if adaAmount, err := common.GetBigIntFromStr(utxoInfo.Assets[AdaAssetId]); err != nil {
 							log.Fatal("GetBigIntFromStr error", "err", err)
 						} else {
 							if rawTransaction.TxOuts[sender] == nil {
 								rawTransaction.TxOuts[sender] = map[string]string{}
 							}
-							rawTransaction.TxOuts[sender][adaAssetId] = adaAmount.Sub(adaAmount, fixAdaAmount).String()
+							rawTransaction.TxOuts[sender][AdaAssetId] = adaAmount.Sub(adaAmount, FixAdaAmount).String()
 						}
 						rawTransaction.TxOuts[sender][assetId] = value.Sub(value, amountValue).String()
 					}
@@ -131,7 +160,7 @@ func buildTx(swapId, receiver, assetId, amount string, utxos map[string]cardano.
 			}
 		}
 	}
-	return rawTransaction, nil
+	return &rawTransaction, nil
 }
 
 // func queryTx(txHash string) (*cardano.TransactionResult, error) {
@@ -168,7 +197,7 @@ func buildTx(swapId, receiver, assetId, amount string, utxos map[string]cardano.
 
 func queryUtxoCmd() map[string]cardano.UtxoMap {
 	utxos := make(map[string]cardano.UtxoMap)
-	list := strings.Split(fmt.Sprintf(queryUtxo, sender), " ")
+	list := strings.Split(fmt.Sprintf(QueryUtxo, sender), " ")
 	cmd := exec.Command(list[0], list[1:]...)
 	var cmdOut bytes.Buffer
 	var cmdErr bytes.Buffer

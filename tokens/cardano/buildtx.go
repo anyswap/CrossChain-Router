@@ -23,6 +23,7 @@ const (
 var (
 	FixAdaAmount             = big.NewInt(1000000)
 	BuildRawTxWithoutMintCmd = "cardano-cli  transaction  build-raw  --fee  %s%s%s  --out-file  %s"
+	CalcMinFeeCmd            = "cardano-cli transaction calculate-min-fee --tx-body-file %s --tx-in-count %d --tx-out-count %d --witness-count 1 %s --protocol-params-file txDb/config/protocol.json"
 	QueryUtxo                = "cardano-cli query utxo --address %s --testnet-magic %s"
 )
 
@@ -165,7 +166,18 @@ func (b *Bridge) calcMinFee(rawTransaction *RawTransaction, rawPath string) (str
 	if RawPath+rawTransaction.OutFile+".raw" != rawPath {
 		return "", errors.New("raw path not match")
 	}
-	return "", nil
+	cmdString := fmt.Sprintf(CalcMinFeeCmd, rawPath, len(rawTransaction.TxInts), len(rawTransaction.TxOuts), "--mainnet "+b.ChainConfig.ChainID)
+	log.Info("cmdString", "cmdString", cmdString)
+	list := strings.Split(cmdString, " ")
+	cmd := exec.Command(list[0], list[1:]...)
+	var cmdOut bytes.Buffer
+	var cmdErr bytes.Buffer
+	cmd.Stdout = &cmdOut
+	cmd.Stderr = &cmdErr
+	if err := cmd.Run(); err != nil {
+		log.Fatal("fails", "cmdErr", cmdErr.String())
+	}
+	return cmdOut.String(), nil
 }
 
 func (b *Bridge) initExtra(args *tokens.BuildTxArgs) (extra *tokens.AllExtras, err error) {
