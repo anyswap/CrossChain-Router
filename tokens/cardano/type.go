@@ -57,3 +57,16 @@ type MetadataValue struct {
 	Bind      string `json:"bind"`
 	ToChainId uint64 `json:"toChainId"`
 }
+
+type UtxoMap struct {
+	Index  string            `json:"index"`
+	Assets map[string]string `json:"assets"`
+}
+
+type RawTransaction struct {
+	Fee     string                       `json:"fee"`
+	TxInts  map[string]string            `json:"txInts"`
+	TxOuts  map[string]map[string]string `json:"txOuts"`
+	Mint    map[string]string            `json:"mint"`
+	OutFile string                       `json:"outFile"`
+}

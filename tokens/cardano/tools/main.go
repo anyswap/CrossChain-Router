@@ -1,5 +1,17 @@
 package main
 
+import (
+	"bytes"
+	"fmt"
+	"math/big"
+	"os/exec"
+	"strings"
+
+	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/cardano"
+)
+
 // import (
 // 	"fmt"
 // 	"time"
@@ -15,19 +27,111 @@ package main
 // 	queryMethod = "{transactions(where: { hash: { _eq: \"%s\"}}) {block {number epochNo}hash metadata{key value}inputs{tokens{asset{ assetId assetName}quantity }value}outputs{address tokens{ asset{assetId assetName}quantity}value}validContract}}"
 // )
 
-// var (
-// 	txHash = "d72bdd41f7e6060a1af3761aafc2d6113780f40616967317e54fdff91d148e97"
-
-// queryTip  string = "cardano-cli query tip --testnet-magic 1097911063"
-// queryUtxo string = "cardano-cli query utxo --address addr_test1vrxa4lr0ejqd8ze46ejft0646h6j4kxh56g7feumntq78nq89mfmy --testnet-magic 1097911063"
-// )
+var (
+	adaAssetId   = "lovelace"
+	fixAdaAmount = big.NewInt(1000000)
+	swapId       = "d72bdd41f7e6060a1af3761aafc2d6113780f40616967317e54fdff91d148e97-0"
+	// txHash   = "d72bdd41f7e6060a1af3761aafc2d6113780f40616967317e54fdff91d148e97"
+	sender   = "addr_test1vrxa4lr0ejqd8ze46ejft0646h6j4kxh56g7feumntq78nq89mfmy"
+	receiver = "addr_test1vqvlku0ytscqg32rpv660uu4sgxlje25s5xrpz7zjqsva3c8pfckz"
+	assetId  = "f3f97a8f8af955089c1865de77f37d97cbaf4918fb19ce7b3718f3bd.55534454"
+	amount   = "12345678"
+	// queryTip string = "cardano-cli query tip --testnet-magic 1097911063"
+	buildRawTxWithoutMintCmd = "cardano-cli  transaction  build-raw  --fee  %s%s%s  --out-file  %s"
+	// buildRawTxWithMintCmd           = "cardano-cli  transaction  build-raw  --fee  %s%s%s  --mint=%s  --out-file  %s"
+	queryUtxo string = "cardano-cli query utxo --address %s --testnet-magic 1097911063"
+)
 
 func main() {
 	// log.SetLogger(6, false, true)
 
 	// queryTipCmd()
-	// queryUtxoCmd()
-	// 	queryTx(txHash)
+	// queryTx(txHash)
+
+	utxos := queryUtxoCmd()
+	log.Infof("queryUtxoCmd %+v", utxos)
+
+	// build tx
+	if rawTransaction, err := buildTx(swapId, receiver, assetId, amount, utxos); err != nil {
+		log.Fatal("buildTx fails", "err", err)
+	} else {
+		log.Info("\nbuildTx success", "rawTransaction", rawTransaction)
+		if txPath, err := createRawTx(rawTransaction); err != nil {
+			log.Info("createRawTx success", "txPath", txPath)
+		}
+	}
+}
+
+func createRawTx(rawTransaction cardano.RawTransaction) (string, error) {
+	inputString := ""
+	for txHash, index := range rawTransaction.TxInts {
+		inputString = fmt.Sprintf("%s  --tx-in  %s#%s", inputString, txHash, index)
+	}
+	outputString := ""
+	for address, assets := range rawTransaction.TxOuts {
+		outputString = fmt.Sprintf("%s  --tx-out  %s+%s", outputString, address, assets[adaAssetId])
+		for assetId, amount := range assets {
+			if assetId != adaAssetId {
+				outputString = fmt.Sprintf("%s+%s %s", outputString, amount, assetId)
+			}
+		}
+	}
+	cmdString := fmt.Sprintf(buildRawTxWithoutMintCmd, rawTransaction.Fee, inputString, outputString, "../txDb/"+rawTransaction.OutFile+".raw")
+	log.Info("cmdString", "cmdString", cmdString)
+	list := strings.Split(cmdString, "  ")
+	cmd := exec.Command(list[0], list[1:]...)
+	log.Info("cmd", "cmd", cmd.String())
+	var cmdOut bytes.Buffer
+	var cmdErr bytes.Buffer
+	cmd.Stdout = &cmdOut
+	cmd.Stderr = &cmdErr
+	if err := cmd.Run(); err != nil {
+		log.Fatal("fails", "cmdErr", cmdErr.String())
+	} else {
+		log.Info("success", "cmdOut", cmdOut.String())
+	}
+	return "", nil
+}
+
+func buildTx(swapId, receiver, assetId, amount string, utxos map[string]cardano.UtxoMap) (cardano.RawTransaction, error) {
+	log.Infof("build Tx:\nreceiver:%+v\nassetId:%+v\namount:%+v\nutxos:%+v", receiver, assetId, amount, utxos)
+	rawTransaction := cardano.RawTransaction{
+		Fee:     "0",
+		OutFile: swapId,
+		TxOuts:  map[string]map[string]string{},
+		TxInts:  map[string]string{},
+	}
+	for txHash, utxoInfo := range utxos {
+		if utxoInfo.Assets[assetId] != "" {
+			log.Infof("\nassetId:%+v amount:%+v", assetId, utxoInfo.Assets[assetId])
+			if value, err := common.GetBigIntFromStr(utxoInfo.Assets[assetId]); err != nil {
+				log.Fatal("GetBigIntFromStr error", "err", err)
+			} else {
+				if amountValue, err := common.GetBigIntFromStr(amount); err != nil {
+					log.Fatal("GetBigIntFromStr error", "err", err)
+				} else {
+					if value.Cmp(amountValue) >= 0 {
+						rawTransaction.TxInts[txHash] = utxoInfo.Index
+						if rawTransaction.TxOuts[receiver] == nil {
+							rawTransaction.TxOuts[receiver] = map[string]string{}
+						}
+						rawTransaction.TxOuts[receiver][assetId] = amountValue.String()
+						rawTransaction.TxOuts[receiver][adaAssetId] = fixAdaAmount.String()
+						if adaAmount, err := common.GetBigIntFromStr(utxoInfo.Assets[adaAssetId]); err != nil {
+							log.Fatal("GetBigIntFromStr error", "err", err)
+						} else {
+							if rawTransaction.TxOuts[sender] == nil {
+								rawTransaction.TxOuts[sender] = map[string]string{}
+							}
+							rawTransaction.TxOuts[sender][adaAssetId] = adaAmount.Sub(adaAmount, fixAdaAmount).String()
+						}
+						rawTransaction.TxOuts[sender][assetId] = value.Sub(value, amountValue).String()
+					}
+				}
+			}
+		}
+	}
+	return rawTransaction, nil
 }
 
 // func queryTx(txHash string) (*cardano.TransactionResult, error) {
@@ -62,48 +166,51 @@ func main() {
 // 	}
 // }
 
-// func queryUtxoCmd() {
-// 	list := strings.Split(queryUtxo, " ")
-// 	cmd := exec.Command(list[0], list[1:]...)
-// 	var cmdOut bytes.Buffer
-// 	var cmdErr bytes.Buffer
-// 	cmd.Stdout = &cmdOut
-// 	cmd.Stderr = &cmdErr
-// 	if err := cmd.Run(); err != nil {
-// 		log.Fatal("fails", "cmdErr", cmdErr.String())
-// 	} else {
-// 		res := cmdOut.String()
-// 		if list := strings.Split(res, "--------------------------------------------------------------------------------------"); len(list) != 2 {
-// 			log.Fatal("queryUtxo fails", "len", len(list))
-// 		} else {
-// 			if outputList := strings.Split(list[1], "\n"); len(outputList) < 3 {
-// 				log.Fatal("outputList length is zero", "outputList", outputList)
-// 			} else {
-// 				for _, output := range outputList[1 : len(outputList)-1] {
-// 					if assetsInfoList := strings.Split(output, "        "); len(assetsInfoList) != 2 {
-// 						log.Fatal("assetsInfoList length err", "want", 2, "get", len(assetsInfoList))
-// 					} else {
-// 						if txAndIndex := strings.Split(assetsInfoList[0], "     "); len(txAndIndex) != 2 {
-// 							log.Fatal("txAndIndex length err", "want", 2, "get", len(txAndIndex))
-// 						} else {
-// 							for _, txIndex := range txAndIndex {
-// 								log.Info("txAndIndex", "txIndex", txIndex)
-// 							}
-// 						}
-// 						if assetAndAmountList := strings.Split(assetsInfoList[1], " + "); len(assetAndAmountList) < 2 {
-// 							log.Fatal("assetAndAmountList length err", "min", 2, "get", len(assetAndAmountList))
-// 						} else {
-// 							for _, assetAndAmount := range assetAndAmountList[:len(assetAndAmountList)-1] {
-// 								if assetAmount := strings.Split(assetAndAmount, " "); len(assetAmount) != 2 {
-// 									log.Fatal("assetAmount length err", "want", 2, "get", len(assetAmount))
-// 								} else {
-// 									log.Info("assetAndAmount", "assetAmount", assetAmount)
-// 								}
-// 							}
-// 						}
-// 					}
-// 				}
-// 			}
-// 		}
-// 	}
-// }
+func queryUtxoCmd() map[string]cardano.UtxoMap {
+	utxos := make(map[string]cardano.UtxoMap)
+	list := strings.Split(fmt.Sprintf(queryUtxo, sender), " ")
+	cmd := exec.Command(list[0], list[1:]...)
+	var cmdOut bytes.Buffer
+	var cmdErr bytes.Buffer
+	cmd.Stdout = &cmdOut
+	cmd.Stderr = &cmdErr
+	if err := cmd.Run(); err != nil {
+		log.Fatal("fails", "cmdErr", cmdErr.String())
+	} else {
+		res := cmdOut.String()
+		if list := strings.Split(res, "--------------------------------------------------------------------------------------"); len(list) != 2 {
+			log.Fatal("queryUtxo fails", "len", len(list))
+		} else {
+			if outputList := strings.Split(list[1], "\n"); len(outputList) < 3 {
+				log.Fatal("outputList length is zero", "outputList", outputList)
+			} else {
+				for _, output := range outputList[1 : len(outputList)-1] {
+					if assetsInfoList := strings.Split(output, "        "); len(assetsInfoList) != 2 {
+						log.Fatal("assetsInfoList length err", "want", 2, "get", len(assetsInfoList))
+					} else {
+						if txAndIndex := strings.Split(assetsInfoList[0], "     "); len(txAndIndex) != 2 {
+							log.Fatal("txAndIndex length err", "want", 2, "get", len(txAndIndex))
+						} else {
+							utxos[txAndIndex[0]] = cardano.UtxoMap{
+								Index:  txAndIndex[1],
+								Assets: make(map[string]string),
+							}
+							if assetAndAmountList := strings.Split(assetsInfoList[1], " + "); len(assetAndAmountList) < 2 {
+								log.Fatal("assetAndAmountList length err", "min", 2, "get", len(assetAndAmountList))
+							} else {
+								for _, assetAndAmount := range assetAndAmountList[:len(assetAndAmountList)-1] {
+									if assetAmount := strings.Split(assetAndAmount, " "); len(assetAmount) != 2 {
+										log.Fatal("assetAmount length err", "want", 2, "get", len(assetAmount))
+									} else {
+										utxos[txAndIndex[0]].Assets[assetAmount[1]] = assetAmount[0]
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return utxos
+}

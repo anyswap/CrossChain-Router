@@ -1,15 +1,29 @@
 package cardano
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math/big"
+	"os/exec"
+	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+)
+
+const (
+	RawPath    = "txDb/raw/"
+	AdaAssetId = "lovelace"
+)
+
+var (
+	FixAdaAmount             = big.NewInt(1000000)
+	BuildRawTxWithoutMintCmd = "cardano-cli  transaction  build-raw  --fee  %s%s%s  --out-file  %s"
+	QueryUtxo                = "cardano-cli query utxo --address %s --testnet-magic %s"
 )
 
 // BuildRawTransaction build raw tx
@@ -55,25 +69,102 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		if _, err := b.initExtra(args); err != nil {
 			return nil, err
 		} else {
-			//todo build raw tx
-			if rawTxWithoutFee, err := b.createRawTx(routerMPC, receiver, multichainToken, amount, 0); err != nil {
+			if utxos, err := b.queryUtxoCmd(routerMPC); err != nil {
 				return nil, err
 			} else {
-				if rawTxWithFee, err := b.calcMinFee(rawTxWithoutFee); err != nil {
+				swapId := fmt.Sprintf("%s-%d", args.SwapID, args.LogIndex)
+				if rawTransaction, err := b.buildTx(swapId, receiver, multichainToken, amount.String(), utxos); err != nil {
 					return nil, err
 				} else {
-					return rawTxWithFee, nil
+					//todo build raw tx
+					if rawTxWithoutFee, err := createRawTx(rawTransaction); err != nil {
+						return nil, err
+					} else {
+						if rawTxWithFee, err := b.calcMinFee(rawTransaction, rawTxWithoutFee); err != nil {
+							return nil, err
+						} else {
+							return rawTxWithFee, nil
+						}
+					}
 				}
 			}
 		}
 	}
 }
 
-func (b *Bridge) createRawTx(mpc, receiver, tokenstring string, amount *big.Int, fee uint64) (string, error) {
-	return "", nil
+func (b *Bridge) buildTx(swapId, receiver, assetId, amount string, utxos map[string]UtxoMap) (*RawTransaction, error) {
+	log.Infof("build Tx:\nreceiver:%+v\nassetId:%+v\namount:%+v\nutxos:%+v", receiver, assetId, amount, utxos)
+	routerMpc := b.GetRouterContract("")
+	rawTransaction := RawTransaction{
+		Fee:     "0",
+		OutFile: swapId,
+		TxOuts:  map[string]map[string]string{},
+		TxInts:  map[string]string{},
+	}
+	for txHash, utxoInfo := range utxos {
+		if utxoInfo.Assets[assetId] != "" {
+			if value, err := common.GetBigIntFromStr(utxoInfo.Assets[assetId]); err != nil {
+				return nil, err
+			} else {
+				if amountValue, err := common.GetBigIntFromStr(amount); err != nil {
+					return nil, err
+				} else {
+					if value.Cmp(amountValue) >= 0 {
+						rawTransaction.TxInts[txHash] = utxoInfo.Index
+						if rawTransaction.TxOuts[receiver] == nil {
+							rawTransaction.TxOuts[receiver] = map[string]string{}
+						}
+						rawTransaction.TxOuts[receiver][assetId] = amountValue.String()
+						rawTransaction.TxOuts[receiver][AdaAssetId] = FixAdaAmount.String()
+						if adaAmount, err := common.GetBigIntFromStr(utxoInfo.Assets[AdaAssetId]); err != nil {
+							return nil, err
+						} else {
+							if rawTransaction.TxOuts[routerMpc] == nil {
+								rawTransaction.TxOuts[routerMpc] = map[string]string{}
+							}
+							rawTransaction.TxOuts[routerMpc][AdaAssetId] = adaAmount.Sub(adaAmount, FixAdaAmount).String()
+						}
+						rawTransaction.TxOuts[routerMpc][assetId] = value.Sub(value, amountValue).String()
+					}
+				}
+			}
+		}
+	}
+	return &rawTransaction, nil
 }
 
-func (b *Bridge) calcMinFee(rawTx interface{}) (string, error) {
+func createRawTx(rawTransaction *RawTransaction) (string, error) {
+	inputString := ""
+	for txHash, index := range rawTransaction.TxInts {
+		inputString = fmt.Sprintf("%s  --tx-in  %s#%s", inputString, txHash, index)
+	}
+	outputString := ""
+	for address, assets := range rawTransaction.TxOuts {
+		outputString = fmt.Sprintf("%s  --tx-out  %s+%s", outputString, address, assets[AdaAssetId])
+		for assetId, amount := range assets {
+			if assetId != AdaAssetId {
+				outputString = fmt.Sprintf("%s+%s %s", outputString, amount, assetId)
+			}
+		}
+	}
+	cmdString := fmt.Sprintf(BuildRawTxWithoutMintCmd, rawTransaction.Fee, inputString, outputString, RawPath+rawTransaction.OutFile+".raw")
+	list := strings.Split(cmdString, "  ")
+	cmd := exec.Command(list[0], list[1:]...)
+	var cmdOut bytes.Buffer
+	var cmdErr bytes.Buffer
+	cmd.Stdout = &cmdOut
+	cmd.Stderr = &cmdErr
+	if err := cmd.Run(); err != nil {
+		return "", err
+	} else {
+		return RawPath + rawTransaction.OutFile + ".raw", nil
+	}
+}
+
+func (b *Bridge) calcMinFee(rawTransaction *RawTransaction, rawPath string) (string, error) {
+	if RawPath+rawTransaction.OutFile+".raw" != rawPath {
+		return "", errors.New("raw path not match")
+	}
 	return "", nil
 }
 
@@ -141,4 +232,53 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 	}
 	amount = tokens.CalcSwapValue(erc20SwapInfo.TokenID, args.FromChainID.String(), b.ChainConfig.ChainID, args.OriginValue, fromTokenCfg.Decimals, toTokenCfg.Decimals, args.OriginFrom, args.OriginTxTo)
 	return receiver, amount, err
+}
+
+func (b *Bridge) queryUtxoCmd(address string) (map[string]UtxoMap, error) {
+	utxos := make(map[string]UtxoMap)
+	list := strings.Split(fmt.Sprintf(QueryUtxo, address, b.ChainConfig.ChainID), " ")
+	cmd := exec.Command(list[0], list[1:]...)
+	var cmdOut bytes.Buffer
+	var cmdErr bytes.Buffer
+	cmd.Stdout = &cmdOut
+	cmd.Stderr = &cmdErr
+	if err := cmd.Run(); err != nil {
+		return nil, err
+	} else {
+		res := cmdOut.String()
+		if list := strings.Split(res, "--------------------------------------------------------------------------------------"); len(list) != 2 {
+			return nil, errors.New("queryUtxo length not match")
+		} else {
+			if outputList := strings.Split(list[1], "\n"); len(outputList) < 3 {
+				return nil, errors.New("outputList length not match")
+			} else {
+				for _, output := range outputList[1 : len(outputList)-1] {
+					if assetsInfoList := strings.Split(output, "        "); len(assetsInfoList) != 2 {
+						return nil, errors.New("assetsInfoList length not match")
+					} else {
+						if txAndIndex := strings.Split(assetsInfoList[0], "     "); len(txAndIndex) != 2 {
+							return nil, errors.New("txAndIndex length not match")
+						} else {
+							utxos[txAndIndex[0]] = UtxoMap{
+								Index:  txAndIndex[1],
+								Assets: make(map[string]string),
+							}
+							if assetAndAmountList := strings.Split(assetsInfoList[1], " + "); len(assetAndAmountList) < 2 {
+								return nil, errors.New("assetAndAmountList length not match")
+							} else {
+								for _, assetAndAmount := range assetAndAmountList[:len(assetAndAmountList)-1] {
+									if assetAmount := strings.Split(assetAndAmount, " "); len(assetAmount) != 2 {
+										return nil, errors.New("assetAmount length not match")
+									} else {
+										utxos[txAndIndex[0]].Assets[assetAmount[1]] = assetAmount[0]
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return utxos, nil
 }
