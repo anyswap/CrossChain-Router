@@ -81,10 +81,19 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 					if rawTxWithoutFee, err := createRawTx(rawTransaction); err != nil {
 						return nil, err
 					} else {
-						if rawTxWithFee, err := b.calcMinFee(rawTransaction, rawTxWithoutFee); err != nil {
+						if minFee, err := b.calcMinFee(rawTransaction, rawTxWithoutFee); err != nil {
 							return nil, err
 						} else {
-							return rawTxWithFee, nil
+							if feeList := strings.Split(minFee, " "); len(feeList) != 2 {
+								return nil, errors.New("feeList length not match")
+							} else {
+								rawTransaction.Fee = feeList[0]
+								if feeTxPath, err := createRawTx(rawTransaction); err != nil {
+									return nil, err
+								} else {
+									return feeTxPath, nil
+								}
+							}
 						}
 					}
 				}

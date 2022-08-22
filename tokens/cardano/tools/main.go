@@ -41,6 +41,7 @@ var (
 	receiver = "addr_test1vqvlku0ytscqg32rpv660uu4sgxlje25s5xrpz7zjqsva3c8pfckz"
 	assetId  = "f3f97a8f8af955089c1865de77f37d97cbaf4918fb19ce7b3718f3bd.55534454"
 	amount   = "12345678"
+	ZeroFee  = "0"
 	// queryTip string = "cardano-cli query tip --testnet-magic 1097911063"
 	BuildRawTxWithoutMintCmd = "cardano-cli  transaction  build-raw  --fee  %s%s%s  --out-file  %s"
 	// buildRawTxWithMintCmd           = "cardano-cli  transaction  build-raw  --fee  %s%s%s  --mint=%s  --out-file  %s"
@@ -58,7 +59,7 @@ func main() {
 	log.Infof("queryUtxoCmd %+v", utxos)
 
 	// build tx
-	if rawTransaction, err := buildTx(swapId, receiver, assetId, amount, utxos); err != nil {
+	if rawTransaction, err := buildTx(swapId, receiver, assetId, amount, ZeroFee, utxos); err != nil {
 		log.Fatal("buildTx fails", "err", err)
 	} else {
 		log.Info("\nbuildTx success", "rawTransaction", rawTransaction)
@@ -68,7 +69,16 @@ func main() {
 			if minFee, err := calcMinFee(rawTransaction, txPath); err != nil {
 				log.Fatal("calcMinFee fails", "err", err)
 			} else {
-				log.Info("calcMinFee", "minFee", minFee)
+				if feeList := strings.Split(minFee, " "); len(feeList) != 2 {
+					log.Fatal("feeList length not match", "want", 2, "get", len(feeList))
+				} else {
+					rawTransaction.Fee = feeList[0]
+					if feeTxPath, err := createRawTx(rawTransaction); err != nil {
+						log.Fatal("createRawTx fails", "err", err)
+					} else {
+						log.Info("create fee Tx", "feeTxPath", feeTxPath)
+					}
+				}
 			}
 		}
 	}
@@ -122,10 +132,10 @@ func createRawTx(rawTransaction *cardano.RawTransaction) (string, error) {
 	return RawPath + rawTransaction.OutFile + ".raw", nil
 }
 
-func buildTx(swapId, receiver, assetId, amount string, utxos map[string]cardano.UtxoMap) (*cardano.RawTransaction, error) {
+func buildTx(swapId, receiver, assetId, amount, fee string, utxos map[string]cardano.UtxoMap) (*cardano.RawTransaction, error) {
 	log.Infof("build Tx:\nreceiver:%+v\nassetId:%+v\namount:%+v\nutxos:%+v", receiver, assetId, amount, utxos)
 	rawTransaction := cardano.RawTransaction{
-		Fee:     "0",
+		Fee:     fee,
 		OutFile: swapId,
 		TxOuts:  map[string]map[string]string{},
 		TxInts:  map[string]string{},
