@@ -16,5 +16,5 @@ func (b *Bridge) PublicKeyToAddress(pubKeyHex string) (string, error) {
 
 // VerifyMPCPubKey verify mpc address and public key is matching
 func VerifyMPCPubKey(mpcAddress, mpcPubkey string) error {
-	return tokens.ErrNotImplemented
+	return nil
 }

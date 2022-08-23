@@ -70,3 +70,8 @@ type RawTransaction struct {
 	Mint    map[string]string            `json:"mint"`
 	OutFile string                       `json:"outFile"`
 }
+
+type SignedTransaction struct {
+	FilePath string `json:"filePath"`
+	TxHash   string `json:"txHash"`
+}

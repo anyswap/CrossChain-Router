@@ -2,10 +2,14 @@ package cardano
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/ed25519"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -15,6 +19,19 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/fxamacker/cbor/v2"
+)
+
+const (
+	WitnessPath   = "txDb/witness/"
+	WitnessSuffix = ".witness"
+	WitnessType   = "TxWitness AlonzoEra"
+	SignedPath    = "txDb/signed/"
+	SignedSuffix  = ".signed"
+)
+
+var (
+	AssembleCmd = "cardano-cli transaction assemble --tx-body-file %s --witness-file %s --out-file %s"
 )
 
 // MPCSignTransaction mpc sign raw tx
@@ -23,16 +40,21 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 		return nil, "", tokens.ErrWrongRawTx
 	} else {
 		txPath := RawPath + rawTransaction.OutFile + RawSuffix
+		witnessPath := WitnessPath + rawTransaction.OutFile + WitnessSuffix
+		signedPath := SignedPath + rawTransaction.OutFile + SignedSuffix
+
 		mpcParams := params.GetMPCConfig(b.UseFastMPC)
-		if txHashRes, err := CalcTxId(txPath); err != nil {
-			txHash := txHashRes[:len(txHashRes)-2]
-			if mpcParams.SignWithPrivateKey {
-				priKey := mpcParams.GetSignerPrivateKey(b.ChainConfig.ChainID)
-				return b.SignTransactionWithPrivateKey(txHash, priKey)
-			}
+		if txHash, err := CalcTxId(txPath); err != nil {
+			return nil, "", err
+		} else {
 			mpcPubkey := router.GetMPCPublicKey(args.From)
 			if mpcPubkey == "" {
 				return nil, "", tokens.ErrMissMPCPublicKey
+			}
+
+			if mpcParams.SignWithPrivateKey {
+				priKey := mpcParams.GetSignerPrivateKey(b.ChainConfig.ChainID)
+				return b.SignTransactionWithPrivateKey(txPath, witnessPath, signedPath, txHash, mpcPubkey, priKey)
 			}
 
 			jsondata, _ := json.Marshal(args.GetExtraArgs())
@@ -60,18 +82,19 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 					return nil, "", errors.New("wrong signature length")
 				}
 
-				if witnessPath, err := b.createWitness(args.From, sig); err != nil {
+				if err := b.createWitness(witnessPath, mpcPubkey, sig); err != nil {
 					return nil, "", err
 				} else {
-					if signTxPath, err := b.signTx(txPath, witnessPath); err != nil {
+					if err := b.signTx(txPath, witnessPath, signedPath); err != nil {
 						return nil, "", err
 					} else {
-						return signTxPath, txHash, nil
+						return &SignedTransaction{
+							FilePath: signedPath,
+							TxHash:   txHash,
+						}, txHash, nil
 					}
 				}
 			}
-		} else {
-			return nil, "", err
 		}
 	}
 }
@@ -85,20 +108,73 @@ func CalcTxId(txPath string) (string, error) {
 	cmd.Stdout = &cmdOut
 	cmd.Stderr = &cmdErr
 	if err := cmd.Run(); err != nil {
-		return "", nil
+		return "", err
 	}
-	return cmdOut.String(), nil
+	return cmdOut.String()[:len(cmdOut.String())-1], nil
 }
 
 // SignTransactionWithPrivateKey sign tx with ECDSA private key
-func (b *Bridge) SignTransactionWithPrivateKey(rawTx string, privKey string) (signTx interface{}, txHash string, err error) {
-	return nil, "", tokens.ErrNotImplemented
+func (b *Bridge) SignTransactionWithPrivateKey(txPath, witnessPath, signedPath, txHash, mpcPubkey string, privKey string) (*SignedTransaction, string, error) {
+	if edPrivKey, err := StringToPrivateKey(privKey); err != nil {
+		return nil, "", err
+	} else {
+		if sig, err := edPrivKey.Sign(rand.Reader, []byte(txHash)[:], crypto.Hash(0)); err != nil {
+			return nil, "", err
+		} else {
+			if err := b.createWitness(witnessPath, mpcPubkey, sig); err != nil {
+				return nil, "", err
+			} else {
+				if err := b.signTx(txPath, witnessPath, signedPath); err != nil {
+					return nil, "", err
+				} else {
+					return &SignedTransaction{
+						FilePath: signedPath,
+						TxHash:   txHash,
+					}, txHash, nil
+				}
+			}
+		}
+	}
 }
 
-func (b *Bridge) createWitness(mpc string, sig []byte) (string, error) {
-	return "", nil
+func (b *Bridge) createWitness(witnessPath, mpcPublicKey string, sig []byte) error {
+	var str [2]interface{}
+	str[0] = 0
+	if publicKey, err := hex.DecodeString(mpcPublicKey); err != nil {
+		return err
+	} else {
+		str[1] = [2][]byte{publicKey, sig}
+		if res, err := cbor.Marshal(str); err != nil {
+			return err
+		} else {
+			dataMap := make(map[string]string)
+			dataMap["type"] = WitnessType
+			dataMap["description"] = ""
+			dataMap["cborHex"] = hex.EncodeToString(res)
+			file, err := os.Create(witnessPath)
+			if err != nil {
+				return err
+			}
+			defer file.Close()
+			if err := json.NewEncoder(file).Encode(dataMap); err != nil {
+				return err
+			} else {
+				return nil
+			}
+		}
+	}
 }
 
-func (b *Bridge) signTx(rawTxPath, witnessPath string) (string, error) {
-	return "", nil
+func (b *Bridge) signTx(rawTxPath, witnessPath, signedPath string) error {
+	cmdString := fmt.Sprintf(AssembleCmd, rawTxPath, witnessPath, signedPath)
+	list := strings.Split(cmdString, " ")
+	cmd := exec.Command(list[0], list[1:]...)
+	var cmdOut bytes.Buffer
+	var cmdErr bytes.Buffer
+	cmd.Stdout = &cmdOut
+	cmd.Stderr = &cmdErr
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+	return nil
 }
