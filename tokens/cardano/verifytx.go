@@ -124,7 +124,7 @@ func (b *Bridge) checkTxStatus(txres *Transaction, allowUnstable bool) error {
 func (b *Bridge) parseTxOutput(output Output, logIndex int) (*Token, error) {
 	mpc := b.GetRouterContract("")
 	if output.Address == mpc {
-		return &output.Tokens[logIndex], nil
+		return &output.Tokens[logIndex-1], nil
 	} else {
 		return nil, tokens.ErrMpcAddrMissMatch
 	}
@@ -132,7 +132,7 @@ func (b *Bridge) parseTxOutput(output Output, logIndex int) (*Token, error) {
 
 func (b *Bridge) parseTokenInfo(swapInfo *tokens.SwapTxInfo, tokenInfo *Token, metadata *Metadata) error {
 	mpc := b.GetRouterContract("")
-	swapInfo.ERC20SwapInfo.Token = tokenInfo.Asset.AssetId
+	swapInfo.ERC20SwapInfo.Token = strings.Replace(tokenInfo.Asset.AssetId, tokenInfo.Asset.AssetName, "."+tokenInfo.Asset.AssetName, 1)
 	swapInfo.From = mpc
 	swapInfo.Bind = metadata.Value.Bind
 

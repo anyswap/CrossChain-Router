@@ -39,7 +39,7 @@ func (b *Bridge) registerERC20SwapTx(txHash string, logIndex int) ([]*tokens.Swa
 		}
 		swapInfos := make([]*tokens.SwapTxInfo, 0)
 		errs := make([]error, 0)
-		startIndex, endIndex := 1, totalLenght
+		startIndex, endIndex := 1, totalLenght+1
 		if logIndex != 0 {
 			if logIndex >= endIndex || logIndex < 0 {
 				return []*tokens.SwapTxInfo{commonInfo}, []error{tokens.ErrLogIndexOutOfRange}
@@ -63,15 +63,15 @@ func (b *Bridge) registerERC20SwapTx(txHash string, logIndex int) ([]*tokens.Swa
 					assetIndex = i - tempIndex
 				}
 			}
-			if tokenInfo, err := b.parseTxOutput(outputs[outputIndex], assetIndex); err != nil {
-				continue
-			} else {
+			if tokenInfo, err := b.parseTxOutput(outputs[outputIndex], assetIndex); err == nil {
+				log.Warn("parseTxOutput", "swapInfo", swapInfo, "tokenInfo", tokenInfo, "metadata", metadata)
 				err = b.parseTokenInfo(swapInfo, tokenInfo, metadata)
 				switch {
 				case errors.Is(err, tokens.ErrSwapoutLogNotFound),
 					errors.Is(err, tokens.ErrTxWithWrongTopics),
 					errors.Is(err, tokens.ErrTxWithWrongContract):
 				case err == nil:
+					log.Warn("checkSwapoutInfo", "swapInfo", swapInfo)
 					err = b.checkSwapoutInfo(swapInfo)
 				default:
 					log.Debug(b.ChainConfig.BlockChain+" register router swap error", "txHash", txHash, "logIndex", swapInfo.LogIndex, "err", err)
