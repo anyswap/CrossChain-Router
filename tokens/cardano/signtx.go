@@ -1,9 +1,13 @@
 package cardano
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"os/exec"
+	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -15,11 +19,13 @@ import (
 
 // MPCSignTransaction mpc sign raw tx
 func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs) (signTx interface{}, txHash string, err error) {
-	if txPath, ok := rawTx.(string); !ok {
+	if rawTransaction, ok := rawTx.(*RawTransaction); !ok {
 		return nil, "", tokens.ErrWrongRawTx
 	} else {
+		txPath := RawPath + rawTransaction.OutFile + RawSuffix
 		mpcParams := params.GetMPCConfig(b.UseFastMPC)
-		if txHash, err := b.getTxHash(txPath); err != nil {
+		if txHashRes, err := CalcTxId(txPath); err != nil {
+			txHash := txHashRes[:len(txHashRes)-2]
 			if mpcParams.SignWithPrivateKey {
 				priKey := mpcParams.GetSignerPrivateKey(b.ChainConfig.ChainID)
 				return b.SignTransactionWithPrivateKey(txHash, priKey)
@@ -70,13 +76,23 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 	}
 }
 
+func CalcTxId(txPath string) (string, error) {
+	cmdString := fmt.Sprintf(CalcTxIdCmd, txPath)
+	list := strings.Split(cmdString, " ")
+	cmd := exec.Command(list[0], list[1:]...)
+	var cmdOut bytes.Buffer
+	var cmdErr bytes.Buffer
+	cmd.Stdout = &cmdOut
+	cmd.Stderr = &cmdErr
+	if err := cmd.Run(); err != nil {
+		return "", nil
+	}
+	return cmdOut.String(), nil
+}
+
 // SignTransactionWithPrivateKey sign tx with ECDSA private key
 func (b *Bridge) SignTransactionWithPrivateKey(rawTx string, privKey string) (signTx interface{}, txHash string, err error) {
 	return nil, "", tokens.ErrNotImplemented
-}
-
-func (b *Bridge) getTxHash(txPath string) (string, error) {
-	return "", nil
 }
 
 func (b *Bridge) createWitness(mpc string, sig []byte) (string, error) {

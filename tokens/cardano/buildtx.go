@@ -18,13 +18,15 @@ import (
 const (
 	RawPath    = "txDb/raw/"
 	AdaAssetId = "lovelace"
+	RawSuffix  = ".raw"
 )
 
 var (
 	FixAdaAmount             = big.NewInt(1000000)
 	BuildRawTxWithoutMintCmd = "cardano-cli  transaction  build-raw  --fee  %s%s%s  --out-file  %s"
-	CalcMinFeeCmd            = "cardano-cli transaction calculate-min-fee --tx-body-file %s --tx-in-count %d --tx-out-count %d --witness-count 1 %s --protocol-params-file txDb/config/protocol.json"
+	CalcMinFeeCmd            = "cardano-cli transaction calculate-min-fee --tx-body-file %s --tx-in-count %d --tx-out-count %d --witness-count 1 --testnet-magic 1097911063 --protocol-params-file txDb/config/protocol.json"
 	QueryUtxo                = "cardano-cli query utxo --address %s --testnet-magic %s"
+	CalcTxIdCmd              = "cardano-cli transaction txid --tx-body-file %s"
 )
 
 // BuildRawTransaction build raw tx
@@ -77,21 +79,20 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 				if rawTransaction, err := b.buildTx(swapId, receiver, multichainToken, amount.String(), utxos); err != nil {
 					return nil, err
 				} else {
-					//todo build raw tx
-					if rawTxWithoutFee, err := createRawTx(rawTransaction); err != nil {
+					if err := CreateRawTx(rawTransaction); err != nil {
 						return nil, err
 					} else {
-						if minFee, err := b.calcMinFee(rawTransaction, rawTxWithoutFee); err != nil {
+						if minFee, err := CalcMinFee(rawTransaction); err != nil {
 							return nil, err
 						} else {
 							if feeList := strings.Split(minFee, " "); len(feeList) != 2 {
 								return nil, errors.New("feeList length not match")
 							} else {
 								rawTransaction.Fee = feeList[0]
-								if feeTxPath, err := createRawTx(rawTransaction); err != nil {
+								if err := CreateRawTx(rawTransaction); err != nil {
 									return nil, err
 								} else {
-									return feeTxPath, nil
+									return rawTransaction, nil
 								}
 							}
 						}
@@ -135,15 +136,16 @@ func (b *Bridge) buildTx(swapId, receiver, assetId, amount string, utxos map[str
 							rawTransaction.TxOuts[routerMpc][AdaAssetId] = adaAmount.Sub(adaAmount, FixAdaAmount).String()
 						}
 						rawTransaction.TxOuts[routerMpc][assetId] = value.Sub(value, amountValue).String()
+						return &rawTransaction, nil
 					}
 				}
 			}
 		}
 	}
-	return &rawTransaction, nil
+	return nil, errors.New("build tx fails,output not match asset")
 }
 
-func createRawTx(rawTransaction *RawTransaction) (string, error) {
+func CreateRawTx(rawTransaction *RawTransaction) error {
 	inputString := ""
 	for txHash, index := range rawTransaction.TxInts {
 		inputString = fmt.Sprintf("%s  --tx-in  %s#%s", inputString, txHash, index)
@@ -157,7 +159,7 @@ func createRawTx(rawTransaction *RawTransaction) (string, error) {
 			}
 		}
 	}
-	cmdString := fmt.Sprintf(BuildRawTxWithoutMintCmd, rawTransaction.Fee, inputString, outputString, RawPath+rawTransaction.OutFile+".raw")
+	cmdString := fmt.Sprintf(BuildRawTxWithoutMintCmd, rawTransaction.Fee, inputString, outputString, RawPath+rawTransaction.OutFile+RawSuffix)
 	list := strings.Split(cmdString, "  ")
 	cmd := exec.Command(list[0], list[1:]...)
 	var cmdOut bytes.Buffer
@@ -165,18 +167,14 @@ func createRawTx(rawTransaction *RawTransaction) (string, error) {
 	cmd.Stdout = &cmdOut
 	cmd.Stderr = &cmdErr
 	if err := cmd.Run(); err != nil {
-		return "", err
-	} else {
-		return RawPath + rawTransaction.OutFile + ".raw", nil
+		return err
 	}
+	return nil
 }
 
-func (b *Bridge) calcMinFee(rawTransaction *RawTransaction, rawPath string) (string, error) {
-	if RawPath+rawTransaction.OutFile+".raw" != rawPath {
-		return "", errors.New("raw path not match")
-	}
-	cmdString := fmt.Sprintf(CalcMinFeeCmd, rawPath, len(rawTransaction.TxInts), len(rawTransaction.TxOuts), "--mainnet "+b.ChainConfig.ChainID)
-	log.Info("cmdString", "cmdString", cmdString)
+func CalcMinFee(rawTransaction *RawTransaction) (string, error) {
+	txBodyPath := RawPath + rawTransaction.OutFile + RawSuffix
+	cmdString := fmt.Sprintf(CalcMinFeeCmd, txBodyPath, len(rawTransaction.TxInts), len(rawTransaction.TxOuts))
 	list := strings.Split(cmdString, " ")
 	cmd := exec.Command(list[0], list[1:]...)
 	var cmdOut bytes.Buffer
@@ -184,7 +182,7 @@ func (b *Bridge) calcMinFee(rawTransaction *RawTransaction, rawPath string) (str
 	cmd.Stdout = &cmdOut
 	cmd.Stderr = &cmdErr
 	if err := cmd.Run(); err != nil {
-		log.Fatal("fails", "cmdErr", cmdErr.String())
+		return "", err
 	}
 	return cmdOut.String(), nil
 }
