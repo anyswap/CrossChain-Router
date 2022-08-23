@@ -102,7 +102,6 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 			}
 		}
 	}
-
 	b.CrossChainBridgeBase.SetTokenConfig(tokenAddr, tokenCfg)
 }
 

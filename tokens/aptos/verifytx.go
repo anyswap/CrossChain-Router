@@ -2,11 +2,13 @@ package aptos
 
 import (
 	"fmt"
+	"math/big"
 	"strconv"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
@@ -70,34 +72,10 @@ func (b *Bridge) verifySwapoutTx(txHash string, _ int, allowUnstable bool) (*tok
 			return swapInfo, tokens.ErrTxBeforeInitialHeight
 		}
 	}
-
-	asset := "txres.TransactionWithMetaData.MetaData.DeliveredAmount.Asset().String()"
-	token := b.GetTokenConfig(asset)
-	if token == nil {
-		return swapInfo, tokens.ErrMissTokenConfig
-	}
-
-	txRecipient := txres.PayLoad.Function
-	depositAddress := b.GetRouterContract(asset)
-	if !common.IsEqualIgnoreCase(txRecipient, depositAddress) {
-		return swapInfo, tokens.ErrTxWithWrongReceiver
-	}
-
-	erc20SwapInfo := &tokens.ERC20SwapInfo{}
-	erc20SwapInfo.Token = asset
-	erc20SwapInfo.TokenID = token.TokenID
-	swapInfo.SwapInfo = tokens.SwapInfo{ERC20SwapInfo: erc20SwapInfo}
-
-	err = b.checkToken(token)
+	err = b.verifySwapoutEvents(swapInfo, txres)
 	if err != nil {
 		return swapInfo, err
 	}
-
-	amt := tokens.ToBits("", token.Decimals)
-
-	swapInfo.To = depositAddress // To
-	swapInfo.From = txres.Sender // From
-	swapInfo.Value = amt
 
 	err = b.checkSwapoutInfo(swapInfo)
 	if err != nil {
@@ -105,16 +83,63 @@ func (b *Bridge) verifySwapoutTx(txHash string, _ int, allowUnstable bool) (*tok
 	}
 
 	if !allowUnstable {
-		log.Info("verify swapin pass",
-			"asset", asset, "from", swapInfo.From, "to", swapInfo.To,
+		log.Info("verify swapout pass",
+			"from", swapInfo.From, "to", swapInfo.To,
 			"bind", swapInfo.Bind, "value", swapInfo.Value, "txid", swapInfo.Hash,
 			"height", swapInfo.Height, "timestamp", swapInfo.Timestamp, "logIndex", swapInfo.LogIndex)
 	}
 	return swapInfo, nil
 }
 
-func (b *Bridge) checkToken(token *tokens.TokenConfig) error {
+func (b *Bridge) verifySwapoutEvents(swapInfo *tokens.SwapTxInfo, txInfo *TransactionInfo) error {
+	routerProgramID := b.ChainConfig.RouterContract
 
+	swapInfo.TxTo = strings.Split(txInfo.PayLoad.Function, SPLIT_SYMBOL)[0]
+
+	if !params.AllowCallByContract() &&
+		!common.IsEqualIgnoreCase(swapInfo.TxTo, b.ChainConfig.RouterContract) &&
+		!params.IsInCallByContractWhitelist(b.ChainConfig.ChainID, swapInfo.TxTo) {
+		return tokens.ErrTxWithWrongContract
+	}
+	var swapOutInfo *Event
+	for _, event := range txInfo.Events {
+		if common.IsEqualIgnoreCase(event.Type, GetRouterFunctionId(routerProgramID, CONTRACT_NAME, "SwapOutEvent")) {
+			swapOutInfo = &event
+		}
+	}
+	if swapOutInfo == nil {
+		return tokens.ErrSwapoutLogNotFound
+	}
+
+	swapInfo.To = routerProgramID
+	erc20SwapInfo := swapInfo.ERC20SwapInfo
+	// SwapOutEvent in Router.move
+	// struct SwapOutEvent has drop, store {
+	//     token: string::String,
+	//     from: address,
+	//     to: string::String,
+	//     amount: u64,
+	//     to_chain_id: u64
+	// }
+	swapInfo.Bind = swapOutInfo.Data["to"]
+	swapInfo.From = swapOutInfo.Data["from"]
+	erc20SwapInfo.Token = swapOutInfo.Data["token"]
+	tokenCfg := b.GetTokenConfig(erc20SwapInfo.Token)
+	if tokenCfg == nil {
+		return tokens.ErrMissTokenConfig
+	}
+	erc20SwapInfo.TokenID = tokenCfg.TokenID
+	value, err := common.GetUint64FromStr(swapOutInfo.Data["amount"])
+	if err != nil {
+		return err
+	}
+	swapInfo.Value = new(big.Int).SetUint64(value)
+	swapInfo.FromChainID = b.ChainConfig.GetChainID()
+	toChainID, err := common.GetUint64FromStr(swapOutInfo.Data["to_chain_id"])
+	if err != nil {
+		return err
+	}
+	swapInfo.ToChainID = new(big.Int).SetUint64(toChainID)
 	return nil
 }
 

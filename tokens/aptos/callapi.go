@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
@@ -13,8 +14,17 @@ var errTxResultType = errors.New("tx type is not TransactionInfo")
 
 // GetTokenDecimals query
 func (b *Bridge) GetTokenDecimals(resource string) (uint8, error) {
-	// TODO
-	return 8, nil
+	infos := strings.Split(resource, SPLIT_SYMBOL)
+
+	resp, err := b.Client.GetAccountResource(infos[0], fmt.Sprintf(COIN_INFO_PREFIX, resource))
+	if err != nil {
+		return 0, err
+	}
+	decimals, err := strconv.Atoi(resp.Data.Decimals)
+	if err != nil {
+		return 0, err
+	}
+	return uint8(decimals), nil
 }
 
 // GetTxBlockInfo impl NonceSetter interface

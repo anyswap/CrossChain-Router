@@ -69,7 +69,7 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 	if err != nil {
 		return nil, "", fmt.Errorf("unable to encode message for signing: %w", err)
 	}
-	msgContent := signingMessage.Message
+	msgContent := *signingMessage
 
 	jsondata, err := json.Marshal(args.GetExtraArgs())
 	if err != nil {
@@ -129,7 +129,7 @@ func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, privKey string
 	if err != nil {
 		log.Fatal("GetSigningMessage", "err", err)
 	}
-	signature, err := account.SignString(signingMessage.Message)
+	signature, err := account.SignString(*signingMessage)
 	if err != nil {
 		log.Fatal("SignString", "err", err)
 	}

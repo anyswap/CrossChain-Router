@@ -58,10 +58,14 @@ type TransactionInfo struct {
 	ExpirationTimestampSecs string             `json:"expiration_timestamp_secs"`
 	Timestamp               string             `json:"timestamp,omitempty"`
 	PayLoad                 TransactionPayload `json:"payload,omitempty"`
+	Events                  []Event            `json:"events,omitempty"`
 }
 
-type SigningMessage struct {
-	Message string `json:"message"`
+type Event struct {
+	Key            string            `json:"key,omitempty"`
+	SequenceNumber string            `json:"sequence_number,omitempty"`
+	Type           string            `json:"type,omitempty"`
+	Data           map[string]string `json:"data,omitempty"`
 }
 
 type Transaction struct {

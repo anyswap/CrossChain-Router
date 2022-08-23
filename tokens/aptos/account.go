@@ -51,7 +51,7 @@ func (account *Account) GetPublicKeyHex() string {
 }
 
 func (account *Account) SignString(message string) (string, error) {
-	signingMessage := message
+	signingMessage := message[:]
 	if common.HasHexPrefix(signingMessage) {
 		signingMessage = signingMessage[2:]
 	}
@@ -68,10 +68,6 @@ func (account *Account) SignBytes(message []byte) (string, error) {
 		return "", err
 	}
 	return common.ToHex(signature[:64]), nil
-}
-
-func GetRouterModelId(mpcAddress string) string {
-	return fmt.Sprintf("%s::")
 }
 
 // IsValidAddress check address

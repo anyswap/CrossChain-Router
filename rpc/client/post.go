@@ -128,7 +128,7 @@ func RPCPostRequestWithContext(ctx context.Context, url string, req *Request, re
 	return err
 }
 
-func RPCPostBody(url string, params, headers map[string]string, body, result interface{}, timeout int) error {
+func RPCPostBody(url string, params, headers map[string]string, body, result interface{}, timeout int, success_code map[int]bool) error {
 	resp, err := HTTPPostWithContext(httpCtx, url, body, params, headers, timeout)
 	if err != nil {
 		log.Trace("post rpc error", "url", url, "request", body, "err", err)
@@ -142,7 +142,7 @@ func RPCPostBody(url string, params, headers map[string]string, body, result int
 	if err != nil {
 		return fmt.Errorf("read body error: %w", err)
 	}
-	if resp.StatusCode != 200 {
+	if !success_code[resp.StatusCode] {
 		return fmt.Errorf("wrong response status %v. message: %v", resp.StatusCode, string(bodyBytes))
 	}
 	if len(bodyBytes) == 0 {

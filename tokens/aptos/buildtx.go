@@ -9,6 +9,11 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
+var (
+	maxFee              string = "2000"
+	defaultGasUnitPrice string = "1"
+)
+
 // BuildRawTransaction impl
 func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{}, err error) {
 	if args.ToChainID.String() != b.ChainConfig.ChainID {
@@ -37,7 +42,10 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	}
 
 	tx, err := b.BuildSwapinTransferTransaction(args, tokenCfg)
-	_, err = b.Client.SubmitTranscation(tx)
+	if err != nil {
+		return nil, err
+	}
+	_, err = b.Client.SimulateTranscation(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -81,17 +89,18 @@ func (b *Bridge) BuildSwapinTransferTransaction(args *tokens.BuildTxArgs, tokenC
 	if err != nil {
 		return nil, err
 	}
+	// 10 min
 	timeout := time.Now().Unix() + 600
 	tx := &Transaction{
 		Sender:                  routerInfo.RouterMPC,
 		SequenceNumber:          account.SequenceNumber,
-		MaxGasAmount:            "1000",
-		GasUnitPrice:            "1",
+		MaxGasAmount:            maxFee,
+		GasUnitPrice:            defaultGasUnitPrice,
 		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
 		Payload: &TransactionPayload{
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
-			Function:      "swapin",
-			TypeArguments: []string{tokenCfg.ContractAddress},
+			Function:      GetRouterFunctionId(routerInfo.RouterMPC, CONTRACT_NAME, CONTRACT_FUNC_SWAPIN),
+			TypeArguments: []string{tokenCfg.ContractAddress, tokenCfg.Extra},
 			Arguments:     []string{receiver, strconv.FormatUint(amount, 10), args.SwapID, args.FromChainID.String()},
 		},
 	}
