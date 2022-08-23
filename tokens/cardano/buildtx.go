@@ -1,11 +1,9 @@
 package cardano
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"math/big"
-	"os/exec"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -13,20 +11,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
-)
-
-const (
-	RawPath    = "txDb/raw/"
-	AdaAssetId = "lovelace"
-	RawSuffix  = ".raw"
-)
-
-var (
-	FixAdaAmount             = big.NewInt(1000000)
-	BuildRawTxWithoutMintCmd = "cardano-cli  transaction  build-raw  --fee  %s%s%s  --out-file  %s"
-	CalcMinFeeCmd            = "cardano-cli transaction calculate-min-fee --tx-body-file %s --tx-in-count %d --tx-out-count %d --witness-count 1 --testnet-magic 1097911063 --protocol-params-file txDb/config/protocol.json"
-	QueryUtxo                = "cardano-cli query utxo --address %s --testnet-magic %s"
-	CalcTxIdCmd              = "cardano-cli transaction txid --tx-body-file %s"
 )
 
 // BuildRawTransaction build raw tx
@@ -52,7 +36,6 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	if mpcPubkey == "" {
 		return nil, tokens.ErrMissMPCPublicKey
 	}
-
 	erc20SwapInfo := args.ERC20SwapInfo
 	multichainToken := router.GetCachedMultichainToken(erc20SwapInfo.TokenID, args.ToChainID.String())
 	if multichainToken == "" {
@@ -89,10 +72,24 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 								return nil, errors.New("feeList length not match")
 							} else {
 								rawTransaction.Fee = feeList[0]
-								if err := CreateRawTx(rawTransaction); err != nil {
+								if adaAmount, err := common.GetBigIntFromStr(rawTransaction.TxOuts[args.From][AdaAssetId]); err != nil {
 									return nil, err
 								} else {
-									return rawTransaction, nil
+									if feeAmount, err := common.GetBigIntFromStr(feeList[0]); err != nil {
+										return nil, err
+									} else {
+										returnAmount := adaAmount.Sub(adaAmount, feeAmount)
+										if returnAmount.Cmp(FixAdaAmount) < 0 {
+											return nil, errors.New("return value less than min value")
+										} else {
+											rawTransaction.TxOuts[args.From][AdaAssetId] = returnAmount.String()
+											if err := CreateRawTx(rawTransaction); err != nil {
+												return nil, err
+											} else {
+												return rawTransaction, nil
+											}
+										}
+									}
 								}
 							}
 						}
@@ -106,7 +103,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 func (b *Bridge) buildTx(swapId, receiver, assetId, amount string, utxos map[string]UtxoMap) (*RawTransaction, error) {
 	log.Infof("build Tx:\nreceiver:%+v\nassetId:%+v\namount:%+v\nutxos:%+v", receiver, assetId, amount, utxos)
 	routerMpc := b.GetRouterContract("")
-	rawTransaction := RawTransaction{
+	rawTransaction := &RawTransaction{
 		Fee:     "0",
 		OutFile: swapId,
 		TxOuts:  map[string]map[string]string{},
@@ -114,29 +111,29 @@ func (b *Bridge) buildTx(swapId, receiver, assetId, amount string, utxos map[str
 	}
 	for txHash, utxoInfo := range utxos {
 		if utxoInfo.Assets[assetId] != "" {
-			if value, err := common.GetBigIntFromStr(utxoInfo.Assets[assetId]); err != nil {
-				return nil, err
-			} else {
-				if amountValue, err := common.GetBigIntFromStr(amount); err != nil {
-					return nil, err
-				} else {
+			if value, err := common.GetBigIntFromStr(utxoInfo.Assets[assetId]); err == nil {
+				if amountValue, err := common.GetBigIntFromStr(amount); err == nil {
 					if value.Cmp(amountValue) >= 0 {
-						rawTransaction.TxInts[txHash] = utxoInfo.Index
-						if rawTransaction.TxOuts[receiver] == nil {
-							rawTransaction.TxOuts[receiver] = map[string]string{}
-						}
-						rawTransaction.TxOuts[receiver][assetId] = amountValue.String()
-						rawTransaction.TxOuts[receiver][AdaAssetId] = FixAdaAmount.String()
-						if adaAmount, err := common.GetBigIntFromStr(utxoInfo.Assets[AdaAssetId]); err != nil {
-							return nil, err
-						} else {
-							if rawTransaction.TxOuts[routerMpc] == nil {
+						if adaAmount, err := common.GetBigIntFromStr(utxoInfo.Assets[AdaAssetId]); err == nil {
+							if adaAmount.Cmp(FixAdaAmount) > 0 {
+								rawTransaction.TxInts[txHash] = utxoInfo.Index
+								rawTransaction.TxOuts[receiver] = map[string]string{
+									assetId:    amountValue.String(),
+									AdaAssetId: FixAdaAmount.String(),
+								}
 								rawTransaction.TxOuts[routerMpc] = map[string]string{}
+								rawTransaction.TxOuts[routerMpc][AdaAssetId] = adaAmount.Sub(adaAmount, FixAdaAmount).String()
+								if value.Cmp(amountValue) > 0 {
+									rawTransaction.TxOuts[routerMpc][assetId] = value.Sub(value, amountValue).String()
+								}
+								for asset, amount := range utxoInfo.Assets {
+									if asset != AdaAssetId && asset != assetId {
+										rawTransaction.TxOuts[routerMpc][asset] = amount
+									}
+								}
+								return rawTransaction, nil
 							}
-							rawTransaction.TxOuts[routerMpc][AdaAssetId] = adaAmount.Sub(adaAmount, FixAdaAmount).String()
 						}
-						rawTransaction.TxOuts[routerMpc][assetId] = value.Sub(value, amountValue).String()
-						return &rawTransaction, nil
 					}
 				}
 			}
@@ -160,13 +157,7 @@ func CreateRawTx(rawTransaction *RawTransaction) error {
 		}
 	}
 	cmdString := fmt.Sprintf(BuildRawTxWithoutMintCmd, rawTransaction.Fee, inputString, outputString, RawPath+rawTransaction.OutFile+RawSuffix)
-	list := strings.Split(cmdString, "  ")
-	cmd := exec.Command(list[0], list[1:]...)
-	var cmdOut bytes.Buffer
-	var cmdErr bytes.Buffer
-	cmd.Stdout = &cmdOut
-	cmd.Stderr = &cmdErr
-	if err := cmd.Run(); err != nil {
+	if _, err := ExecCmd(cmdString, "  "); err != nil {
 		return err
 	}
 	return nil
@@ -175,16 +166,11 @@ func CreateRawTx(rawTransaction *RawTransaction) error {
 func CalcMinFee(rawTransaction *RawTransaction) (string, error) {
 	txBodyPath := RawPath + rawTransaction.OutFile + RawSuffix
 	cmdString := fmt.Sprintf(CalcMinFeeCmd, txBodyPath, len(rawTransaction.TxInts), len(rawTransaction.TxOuts))
-	list := strings.Split(cmdString, " ")
-	cmd := exec.Command(list[0], list[1:]...)
-	var cmdOut bytes.Buffer
-	var cmdErr bytes.Buffer
-	cmd.Stdout = &cmdOut
-	cmd.Stderr = &cmdErr
-	if err := cmd.Run(); err != nil {
+	if execRes, err := ExecCmd(cmdString, " "); err != nil {
 		return "", err
+	} else {
+		return execRes, nil
 	}
-	return cmdOut.String(), nil
 }
 
 func (b *Bridge) initExtra(args *tokens.BuildTxArgs) (extra *tokens.AllExtras, err error) {
@@ -204,7 +190,7 @@ func (b *Bridge) initExtra(args *tokens.BuildTxArgs) (extra *tokens.AllExtras, e
 
 // GetPoolNonce impl NonceSetter interface
 func (b *Bridge) GetPoolNonce(address, _height string) (uint64, error) {
-	return 0, tokens.ErrNotImplemented
+	return 0, nil
 }
 
 // GetSeq returns account tx sequence
@@ -255,17 +241,11 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 
 func (b *Bridge) queryUtxoCmd(address string) (map[string]UtxoMap, error) {
 	utxos := make(map[string]UtxoMap)
-	list := strings.Split(fmt.Sprintf(QueryUtxo, address, b.ChainConfig.ChainID), " ")
-	cmd := exec.Command(list[0], list[1:]...)
-	var cmdOut bytes.Buffer
-	var cmdErr bytes.Buffer
-	cmd.Stdout = &cmdOut
-	cmd.Stderr = &cmdErr
-	if err := cmd.Run(); err != nil {
+	cmdStr := fmt.Sprintf(QueryUtxoCmd, address)
+	if execRes, err := ExecCmd(cmdStr, " "); err != nil {
 		return nil, err
 	} else {
-		res := cmdOut.String()
-		if list := strings.Split(res, "--------------------------------------------------------------------------------------"); len(list) != 2 {
+		if list := strings.Split(execRes, "--------------------------------------------------------------------------------------"); len(list) != 2 {
 			return nil, errors.New("queryUtxo length not match")
 		} else {
 			if outputList := strings.Split(list[1], "\n"); len(outputList) < 3 {
@@ -296,8 +276,8 @@ func (b *Bridge) queryUtxoCmd(address string) (map[string]UtxoMap, error) {
 						}
 					}
 				}
+				return utxos, nil
 			}
 		}
 	}
-	return utxos, nil
 }

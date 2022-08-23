@@ -71,7 +71,7 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 						"height", swapInfo.Height, "timestamp", swapInfo.Timestamp, "logIndex", swapInfo.LogIndex)
 				}
 
-				return swapInfo, tokens.ErrNotImplemented
+				return swapInfo, nil
 			}
 		}
 	}

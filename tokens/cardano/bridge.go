@@ -67,23 +67,18 @@ func GetStubChainID(network string) *big.Int {
 }
 
 // GetLatestBlockNumber gets latest block number
-// For ripple, GetLatestBlockNumber returns current ledger version
 func (b *Bridge) GetLatestBlockNumber() (num uint64, err error) {
-	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
-	for _, url := range urls {
-		if blockNumber, err := GetLatestBlockNumber(url); err == nil {
-			return blockNumber, nil
-		} else {
-			log.Error("GetLatestBlockNumber", "err", err)
-		}
+	if blockNumber, err := GetLatestBlockNumber(); err == nil {
+		return blockNumber, nil
+	} else {
+		return 0, err
 	}
-	return 0, tokens.ErrGetLatestBlockNumber
 }
 
 // GetLatestBlockNumberOf gets latest block number from single api
 // For ripple, GetLatestBlockNumberOf returns current ledger version
 func (b *Bridge) GetLatestBlockNumberOf(url string) (num uint64, err error) {
-	if blockNumber, err := GetLatestBlockNumber(url); err == nil {
+	if blockNumber, err := GetLatestBlockNumber(); err == nil {
 		return blockNumber, nil
 	} else {
 		return 0, err

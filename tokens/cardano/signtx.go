@@ -1,7 +1,6 @@
 package cardano
 
 import (
-	"bytes"
 	"crypto"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -10,8 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
-	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -28,10 +25,6 @@ const (
 	WitnessType   = "TxWitness AlonzoEra"
 	SignedPath    = "txDb/signed/"
 	SignedSuffix  = ".signed"
-)
-
-var (
-	AssembleCmd = "cardano-cli transaction assemble --tx-body-file %s --witness-file %s --out-file %s"
 )
 
 // MPCSignTransaction mpc sign raw tx
@@ -101,16 +94,11 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 
 func CalcTxId(txPath string) (string, error) {
 	cmdString := fmt.Sprintf(CalcTxIdCmd, txPath)
-	list := strings.Split(cmdString, " ")
-	cmd := exec.Command(list[0], list[1:]...)
-	var cmdOut bytes.Buffer
-	var cmdErr bytes.Buffer
-	cmd.Stdout = &cmdOut
-	cmd.Stderr = &cmdErr
-	if err := cmd.Run(); err != nil {
+	if execRes, err := ExecCmd(cmdString, " "); err != nil {
 		return "", err
+	} else {
+		return execRes[:len(execRes)-1], nil
 	}
-	return cmdOut.String()[:len(cmdOut.String())-1], nil
 }
 
 // SignTransactionWithPrivateKey sign tx with ECDSA private key
@@ -167,14 +155,9 @@ func (b *Bridge) createWitness(witnessPath, mpcPublicKey string, sig []byte) err
 
 func (b *Bridge) signTx(rawTxPath, witnessPath, signedPath string) error {
 	cmdString := fmt.Sprintf(AssembleCmd, rawTxPath, witnessPath, signedPath)
-	list := strings.Split(cmdString, " ")
-	cmd := exec.Command(list[0], list[1:]...)
-	var cmdOut bytes.Buffer
-	var cmdErr bytes.Buffer
-	cmd.Stdout = &cmdOut
-	cmd.Stderr = &cmdErr
-	if err := cmd.Run(); err != nil {
+	if _, err := ExecCmd(cmdString, " "); err != nil {
 		return err
+	} else {
+		return nil
 	}
-	return nil
 }
