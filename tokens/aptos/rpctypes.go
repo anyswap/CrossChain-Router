@@ -22,7 +22,7 @@ type CoinInfoResource struct {
 }
 
 type CoinCoinInfoData struct {
-	Decimals string `json:"decimals"`
+	Decimals uint8  `json:"decimals"`
 	Name     string `json:"name"`
 	Symbol   string `json:"symbol"`
 }

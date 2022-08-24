@@ -45,10 +45,6 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	if err != nil {
 		return nil, err
 	}
-	_, err = b.Client.SimulateTranscation(tx)
-	if err != nil {
-		return nil, err
-	}
 	return tx, nil
 }
 

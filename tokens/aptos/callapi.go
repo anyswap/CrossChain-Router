@@ -20,11 +20,7 @@ func (b *Bridge) GetTokenDecimals(resource string) (uint8, error) {
 	if err != nil {
 		return 0, err
 	}
-	decimals, err := strconv.Atoi(resp.Data.Decimals)
-	if err != nil {
-		return 0, err
-	}
-	return uint8(decimals), nil
+	return resp.Data.Decimals, nil
 }
 
 // GetTxBlockInfo impl NonceSetter interface

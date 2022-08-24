@@ -14,11 +14,9 @@ import (
 )
 
 func (b *Bridge) verifyTransactionWithArgs(tx *Transaction, args *tokens.BuildTxArgs) error {
-	fmt.Println(tx.Payload)
-
 	swapin := tx.Payload.Arguments
 
-	// receiver: address, amount: u64, _fromEvent: vector<u8>, _fromChainID: u64
+	// receiver: address, amount: u64, _fromEvent: string, _fromChainID: u64
 
 	fromChainID, err := strconv.ParseUint(swapin[3], 10, 64)
 	if err != nil || fromChainID != args.FromChainID.Uint64() {
@@ -110,7 +108,7 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 		Signature: rsv,
 	}
 
-	txInfo, err := b.Client.SubmitTranscation(tx)
+	txInfo, err := b.Client.SimulateTranscation(tx)
 	if err != nil {
 		return nil, "", err
 	}
@@ -141,7 +139,7 @@ func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, privKey string
 
 	log.Info("SignTransactionWithPrivateKey", "signature", signature)
 
-	txInfo, err := b.Client.SubmitTranscation(tx)
+	txInfo, err := b.Client.SimulateTranscation(tx)
 	if err != nil {
 		return nil, "", err
 	}

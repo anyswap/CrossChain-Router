@@ -76,7 +76,7 @@ func (b *Bridge) IsValidAddress(address string) bool {
 	if common.HasHexPrefix(s) {
 		s = s[2:]
 	}
-	return len(s) == 32 && common.IsHex(s)
+	return len(s) == 64 && common.IsHex(s)
 }
 
 // PublicKeyToAddress impl

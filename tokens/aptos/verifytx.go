@@ -112,7 +112,8 @@ func (b *Bridge) verifySwapoutEvents(swapInfo *tokens.SwapTxInfo, txInfo *Transa
 	}
 
 	swapInfo.To = routerProgramID
-	erc20SwapInfo := swapInfo.ERC20SwapInfo
+	erc20SwapInfo := &tokens.ERC20SwapInfo{}
+	swapInfo.ERC20SwapInfo = erc20SwapInfo
 	// SwapOutEvent in Router.move
 	// struct SwapOutEvent has drop, store {
 	//     token: string::String,
