@@ -56,11 +56,11 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 		outputIndex := 0
 		assetIndex := 0
 		for index, output := range outputs {
-			if logIndex > tempIndex+len(output.Tokens) {
-				tempIndex += len(output.Tokens)
+			if logIndex > tempIndex+len(output.Tokens)+1 {
+				tempIndex += len(output.Tokens) + 1
 			} else {
 				outputIndex = index
-				assetIndex = logIndex - tempIndex
+				assetIndex = logIndex - tempIndex - 1
 			}
 		}
 		if tokenInfo, err := b.parseTxOutput(outputs[outputIndex], assetIndex); err != nil {
@@ -69,9 +69,6 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 			if err := b.parseTokenInfo(swapInfo, tokenInfo, metadata); err != nil {
 				return nil, err
 			} else {
-				if err := b.parseTokenInfo(swapInfo, tokenInfo, metadata); err != nil {
-					return nil, err
-				}
 				if err := b.checkSwapoutInfo(swapInfo); err != nil {
 					return swapInfo, err
 				}
@@ -136,6 +133,19 @@ func (b *Bridge) checkTxStatus(txres *Transaction, allowUnstable bool) error {
 func (b *Bridge) parseTxOutput(output Output, logIndex int) (*Token, error) {
 	mpc := b.GetRouterContract("")
 	if output.Address == mpc {
+		if logIndex == 0 {
+			if amount, err := common.GetBigIntFromStr(output.Value); err != nil || amount.Cmp(DefaultAdaAmount) <= 0 {
+				return nil, tokens.ErrAdaSwapOutAmount
+			} else {
+				return &Token{
+					Asset: Asset{
+						AssetId:   AdaAssetId,
+						AssetName: AdaAssetId,
+					},
+					Quantity: amount.Sub(amount, DefaultAdaAmount).String(),
+				}, nil
+			}
+		}
 		return &output.Tokens[logIndex-1], nil
 	} else {
 		return nil, tokens.ErrMpcAddrMissMatch
@@ -144,15 +154,21 @@ func (b *Bridge) parseTxOutput(output Output, logIndex int) (*Token, error) {
 
 func (b *Bridge) parseTokenInfo(swapInfo *tokens.SwapTxInfo, tokenInfo *Token, metadata *Metadata) error {
 	mpc := b.GetRouterContract("")
-	swapInfo.ERC20SwapInfo.Token = strings.Replace(tokenInfo.Asset.AssetId, tokenInfo.Asset.AssetName, "."+tokenInfo.Asset.AssetName, 1)
+
+	amount, err := common.GetBigIntFromStr(tokenInfo.Quantity)
+	if err != nil {
+		return err
+	}
+
+	swapInfo.Value = amount
+
+	if tokenInfo.Asset.AssetId == AdaAssetId {
+		swapInfo.ERC20SwapInfo.Token = AdaAssetId
+	} else {
+		swapInfo.ERC20SwapInfo.Token = strings.Replace(tokenInfo.Asset.AssetId, tokenInfo.Asset.AssetName, "."+tokenInfo.Asset.AssetName, 1)
+	}
 	swapInfo.From = mpc
 	swapInfo.Bind = metadata.Value.Bind
-
-	amount, erra := common.GetBigIntFromStr(tokenInfo.Quantity)
-	if erra != nil {
-		return erra
-	}
-	swapInfo.Value = amount
 
 	swapInfo.ToChainID = big.NewInt(int64(metadata.Value.ToChainId))
 

@@ -32,8 +32,8 @@ mpc.vkey:
 
 3 set config contract
 	3.1 routerAddress is mpc address
-	3.2 tokenAddress is assetId.assetName
-	3.3 set tokenVersion = 999 if is anytoken
+	3.2 tokenAddress is assetId.assetName if token not ADA
+	    tokenAddress is lovelace if token is ADA
 
 4 chainId
 mainnet: 1645027868239
@@ -55,7 +55,7 @@ cardano-cli  query protocol-parameters \
 	echo "  \"type\": \"sig\"" >> policy/policy.script 
 	echo "}" >> policy/policy.script
 
-	7.2 create policyId
+	7.2 create policyId(update policyId field in ./tokens/cardano/cardanoCmd.gon)
 	cardano-cli transaction policyid --script-file ./policy/policy.script 
 
 	7.3 create assetNameId

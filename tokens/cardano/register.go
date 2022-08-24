@@ -34,7 +34,7 @@ func (b *Bridge) registerERC20SwapTx(txHash string, logIndex int) ([]*tokens.Swa
 		log.Info("getTxOutputs", "outputs:", outputs)
 		totalLenght := 0
 		for _, output := range outputs {
-			totalLenght += len(output.Tokens)
+			totalLenght += len(output.Tokens) + 1
 		}
 		swapInfos := make([]*tokens.SwapTxInfo, 0)
 		errs := make([]error, 0)
@@ -55,11 +55,11 @@ func (b *Bridge) registerERC20SwapTx(txHash string, logIndex int) ([]*tokens.Swa
 			outputIndex := 0
 			assetIndex := 0
 			for index, output := range outputs {
-				if i > tempIndex+len(output.Tokens) {
-					tempIndex += len(output.Tokens)
+				if i > tempIndex+len(output.Tokens)+1 {
+					tempIndex += len(output.Tokens) + 1
 				} else {
 					outputIndex = index
-					assetIndex = i - tempIndex
+					assetIndex = i - tempIndex - 1
 				}
 			}
 			if tokenInfo, err := b.parseTxOutput(outputs[outputIndex], assetIndex); err == nil {
@@ -67,6 +67,7 @@ func (b *Bridge) registerERC20SwapTx(txHash string, logIndex int) ([]*tokens.Swa
 				switch {
 				case errors.Is(err, tokens.ErrSwapoutLogNotFound),
 					errors.Is(err, tokens.ErrTxWithWrongTopics),
+					errors.Is(err, tokens.ErrAdaSwapOutAmount),
 					errors.Is(err, tokens.ErrTxWithWrongContract):
 				case err == nil:
 					err = b.checkSwapoutInfo(swapInfo)
