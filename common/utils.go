@@ -142,3 +142,11 @@ func GetBigInt(data []byte, start, size uint64) *big.Int {
 func GetUint64(data []byte, start, size uint64) (uint64, bool) {
 	return BigUint64(GetBigInt(data, start, size))
 }
+
+// FirstN first n chars of string
+func FirstN(s string, n int) string {
+	if len(s) > n {
+		return s[:n] + "..."
+	}
+	return s
+}
