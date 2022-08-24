@@ -196,6 +196,9 @@ MIM  = ["0x2222222222222222222222222222222222222222"]
 [Extra.LocalChainConfig.2025]
 EstimatedGasMustBePositive = true
 
+[Extra.LocalChainConfig.86]
+SmallestGasPriceUnit = 1000000000
+
 
 # OnChain config
 [OnChain]
