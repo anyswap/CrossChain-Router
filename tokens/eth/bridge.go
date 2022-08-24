@@ -236,7 +236,16 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 		logErrFunc("get underlying address failed", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "err", err)
 		return
 	}
-	tokenCfg.SetUnderlying(underlying) // init underlying address
+	var underlyingIsMinted bool
+	if common.HexToAddress(underlying) != (common.Address{}) {
+		for i := 0; i < 2; i++ {
+			underlyingIsMinted, err = b.IsUnderlyingMinted(tokenAddr)
+			if err == nil {
+				break
+			}
+		}
+	}
+	tokenCfg.SetUnderlying(underlying, underlyingIsMinted) // init underlying address
 }
 
 func (b *Bridge) checkTokenMinter(routerContract string, tokenCfg *tokens.TokenConfig) (err error) {

@@ -46,6 +46,7 @@ var (
 	disableUseFromChainIDInReceiptChains map[string]struct{}
 	useFastMPCChains                     map[string]struct{}
 	dontCheckReceivedTokenIDs            map[string]struct{}
+	dontCheckBalanceTokenIDs             map[string]struct{}
 
 	isDebugMode           *bool
 	isNFTSwapWithData     *bool
@@ -147,6 +148,7 @@ type ExtraConfig struct {
 	DisableUseFromChainIDInReceiptChains []string `toml:",omitempty" json:",omitempty"`
 	UseFastMPCChains                     []string `toml:",omitempty" json:",omitempty"`
 	DontCheckReceivedTokenIDs            []string `toml:",omitempty" json:",omitempty"`
+	DontCheckBalanceTokenIDs             []string `toml:",omitempty" json:",omitempty"`
 
 	RPCClientTimeout map[string]int `toml:",omitempty" json:",omitempty"` // key is chainID
 	// chainID,customKey => customValue
@@ -959,6 +961,23 @@ func initDontCheckReceivedTokenIDs() {
 // DontCheckTokenReceived do not check token received (a security enhance checking)
 func DontCheckTokenReceived(tokenID string) bool {
 	_, exist := dontCheckReceivedTokenIDs[strings.ToLower(tokenID)]
+	return exist
+}
+
+func initDontCheckBalanceTokenIDs() {
+	dontCheckBalanceTokenIDs = make(map[string]struct{})
+	if GetExtraConfig() == nil || len(GetExtraConfig().DontCheckBalanceTokenIDs) == 0 {
+		return
+	}
+	for _, tid := range GetExtraConfig().DontCheckBalanceTokenIDs {
+		dontCheckBalanceTokenIDs[strings.ToLower(tid)] = struct{}{}
+	}
+	log.Info("initDontCheckBalanceTokenIDs success")
+}
+
+// DontCheckTokenBalance do not check token balance (a security enhance checking)
+func DontCheckTokenBalance(tokenID string) bool {
+	_, exist := dontCheckBalanceTokenIDs[strings.ToLower(tokenID)]
 	return exist
 }
 

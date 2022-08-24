@@ -421,6 +421,7 @@ func (c *ExtraConfig) CheckConfig() (err error) {
 	initDisableUseFromChainIDInReceiptChains()
 	initUseFastMPCChains()
 	initDontCheckReceivedTokenIDs()
+	initDontCheckBalanceTokenIDs()
 
 	if c.UsePendingBalance {
 		GetBalanceBlockNumberOpt = "pending"

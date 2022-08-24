@@ -71,6 +71,11 @@ func (b *Bridge) verifyERC20SwapTx(txHash string, logIndex int, allowUnstable bo
 		return swapInfo, err
 	}
 
+	err = b.checkTokenBalance(swapInfo, receipt)
+	if err != nil {
+		return swapInfo, err
+	}
+
 	if !allowUnstable {
 		ctx := []interface{}{
 			"identifier", params.GetIdentifier(),
@@ -182,7 +187,6 @@ func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable boo
 	} else {
 		swapInfo.TxTo = receipt.Recipient.LowerHex() // TxTo
 	}
-	swapInfo.From = receipt.From.LowerHex() // From
 	if *receipt.From == (common.Address{}) {
 		return nil, tokens.ErrTxWithWrongSender
 	}
@@ -633,15 +637,81 @@ func (b *Bridge) checkTokenReceived(swapInfo *tokens.SwapTxInfo, receipt *types.
 	}
 	if recvAmount == nil {
 		log.Warn("check token received found none", "swapID", swapInfo.Hash)
-		return fmt.Errorf("no underlying token received")
+		return fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, "no underlying token received")
 	}
 	// at least receive 80% (consider fees and deflation burning)
 	minRecvAmount := new(big.Int).Mul(swapInfo.Value, big.NewInt(4))
 	minRecvAmount.Div(minRecvAmount, big.NewInt(5))
 	if recvAmount.Cmp(minRecvAmount) < 0 {
 		log.Warn("check token received failed", "isBurn", isBurn, "received", recvAmount, "swapValue", swapInfo.Value, "minRecvAmount", minRecvAmount, "swapID", swapInfo.Hash)
-		return fmt.Errorf("check underlying token received failed")
+		return fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, "check underlying token received failed")
 	}
 	log.Info("check token received success", "isBurn", isBurn, "received", recvAmount, "swapValue", swapInfo.Value, "swapID", swapInfo.Hash)
+	return nil
+}
+
+// check token balance updations
+func (b *Bridge) checkTokenBalance(swapInfo *tokens.SwapTxInfo, receipt *types.RPCTxReceipt) error {
+	erc20SwapInfo := swapInfo.ERC20SwapInfo
+	token := erc20SwapInfo.Token
+	tokenID := erc20SwapInfo.TokenID
+	tokenCfg := b.GetTokenConfig(token)
+	if tokenCfg == nil || tokenID == "" {
+		return tokens.ErrMissTokenConfig
+	}
+	if params.DontCheckTokenBalance(tokenID) {
+		return nil
+	}
+	underlyingAddr := tokenCfg.GetUnderlying()
+	if common.HexToAddress(underlyingAddr) == (common.Address{}) {
+		return nil
+	}
+	blockHeight := receipt.BlockNumber.ToInt().Uint64()
+
+	minRecvAmount := new(big.Int).Mul(swapInfo.Value, big.NewInt(4))
+	minRecvAmount.Div(minRecvAmount, big.NewInt(5))
+
+	log.Info("start check token balance",
+		"token", token, "tokenID", tokenID, "logIndex", swapInfo.LogIndex,
+		"underlying", underlyingAddr, "blockHeight", blockHeight,
+		"swapFrom", swapInfo.From, "swapValue", swapInfo.Value, "swapID", swapInfo.Hash)
+
+	if !tokenCfg.IsUnderlyingMinted() {
+		prevBal, err := b.GetErc20BalanceAtHeight(underlyingAddr, token, fmt.Sprintf("0x%x", blockHeight-1))
+		if err != nil {
+			log.Info("get prev token balance failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight-1, "err", err)
+			return nil
+		}
+
+		postBal, err := b.GetErc20BalanceAtHeight(underlyingAddr, token, fmt.Sprintf("0x%x", blockHeight))
+		if err != nil {
+			log.Info("get post token balance failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "err", err)
+			return nil
+		}
+
+		actRecvAmount := new(big.Int).Sub(postBal, prevBal)
+		if minRecvAmount.Cmp(actRecvAmount) > 0 {
+			log.Warn("check token balance failed", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "prevBal", prevBal, "postBal", postBal, "minRecvAmount", minRecvAmount, "actRecvAmount", actRecvAmount)
+			return fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, "check underlying token balance failed")
+		}
+	} else {
+		prevBal, err := b.GetErc20TotalSupplyAtHeight(underlyingAddr, fmt.Sprintf("0x%x", blockHeight-1))
+		if err != nil {
+			log.Info("get prev token total supply failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight-1, "err", err)
+			return nil
+		}
+		postBal, err := b.GetErc20TotalSupplyAtHeight(underlyingAddr, fmt.Sprintf("0x%x", blockHeight))
+		if err != nil {
+			log.Info("get post token total supply failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "err", err)
+			return nil
+		}
+		actBurnAmount := new(big.Int).Sub(prevBal, postBal)
+		if minRecvAmount.Cmp(actBurnAmount) > 0 {
+			log.Warn("check token balance failed", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "prevBal", prevBal, "postBal", postBal, "minRecvAmount", minRecvAmount, "actBurnAmount", actBurnAmount)
+			return fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, "check token total supply failed")
+		}
+	}
+
+	log.Info("check token balance success", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight)
 	return nil
 }
