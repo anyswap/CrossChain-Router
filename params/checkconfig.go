@@ -404,6 +404,7 @@ func (c *ExtraConfig) CheckConfig() (err error) {
 	initDisableUseFromChainIDInReceiptChains()
 	initDontCheckReceivedTokenIDs()
 	initDontCheckBalanceTokenIDs()
+	initCheckTokenBalanceEnabledChains()
 
 	if c.UsePendingBalance {
 		GetBalanceBlockNumberOpt = "pending"

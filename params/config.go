@@ -46,6 +46,7 @@ var (
 	disableUseFromChainIDInReceiptChains map[string]struct{}
 	dontCheckReceivedTokenIDs            map[string]struct{}
 	dontCheckBalanceTokenIDs             map[string]struct{}
+	checkTokenBalanceEnabledChains       map[string]struct{}
 
 	isDebugMode           *bool
 	isNFTSwapWithData     *bool
@@ -149,6 +150,7 @@ type ExtraConfig struct {
 	DisableUseFromChainIDInReceiptChains []string `toml:",omitempty" json:",omitempty"`
 	DontCheckReceivedTokenIDs            []string `toml:",omitempty" json:",omitempty"`
 	DontCheckBalanceTokenIDs             []string `toml:",omitempty" json:",omitempty"`
+	CheckTokenBalanceEnabledChains       []string `toml:",omitempty" json:",omitempty"`
 
 	RPCClientTimeout map[string]int `toml:",omitempty" json:",omitempty"` // key is chainID
 	// chainID,customKey => customValue
@@ -994,6 +996,26 @@ func initDontCheckBalanceTokenIDs() {
 // DontCheckTokenBalance do not check token balance (a security enhance checking)
 func DontCheckTokenBalance(tokenID string) bool {
 	_, exist := dontCheckBalanceTokenIDs[strings.ToLower(tokenID)]
+	return exist
+}
+
+func initCheckTokenBalanceEnabledChains() {
+	checkTokenBalanceEnabledChains = make(map[string]struct{})
+	if GetExtraConfig() == nil || len(GetExtraConfig().CheckTokenBalanceEnabledChains) == 0 {
+		return
+	}
+	for _, cid := range GetExtraConfig().CheckTokenBalanceEnabledChains {
+		if _, err := common.GetBigIntFromStr(cid); err != nil {
+			log.Fatal("initCheckTokenBalanceEnabledChains wrong chainID", "chainID", cid, "err", err)
+		}
+		checkTokenBalanceEnabledChains[cid] = struct{}{}
+	}
+	log.Info("initCheckTokenBalanceEnabledChains success", "chains", GetExtraConfig().CheckTokenBalanceEnabledChains)
+}
+
+// IsCheckTokenBalanceEnabled is check token balance enabled
+func IsCheckTokenBalanceEnabled(chainID string) bool {
+	_, exist := checkTokenBalanceEnabledChains[chainID]
 	return exist
 }
 

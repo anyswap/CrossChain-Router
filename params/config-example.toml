@@ -148,6 +148,7 @@ EnableCheckTxBlockHashChains = ["1285"]
 EnableCheckTxBlockIndexChains = ["1", "56"]
 # chains don't use fromChainID from receipt log
 DisableUseFromChainIDInReceiptChains = ["1666600000"]
+CheckTokenBalanceEnabledChains = ["1"]
 DontCheckReceivedTokenIDs = ["USDC", "MIM"]
 DontCheckBalanceTokenIDs = ["USDC", "MIM"]
 # allow call into router from contract's constructor

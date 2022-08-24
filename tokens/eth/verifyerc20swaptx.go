@@ -634,6 +634,9 @@ func (b *Bridge) checkTokenReceived(swapInfo *tokens.SwapTxInfo, receipt *types.
 
 // check token balance updations
 func (b *Bridge) checkTokenBalance(swapInfo *tokens.SwapTxInfo, receipt *types.RPCTxReceipt) error {
+	if !params.IsCheckTokenBalanceEnabled(b.ChainConfig.ChainID) {
+		return nil
+	}
 	erc20SwapInfo := swapInfo.ERC20SwapInfo
 	token := erc20SwapInfo.Token
 	tokenID := erc20SwapInfo.TokenID
@@ -661,39 +664,39 @@ func (b *Bridge) checkTokenBalance(swapInfo *tokens.SwapTxInfo, receipt *types.R
 	if !tokenCfg.IsUnderlyingMinted() {
 		prevBal, err := b.GetErc20BalanceAtHeight(underlyingAddr, token, fmt.Sprintf("0x%x", blockHeight-1))
 		if err != nil {
-			log.Info("get prev token balance failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight-1, "err", err)
+			log.Info("get prev token balance failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight-1, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID, "err", err)
 			return nil
 		}
 
 		postBal, err := b.GetErc20BalanceAtHeight(underlyingAddr, token, fmt.Sprintf("0x%x", blockHeight))
 		if err != nil {
-			log.Info("get post token balance failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "err", err)
+			log.Info("get post token balance failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID, "err", err)
 			return nil
 		}
 
 		actRecvAmount := new(big.Int).Sub(postBal, prevBal)
 		if minRecvAmount.Cmp(actRecvAmount) > 0 {
-			log.Warn("check token balance failed", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "prevBal", prevBal, "postBal", postBal, "minRecvAmount", minRecvAmount, "actRecvAmount", actRecvAmount)
+			log.Warn("check token balance failed", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "prevBal", prevBal, "postBal", postBal, "minRecvAmount", minRecvAmount, "actRecvAmount", actRecvAmount, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID)
 			return fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, "check underlying token balance failed")
 		}
 	} else {
 		prevBal, err := b.GetErc20TotalSupplyAtHeight(underlyingAddr, fmt.Sprintf("0x%x", blockHeight-1))
 		if err != nil {
-			log.Info("get prev token total supply failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight-1, "err", err)
+			log.Info("get prev token total supply failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight-1, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID, "err", err)
 			return nil
 		}
 		postBal, err := b.GetErc20TotalSupplyAtHeight(underlyingAddr, fmt.Sprintf("0x%x", blockHeight))
 		if err != nil {
-			log.Info("get post token total supply failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "err", err)
+			log.Info("get post token total supply failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID, "err", err)
 			return nil
 		}
 		actBurnAmount := new(big.Int).Sub(prevBal, postBal)
 		if minRecvAmount.Cmp(actBurnAmount) > 0 {
-			log.Warn("check token balance failed", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "prevBal", prevBal, "postBal", postBal, "minRecvAmount", minRecvAmount, "actBurnAmount", actBurnAmount)
+			log.Warn("check token balance failed", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "prevBal", prevBal, "postBal", postBal, "minRecvAmount", minRecvAmount, "actBurnAmount", actBurnAmount, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID)
 			return fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, "check token total supply failed")
 		}
 	}
 
-	log.Info("check token balance success", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight)
+	log.Info("check token balance success", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID)
 	return nil
 }
