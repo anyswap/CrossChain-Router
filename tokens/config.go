@@ -29,7 +29,8 @@ type TokenConfig struct {
 	RouterContract  string
 
 	// calced value
-	underlying string
+	underlying         string
+	underlyingIsMinted bool
 }
 
 // SwapConfig struct
@@ -94,13 +95,19 @@ func (c *TokenConfig) IsStandardTokenVersion() bool {
 }
 
 // SetUnderlying set underlying
-func (c *TokenConfig) SetUnderlying(underlying string) {
+func (c *TokenConfig) SetUnderlying(underlying string, underlyingIsMinted bool) {
 	c.underlying = underlying
+	c.underlyingIsMinted = underlyingIsMinted
 }
 
 // GetUnderlying get underlying
 func (c *TokenConfig) GetUnderlying() string {
 	return c.underlying
+}
+
+// IsUnderlyingMinted is underlying minted
+func (c *TokenConfig) IsUnderlyingMinted() bool {
+	return c.underlyingIsMinted
 }
 
 // CheckConfig check swap config
