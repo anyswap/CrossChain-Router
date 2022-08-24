@@ -59,7 +59,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 				return nil, err
 			} else {
 				swapId := fmt.Sprintf("%s-%d", args.SwapID, args.LogIndex)
-				if rawTransaction, err := b.buildTx(swapId, receiver, multichainToken, amount.String(), utxos); err != nil {
+				if rawTransaction, err := b.buildTx(swapId, receiver, multichainToken, amount, utxos, tokenCfg.ContractVersion); err != nil {
 					return nil, err
 				} else {
 					if err := CreateRawTx(rawTransaction); err != nil {
@@ -100,8 +100,8 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	}
 }
 
-func (b *Bridge) buildTx(swapId, receiver, assetId, amount string, utxos map[string]UtxoMap) (*RawTransaction, error) {
-	log.Infof("build Tx:\nreceiver:%+v\nassetId:%+v\namount:%+v\nutxos:%+v", receiver, assetId, amount, utxos)
+func (b *Bridge) buildTx(swapId, receiver, assetId string, amount *big.Int, utxos map[string]UtxoMap, tokenVersion uint64) (*RawTransaction, error) {
+	log.Infof("build Tx:\nreceiver:%+v\nassetId:%+v\namount:%+v\nutxos:%+v\ntokenVersion:%+v", receiver, assetId, amount, utxos, tokenVersion)
 	routerMpc := b.GetRouterContract("")
 	rawTransaction := &RawTransaction{
 		Fee:     "0",
@@ -109,26 +109,50 @@ func (b *Bridge) buildTx(swapId, receiver, assetId, amount string, utxos map[str
 		TxOuts:  map[string]map[string]string{},
 		TxInts:  map[string]string{},
 	}
-	for txHash, utxoInfo := range utxos {
-		if utxoInfo.Assets[assetId] != "" {
-			if value, err := common.GetBigIntFromStr(utxoInfo.Assets[assetId]); err == nil {
-				if amountValue, err := common.GetBigIntFromStr(amount); err == nil {
-					if value.Cmp(amountValue) >= 0 {
+
+	if tokenVersion == 999 {
+		rawTransaction.Mint = map[string]string{
+			assetId: amount.String(),
+		}
+		for txHash, utxoInfo := range utxos {
+			if adaAmount, err := common.GetBigIntFromStr(utxoInfo.Assets[AdaAssetId]); err == nil {
+				if adaAmount.Cmp(DoubleFixAdaAmount) >= 0 {
+					rawTransaction.TxInts[txHash] = utxoInfo.Index
+					rawTransaction.TxOuts[receiver] = map[string]string{
+						assetId:    amount.String(),
+						AdaAssetId: FixAdaAmount.String(),
+					}
+					rawTransaction.TxOuts[routerMpc] = map[string]string{}
+					rawTransaction.TxOuts[routerMpc][AdaAssetId] = adaAmount.Sub(adaAmount, FixAdaAmount).String()
+					for asset, assetAmount := range utxoInfo.Assets {
+						if asset != AdaAssetId {
+							rawTransaction.TxOuts[routerMpc][asset] = assetAmount
+						}
+					}
+					return rawTransaction, nil
+				}
+			}
+		}
+	} else {
+		for txHash, utxoInfo := range utxos {
+			if utxoInfo.Assets[assetId] != "" {
+				if value, err := common.GetBigIntFromStr(utxoInfo.Assets[assetId]); err == nil {
+					if value.Cmp(amount) >= 0 {
 						if adaAmount, err := common.GetBigIntFromStr(utxoInfo.Assets[AdaAssetId]); err == nil {
-							if adaAmount.Cmp(FixAdaAmount) > 0 {
+							if adaAmount.Cmp(DoubleFixAdaAmount) >= 0 {
 								rawTransaction.TxInts[txHash] = utxoInfo.Index
 								rawTransaction.TxOuts[receiver] = map[string]string{
-									assetId:    amountValue.String(),
+									assetId:    amount.String(),
 									AdaAssetId: FixAdaAmount.String(),
 								}
 								rawTransaction.TxOuts[routerMpc] = map[string]string{}
 								rawTransaction.TxOuts[routerMpc][AdaAssetId] = adaAmount.Sub(adaAmount, FixAdaAmount).String()
-								if value.Cmp(amountValue) > 0 {
-									rawTransaction.TxOuts[routerMpc][assetId] = value.Sub(value, amountValue).String()
+								if value.Cmp(amount) > 0 {
+									rawTransaction.TxOuts[routerMpc][assetId] = value.Sub(value, amount).String()
 								}
-								for asset, amount := range utxoInfo.Assets {
+								for asset, assetAmount := range utxoInfo.Assets {
 									if asset != AdaAssetId && asset != assetId {
-										rawTransaction.TxOuts[routerMpc][asset] = amount
+										rawTransaction.TxOuts[routerMpc][asset] = assetAmount
 									}
 								}
 								return rawTransaction, nil
@@ -143,6 +167,7 @@ func (b *Bridge) buildTx(swapId, receiver, assetId, amount string, utxos map[str
 }
 
 func CreateRawTx(rawTransaction *RawTransaction) error {
+	cmdString := ""
 	inputString := ""
 	for txHash, index := range rawTransaction.TxInts {
 		inputString = fmt.Sprintf("%s  --tx-in  %s#%s", inputString, txHash, index)
@@ -156,7 +181,15 @@ func CreateRawTx(rawTransaction *RawTransaction) error {
 			}
 		}
 	}
-	cmdString := fmt.Sprintf(BuildRawTxWithoutMintCmd, rawTransaction.Fee, inputString, outputString, RawPath+rawTransaction.OutFile+RawSuffix)
+	if rawTransaction.Mint != nil {
+		mintString := ""
+		for asset, amount := range rawTransaction.Mint {
+			mintString = fmt.Sprintf("%s  --mint=%s %s", mintString, amount, asset)
+		}
+		cmdString = fmt.Sprintf(BuildRawTxWithMintCmd, rawTransaction.Fee, inputString, outputString, mintString, RawPath+rawTransaction.OutFile+RawSuffix)
+	} else {
+		cmdString = fmt.Sprintf(BuildRawTxWithoutMintCmd, rawTransaction.Fee, inputString, outputString, RawPath+rawTransaction.OutFile+RawSuffix)
+	}
 	if _, err := ExecCmd(cmdString, "  "); err != nil {
 		return err
 	}

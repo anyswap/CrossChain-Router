@@ -20,9 +20,9 @@ func GetTransactionByHash(url, txHash string) (*Transaction, error) {
 	var result TransactionResult
 	if err := client.CardanoPostRequest(url, request, &result); err != nil {
 		return nil, err
-	} else {
-		return &result.Transactions[0], nil
 	}
+	return &result.Transactions[0], nil
+
 }
 
 func GetLatestBlockNumber() (uint64, error) {
@@ -40,8 +40,7 @@ func queryTipCmd() (*Tip, error) {
 		var tip Tip
 		if err := json.Unmarshal([]byte(execRes), &tip); err != nil {
 			return nil, err
-		} else {
-			return &tip, nil
 		}
+		return &tip, nil
 	}
 }

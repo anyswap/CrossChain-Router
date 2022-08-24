@@ -12,7 +12,19 @@ import (
 
 // VerifyMsgHash verify msg hash
 func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) (err error) {
-	return nil
+	if rawTransaction, ok := rawTx.(*RawTransaction); !ok {
+		return tokens.ErrWrongRawTx
+	} else {
+		txPath := RawPath + rawTransaction.OutFile + RawSuffix
+		if txHash, err := CalcTxId(txPath); err != nil {
+			return err
+		} else {
+			if txHash != msgHashes[0] {
+				return tokens.ErrMsgHashMismatch
+			}
+			return nil
+		}
+	}
 }
 
 // VerifyTransaction impl

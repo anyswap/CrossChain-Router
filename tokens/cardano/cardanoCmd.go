@@ -18,7 +18,9 @@ var (
 	AssembleCmd              = "cardano-cli transaction assemble --tx-body-file %s --witness-file %s --out-file %s"
 	SubmitCmd                = "cardano-cli transaction submit --tx-file %s " + NetWork
 	FixAdaAmount             = big.NewInt(1500000)
+	DoubleFixAdaAmount       = big.NewInt(3000000)
 	BuildRawTxWithoutMintCmd = "cardano-cli  transaction  build-raw  --fee  %s%s%s  --out-file  %s"
+	BuildRawTxWithMintCmd    = "cardano-cli  transaction  build-raw  --fee  %s%s%s%s  --out-file  %s  --mint-script-file  txDb/policy/policy.script"
 	CalcMinFeeCmd            = "cardano-cli transaction calculate-min-fee --tx-body-file %s --tx-in-count %d --tx-out-count %d --witness-count 1 --protocol-params-file txDb/config/protocol.json " + NetWork
 	QueryUtxoCmd             = "cardano-cli query utxo --address %s " + NetWork
 	CalcTxIdCmd              = "cardano-cli transaction txid --tx-body-file %s"

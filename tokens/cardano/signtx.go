@@ -146,9 +146,8 @@ func (b *Bridge) createWitness(witnessPath, mpcPublicKey string, sig []byte) err
 			defer file.Close()
 			if err := json.NewEncoder(file).Encode(dataMap); err != nil {
 				return err
-			} else {
-				return nil
 			}
+			return nil
 		}
 	}
 }
@@ -157,7 +156,6 @@ func (b *Bridge) signTx(rawTxPath, witnessPath, signedPath string) error {
 	cmdString := fmt.Sprintf(AssembleCmd, rawTxPath, witnessPath, signedPath)
 	if _, err := ExecCmd(cmdString, " "); err != nil {
 		return err
-	} else {
-		return nil
 	}
+	return nil
 }
