@@ -276,6 +276,16 @@ func (b *Bridge) getGasPrice(args *tokens.BuildTxArgs) (price *big.Int, err erro
 		return nil, fmt.Errorf("gas price %v exceeded maximum limit", price)
 	}
 
+	smallestGasPriceUnit := params.GetLocalChainConfig(b.ChainConfig.ChainID).SmallestGasPriceUnit
+	if smallestGasPriceUnit > 0 {
+		smallestUnit := new(big.Int).SetUint64(smallestGasPriceUnit)
+		remainder := new(big.Int).Mod(price, smallestUnit)
+		if remainder.Sign() != 0 {
+			price = new(big.Int).Add(price, smallestUnit)
+			price = new(big.Int).Sub(price, remainder)
+		}
+	}
+
 	return price, nil
 }
 
