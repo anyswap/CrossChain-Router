@@ -1,11 +1,17 @@
 package cardano
 
 import (
+	"fmt"
+
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
 // IsValidAddress check address
 func (b *Bridge) IsValidAddress(addr string) bool {
+	cmdStr := fmt.Sprintf(AddressInfoCmd, addr)
+	if _, err := ExecCmd(cmdStr, " "); err != nil {
+		return false
+	}
 	return true
 }
 

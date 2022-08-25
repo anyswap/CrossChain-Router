@@ -16,6 +16,7 @@ const (
 )
 
 var (
+	AddressInfoCmd           = "cardano-cli address info --address %s"
 	AssembleCmd              = "cardano-cli transaction assemble --tx-body-file %s --witness-file %s --out-file %s"
 	SubmitCmd                = "cardano-cli transaction submit --tx-file %s " + NetWork
 	FixAdaAmount             = big.NewInt(1500000)
