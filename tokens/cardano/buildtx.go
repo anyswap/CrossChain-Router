@@ -55,11 +55,11 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		if _, err := b.initExtra(args); err != nil {
 			return nil, err
 		} else {
-			if utxos, err := b.queryUtxoCmd(routerMPC); err != nil {
+			if utxos, err := b.QueryUtxo(routerMPC); err != nil {
 				return nil, err
 			} else {
 				swapId := fmt.Sprintf("%s-%d", args.SwapID, args.LogIndex)
-				if rawTransaction, err := b.buildTx(swapId, receiver, multichainToken, amount, utxos, tokenCfg.ContractVersion); err != nil {
+				if rawTransaction, err := b.BuildTx(swapId, receiver, multichainToken, amount, utxos); err != nil {
 					return nil, err
 				} else {
 					if err := CreateRawTx(rawTransaction); err != nil {
@@ -100,8 +100,8 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	}
 }
 
-func (b *Bridge) buildTx(swapId, receiver, assetId string, amount *big.Int, utxos map[string]UtxoMap, tokenVersion uint64) (*RawTransaction, error) {
-	log.Infof("build Tx:\nreceiver:%+v\nassetId:%+v\namount:%+v\nutxos:%+v\ntokenVersion:%+v", receiver, assetId, amount, utxos, tokenVersion)
+func (b *Bridge) BuildTx(swapId, receiver, assetId string, amount *big.Int, utxos map[string]UtxoMap) (*RawTransaction, error) {
+	log.Infof("build Tx:\nreceiver:%+v\nassetId:%+v\namount:%+v\nutxos:%+v\n", receiver, assetId, amount, utxos)
 	routerMpc := b.GetRouterContract("")
 	rawTransaction := &RawTransaction{
 		Fee:     "0",
@@ -258,7 +258,7 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 	return receiver, amount, err
 }
 
-func (b *Bridge) queryUtxoCmd(address string) (map[string]UtxoMap, error) {
+func (b *Bridge) QueryUtxo(address string) (map[string]UtxoMap, error) {
 	utxos := make(map[string]UtxoMap)
 	cmdStr := fmt.Sprintf(QueryUtxoCmd, address)
 	if execRes, err := ExecCmd(cmdStr, " "); err != nil {

@@ -75,10 +75,10 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 					return nil, "", errors.New("wrong signature length")
 				}
 
-				if err := b.createWitness(witnessPath, mpcPubkey, sig); err != nil {
+				if err := b.CreateWitness(witnessPath, mpcPubkey, sig); err != nil {
 					return nil, "", err
 				} else {
-					if err := b.signTx(txPath, witnessPath, signedPath); err != nil {
+					if err := b.SignTx(txPath, witnessPath, signedPath); err != nil {
 						return nil, "", err
 					} else {
 						return &SignedTransaction{
@@ -109,10 +109,10 @@ func (b *Bridge) SignTransactionWithPrivateKey(txPath, witnessPath, signedPath, 
 		if sig, err := edPrivKey.Sign(rand.Reader, []byte(txHash)[:], crypto.Hash(0)); err != nil {
 			return nil, "", err
 		} else {
-			if err := b.createWitness(witnessPath, mpcPubkey, sig); err != nil {
+			if err := b.CreateWitness(witnessPath, mpcPubkey, sig); err != nil {
 				return nil, "", err
 			} else {
-				if err := b.signTx(txPath, witnessPath, signedPath); err != nil {
+				if err := b.SignTx(txPath, witnessPath, signedPath); err != nil {
 					return nil, "", err
 				} else {
 					return &SignedTransaction{
@@ -125,7 +125,7 @@ func (b *Bridge) SignTransactionWithPrivateKey(txPath, witnessPath, signedPath, 
 	}
 }
 
-func (b *Bridge) createWitness(witnessPath, mpcPublicKey string, sig []byte) error {
+func (b *Bridge) CreateWitness(witnessPath, mpcPublicKey string, sig []byte) error {
 	var str [2]interface{}
 	str[0] = 0
 	if publicKey, err := hex.DecodeString(mpcPublicKey); err != nil {
@@ -152,7 +152,7 @@ func (b *Bridge) createWitness(witnessPath, mpcPublicKey string, sig []byte) err
 	}
 }
 
-func (b *Bridge) signTx(rawTxPath, witnessPath, signedPath string) error {
+func (b *Bridge) SignTx(rawTxPath, witnessPath, signedPath string) error {
 	cmdString := fmt.Sprintf(AssembleCmd, rawTxPath, witnessPath, signedPath)
 	if _, err := ExecCmd(cmdString, " "); err != nil {
 		return err
