@@ -54,8 +54,8 @@ type Metadata struct {
 }
 
 type MetadataValue struct {
-	Bind      string `json:"bind"`
-	ToChainId uint64 `json:"toChainId"`
+	Bind      string `json:"bind,omitempty"`
+	ToChainId uint64 `json:"toChainId,omitempty"`
 }
 
 type UtxoMap struct {
