@@ -619,14 +619,14 @@ func (b *Bridge) checkTokenReceived(swapInfo *tokens.SwapTxInfo, receipt *types.
 	}
 	if recvAmount == nil {
 		log.Warn("check token received found none", "swapID", swapInfo.Hash)
-		return fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, "no underlying token received")
+		return fmt.Errorf("%w %v", tokens.ErrVerifyTxUnsafe, "no underlying token received")
 	}
 	// at least receive 80% (consider fees and deflation burning)
 	minRecvAmount := new(big.Int).Mul(swapInfo.Value, big.NewInt(4))
 	minRecvAmount.Div(minRecvAmount, big.NewInt(5))
 	if recvAmount.Cmp(minRecvAmount) < 0 {
 		log.Warn("check token received failed", "isBurn", isBurn, "received", recvAmount, "swapValue", swapInfo.Value, "minRecvAmount", minRecvAmount, "swapID", swapInfo.Hash)
-		return fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, "check underlying token received failed")
+		return fmt.Errorf("%w %v", tokens.ErrVerifyTxUnsafe, "check underlying token received failed")
 	}
 	log.Info("check token received success", "isBurn", isBurn, "received", recvAmount, "swapValue", swapInfo.Value, "swapID", swapInfo.Hash)
 	return nil
@@ -677,7 +677,7 @@ func (b *Bridge) checkTokenBalance(swapInfo *tokens.SwapTxInfo, receipt *types.R
 		actRecvAmount := new(big.Int).Sub(postBal, prevBal)
 		if minRecvAmount.Cmp(actRecvAmount) > 0 {
 			log.Warn("check token balance failed", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "prevBal", prevBal, "postBal", postBal, "minRecvAmount", minRecvAmount, "actRecvAmount", actRecvAmount, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID)
-			return fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, "check underlying token balance failed")
+			return fmt.Errorf("%w %v", tokens.ErrVerifyTxUnsafe, "check token balance failed")
 		}
 	} else {
 		prevBal, err := b.GetErc20TotalSupplyAtHeight(underlyingAddr, fmt.Sprintf("0x%x", blockHeight-1))
@@ -693,7 +693,7 @@ func (b *Bridge) checkTokenBalance(swapInfo *tokens.SwapTxInfo, receipt *types.R
 		actBurnAmount := new(big.Int).Sub(prevBal, postBal)
 		if minRecvAmount.Cmp(actBurnAmount) > 0 {
 			log.Warn("check token balance failed", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "prevBal", prevBal, "postBal", postBal, "minRecvAmount", minRecvAmount, "actBurnAmount", actBurnAmount, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID)
-			return fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, "check token total supply failed")
+			return fmt.Errorf("%w %v", tokens.ErrVerifyTxUnsafe, "check token balance failed")
 		}
 	}
 

@@ -3,6 +3,7 @@ package worker
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
@@ -22,6 +23,8 @@ var (
 
 	cachedVerifyingSwaps    = mapset.NewSet()
 	maxCachedVerifyingSwaps = 100
+
+	intervalToVerifyUnsafeTx = int64(43200)
 )
 
 // StartVerifyJob verify job
@@ -76,6 +79,12 @@ func startVerifyProducer() {
 
 			if cachedVerifyingSwaps.Contains(swap.Key) {
 				logWorkerTrace("verify", "ignore swap in cache", "key", swap.Key)
+				continue
+			}
+
+			if strings.HasPrefix(swap.Memo, tokens.ErrVerifyTxUnsafe.Error()) &&
+				swap.Timestamp+intervalToVerifyUnsafeTx > now() {
+				logWorkerTrace("verify", "ignore swap with unsafe status", "key", swap.Key)
 				continue
 			}
 
