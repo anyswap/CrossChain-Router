@@ -3,7 +3,6 @@ package worker
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
@@ -23,8 +22,6 @@ var (
 
 	cachedVerifyingSwaps    = mapset.NewSet()
 	maxCachedVerifyingSwaps = 100
-
-	intervalToVerifyUnsafeTx = int64(43200)
 )
 
 // StartVerifyJob verify job
@@ -79,12 +76,6 @@ func startVerifyProducer() {
 
 			if cachedVerifyingSwaps.Contains(swap.Key) {
 				logWorkerTrace("verify", "ignore swap in cache", "key", swap.Key)
-				continue
-			}
-
-			if strings.HasPrefix(swap.Memo, tokens.ErrVerifyTxUnsafe.Error()) &&
-				swap.Timestamp+intervalToVerifyUnsafeTx > now() {
-				logWorkerTrace("verify", "ignore swap with unsafe status", "key", swap.Key)
 				continue
 			}
 
@@ -252,6 +243,8 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.MissTokenConfig, now(), err.Error())
 	case errors.Is(err, tokens.ErrNoUnderlyingToken):
 		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.NoUnderlyingToken, now(), err.Error())
+	case errors.Is(err, tokens.ErrVerifyTxUnsafe):
+		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxMaybeUnsafe, now(), err.Error())
 	default:
 		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxVerifyFailed, now(), err.Error())
 	}
