@@ -90,7 +90,7 @@ func PublicKeyToAddress(pubKeyHex string) (string, error) {
 		pubKey = pubKey[2:]
 	}
 	if !common.IsHex(pubKey) {
-		return "", fmt.Errorf("pubKeyHex format error : %v", pubKeyHex)
+		return "", fmt.Errorf("pubKeyHex format error : %v", pubKey)
 	}
 	return NewAccountFromPubkey(pubKey).GetHexAddress(), nil
 }

@@ -110,7 +110,7 @@ func Swapin(alice, bob *aptos.Account, restClient *aptos.RestClient, amount uint
 		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
 		Payload: &aptos.TransactionPayload{
 			Type:          aptos.SCRIPT_FUNCTION_PAYLOAD,
-			Function:      aptos.GetRouterFunctionId(alice.GetHexAddress(), aptos.CONTRACT_NAME, aptos.CONTRACT_FUNC_SWAPIN),
+			Function:      aptos.GetRouterFunctionId(alice.GetHexAddress(), aptos.CONTRACT_NAME_ROUTER, aptos.CONTRACT_FUNC_SWAPIN),
 			TypeArguments: []string{underlyingCoinStruct, poolcoinStuct},
 			Arguments:     []string{bob.GetHexAddress(), strconv.FormatUint(amount, 10), "0x1234567890123456789012345678901234567890", "5777"},
 		},
@@ -163,7 +163,7 @@ func Swapout(alice, bob *aptos.Account, restClient *aptos.RestClient, amount uin
 		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
 		Payload: &aptos.TransactionPayload{
 			Type:          aptos.SCRIPT_FUNCTION_PAYLOAD,
-			Function:      aptos.GetRouterFunctionId(alice.GetHexAddress(), aptos.CONTRACT_NAME, aptos.CONTRACT_FUNC_SWAPOUT),
+			Function:      aptos.GetRouterFunctionId(alice.GetHexAddress(), aptos.CONTRACT_NAME_ROUTER, aptos.CONTRACT_FUNC_SWAPOUT),
 			TypeArguments: []string{poolcoinStuct},
 			Arguments:     []string{strconv.FormatUint(amount, 10), "0xC5107334A3Ae117E3DaD3570b419618C905Aa5eC", "5777"},
 		},

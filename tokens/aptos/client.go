@@ -18,12 +18,17 @@ var (
 	SimulateTranscationPath = API_VERSION + "transactions/simulate"
 
 	SCRIPT_FUNCTION_PAYLOAD = "entry_function_payload"
+	MODULE_PAYLOAD          = "module_bundle_payload"
 
-	SPLIT_SYMBOL  = "::"
-	CONTRACT_NAME = "Router"
+	SPLIT_SYMBOL         = "::"
+	CONTRACT_NAME_ROUTER = "Router"
+	CONTRACT_NAME_POOL   = "Pool"
 
-	CONTRACT_FUNC_SWAPIN  = "swapin"
-	CONTRACT_FUNC_SWAPOUT = "swapout"
+	CONTRACT_FUNC_SWAPIN           = "swapin"
+	CONTRACT_FUNC_SWAPOUT          = "swapout"
+	CONTRACT_FUNC_REGISTER_COIN    = "register_coin"
+	CONTRACT_FUNC_SET_COIN         = "set_coin"
+	CONTRACT_FUNC_SET_POOLCOIN_CAP = "set_poolcoin_cap"
 
 	NATIVE_COIN = "0x1::aptos_coin::AptosCoin"
 
@@ -107,19 +112,19 @@ func (c *RestClient) GetTransactionsNotPending(txHash string) (*TransactionInfo,
 	return &resp, err
 }
 
-func (c *RestClient) GetSigningMessage(request *Transaction) (*string, error) {
+func (c *RestClient) GetSigningMessage(request interface{}) (*string, error) {
 	resp := ""
 	err := c.PostRequest(&resp, GetSigningMessagePath, request)
 	return &resp, err
 }
 
-func (c *RestClient) SubmitTranscation(request *Transaction) (*TransactionInfo, error) {
+func (c *RestClient) SubmitTranscation(request interface{}) (*TransactionInfo, error) {
 	resp := TransactionInfo{}
 	err := c.PostRequest(&resp, SubmitTranscationPath, request)
 	return &resp, err
 }
 
-func (c *RestClient) SimulateTranscation(request *Transaction) (*TransactionInfo, error) {
+func (c *RestClient) SimulateTranscation(request interface{}) (*TransactionInfo, error) {
 	resp := TransactionInfo{}
 	err := c.PostRequest(&resp, SimulateTranscationPath, request)
 	return &resp, err

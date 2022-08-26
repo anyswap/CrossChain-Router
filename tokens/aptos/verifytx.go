@@ -103,7 +103,7 @@ func (b *Bridge) verifySwapoutEvents(swapInfo *tokens.SwapTxInfo, txInfo *Transa
 	}
 	var swapOutInfo *Event
 	for _, event := range txInfo.Events {
-		if common.IsEqualIgnoreCase(event.Type, GetRouterFunctionId(routerProgramID, CONTRACT_NAME, "SwapOutEvent")) {
+		if common.IsEqualIgnoreCase(event.Type, GetRouterFunctionId(routerProgramID, CONTRACT_NAME_ROUTER, "SwapOutEvent")) {
 			swapOutInfo = &event
 		}
 	}
