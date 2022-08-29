@@ -110,3 +110,45 @@ type ModulePayload struct {
 type ModuleDefine struct {
 	Bytecode string `json:"bytecode"`
 }
+
+type EventData struct {
+	Version         string `json:"version"`
+	Key             string `json:"key"`
+	Sequence_number string `json:"sequence_number"`
+	Type            string `json:"type"`
+}
+
+type CoinEvent struct {
+	EventData
+	Data CoinEventData `json:"data"`
+}
+
+type CoinEventData struct {
+	Amount string `json:"amount"`
+}
+
+type SwapinEvent struct {
+	EventData
+	Data SwapinData `json:"data"`
+}
+
+type SwapinData struct {
+	TxHash      string `json:"tx_hash"`
+	Token       string `json:"token"`
+	To          string `json:"to"`
+	Amount      uint64 `json:"amount"`
+	FromChainId uint64 `json:"from_chain_id"`
+}
+
+type SwapoutEvent struct {
+	EventData
+	Data SwapoutData `json:"data"`
+}
+
+type SwapoutData struct {
+	Token     string `json:"token"`
+	From      string `json:"from"`
+	To        string `json:"to"`
+	Amount    uint64 `json:"amount"`
+	ToChainId uint64 `json:"to_chain_id"`
+}

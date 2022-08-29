@@ -3,19 +3,21 @@ package aptos
 import (
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 )
 
 var (
-	API_VERSION             = "/v1/"
-	AccountPath             = API_VERSION + "accounts/{address}"
-	AccountResourcePath     = API_VERSION + "accounts/{address}/resource/{resource_type}"
-	GetTransactionsPath     = API_VERSION + "transactions/by_hash/{txn_hash}"
-	GetSigningMessagePath   = API_VERSION + "transactions/encode_submission"
-	SubmitTranscationPath   = API_VERSION + "transactions"
-	SimulateTranscationPath = API_VERSION + "transactions/simulate"
+	API_VERSION                = "/v1/"
+	AccountPath                = API_VERSION + "accounts/{address}"
+	AccountResourcePath        = API_VERSION + "accounts/{address}/resource/{resource_type}"
+	GetTransactionsPath        = API_VERSION + "transactions/by_hash/{txn_hash}"
+	GetSigningMessagePath      = API_VERSION + "transactions/encode_submission"
+	SubmitTranscationPath      = API_VERSION + "transactions"
+	SimulateTranscationPath    = API_VERSION + "transactions/simulate"
+	GetEventsByEventHandlePath = API_VERSION + "accounts/{address}/events/{event_handle}/{field_name}"
 
 	SCRIPT_FUNCTION_PAYLOAD = "entry_function_payload"
 	MODULE_PAYLOAD          = "module_bundle_payload"
@@ -128,4 +130,14 @@ func (c *RestClient) SimulateTranscation(request interface{}) (*TransactionInfo,
 	resp := TransactionInfo{}
 	err := c.PostRequest(&resp, SimulateTranscationPath, request)
 	return &resp, err
+}
+
+func (c *RestClient) GetEventsByEventHandle(request interface{}, target, struct_resource, field_name string, start, limit int) error {
+	param := map[string]string{
+		"address":      target,
+		"event_handle": struct_resource,
+		"field_name":   field_name,
+	}
+	err := c.GetRequest(request, GetEventsByEventHandlePath+"?start="+strconv.Itoa(start)+"&limit="+strconv.Itoa(limit), param)
+	return err
 }
