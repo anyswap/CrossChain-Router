@@ -13,9 +13,23 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
+var (
+	pendingHash = ""
+)
+
 // BuildRawTransaction build raw tx
 //nolint:funlen,gocyclo // ok
 func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{}, err error) {
+	if pendingHash != "" {
+		if res, err := b.GetTransactionByHash(pendingHash); err != nil {
+			return nil, err
+		} else {
+			if err := b.checkTxStatus(res, true); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	if !params.IsTestMode && args.ToChainID.String() != b.ChainConfig.ChainID {
 		return nil, tokens.ErrToChainIDMismatch
 	}

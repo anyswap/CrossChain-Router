@@ -49,6 +49,7 @@ cardano-cli  query protocol-parameters \
 --out-file protocol.json
 
 7 mint native token
+need register metadata to repo: https://github.com/cardano-foundation/cardano-token-registry
 	7.1 create policy.script(cp script file to ./txDb/policy)
 	touch policy/policy.script && echo "{" > policy/policy.script 
 	echo "  \"keyHash\": \"$(cardano-cli address key-hash --payment-verification-key-file 		mpc.vkey)\"," >> policy/policy.script 
