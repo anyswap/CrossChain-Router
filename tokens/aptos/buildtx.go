@@ -197,3 +197,99 @@ func (b *Bridge) BuildSetPoolcoinCapTransaction(address, coin string) (*Transact
 	}
 	return tx, nil
 }
+
+func (b *Bridge) BuildManagedCoinInitializeTransaction(address, coin, poolCoinName, poolCoinSymbol string, decimals int, monitor_supply bool) (*Transaction, error) {
+	account, err := b.Client.GetAccount(address)
+	if err != nil {
+		return nil, err
+	}
+
+	// 10 min
+	timeout := time.Now().Unix() + timeout_seconds
+	tx := &Transaction{
+		Sender:                  address,
+		SequenceNumber:          account.SequenceNumber,
+		MaxGasAmount:            maxFee,
+		GasUnitPrice:            defaultGasUnitPrice,
+		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
+		Payload: &TransactionPayload{
+			Type:          SCRIPT_FUNCTION_PAYLOAD,
+			Function:      "0x1::managed_coin::initialize",
+			TypeArguments: []string{coin},
+			Arguments:     []string{poolCoinName, poolCoinSymbol, strconv.Itoa(decimals), strconv.FormatBool(monitor_supply)},
+		},
+	}
+	return tx, nil
+}
+
+func (b *Bridge) BuildRegisterCoinTransaction(address, coin string) (*Transaction, error) {
+	account, err := b.Client.GetAccount(address)
+	if err != nil {
+		return nil, err
+	}
+
+	// 10 min
+	timeout := time.Now().Unix() + timeout_seconds
+	tx := &Transaction{
+		Sender:                  address,
+		SequenceNumber:          account.SequenceNumber,
+		MaxGasAmount:            maxFee,
+		GasUnitPrice:            defaultGasUnitPrice,
+		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
+		Payload: &TransactionPayload{
+			Type:          SCRIPT_FUNCTION_PAYLOAD,
+			Function:      "0x1::coins::register",
+			TypeArguments: []string{coin},
+			Arguments:     []string{},
+		},
+	}
+	return tx, nil
+}
+
+func (b *Bridge) BuildMintCoinTransaction(address, coin string, amount uint64) (*Transaction, error) {
+	account, err := b.Client.GetAccount(address)
+	if err != nil {
+		return nil, err
+	}
+
+	// 10 min
+	timeout := time.Now().Unix() + timeout_seconds
+	tx := &Transaction{
+		Sender:                  address,
+		SequenceNumber:          account.SequenceNumber,
+		MaxGasAmount:            maxFee,
+		GasUnitPrice:            defaultGasUnitPrice,
+		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
+		Payload: &TransactionPayload{
+			Type:          SCRIPT_FUNCTION_PAYLOAD,
+			Function:      "0x1::managed_coin::mint",
+			TypeArguments: []string{coin},
+			Arguments:     []string{address, strconv.FormatUint(amount, 10)},
+		},
+	}
+	return tx, nil
+}
+
+func (b *Bridge) BuildSwapoutTransaction(sender, coin, toAddress, tochainId string, amount uint64) (*Transaction, error) {
+	account, err := b.Client.GetAccount(sender)
+	if err != nil {
+		return nil, err
+	}
+
+	// 10 min
+	timeout := time.Now().Unix() + 600
+	tx := &Transaction{
+		Sender:                  sender,
+		SequenceNumber:          account.SequenceNumber,
+		MaxGasAmount:            "1000",
+		GasUnitPrice:            "1",
+		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
+		Payload: &TransactionPayload{
+			Type:          SCRIPT_FUNCTION_PAYLOAD,
+			Function:      GetRouterFunctionId(sender, CONTRACT_NAME_ROUTER, CONTRACT_FUNC_SWAPOUT),
+			TypeArguments: []string{coin},
+			Arguments:     []string{strconv.FormatUint(amount, 10), toAddress, tochainId},
+		},
+	}
+	return tx, nil
+}
