@@ -52,7 +52,7 @@ func main() {
 	} else {
 		account = aptos.NewAccountFromPubkey(paramPublicKey)
 	}
-	tx, err := bridge.BuildMintCoinTransaction(toAddress, coin, amount)
+	tx, err := bridge.BuildMintCoinTransaction(account.GetHexAddress(), toAddress, coin, amount)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
@@ -101,7 +101,7 @@ func main() {
 	if err != nil {
 		log.Fatal("SignString", "err", err)
 	}
-	log.Info("SubmitTranscation", "txHash", txInfo.Hash, "Success", txInfo.Success, "Type", txInfo.Type)
+	log.Info("SubmitTranscation", "txHash", txInfo.Hash, "Success", txInfo.Success, "version", txInfo.Version, "vm_status", txInfo.VmStatus)
 }
 
 func initAll() {

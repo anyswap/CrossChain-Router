@@ -18,12 +18,12 @@ func (b *Bridge) verifyTransactionWithArgs(tx *Transaction, args *tokens.BuildTx
 
 	// receiver: address, amount: u64, _fromEvent: string, _fromChainID: u64
 
-	fromChainID, err := strconv.ParseUint(swapin[3], 10, 64)
+	fromChainID, err := strconv.ParseUint(swapin[3].(string), 10, 64)
 	if err != nil || fromChainID != args.FromChainID.Uint64() {
 		return fmt.Errorf("[sign] verify FromChainID failed")
 	}
 
-	amount, err := strconv.ParseUint(swapin[1], 10, 64)
+	amount, err := strconv.ParseUint(swapin[1].(string), 10, 64)
 	if err != nil || amount != args.OriginValue.Uint64() {
 		return fmt.Errorf("[sign] verify Amount failed swapin.Amount %v args.OriginValue %v", amount, args.OriginValue.Uint64())
 	}

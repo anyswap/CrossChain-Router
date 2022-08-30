@@ -61,7 +61,7 @@ func Transfer(alice, bob *aptos.Account, restClient *aptos.RestClient, amount ui
 			Type:          aptos.SCRIPT_FUNCTION_PAYLOAD,
 			Function:      "0x1::coin::transfer",
 			TypeArguments: []string{aptos.NATIVE_COIN},
-			Arguments:     []string{bob.GetHexAddress(), strconv.FormatUint(amount, 10)},
+			Arguments:     []interface{}{bob.GetHexAddress(), strconv.FormatUint(amount, 10)},
 		},
 	}
 	resp4, err := restClient.GetSigningMessage(&requestBody)
@@ -112,7 +112,7 @@ func Swapin(alice, bob *aptos.Account, restClient *aptos.RestClient, amount uint
 			Type:          aptos.SCRIPT_FUNCTION_PAYLOAD,
 			Function:      aptos.GetRouterFunctionId(alice.GetHexAddress(), aptos.CONTRACT_NAME_ROUTER, aptos.CONTRACT_FUNC_SWAPIN),
 			TypeArguments: []string{underlyingCoinStruct, poolcoinStuct},
-			Arguments:     []string{bob.GetHexAddress(), strconv.FormatUint(amount, 10), "0x1234567890123456789012345678901234567890", "5777"},
+			Arguments:     []interface{}{bob.GetHexAddress(), strconv.FormatUint(amount, 10), "0x1234567890123456789012345678901234567890", "5777"},
 		},
 	}
 	resp4, err := restClient.GetSigningMessage(&requestBody)
@@ -165,7 +165,7 @@ func Swapout(alice, bob *aptos.Account, restClient *aptos.RestClient, amount uin
 			Type:          aptos.SCRIPT_FUNCTION_PAYLOAD,
 			Function:      aptos.GetRouterFunctionId(alice.GetHexAddress(), aptos.CONTRACT_NAME_ROUTER, aptos.CONTRACT_FUNC_SWAPOUT),
 			TypeArguments: []string{poolcoinStuct},
-			Arguments:     []string{strconv.FormatUint(amount, 10), "0xC5107334A3Ae117E3DaD3570b419618C905Aa5eC", "5777"},
+			Arguments:     []interface{}{strconv.FormatUint(amount, 10), "0xC5107334A3Ae117E3DaD3570b419618C905Aa5eC", "5777"},
 		},
 	}
 	resp4, err := restClient.GetSigningMessage(&requestBody)

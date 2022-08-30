@@ -78,12 +78,11 @@ type Transaction struct {
 	Payload                 *TransactionPayload   `json:"payload"`
 	Signature               *TransactionSignature `json:"signature,omitempty"`
 }
-
 type TransactionPayload struct {
-	Type          string   `json:"type"`
-	Function      string   `json:"function,omitempty"`
-	TypeArguments []string `json:"type_arguments,omitempty"`
-	Arguments     []string `json:"arguments,omitempty"`
+	Type          string        `json:"type"`
+	Function      string        `json:"function"`
+	TypeArguments []string      `json:"type_arguments"`
+	Arguments     []interface{} `json:"arguments"`
 }
 type TransactionSignature struct {
 	Type      string `json:"type,omitempty"`
@@ -136,8 +135,8 @@ type SwapinData struct {
 	TxHash      string `json:"tx_hash"`
 	Token       string `json:"token"`
 	To          string `json:"to"`
-	Amount      uint64 `json:"amount"`
-	FromChainId uint64 `json:"from_chain_id"`
+	Amount      string `json:"amount"`
+	FromChainId string `json:"from_chain_id"`
 }
 
 type SwapoutEvent struct {
@@ -149,6 +148,6 @@ type SwapoutData struct {
 	Token     string `json:"token"`
 	From      string `json:"from"`
 	To        string `json:"to"`
-	Amount    uint64 `json:"amount"`
-	ToChainId uint64 `json:"to_chain_id"`
+	Amount    string `json:"amount"`
+	ToChainId string `json:"to_chain_id"`
 }

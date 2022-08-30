@@ -24,7 +24,7 @@ var (
 	coin           string
 	poolCoinName   string
 	poolCoinSymbol string
-	decimals       int
+	decimals       uint
 	monitor_supply bool
 
 	mpcConfig *mpc.Config
@@ -41,7 +41,7 @@ func initFlags() {
 
 	flag.StringVar(&poolCoinName, "name", "", "anycoin name")
 	flag.StringVar(&poolCoinSymbol, "symbol", "", "anycoin symbol")
-	flag.IntVar(&decimals, "decimals", 6, "anycoin decimals")
+	flag.UintVar(&decimals, "decimals", 6, "anycoin decimals")
 	flag.BoolVar(&monitor_supply, "supply", false, "anycoin decimals")
 
 	flag.Parse()
@@ -57,7 +57,7 @@ func main() {
 	} else {
 		account = aptos.NewAccountFromPubkey(paramPublicKey)
 	}
-	tx, err := bridge.BuildManagedCoinInitializeTransaction(account.GetHexAddress(), coin, poolCoinName, poolCoinSymbol, decimals, monitor_supply)
+	tx, err := bridge.BuildManagedCoinInitializeTransaction(account.GetHexAddress(), coin, poolCoinName, poolCoinSymbol, uint8(decimals), monitor_supply)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
@@ -106,7 +106,7 @@ func main() {
 	if err != nil {
 		log.Fatal("SignString", "err", err)
 	}
-	log.Info("SubmitTranscation", "txHash", txInfo.Hash, "Success", txInfo.Success, "Type", txInfo.Type)
+	log.Info("SubmitTranscation", "txHash", txInfo.Hash, "Success", txInfo.Success, "version", txInfo.Version, "vm_status", txInfo.VmStatus)
 }
 
 func initAll() {

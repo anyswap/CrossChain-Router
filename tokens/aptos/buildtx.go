@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
@@ -98,7 +99,7 @@ func (b *Bridge) BuildSwapinTransferTransaction(args *tokens.BuildTxArgs, tokenC
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
 			Function:      GetRouterFunctionId(routerInfo.RouterMPC, CONTRACT_NAME_ROUTER, CONTRACT_FUNC_SWAPIN),
 			TypeArguments: []string{tokenCfg.ContractAddress, tokenCfg.Extra},
-			Arguments:     []string{receiver, strconv.FormatUint(amount, 10), args.SwapID, args.FromChainID.String()},
+			Arguments:     []interface{}{receiver, strconv.FormatUint(amount, 10), args.SwapID, args.FromChainID.String()},
 		},
 	}
 	return tx, nil
@@ -146,7 +147,7 @@ func (b *Bridge) BuildRegisterPoolCoinTransaction(address, underlyingCoin, poolC
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
 			Function:      GetRouterFunctionId(address, CONTRACT_NAME_POOL, CONTRACT_FUNC_REGISTER_COIN),
 			TypeArguments: []string{underlyingCoin, poolCoin},
-			Arguments:     []string{poolCoinName, poolCoinSymbol, strconv.Itoa(decimals)},
+			Arguments:     []interface{}{poolCoinName, poolCoinSymbol, strconv.Itoa(decimals)},
 		},
 	}
 	return tx, nil
@@ -169,7 +170,7 @@ func (b *Bridge) BuildSetCoinTransaction(address, coin string, coinType int) (*T
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
 			Function:      GetRouterFunctionId(address, CONTRACT_NAME_ROUTER, CONTRACT_FUNC_SET_COIN),
 			TypeArguments: []string{coin},
-			Arguments:     []string{strconv.Itoa(coinType)},
+			Arguments:     []interface{}{strconv.Itoa(coinType)},
 		},
 	}
 	return tx, nil
@@ -192,18 +193,17 @@ func (b *Bridge) BuildSetPoolcoinCapTransaction(address, coin string) (*Transact
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
 			Function:      GetRouterFunctionId(address, CONTRACT_NAME_ROUTER, CONTRACT_FUNC_SET_POOLCOIN_CAP),
 			TypeArguments: []string{coin},
-			Arguments:     []string{},
+			Arguments:     []interface{}{},
 		},
 	}
 	return tx, nil
 }
 
-func (b *Bridge) BuildManagedCoinInitializeTransaction(address, coin, poolCoinName, poolCoinSymbol string, decimals int, monitor_supply bool) (*Transaction, error) {
+func (b *Bridge) BuildManagedCoinInitializeTransaction(address, coin, poolCoinName, poolCoinSymbol string, decimals uint8, monitor_supply bool) (*Transaction, error) {
 	account, err := b.Client.GetAccount(address)
 	if err != nil {
 		return nil, err
 	}
-
 	// 10 min
 	timeout := time.Now().Unix() + timeout_seconds
 	tx := &Transaction{
@@ -216,9 +216,10 @@ func (b *Bridge) BuildManagedCoinInitializeTransaction(address, coin, poolCoinNa
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
 			Function:      "0x1::managed_coin::initialize",
 			TypeArguments: []string{coin},
-			Arguments:     []string{poolCoinName, poolCoinSymbol, strconv.Itoa(decimals), strconv.FormatBool(monitor_supply)},
+			Arguments:     []interface{}{common.ToHex([]byte(poolCoinName)), common.ToHex([]byte(poolCoinSymbol)), decimals, false},
 		},
 	}
+	// common.ToHex([]byte{byte(decimals)})
 	return tx, nil
 }
 
@@ -238,16 +239,16 @@ func (b *Bridge) BuildRegisterCoinTransaction(address, coin string) (*Transactio
 		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
 		Payload: &TransactionPayload{
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
-			Function:      "0x1::coins::register",
+			Function:      "0x1::managed_coin::register",
 			TypeArguments: []string{coin},
-			Arguments:     []string{},
+			Arguments:     []interface{}{},
 		},
 	}
 	return tx, nil
 }
 
-func (b *Bridge) BuildMintCoinTransaction(address, coin string, amount uint64) (*Transaction, error) {
-	account, err := b.Client.GetAccount(address)
+func (b *Bridge) BuildMintCoinTransaction(minter, toaddress, coin string, amount uint64) (*Transaction, error) {
+	account, err := b.Client.GetAccount(minter)
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +256,7 @@ func (b *Bridge) BuildMintCoinTransaction(address, coin string, amount uint64) (
 	// 10 min
 	timeout := time.Now().Unix() + timeout_seconds
 	tx := &Transaction{
-		Sender:                  address,
+		Sender:                  minter,
 		SequenceNumber:          account.SequenceNumber,
 		MaxGasAmount:            maxFee,
 		GasUnitPrice:            defaultGasUnitPrice,
@@ -264,7 +265,7 @@ func (b *Bridge) BuildMintCoinTransaction(address, coin string, amount uint64) (
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
 			Function:      "0x1::managed_coin::mint",
 			TypeArguments: []string{coin},
-			Arguments:     []string{address, strconv.FormatUint(amount, 10)},
+			Arguments:     []interface{}{toaddress, strconv.FormatUint(amount, 10)},
 		},
 	}
 	return tx, nil
@@ -288,7 +289,7 @@ func (b *Bridge) BuildSwapoutTransaction(sender, coin, toAddress, tochainId stri
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
 			Function:      GetRouterFunctionId(sender, CONTRACT_NAME_ROUTER, CONTRACT_FUNC_SWAPOUT),
 			TypeArguments: []string{coin},
-			Arguments:     []string{strconv.FormatUint(amount, 10), toAddress, tochainId},
+			Arguments:     []interface{}{strconv.FormatUint(amount, 10), toAddress, tochainId},
 		},
 	}
 	return tx, nil
