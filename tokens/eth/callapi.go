@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"runtime"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -514,6 +515,7 @@ func (b *Bridge) CallContract(contract string, data hexutil.Bytes, blockNumber s
 	gateway := b.GatewayConfig
 	var result string
 	var err error
+LOOP:
 	for _, apiAddress := range gateway.APIAddress {
 		url := apiAddress
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_call", reqArgs, blockNumber)
@@ -521,6 +523,9 @@ func (b *Bridge) CallContract(contract string, data hexutil.Bytes, blockNumber s
 			for i := 0; i < router.RetryRPCCountInInit; i++ {
 				if err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_call", reqArgs, blockNumber); err == nil {
 					return result, nil
+				}
+				if strings.Contains(err.Error(), "execution reverted") {
+					break LOOP
 				}
 				time.Sleep(router.RetryRPCIntervalInInit)
 			}
