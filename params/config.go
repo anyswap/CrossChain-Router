@@ -15,6 +15,9 @@ const (
 	RouterSwapPrefixID = "routerswap"
 )
 
+// CustomizeConfigFunc customize config items
+var CustomizeConfigFunc func(*RouterConfig)
+
 // IsTestMode used for testing
 var IsTestMode bool
 
@@ -1040,6 +1043,10 @@ func LoadRouterConfig(configFile string, isServer, check bool) *RouterConfig {
 		config.Oracle = nil
 	}
 
+	if CustomizeConfigFunc != nil {
+		CustomizeConfigFunc(config)
+	}
+
 	routerConfig = config
 
 	var bs []byte
@@ -1077,6 +1084,10 @@ func ReloadRouterConfig() {
 		config.Server = nil
 	} else {
 		config.Oracle = nil
+	}
+
+	if CustomizeConfigFunc != nil {
+		CustomizeConfigFunc(config)
 	}
 
 	if err := config.CheckConfig(isServer); err != nil {
