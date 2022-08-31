@@ -53,7 +53,11 @@ underlying Coin set 1
 go run tokens/aptos/tools/configCoin/main.go -h
 ```
 
-
+### g. set router status
+router status `[1]:open [0]:close`
+```
+go run tokens/aptos/tools/setStatus/main.go -h
+```
 
 
 ## 2. Setup CrossChain-Router Enviroment

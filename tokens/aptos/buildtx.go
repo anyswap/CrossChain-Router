@@ -130,7 +130,7 @@ func (b *Bridge) BuildDeployModuleTransaction(address, moduleHex string) (*Modul
 	return tx, nil
 }
 
-func (b *Bridge) BuildRegisterPoolCoinTransaction(address, underlyingCoin, poolCoin, poolCoinName, poolCoinSymbol string, decimals int) (*Transaction, error) {
+func (b *Bridge) BuildRegisterPoolCoinTransaction(address, underlyingCoin, poolCoin, poolCoinName, poolCoinSymbol string, decimals uint8) (*Transaction, error) {
 	account, err := b.Client.GetAccount(address)
 	if err != nil {
 		return nil, err
@@ -147,13 +147,13 @@ func (b *Bridge) BuildRegisterPoolCoinTransaction(address, underlyingCoin, poolC
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
 			Function:      GetRouterFunctionId(address, CONTRACT_NAME_POOL, CONTRACT_FUNC_REGISTER_COIN),
 			TypeArguments: []string{underlyingCoin, poolCoin},
-			Arguments:     []interface{}{poolCoinName, poolCoinSymbol, strconv.Itoa(decimals)},
+			Arguments:     []interface{}{common.ToHex([]byte(poolCoinName)), common.ToHex([]byte(poolCoinSymbol)), decimals},
 		},
 	}
 	return tx, nil
 }
 
-func (b *Bridge) BuildSetCoinTransaction(address, coin string, coinType int) (*Transaction, error) {
+func (b *Bridge) BuildSetCoinTransaction(address, coin string, coinType uint8) (*Transaction, error) {
 	account, err := b.Client.GetAccount(address)
 	if err != nil {
 		return nil, err
@@ -170,12 +170,34 @@ func (b *Bridge) BuildSetCoinTransaction(address, coin string, coinType int) (*T
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
 			Function:      GetRouterFunctionId(address, CONTRACT_NAME_ROUTER, CONTRACT_FUNC_SET_COIN),
 			TypeArguments: []string{coin},
-			Arguments:     []interface{}{strconv.Itoa(coinType)},
+			Arguments:     []interface{}{coinType},
 		},
 	}
 	return tx, nil
 }
 
+func (b *Bridge) BuildSetStatusTransaction(address string, status uint8) (*Transaction, error) {
+	account, err := b.Client.GetAccount(address)
+	if err != nil {
+		return nil, err
+	}
+	// 10 min
+	timeout := time.Now().Unix() + timeout_seconds
+	tx := &Transaction{
+		Sender:                  address,
+		SequenceNumber:          account.SequenceNumber,
+		MaxGasAmount:            maxFee,
+		GasUnitPrice:            defaultGasUnitPrice,
+		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
+		Payload: &TransactionPayload{
+			Type:          SCRIPT_FUNCTION_PAYLOAD,
+			Function:      GetRouterFunctionId(address, CONTRACT_NAME_ROUTER, CONTRACT_FUNC_SET_COIN),
+			TypeArguments: []string{},
+			Arguments:     []interface{}{status},
+		},
+	}
+	return tx, nil
+}
 func (b *Bridge) BuildSetPoolcoinCapTransaction(address, coin string) (*Transaction, error) {
 	account, err := b.Client.GetAccount(address)
 	if err != nil {

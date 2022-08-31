@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mpc"
@@ -35,7 +36,7 @@ func initFlags() {
 	flag.StringVar(&paramPriKey, "priKey", "", "signer priKey key")
 
 	flag.StringVar(&coin, "coin", "", "anycoin name")
-	flag.IntVar(&coinType, "type", 6, "anycoin decimals")
+	flag.IntVar(&coinType, "type", 0, "anycoin type")
 
 	flag.Parse()
 }
@@ -50,7 +51,7 @@ func main() {
 	} else {
 		account = aptos.NewAccountFromPubkey(paramPublicKey)
 	}
-	tx, err := bridge.BuildSetCoinTransaction(account.GetHexAddress(), coin, coinType)
+	tx, err := bridge.BuildSetCoinTransaction(account.GetHexAddress(), coin, uint8(coinType))
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
@@ -99,7 +100,9 @@ func main() {
 	if err != nil {
 		log.Fatal("SignString", "err", err)
 	}
-	log.Info("SubmitTranscation", "txHash", txInfo.Hash, "Success", txInfo.Success, "Type", txInfo.Type)
+	time.Sleep(time.Duration(10) * time.Second)
+	result, _ := bridge.Client.GetTransactions(txInfo.Hash)
+	log.Info("SubmitTranscation", "txHash", txInfo.Hash, "Success", result.Success, "version", result.Version, "vm_status", result.VmStatus)
 }
 
 func initAll() {

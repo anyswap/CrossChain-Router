@@ -31,6 +31,7 @@ var (
 	CONTRACT_FUNC_REGISTER_COIN    = "register_coin"
 	CONTRACT_FUNC_SET_COIN         = "set_coin"
 	CONTRACT_FUNC_SET_POOLCOIN_CAP = "set_poolcoin_cap"
+	CONTRACT_FUNC_SET_STATUS       = "set_status"
 
 	NATIVE_COIN = "0x1::aptos_coin::AptosCoin"
 

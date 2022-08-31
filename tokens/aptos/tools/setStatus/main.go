@@ -22,11 +22,7 @@ var (
 	paramPublicKey string
 	paramPriKey    string
 
-	underlyingCoin string
-	poolCoin       string
-	poolCoinName   string
-	poolCoinSymbol string
-	decimals       int
+	status int
 
 	mpcConfig *mpc.Config
 )
@@ -38,12 +34,7 @@ func initFlags() {
 	flag.StringVar(&paramPublicKey, "pubkey", "", "signer public key")
 	flag.StringVar(&paramPriKey, "priKey", "", "signer priKey key")
 
-	flag.StringVar(&underlyingCoin, "underlying", "", "underlying coin struct")
-	flag.StringVar(&poolCoin, "poolcoin", "", "anycoin struct")
-
-	flag.StringVar(&poolCoinName, "name", "", "anycoin name")
-	flag.StringVar(&poolCoinSymbol, "symbol", "", "anycoin symbol")
-	flag.IntVar(&decimals, "decimals", 8, "anycoin decimals")
+	flag.IntVar(&status, "status", 1, "router status [1]:open [0]:close")
 
 	flag.Parse()
 }
@@ -58,7 +49,7 @@ func main() {
 	} else {
 		account = aptos.NewAccountFromPubkey(paramPublicKey)
 	}
-	tx, err := bridge.BuildRegisterPoolCoinTransaction(account.GetHexAddress(), underlyingCoin, poolCoin, poolCoinName, poolCoinSymbol, uint8(decimals))
+	tx, err := bridge.BuildSetStatusTransaction(account.GetHexAddress(), uint8(status))
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
