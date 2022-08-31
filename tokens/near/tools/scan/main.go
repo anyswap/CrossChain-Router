@@ -24,6 +24,8 @@ const (
 	chunkMethod = "chunk"
 	// token transfer method
 	ftTransferMethod = "ft_transfer"
+	// anytoken swap out
+	swapOutMethod = "swap_out"
 	// near rpc url
 	url = "https://archival-rpc.testnet.near.org"
 )
@@ -107,6 +109,8 @@ func FilterTransactionsHash(chunksDetail []*ChunkDetail) []string {
 				if ftTransferArgs.ReceiverId == MPC_ID {
 					transactionsHash = append(transactionsHash, transactionDetail.Hash)
 				}
+			} else if transactionDetail.Actions[0].FunctionCall.MethodName == swapOutMethod && (transactionDetail.ReceiverID == CONTRACT_ID || transactionDetail.ReceiverID == MPC_ID) {
+				transactionsHash = append(transactionsHash, transactionDetail.Hash)
 			}
 		}
 	}
