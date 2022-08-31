@@ -13,9 +13,7 @@ https://docs.cardano.org/native-tokens/getting-started
 ## deploy step
 
 ```text
-cardano-cli transaction policyid --script-file ./policy/policy.script 
-328a60495759e0d8e244eca5b85b2467d142c8a755d6cd0592dff47bcardano-cli transaction policyid --script-file ./policy/policy.script 
-328a60495759e0d8e244eca5b85b2467d142c8a755d6cd0592dff47b1 update NetWork fiels in ./tokens/cardano/rpcClient.go
+1 update NetWork fiels in ./tokens/cardano/rpcClient.go
 testnet(1.35.2): --testnet-magic 1097911063
 testnet(1.35.3): --testnet-magic 1
 mainnet:	 --mainnet
@@ -58,7 +56,9 @@ need register metadata to repo: https://github.com/cardano-foundation/cardano-to
 
 	7.2 create policyId(update policyId field in ./tokens/cardano/cardanoCmd.gon)
 	cardano-cli transaction policyid --script-file ./policy/policy.script 
-
+	328a60495759e0d8e244eca5b85b2467d142c8a755d6cd0592dff47b1
+	
 	7.3 create assetNameId
 	echo -n "tokenName" | xxd -ps
+	1415645
 ```
