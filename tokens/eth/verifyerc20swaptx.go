@@ -181,6 +181,7 @@ func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable boo
 
 	if receipt.Recipient == nil {
 		if !params.AllowCallByConstructor() {
+			log.Warn("disallow constructor tx", "chainID", b.ChainConfig.ChainID, "txid", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "err", tokens.ErrTxWithWrongContract)
 			return nil, tokens.ErrTxWithWrongContract
 		}
 	} else {
@@ -217,7 +218,7 @@ func (b *Bridge) checkCallByContract(swapInfo *tokens.SwapTxInfo) error {
 				return nil
 			}
 		}
-		log.Warn("tx to with wrong contract", "txTo", txTo, "want", routerContract)
+		log.Warn("tx to address mismatch", "have", txTo, "want", routerContract, "chainID", b.ChainConfig.ChainID, "txid", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "err", tokens.ErrTxWithWrongContract)
 		return tokens.ErrTxWithWrongContract
 	}
 
@@ -226,7 +227,6 @@ func (b *Bridge) checkCallByContract(swapInfo *tokens.SwapTxInfo) error {
 
 func (b *Bridge) verifyERC20SwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
 	if rlog == nil || len(rlog.Topics) == 0 {
-		log.Warn("tx without log topics", "chainID", swapInfo.FromChainID, "txHash", swapInfo.Hash, "logIndex", swapInfo.LogIndex)
 		return tokens.ErrSwapoutLogNotFound
 	}
 
@@ -261,7 +261,7 @@ func (b *Bridge) verifyERC20SwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.R
 		return tokens.ErrMissRouterInfo
 	}
 	if !common.IsEqualIgnoreCase(rlog.Address.LowerHex(), routerContract) {
-		log.Warn("router contract mismatch", "have", rlog.Address.LowerHex(), "want", routerContract)
+		log.Warn("tx to address mismatch", "have", rlog.Address.LowerHex(), "want", routerContract, "chainID", b.ChainConfig.ChainID, "txid", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "err", tokens.ErrTxWithWrongContract)
 		return tokens.ErrTxWithWrongContract
 	}
 	return nil
