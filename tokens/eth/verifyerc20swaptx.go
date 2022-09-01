@@ -225,6 +225,11 @@ func (b *Bridge) checkCallByContract(swapInfo *tokens.SwapTxInfo) error {
 }
 
 func (b *Bridge) verifyERC20SwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
+	if rlog == nil || len(rlog.Topics) == 0 {
+		log.Warn("tx without log topics", "chainID", swapInfo.FromChainID, "txHash", swapInfo.Hash, "logIndex", swapInfo.LogIndex)
+		return tokens.ErrSwapoutLogNotFound
+	}
+
 	swapInfo.To = rlog.Address.LowerHex() // To
 
 	logTopic := rlog.Topics[0].Bytes()
