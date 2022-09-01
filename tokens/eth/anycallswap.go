@@ -143,7 +143,7 @@ func (b *Bridge) verifyAnyCallSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types
 
 	routerContract := b.GetRouterContract("")
 	if !common.IsEqualIgnoreCase(rlog.Address.LowerHex(), routerContract) {
-		log.Warn("swap tx with wrong contract", "log.Address", rlog.Address.LowerHex(), "routerContract", routerContract)
+		log.Warn("tx to address mismatch", "have", rlog.Address.LowerHex(), "want", routerContract, "chainID", b.ChainConfig.ChainID, "txid", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "err", tokens.ErrTxWithWrongContract)
 		return tokens.ErrTxWithWrongContract
 	}
 	return nil

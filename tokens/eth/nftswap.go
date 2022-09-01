@@ -171,6 +171,7 @@ func (b *Bridge) verifyNFTSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPC
 		return tokens.ErrMissRouterInfo
 	}
 	if !common.IsEqualIgnoreCase(rlog.Address.LowerHex(), routerContract) {
+		log.Warn("tx to address mismatch", "have", rlog.Address.LowerHex(), "want", routerContract, "chainID", b.ChainConfig.ChainID, "txid", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "err", tokens.ErrTxWithWrongContract)
 		return tokens.ErrTxWithWrongContract
 	}
 	return nil
