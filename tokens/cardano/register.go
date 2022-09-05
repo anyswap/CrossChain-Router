@@ -60,6 +60,7 @@ func (b *Bridge) registerERC20SwapTx(txHash string, logIndex int) ([]*tokens.Swa
 				} else {
 					outputIndex = index
 					assetIndex = i - tempIndex - 1
+					break
 				}
 			}
 			if tokenInfo, err := b.parseTxOutput(outputs[outputIndex], assetIndex); err == nil {

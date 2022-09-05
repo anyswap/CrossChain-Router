@@ -61,6 +61,7 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 			} else {
 				outputIndex = index
 				assetIndex = logIndex - tempIndex - 1
+				break
 			}
 		}
 		if tokenInfo, err := b.parseTxOutput(outputs[outputIndex], assetIndex); err != nil {
