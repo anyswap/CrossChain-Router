@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	NetWork    = "--testnet-magic 1097911063"
-	PolicyId   = "4d313d86695615fb16bfd46b32936444f4c9a16abb66cf1affecd3f9"
+	NetWork    = "--testnet-magic 1"
+	PolicyId   = "8c7d04a9146bff45aadc19d3f3e4cdb8a989ff35182989dbfb93f5b4"
 	RawPath    = "txDb/raw/"
 	AdaAssetId = "lovelace"
 	RawSuffix  = ".raw"
