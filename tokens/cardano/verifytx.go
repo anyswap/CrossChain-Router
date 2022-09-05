@@ -114,17 +114,16 @@ func (b *Bridge) checkTxStatus(txres *Transaction, allowUnstable bool) error {
 	}
 
 	if !allowUnstable {
-		lastHeight, errh1 := b.GetLatestBlockNumber()
-		if errh1 != nil {
-			return errh1
-		}
+		if lastHeight, err := b.GetLatestBlockNumber(); err != nil {
+			return err
+		} else {
+			if lastHeight < txres.Block.SlotNo+b.GetChainConfig().Confirmations {
+				return tokens.ErrTxNotStable
+			}
 
-		if lastHeight < txres.Block.Number+b.GetChainConfig().Confirmations {
-			return tokens.ErrTxNotStable
-		}
-
-		if lastHeight < b.ChainConfig.InitialHeight {
-			return tokens.ErrTxBeforeInitialHeight
+			if lastHeight < b.ChainConfig.InitialHeight {
+				return tokens.ErrTxBeforeInitialHeight
+			}
 		}
 	}
 	return nil

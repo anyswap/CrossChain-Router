@@ -46,6 +46,7 @@ type Asset struct {
 type Block struct {
 	EpochNo uint64 `json:"epochNo"`
 	Number  uint64 `json:"number"`
+	SlotNo  uint64 `json:"slotNo"`
 }
 
 type Metadata struct {

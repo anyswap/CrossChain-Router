@@ -105,5 +105,20 @@ func (b *Bridge) GetTransactionByHash(txHash string) (*Transaction, error) {
 // GetTransactionStatus impl
 func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, err error) {
 	status = new(tokens.TxStatus)
-	return status, tokens.ErrNotImplemented
+	if res, err := b.GetTransactionByHash(txHash); err != nil {
+		return nil, err
+	} else {
+		if !res.ValidContract {
+			return nil, tokens.ErrTxIsNotValidated
+		} else {
+			if lastHeight, err := b.GetLatestBlockNumber(); err != nil {
+				return nil, err
+			} else {
+				status.Confirmations = lastHeight - res.Block.SlotNo
+				status.BlockHeight = res.Block.SlotNo
+				status.Receipt = nil
+				return status, nil
+			}
+		}
+	}
 }

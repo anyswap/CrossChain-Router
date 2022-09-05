@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
 const (
@@ -21,15 +22,17 @@ func GetTransactionByHash(url, txHash string) (*Transaction, error) {
 	if err := client.CardanoPostRequest(url, request, &result); err != nil {
 		return nil, err
 	}
+	if len(result.Transactions) == 0 {
+		return nil, tokens.ErrTxNotFound
+	}
 	return &result.Transactions[0], nil
-
 }
 
 func GetLatestBlockNumber() (uint64, error) {
 	if res, err := queryTipCmd(); err != nil {
 		return 0, err
 	} else {
-		return res.Block, nil
+		return res.Slot, nil
 	}
 }
 
