@@ -24,6 +24,7 @@ type Transaction struct {
 
 type Output struct {
 	Address string  `json:"address"`
+	Index   uint64  `json:"index"`
 	Tokens  []Token `json:"tokens"`
 	Value   string  `json:"value"`
 }

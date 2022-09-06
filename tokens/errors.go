@@ -51,6 +51,7 @@ var (
 	ErrMetadataKeyMissMatch   = errors.New("metadata key not match 123")
 	ErrAdaSwapOutAmount       = errors.New("swap ada amount too small")
 	ErrTokenBalancesNotEnough = errors.New("token balance not enough")
+	ErrOutputIndexSort        = errors.New("output not order by index asc")
 
 	// errors should register in router swap
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")

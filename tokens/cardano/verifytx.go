@@ -56,6 +56,9 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 		outputIndex := 0
 		assetIndex := 0
 		for index, output := range outputs {
+			if index != int(output.Index) {
+				return nil, tokens.ErrOutputIndexSort
+			}
 			if logIndex > tempIndex+len(output.Tokens)+1 {
 				tempIndex += len(output.Tokens) + 1
 			} else {

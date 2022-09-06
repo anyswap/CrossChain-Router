@@ -31,9 +31,11 @@ func (b *Bridge) registerERC20SwapTx(txHash string, logIndex int) ([]*tokens.Swa
 	if outputs, metadata, err := b.getTxOutputs(commonInfo, true); err != nil {
 		return []*tokens.SwapTxInfo{commonInfo}, []error{err}
 	} else {
-		log.Info("getTxOutputs", "outputs:", outputs)
 		totalLenght := 0
-		for _, output := range outputs {
+		for index, output := range outputs {
+			if index != int(output.Index) {
+				return []*tokens.SwapTxInfo{commonInfo}, []error{tokens.ErrOutputIndexSort}
+			}
 			totalLenght += len(output.Tokens) + 1
 		}
 		swapInfos := make([]*tokens.SwapTxInfo, 0)
