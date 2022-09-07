@@ -6,7 +6,7 @@ import (
 
 	"github.com/fbsobreira/gotron-sdk/pkg/proto/core"
 
-	"github.com/anyswap/CrossChain-Bridge/log"
+	"github.com/anyswap/CrossChain-Router/v3/log"
 )
 
 // SendTransaction send signed tx
