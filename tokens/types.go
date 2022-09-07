@@ -213,6 +213,7 @@ type AllExtras struct {
 	Fee        *string       `json:"fee,omitempty"`
 	Gas        *uint64       `json:"gas,omitempty"`
 	RawTx      string        `json:"rawTx,omitempty"`
+	BlockHash  *string       `json:"blockHash,omitempty"`
 }
 
 // EthExtraArgs struct

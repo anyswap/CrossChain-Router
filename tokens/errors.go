@@ -53,6 +53,17 @@ var (
 	ErrMissTokenConfig   = errors.New("miss token config")
 	ErrNoUnderlyingToken = errors.New("no underlying token")
 	ErrVerifyTxUnsafe    = errors.New("[tx maybe unsafe]")
+
+	ErrQueryTokenBalance     = errors.New("query token balance error")
+	ErrTokenBalanceNotEnough = errors.New("token balance not enough")
+	ErrGetLatestBlockNumber  = errors.New("get latest block number error")
+	ErrBroadcastTx           = errors.New("broadcast tx error")
+	ErrGetAccountNonce       = errors.New("get account nonce error")
+	ErrGetUnderlying         = errors.New("get underlying address error")
+	ErrGetMPC                = errors.New("get mpc address error")
+	ErrTokenDecimals         = errors.New("get token decimals error")
+	ErrGetLatestBlockHash    = errors.New("get latest block hash error")
+	ErrTxResultType          = errors.New("tx type is not TransactionResult")
 )
 
 // ShouldRegisterRouterSwapForError return true if this error should record in database
