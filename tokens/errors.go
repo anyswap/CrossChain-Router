@@ -10,6 +10,7 @@ var (
 	ErrSwapTypeNotSupported  = errors.New("swap type not supported")
 	ErrNoBridgeForChainID    = errors.New("no bridge for chain id")
 	ErrSwapTradeNotSupport   = errors.New("swap trade not support")
+	ErrNonceNotSupport       = errors.New("nonce not support")
 	ErrNotFound              = errors.New("not found")
 	ErrTxNotFound            = errors.New("tx not found")
 	ErrTxNotStable           = errors.New("tx not stable")

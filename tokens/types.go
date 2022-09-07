@@ -138,12 +138,11 @@ type SwapTxInfo struct {
 
 // TxStatus struct
 type TxStatus struct {
-	Sender        string      `json:"sender,omitempty"`
 	Receipt       interface{} `json:"receipt,omitempty"`
 	Confirmations uint64      `json:"confirmations"`
-	BlockHeight   uint64      `json:"blockHeight"`
-	BlockHash     string      `json:"blockHash"`
-	BlockTime     uint64      `json:"blockTime"`
+	BlockHeight   uint64      `json:"block_height"`
+	BlockHash     string      `json:"block_hash"`
+	BlockTime     uint64      `json:"block_time"`
 }
 
 // StatusInterface interface
@@ -201,6 +200,7 @@ type BuildTxArgs struct {
 	SwapValue   *big.Int       `json:"swapValue,omitempty"`
 	Value       *big.Int       `json:"value,omitempty"`
 	Memo        string         `json:"memo,omitempty"`
+	Selector    string         `json:"selector,omitempty"`
 	Input       *hexutil.Bytes `json:"input,omitempty"`
 	Extra       *AllExtras     `json:"extra,omitempty"`
 }
@@ -212,6 +212,7 @@ type AllExtras struct {
 	Sequence   *uint64       `json:"sequence,omitempty"`
 	Fee        *string       `json:"fee,omitempty"`
 	Gas        *uint64       `json:"gas,omitempty"`
+	RawTx      string        `json:"rawTx,omitempty"`
 }
 
 // EthExtraArgs struct

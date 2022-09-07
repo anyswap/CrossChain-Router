@@ -331,9 +331,11 @@ func InitGatewayConfig(b tokens.IBridge, chainID *big.Int) {
 		return
 	}
 	apiAddrsExt := cfg.GatewaysExt[chainID.String()]
+	evmapiext := cfg.EVMGatewaysExt[chainID.String()]
 	b.SetGatewayConfig(&tokens.GatewayConfig{
 		APIAddress:    apiAddrs,
 		APIAddressExt: apiAddrsExt,
+		EVMAPIAddress: evmapiext,
 	})
 	if !isReload {
 		latestBlock, err := b.GetLatestBlockNumber()

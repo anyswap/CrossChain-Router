@@ -282,3 +282,12 @@ func GetPausedChainIDs() []*big.Int {
 func IsChainIDPaused(chainID string) bool {
 	return pausedChainIDs.Contains(chainID)
 }
+
+// IsNonceSupported is nonce supported
+func IsNonceSupported(chainID string) bool {
+	if bridge := GetBridgeByChainID(chainID); bridge != nil {
+		_, ok := bridge.(tokens.NonceSetter)
+		return ok
+	}
+	return false
+}
