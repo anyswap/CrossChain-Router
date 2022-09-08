@@ -1,7 +1,6 @@
 package cosmosHub
 
 import (
-	"errors"
 	"math/big"
 	"sync"
 
@@ -80,7 +79,7 @@ func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
 }
 
 // GetTransactionByHash get tx response by hash
-func (b *Bridge) GetTransactionByHash(txHash string) (result *cosmos.GetTxResponse, err error) {
+func (b *Bridge) GetTransactionByHash(txHash string) (*cosmos.GetTxResponse, error) {
 	return b.CosmosRestClient.GetTransactionByHash(txHash)
 }
 
@@ -92,7 +91,7 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 		return status, err
 	} else {
 		if res.TxResponse.Code != 0 {
-			return status, errors.New("tx code not equal zero")
+			return status, tokens.ErrTxWithWrongStatus
 		}
 		txStatus.BlockHeight = uint64(res.TxResponse.Height)
 		if blockNumber, err := b.GetLatestBlockNumber(); err != nil {

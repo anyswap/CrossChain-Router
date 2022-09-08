@@ -6,6 +6,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmos"
 )
 
 // VerifyMsgHash verify msg hash
@@ -33,6 +34,18 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 	swapInfo.Hash = txHash                            // Hash
 	swapInfo.LogIndex = logIndex                      // LogIndex
 	swapInfo.FromChainID = b.ChainConfig.GetChainID() // FromChainID
+
+	txr, err := b.GetTransactionByHash(txHash)
+	if err != nil {
+		log.Debug("[verifySwapin] "+b.ChainConfig.BlockChain+" Bridge::GetTransaction fail", "tx", txHash, "err", err)
+		return swapInfo, tokens.ErrTxNotFound
+	}
+
+	if txHeight, err := b.checkTxStatus(txr, allowUnstable); err != nil {
+		return swapInfo, err
+	} else {
+		swapInfo.Height = txHeight // Height
+	}
 
 	checkErr := b.checkSwapoutInfo(swapInfo)
 	if checkErr != nil {
@@ -88,4 +101,26 @@ func (b *Bridge) checkSwapoutInfo(swapInfo *tokens.SwapTxInfo) error {
 		return tokens.ErrWrongBindAddress
 	}
 	return nil
+}
+
+func (b *Bridge) checkTxStatus(txres *cosmos.GetTxResponse, allowUnstable bool) (txHeight uint64, err error) {
+	txHeight = uint64(txres.TxResponse.Height)
+
+	if txres.TxResponse.Code != 0 {
+		return txHeight, tokens.ErrTxWithWrongStatus
+	}
+
+	if !allowUnstable {
+		if h, err := b.GetLatestBlockNumber(); err != nil {
+			return txHeight, err
+		} else {
+			if h < txHeight+b.GetChainConfig().Confirmations {
+				return txHeight, tokens.ErrTxNotStable
+			}
+			if h < b.ChainConfig.InitialHeight {
+				return txHeight, tokens.ErrTxBeforeInitialHeight
+			}
+		}
+	}
+	return txHeight, err
 }
