@@ -134,6 +134,10 @@ func (b *Bridge) verifyNFTSwapTx(txHash string, logIndex int, allowUnstable bool
 }
 
 func (b *Bridge) verifyNFTSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
+	if rlog == nil || len(rlog.Topics) == 0 {
+		return tokens.ErrSwapoutLogNotFound
+	}
+
 	swapInfo.To = rlog.Address.LowerHex() // To
 
 	logTopic := rlog.Topics[0].Bytes()
