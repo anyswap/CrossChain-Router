@@ -43,6 +43,9 @@ func InitRouterSwapType(swapTypeStr string) {
 		routerSwapType = NFTSwapType
 	case "anycallswap":
 		routerSwapType = AnyCallSwapType
+		if !IsValidAnycallSubType(params.GetSwapSubType()) {
+			log.Fatalf("invalid anycall sub type '%v'", params.GetSwapSubType())
+		}
 	default:
 		log.Fatalf("invalid router swap type '%v'", swapTypeStr)
 	}
