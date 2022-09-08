@@ -18,5 +18,6 @@ func (b *Bridge) RegisterSwap(txHash string, args *tokens.RegisterArgs) ([]*toke
 }
 
 func (b *Bridge) registerERC20SwapTx(txHash string, logIndex int) ([]*tokens.SwapTxInfo, []error) {
-	return nil, nil
+	swapInfo, err := b.verifySwapoutTx(txHash, logIndex, true)
+	return []*tokens.SwapTxInfo{swapInfo}, []error{err}
 }
