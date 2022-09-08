@@ -41,7 +41,10 @@ func (config *RouterConfig) CheckConfig(isServer bool) (err error) {
 	if config.SwapType == "" {
 		return errors.New("empty router swap type")
 	}
-	log.Info("check identifier pass", "identifier", config.Identifier, "swaptype", config.SwapType, "isServer", isServer)
+	if config.SwapType == "anycallswap" && config.SwapSubType == "" {
+		return errors.New("anycall must config 'SwapSubType'")
+	}
+	log.Info("check identifier pass", "identifier", config.Identifier, "swaptype", config.SwapType, "swapsubtype", config.SwapSubType, "isServer", isServer)
 
 	err = config.CheckBlacklistConfig()
 	if err != nil {
