@@ -5,3 +5,7 @@ func NewCosmosRestClient(urls []string) *CosmosRestClient {
 		BaseUrls: urls,
 	}
 }
+
+func (c *CosmosRestClient) SetBaseUrls(urls []string) {
+	c.BaseUrls = urls
+}

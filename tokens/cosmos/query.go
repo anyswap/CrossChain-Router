@@ -8,10 +8,19 @@ import (
 
 const (
 	LatestBlock = "/cosmos/base/tendermint/v1beta1/blocks/latest"
+	TxByHash    = "/cosmos/tx/v1beta1/txs/"
 )
 
-func (c *CosmosRestClient) GetLatestBlockNumber() (uint64, error) {
+func (c *CosmosRestClient) GetLatestBlockNumber(apiAddress string) (uint64, error) {
 	var result types.Block
+	if apiAddress == "" {
+		restApi := apiAddress + LatestBlock
+		if err := client.RPCGet(&result, restApi); err == nil {
+			return uint64(result.Header.Height), nil
+		} else {
+			return 0, err
+		}
+	}
 	for _, url := range c.BaseUrls {
 		restApi := url + LatestBlock
 		if err := client.RPCGet(&result, restApi); err == nil {
@@ -19,4 +28,15 @@ func (c *CosmosRestClient) GetLatestBlockNumber() (uint64, error) {
 		}
 	}
 	return 0, tokens.ErrNotImplemented
+}
+
+func (c *CosmosRestClient) GetTransactionByHash(txHash string) (*GetTxResponse, error) {
+	var result *GetTxResponse
+	for _, url := range c.BaseUrls {
+		restApi := url + TxByHash + txHash
+		if err := client.RPCGet(&result, restApi); err == nil {
+			return result, nil
+		}
+	}
+	return nil, tokens.ErrNotImplemented
 }

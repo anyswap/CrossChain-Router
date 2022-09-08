@@ -54,6 +54,8 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 			b.InitSwapNonce(b, routerMPC, nextSwapNonce)
 		}
 	}
+	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	b.CosmosRestClient.SetBaseUrls(urls)
 
 	return nil
 }

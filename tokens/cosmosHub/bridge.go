@@ -1,12 +1,14 @@
 package cosmosHub
 
 import (
+	"errors"
 	"math/big"
 	"sync"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/base"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmos"
 )
 
 var (
@@ -27,6 +29,7 @@ const (
 // Bridge near bridge
 type Bridge struct {
 	*base.NonceSetterBase
+	*cosmos.CosmosRestClient
 }
 
 // SupportsChainID supports chainID
@@ -41,13 +44,14 @@ func SupportsChainID(chainID *big.Int) bool {
 // NewCrossChainBridge new bridge
 func NewCrossChainBridge() *Bridge {
 	return &Bridge{
-		NonceSetterBase: base.NewNonceSetterBase(),
+		NonceSetterBase:  base.NewNonceSetterBase(),
+		CosmosRestClient: cosmos.NewCosmosRestClient([]string{""}),
 	}
 }
 
 // GetStubChainID get stub chainID
 func GetStubChainID(network string) *big.Int {
-	stubChainID := new(big.Int).SetBytes([]byte("NEAR"))
+	stubChainID := new(big.Int).SetBytes([]byte("CosmosHub"))
 	switch network {
 	case mainnetNetWork:
 	case testnetNetWork:
@@ -60,27 +64,14 @@ func GetStubChainID(network string) *big.Int {
 	return stubChainID
 }
 
-// VerifyTokenConfig verify token config
-func (b *Bridge) VerifyTokenConfig(tokenCfg *tokens.TokenConfig) error {
-	return nil
-}
-
 // GetLatestBlockNumber gets latest block number
 func (b *Bridge) GetLatestBlockNumber() (uint64, error) {
-	return 0, tokens.ErrNotImplemented
-}
-
-func (b *Bridge) GetLatestBlockHash() (string, error) {
-	return "", tokens.ErrNotImplemented
+	return b.CosmosRestClient.GetLatestBlockNumber("")
 }
 
 // GetLatestBlockNumberOf gets latest block number from single api
 func (b *Bridge) GetLatestBlockNumberOf(apiAddress string) (uint64, error) {
-	return 0, tokens.ErrNotImplemented
-}
-
-func (b *Bridge) GetBlockNumberByHash(blockHash string) (uint64, error) {
-	return 0, tokens.ErrNotImplemented
+	return b.CosmosRestClient.GetLatestBlockNumber(apiAddress)
 }
 
 // GetTransaction impl
@@ -89,11 +80,28 @@ func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
 }
 
 // GetTransactionByHash get tx response by hash
-func (b *Bridge) GetTransactionByHash(txHash string) (result interface{}, err error) {
-	return nil, tokens.ErrNotImplemented
+func (b *Bridge) GetTransactionByHash(txHash string) (result *cosmos.GetTxResponse, err error) {
+	return b.CosmosRestClient.GetTransactionByHash(txHash)
 }
 
 // GetTransactionStatus impl
 func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, err error) {
-	return status, nil
+	txStatus := &tokens.TxStatus{}
+	if res, err := b.CosmosRestClient.GetTransactionByHash(txHash); err != nil {
+		log.Trace(b.ChainConfig.BlockChain+" Bridge::GetElectTransactionStatus fail", "tx", txHash, "err", err)
+		return status, err
+	} else {
+		if res.TxResponse.Code != 0 {
+			return status, errors.New("tx code not equal zero")
+		}
+		txStatus.BlockHeight = uint64(res.TxResponse.Height)
+		if blockNumber, err := b.GetLatestBlockNumber(); err != nil {
+			return status, err
+		} else {
+			if blockNumber > txStatus.BlockHeight {
+				txStatus.Confirmations = blockNumber - txStatus.BlockHeight
+			}
+			return status, nil
+		}
+	}
 }
