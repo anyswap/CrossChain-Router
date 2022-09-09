@@ -81,7 +81,7 @@ pub contract Router {
     }
     
     init() {
-        self.chainId=1001179406168
+        self.chainId=%s
         self.anyTokens={}
         self.txs={}
         let mpc <- create Mpc()

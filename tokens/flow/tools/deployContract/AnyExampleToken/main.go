@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -28,20 +29,17 @@ var (
 	paramAddress      string
 	paramPublicKey    string
 	paramPrivKey      string
-	paramContractName string
+	paramNewName      string
+	paramNewPath      string
+	paramTokenName    string
+	paramTokenAddress string
 	chainID           = big.NewInt(0)
 	mpcConfig         *mpc.Config
 
 	AnyExampleTokenContractFile = "tokens/flow/contracts/AnyExampleToken.cdc"
-	AnyTokenContractFile        = "tokens/flow/contracts/AnyToken.cdc"
-	ExampleTokenContractFile    = "tokens/flow/contracts/ExampleToken.cdc"
-	RouterContractFile          = "tokens/flow/contracts/Router.cdc"
 
-	supportContractList = make(map[string]bool)
-	router              = "Router"
-	exampleToken        = "ExampleToken"
-	anyToken            = "AnyToken"
-	anyExampleToken     = "AnyExampleToken"
+	ContractName = "AnyExampleToken"
+	StoragePath  = "anyExampleToken"
 )
 
 func main() {
@@ -76,7 +74,7 @@ func main() {
 	code := getContractCode()
 	deployContractTx := templates.AddAccountContract(payerAddress,
 		templates.Contract{
-			Name:   paramContractName,
+			Name:   ContractName,
 			Source: code,
 		})
 
@@ -166,29 +164,14 @@ func MPCSignTransaction(rawTx interface{}, paramPublicKey string) (signedTx inte
 }
 
 func getContractCode() (code string) {
-	log.Info("deploy contract", "conractName", paramContractName)
-	switch paramContractName {
-	case router:
-		code = examples.ReadFile(RouterContractFile)
-		code = fmt.Sprintf(code, paramAddress)
-	case exampleToken:
-		code = examples.ReadFile(ExampleTokenContractFile)
-	case anyToken:
-		code = examples.ReadFile(AnyTokenContractFile)
-	case anyExampleToken:
-		code = examples.ReadFile(AnyExampleTokenContractFile)
-		code = fmt.Sprintf(code, paramAddress, paramAddress)
-	default:
-		log.Fatalf("unknown method name: '%v'", paramContractName)
-	}
+	code = examples.ReadFile(AnyExampleTokenContractFile)
+	code = strings.Replace(code, ContractName, paramNewName, -1)
+	code = strings.Replace(code, StoragePath, paramNewPath, -1)
+	code = fmt.Sprintf(code, paramTokenName, paramTokenAddress, paramAddress, paramTokenName, paramTokenName)
 	return code
 }
 
 func checkParams() error {
-	if !supportContractList[paramContractName] {
-		return errors.New("deploy contract name not support")
-	}
-
 	err := bridge.VerifyPubKey(paramAddress, paramPublicKey)
 	if err != nil {
 		return err
@@ -200,7 +183,6 @@ func initAll() {
 	initFlags()
 	initConfig()
 	initBridge()
-	initSupportList()
 }
 
 func initFlags() {
@@ -209,7 +191,10 @@ func initFlags() {
 	flag.StringVar(&paramAddress, "address", "", "signer address")
 	flag.StringVar(&paramPublicKey, "pubKey", "", "signer public key")
 	flag.StringVar(&paramPrivKey, "privKey", "", "(option) signer paramPrivKey key")
-	flag.StringVar(&paramContractName, "contract", "", "deploy contract name")
+	flag.StringVar(&paramTokenName, "tokenName", "", "underlying token Name")
+	flag.StringVar(&paramTokenAddress, "tokenAddress", "", "underlying token Address")
+	flag.StringVar(&paramNewName, "newName", "", "new contract name")
+	flag.StringVar(&paramNewPath, "newPath", "", "new storage path")
 
 	flag.Parse()
 
@@ -244,11 +229,4 @@ func initBridge() {
 		APIAddressExt: apiAddrsExt,
 	})
 	log.Info("init bridge finished")
-}
-
-func initSupportList() {
-	supportContractList[router] = true
-	supportContractList[exampleToken] = true
-	supportContractList[anyToken] = true
-	supportContractList[anyExampleToken] = true
 }

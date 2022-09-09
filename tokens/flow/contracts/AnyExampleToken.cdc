@@ -1,5 +1,5 @@
 import FungibleToken from 0x9a0766d93b6608b7
-import ExampleToken from %s
+import %s from %s
 import AnyToken from %s
 pub contract AnyExampleToken: FungibleToken, AnyToken {
 
@@ -194,8 +194,8 @@ pub contract AnyExampleToken: FungibleToken, AnyToken {
         self.TokenStoragePath= /storage/anyExampleTokenVault
         self.TokenPublicBalancePath= /public/anyExampleTokenBalance
         self.TokenPublicReceiverPath= /public/anyExampleTokenReceiver
-        self.underlyingVault <- ExampleToken.createEmptyVault()
-        self.underlyingType = Type<@ExampleToken.Vault>()
+        self.underlyingVault <- %s.createEmptyVault()
+        self.underlyingType = Type<@%s.Vault>()
         self.totalSupply=0.0
         assert(self.underlyingType==self.underlyingVault.getType(), message: "underlying type not match")
         // Create the Vault with the total supply of tokens and save it in storage
