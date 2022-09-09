@@ -26,6 +26,8 @@ var (
 // OnchainCustomConfig onchain custom config (in router config)
 type OnchainCustomConfig struct {
 	AdditionalSrcChainSwapFeeRate uint64
+	AdditionalSrcMinimumSwapFee   *big.Int
+	AdditionalSrcMaximumSwapFee   *big.Int
 }
 
 // IsNativeCoin is native coin
@@ -264,62 +266,98 @@ func CalcSwapValue(tokenID, fromChainID, toChainID string, value *big.Int, fromD
 	if !IsERC20Router() {
 		return value
 	}
+
+	swapFee := big.NewInt(0)
+
+	srcFee := calcFeeBySrcChain(tokenID, fromChainID, value, fromDecimals)
+	if srcFee.Sign() > 0 {
+		swapFee.Add(swapFee, srcFee)
+	}
+
+	dstFee := calcFeeByDestChain(tokenID, fromChainID, toChainID, value, fromDecimals, originFrom, originTxTo)
+	if dstFee.Sign() > 0 {
+		swapFee.Add(swapFee, dstFee)
+	}
+
+	if value.Cmp(swapFee) <= 0 {
+		log.Warn("check swap value failed",
+			"tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID,
+			"value", value, "swapFee", swapFee, "srcFee", srcFee, "dstFee", dstFee)
+		return big.NewInt(0)
+	}
+
+	valueLeft := new(big.Int).Sub(value, swapFee)
+
+	return ConvertTokenValue(valueLeft, fromDecimals, toDecimals)
+}
+
+func calcFeeBySrcChain(tokenID, fromChainID string, value *big.Int, fromDecimals uint8) *big.Int {
+	ccConfig := GetOnchainCustomConfig(fromChainID, tokenID)
+	if ccConfig == nil || ccConfig.AdditionalSrcChainSwapFeeRate == 0 {
+		return big.NewInt(0)
+	}
+
+	swapfeeRatePerMillion := ccConfig.AdditionalSrcChainSwapFeeRate
+	minimumSwapFee := ccConfig.AdditionalSrcMinimumSwapFee
+	maximumSwapFee := ccConfig.AdditionalSrcMaximumSwapFee
+
+	swapFee := new(big.Int).Mul(value, new(big.Int).SetUint64(swapfeeRatePerMillion))
+	swapFee.Div(swapFee, big.NewInt(1000000))
+
+	minSwapFee := ConvertTokenValue(minimumSwapFee, 18, fromDecimals)
+	if swapFee.Cmp(minSwapFee) < 0 {
+		swapFee = minSwapFee
+	} else {
+		maxSwapFee := ConvertTokenValue(maximumSwapFee, 18, fromDecimals)
+		if swapFee.Cmp(maxSwapFee) > 0 {
+			swapFee = maxSwapFee
+		}
+	}
+
+	return swapFee
+}
+
+func calcFeeByDestChain(tokenID, fromChainID, toChainID string, value *big.Int, fromDecimals uint8, originFrom, originTxTo string) *big.Int {
 	feeCfg := GetFeeConfig(tokenID, fromChainID, toChainID)
-	if feeCfg == nil {
+	if feeCfg == nil || feeCfg.SwapFeeRatePerMillion == 0 {
 		return big.NewInt(0)
 	}
 
 	swapfeeRatePerMillion := feeCfg.SwapFeeRatePerMillion
+	minimumSwapFee := feeCfg.MinimumSwapFee
+	maximumSwapFee := feeCfg.MaximumSwapFee
 
-	ccConfig := GetOnchainCustomConfig(fromChainID, tokenID)
-	if ccConfig != nil && ccConfig.AdditionalSrcChainSwapFeeRate > 0 {
-		additionalRate := ccConfig.AdditionalSrcChainSwapFeeRate
-		swapfeeRatePerMillion += additionalRate
-	}
+	var swapFee, adjustBaseFee *big.Int
+	minSwapFee := ConvertTokenValue(minimumSwapFee, 18, fromDecimals)
+	if params.IsInBigValueWhitelist(tokenID, originFrom) ||
+		params.IsInBigValueWhitelist(tokenID, originTxTo) {
+		swapFee = minSwapFee
+	} else {
+		swapFee = new(big.Int).Mul(value, new(big.Int).SetUint64(swapfeeRatePerMillion))
+		swapFee.Div(swapFee, big.NewInt(1000000))
 
-	valueLeft := value
-	if swapfeeRatePerMillion > 0 {
-		var swapFee, adjustBaseFee *big.Int
-		minSwapFee := ConvertTokenValue(feeCfg.MinimumSwapFee, 18, fromDecimals)
-		if params.IsInBigValueWhitelist(tokenID, originFrom) ||
-			params.IsInBigValueWhitelist(tokenID, originTxTo) {
+		if swapFee.Cmp(minSwapFee) < 0 {
 			swapFee = minSwapFee
 		} else {
-			swapFee = new(big.Int).Mul(value, new(big.Int).SetUint64(swapfeeRatePerMillion))
-			swapFee.Div(swapFee, big.NewInt(1000000))
-
-			if swapFee.Cmp(minSwapFee) < 0 {
-				swapFee = minSwapFee
-			} else {
-				maxSwapFee := ConvertTokenValue(feeCfg.MaximumSwapFee, 18, fromDecimals)
-				if swapFee.Cmp(maxSwapFee) > 0 {
-					swapFee = maxSwapFee
-				}
-			}
-
-			baseFeePercent := params.GetBaseFeePercent(toChainID)
-			if baseFeePercent != 0 && minSwapFee.Sign() > 0 {
-				adjustBaseFee = new(big.Int).Set(minSwapFee)
-				adjustBaseFee.Mul(adjustBaseFee, big.NewInt(baseFeePercent))
-				adjustBaseFee.Div(adjustBaseFee, big.NewInt(100))
-				swapFee = new(big.Int).Add(swapFee, adjustBaseFee)
-				if swapFee.Sign() < 0 {
-					swapFee = big.NewInt(0)
-				}
+			maxSwapFee := ConvertTokenValue(maximumSwapFee, 18, fromDecimals)
+			if swapFee.Cmp(maxSwapFee) > 0 {
+				swapFee = maxSwapFee
 			}
 		}
 
-		if value.Cmp(swapFee) <= 0 {
-			log.Warn("check swap value failed",
-				"value", value, "tokenID", tokenID, "toChainID", toChainID,
-				"minSwapFee", minSwapFee, "adjustBaseFee", adjustBaseFee, "swapFee", swapFee)
-			return big.NewInt(0)
+		baseFeePercent := params.GetBaseFeePercent(toChainID)
+		if baseFeePercent != 0 && minSwapFee.Sign() > 0 {
+			adjustBaseFee = new(big.Int).Set(minSwapFee)
+			adjustBaseFee.Mul(adjustBaseFee, big.NewInt(baseFeePercent))
+			adjustBaseFee.Div(adjustBaseFee, big.NewInt(100))
+			swapFee = new(big.Int).Add(swapFee, adjustBaseFee)
+			if swapFee.Sign() < 0 {
+				swapFee = big.NewInt(0)
+			}
 		}
-
-		valueLeft = new(big.Int).Sub(value, swapFee)
 	}
 
-	return ConvertTokenValue(valueLeft, fromDecimals, toDecimals)
+	return swapFee
 }
 
 // ToBits calc
