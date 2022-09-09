@@ -1,9 +1,5 @@
 package cosmosHub
 
-import (
-	"github.com/anyswap/CrossChain-Router/v3/tokens"
-)
-
 // IsValidAddress check address
 func (b *Bridge) IsValidAddress(address string) bool {
 	return b.CosmosRestClient.IsValidAddress(address)
@@ -15,5 +11,5 @@ func (b *Bridge) PublicKeyToAddress(pubKeyHex string) (string, error) {
 }
 
 func (b *Bridge) VerifyPubKey(address, pubkey string) error {
-	return tokens.ErrNotImplemented
+	return b.CosmosRestClient.VerifyPubKey(address, pubkey)
 }

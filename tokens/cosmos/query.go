@@ -9,6 +9,7 @@ import (
 const (
 	LatestBlock = "/cosmos/base/tendermint/v1beta1/blocks/latest"
 	TxByHash    = "/cosmos/tx/v1beta1/txs/"
+	AccountInfo = "/cosmos/auth/v1beta1/accounts/"
 )
 
 func (c *CosmosRestClient) GetLatestBlockNumber(apiAddress string) (uint64, error) {
@@ -27,7 +28,7 @@ func (c *CosmosRestClient) GetLatestBlockNumber(apiAddress string) (uint64, erro
 			return uint64(result.Header.Height), nil
 		}
 	}
-	return 0, tokens.ErrNotImplemented
+	return 0, tokens.ErrRPCQueryError
 }
 
 func (c *CosmosRestClient) GetTransactionByHash(txHash string) (*GetTxResponse, error) {
@@ -38,5 +39,5 @@ func (c *CosmosRestClient) GetTransactionByHash(txHash string) (*GetTxResponse, 
 			return result, nil
 		}
 	}
-	return nil, tokens.ErrNotImplemented
+	return nil, tokens.ErrTxNotFound
 }

@@ -36,11 +36,6 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	return nil, tokens.ErrNotImplemented
 }
 
-// GetTxBlockInfo impl NonceSetter interface
-func (b *Bridge) GetTxBlockInfo(txHash string) (blockHeight, blockTime uint64) {
-	return 0, 0
-}
-
 // GetPoolNonce impl NonceSetter interface
 func (b *Bridge) GetPoolNonce(address, _height string) (uint64, error) {
 	return 0, tokens.ErrNotImplemented

@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"strings"
 
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
@@ -50,4 +51,15 @@ func PubKeyFromBytes(pubKeyBytes []byte) (cryptotypes.PubKey, error) {
 	copy(compressedPublicKey, cmp.SerializeCompressed())
 
 	return &secp256k1.PubKey{Key: compressedPublicKey}, nil
+}
+
+func (c *CosmosRestClient) VerifyPubKey(address, pubkey string) error {
+	if addr, err := c.PublicKeyToAddress(pubkey); err != nil {
+		return err
+	} else {
+		if address != addr {
+			return tokens.ErrValidPublicKey
+		}
+		return nil
+	}
 }

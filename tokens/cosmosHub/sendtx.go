@@ -2,5 +2,5 @@ package cosmosHub
 
 // SendTransaction send signed tx
 func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error) {
-	return txHash, nil
+	return b.CosmosRestClient.SendTransaction(signedTx)
 }

@@ -3,6 +3,7 @@ module github.com/anyswap/CrossChain-Router/v3
 go 1.15
 
 require (
+	cosmossdk.io/api v0.2.0 // indirect
 	github.com/BurntSushi/toml v1.2.0
 	github.com/btcsuite/btcd v0.22.1
 	github.com/cosmos/cosmos-sdk v0.46.1 // indirect
