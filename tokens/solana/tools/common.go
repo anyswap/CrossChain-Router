@@ -44,7 +44,7 @@ func SignAndSend(mpcConfig *mpc.Config, bridge *solana.Bridge, signers []*Signer
 			var keyID string
 			var rsvs []string
 
-			keyID, rsvs, err = mpcConfig.DoSignOneED(signer.PublicKey, common.ToHex(msgContent[:]), "solanaChangeMPC")
+			keyID, rsvs, err = mpcConfig.DoSignOneED(common.ToHex(types.MustPublicKeyFromBase58(signer.PublicKey).ToSlice()), common.ToHex(msgContent[:]), "solanaChangeMPC")
 			if len(rsvs) != 1 {
 				log.Fatal("get sign status require one rsv but return many", err)
 			}
