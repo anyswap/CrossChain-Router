@@ -79,8 +79,8 @@ func initFlags() {
 	flag.StringVar(&paramNewMpc, "newMpc", "", "new mpc public key")
 	flag.StringVar(&paramNewMpcAddr, "newMpcAddr", "", "new mpc base58 address")
 
-	flag.StringVar(&paramPublicKey, "pubkey", "", "signer public key")
-	flag.StringVar(&paramPriKey, "priKey", "", "signer priKey key")
+	flag.StringVar(&paramPublicKey, "pubkey", "", "signer solana address")
+	flag.StringVar(&paramPriKey, "priKey", "", "signer base58 priKey")
 
 	flag.Parse()
 

@@ -70,8 +70,8 @@ func initFlags() {
 
 	flag.StringVar(&paramEnable, "enable", "true", "enable:true disable:false")
 
-	flag.StringVar(&paramPublicKey, "pubkey", "", "signer public key")
-	flag.StringVar(&paramPriKey, "priKey", "", "signer priKey key")
+	flag.StringVar(&paramPublicKey, "pubkey", "", "signer solana address")
+	flag.StringVar(&paramPriKey, "priKey", "", "signer base58 priKey")
 
 	flag.Parse()
 

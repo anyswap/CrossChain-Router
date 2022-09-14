@@ -126,8 +126,8 @@ func initFlags() {
 	flag.StringVar(&paramConfigFile, "config", "", "config file to init mpc and gateway")
 	flag.StringVar(&paramChainID, "chainID", "", "chain id")
 
-	flag.StringVar(&paramPublicKey, "pubkey", "", "signer public key")
-	flag.StringVar(&paramPriKey, "priKey", "", "signer priKey key")
+	flag.StringVar(&paramPublicKey, "pubkey", "", "signer solana address")
+	flag.StringVar(&paramPriKey, "priKey", "", "signer base58 priKey")
 	flag.StringVar(&mintAuthority, "owner", "", "mint owner address")
 
 	flag.Parse()
