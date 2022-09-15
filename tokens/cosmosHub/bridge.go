@@ -90,6 +90,7 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 		log.Trace(b.ChainConfig.BlockChain+" Bridge::GetElectTransactionStatus fail", "tx", txHash, "err", err)
 		return status, err
 	} else {
+
 		if res.TxResponse.Code != 0 {
 			return status, tokens.ErrTxWithWrongStatus
 		}

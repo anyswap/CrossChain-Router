@@ -1,12 +1,19 @@
 package cosmosHub
 
 import (
+	"math/big"
 	"strings"
 
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmos"
+)
+
+const (
+	CoinSymbol   = "uatom"
+	TransferType = "transfer"
 )
 
 // VerifyMsgHash verify msg hash
@@ -47,8 +54,16 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 		swapInfo.Height = txHeight // Height
 	}
 
-	checkErr := b.checkSwapoutInfo(swapInfo)
-	if checkErr != nil {
+	tx := txr.TxResponse.Tx.(*TxBody)
+	if err := ParseMemo(swapInfo, tx.Memo); err != nil {
+		return swapInfo, err
+	}
+
+	if err := b.ParseAmountTotal(txr, swapInfo); err != nil {
+		return swapInfo, err
+	}
+
+	if checkErr := b.checkSwapoutInfo(swapInfo); checkErr != nil {
 		return swapInfo, checkErr
 	}
 
@@ -123,4 +138,58 @@ func (b *Bridge) checkTxStatus(txres *cosmos.GetTxResponse, allowUnstable bool) 
 		}
 	}
 	return txHeight, err
+}
+
+func ParseMemo(swapInfo *tokens.SwapTxInfo, memo string) error {
+	fields := strings.Split(memo, ":")
+	if len(fields) == 2 {
+		if toChainID, err := common.GetBigIntFromStr(fields[1]); err != nil {
+			return err
+		} else {
+			dstBridge := router.GetBridgeByChainID(fields[1])
+			if dstBridge != nil && dstBridge.IsValidAddress(fields[0]) {
+				swapInfo.Bind = fields[0]      // Bind
+				swapInfo.ToChainID = toChainID // ToChainID
+				swapInfo.To = fields[0]        // To
+				return nil
+			}
+		}
+	}
+	return tokens.ErrTxWithWrongMemo
+}
+
+//nolint:goconst // allow big check logic
+func (b *Bridge) ParseAmountTotal(txres *cosmos.GetTxResponse, swapInfo *tokens.SwapTxInfo) error {
+	mpc := b.GetRouterContract("")
+	amount := big.NewInt(0)
+	for _, log := range txres.TxResponse.Logs {
+		for _, event := range log.Events {
+			if event.Type == TransferType && len(event.Attributes)%3 == 0 {
+				for i := 0; i < len(event.Attributes); i += 3 {
+					// attribute key mismatch
+					if event.Attributes[i].Key == "recipient" &&
+						event.Attributes[i+1].Key == "sender" &&
+						event.Attributes[i+2].Key == "amount" {
+						// receiver mismatch
+						if common.IsEqualIgnoreCase(event.Attributes[i].Value, mpc) {
+							if recvCoins, err := cosmos.ParseCoinsNormalized(event.Attributes[i+2].Value); err == nil {
+								recvAmount := recvCoins.AmountOfNoDenomValidation(CoinSymbol)
+								if !recvAmount.IsNil() && !recvAmount.IsZero() {
+									if swapInfo.From == "" {
+										swapInfo.From = event.Attributes[i+1].Value
+									}
+									amount.Add(amount, recvAmount.BigInt())
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	if amount.Cmp(big.NewInt(0)) > 0 {
+		swapInfo.Value = amount
+		return nil
+	}
+	return tokens.ErrTxWithWrongValue
 }

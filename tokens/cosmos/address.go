@@ -33,24 +33,23 @@ func (c *CosmosRestClient) PublicKeyToAddress(pubKeyHex string) (string, error) 
 // PubKeyFromStr get public key from hex string
 func PubKeyFromStr(pubKeyHex string) (cryptotypes.PubKey, error) {
 	pubKeyHex = strings.TrimPrefix(pubKeyHex, "0x")
-	bs, err := hex.DecodeString(pubKeyHex)
-	if err != nil {
+	if bs, err := hex.DecodeString(pubKeyHex); err != nil {
 		return nil, err
+	} else {
+		return PubKeyFromBytes(bs)
 	}
-	return PubKeyFromBytes(bs)
 }
 
 // PubKeyFromBytes get public key from bytes
 func PubKeyFromBytes(pubKeyBytes []byte) (cryptotypes.PubKey, error) {
-	cmp, err := btcec.ParsePubKey(pubKeyBytes, btcec.S256())
-	if err != nil {
+	if cmp, err := btcec.ParsePubKey(pubKeyBytes, btcec.S256()); err != nil {
 		return nil, err
+	} else {
+		compressedPublicKey := make([]byte, secp256k1.PubKeySize)
+		copy(compressedPublicKey, cmp.SerializeCompressed())
+
+		return &secp256k1.PubKey{Key: compressedPublicKey}, nil
 	}
-
-	compressedPublicKey := make([]byte, secp256k1.PubKeySize)
-	copy(compressedPublicKey, cmp.SerializeCompressed())
-
-	return &secp256k1.PubKey{Key: compressedPublicKey}, nil
 }
 
 func (c *CosmosRestClient) VerifyPubKey(address, pubkey string) error {
