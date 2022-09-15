@@ -1,7 +1,6 @@
 package cardano
 
 import (
-	"math/big"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -173,7 +172,11 @@ func (b *Bridge) parseTokenInfo(swapInfo *tokens.SwapTxInfo, tokenInfo *Token, m
 	swapInfo.From = mpc
 	swapInfo.Bind = metadata.Value.Bind
 
-	swapInfo.ToChainID = big.NewInt(int64(metadata.Value.ToChainId))
+	if tochainId, err := common.GetBigIntFromStr(metadata.Value.ToChainId); err != nil {
+		return err
+	} else {
+		swapInfo.ToChainID = tochainId
+	}
 
 	tokenCfg := b.GetTokenConfig(swapInfo.ERC20SwapInfo.Token)
 	if tokenCfg == nil {
