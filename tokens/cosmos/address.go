@@ -62,14 +62,3 @@ func VerifyPubKey(address, pubkey string) error {
 		return nil
 	}
 }
-
-func (c *CosmosRestClient) VerifyPubKey(address, pubkey string) error {
-	if addr, err := c.PublicKeyToAddress(pubkey); err != nil {
-		return err
-	} else {
-		if address != addr {
-			return tokens.ErrValidPublicKey
-		}
-		return nil
-	}
-}
