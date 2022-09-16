@@ -101,6 +101,16 @@ func (s *RouterSwapAPI) GetRouterSwap(r *http.Request, args *RouterSwapKeyArgs, 
 	return err
 }
 
+// GetRouterSwaps api
+func (s *RouterSwapAPI) GetRouterSwaps(r *http.Request, args *RouterSwapKeyArgs, result *[]*swapapi.SwapInfo) error {
+	res, err := swapapi.GetRouterSwaps(args.ChainID, args.TxID)
+	if err == nil && res != nil {
+		*result = make([]*swapapi.SwapInfo, 0, len(res))
+		copy(*result, res)
+	}
+	return err
+}
+
 // RouterGetSwapHistoryArgs args
 type RouterGetSwapHistoryArgs struct {
 	ChainID string `json:"chainid"`

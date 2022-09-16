@@ -123,6 +123,16 @@ func GetRouterSwapHandler(w http.ResponseWriter, r *http.Request) {
 	writeResponse(w, res, err)
 }
 
+// GetRouterSwapsHandler handler
+func GetRouterSwapsHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	chainID := vars["chainid"]
+	txid := vars["txid"]
+
+	res, err := swapapi.GetRouterSwaps(chainID, txid)
+	writeResponse(w, res, err)
+}
+
 func getHistoryRequestVaules(r *http.Request) (offset, limit int, status string, err error) {
 	vals := r.URL.Query()
 
