@@ -78,7 +78,7 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 					if err := txBulider.SetSignatures(sig); err != nil {
 						return nil, "", err
 					}
-					if txBulider.GetTx().ValidateBasic(); err != nil {
+					if err := txBulider.GetTx().ValidateBasic(); err != nil {
 						return nil, "", err
 					}
 
@@ -126,7 +126,7 @@ func (b *Bridge) SignTransactionWithPrivateKey(txBulider cosmosClient.TxBuilder,
 				if err := txBulider.SetSignatures(sig); err != nil {
 					return nil, "", err
 				}
-				if txBulider.GetTx().ValidateBasic(); err != nil {
+				if err := txBulider.GetTx().ValidateBasic(); err != nil {
 					return nil, "", err
 				}
 

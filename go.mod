@@ -10,7 +10,7 @@ require (
 	github.com/cosmos/cosmos-sdk/api v0.1.0
 	github.com/deckarep/golang-set v1.8.0
 	github.com/didip/tollbooth/v6 v6.1.2
-	github.com/gogo/protobuf v1.3.3 // indirect
+	github.com/gogo/protobuf v1.3.3
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/rpc v1.2.0

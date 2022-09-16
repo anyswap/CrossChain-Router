@@ -103,7 +103,9 @@ func BuildTx(
 ) (cosmosClient.TxBuilder, error) {
 	txBuilder := NewTxBuilder()
 	msg := BuildSendMgs(from, to, CoinSymbol, amount)
-	txBuilder.SetMsgs(msg)
+	if err := txBuilder.SetMsgs(msg); err != nil {
+		return nil, err
+	}
 	txBuilder.SetMemo(memo)
 	if fee, err := ParseCoinsFee(*extra.Fee); err != nil {
 		return nil, err
@@ -115,7 +117,9 @@ func BuildTx(
 		return nil, err
 	} else {
 		sig := BuildSignatures(pubKey, *extra.Sequence, nil)
-		txBuilder.SetSignatures(sig)
+		if err := txBuilder.SetSignatures(sig); err != nil {
+			return nil, err
+		}
 	}
 	if err := txBuilder.GetTx().ValidateBasic(); err != nil {
 		return nil, err

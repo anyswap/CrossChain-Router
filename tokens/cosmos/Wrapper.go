@@ -11,7 +11,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/auth/ante"
 	authsigning "github.com/cosmos/cosmos-sdk/x/auth/signing"
 	authTx "github.com/cosmos/cosmos-sdk/x/auth/tx"
-	"github.com/gogo/protobuf/codec"
 	proto "github.com/gogo/protobuf/proto"
 )
 
@@ -24,8 +23,6 @@ var (
 // wrapper is a wrapper around the tx.Tx proto.Message which retain the raw
 // body and auth_info bytes.
 type Wrapper struct {
-	cdc codec.Codec
-
 	tx *tx.Tx
 
 	// bodyBz represents the protobuf encoding of TxBody. This should be encoding
@@ -35,8 +32,6 @@ type Wrapper struct {
 	// authInfoBz represents the protobuf encoding of TxBody. This should be encoding
 	// from the client using TxRaw if the tx was decoded from the wire
 	authInfoBz []byte
-
-	txBodyHasUnknownNonCriticals bool
 }
 
 func (w *Wrapper) AddAuxSignerData(_ tx.AuxSignerData) error {
