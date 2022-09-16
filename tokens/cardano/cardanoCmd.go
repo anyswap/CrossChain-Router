@@ -9,7 +9,7 @@ import (
 
 const (
 	NetWork    = "--testnet-magic 1"
-	PolicyId   = "8c7d04a9146bff45aadc19d3f3e4cdb8a989ff35182989dbfb93f5b4"
+	PolicyId   = "8ce5ab9f1216a7559e14ab8e2dd7af4dcc34c7e718fe239902993586"
 	RawPath    = "txDb/raw/"
 	AdaAssetId = "lovelace"
 	RawSuffix  = ".raw"

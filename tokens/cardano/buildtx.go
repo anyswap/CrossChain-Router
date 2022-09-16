@@ -18,6 +18,7 @@ var (
 )
 
 // BuildRawTransaction build raw tx
+//
 //nolint:funlen,gocyclo // ok
 func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{}, err error) {
 	if pendingHash != "" {
@@ -144,20 +145,24 @@ func (b *Bridge) BuildTx(swapId, receiver, assetId string, amount *big.Int, utxo
 		policyId := strings.Split(assetId, ".")[0]
 		if allAssetsMap[assetId] >= amount.Uint64() {
 			rawTransaction.TxOuts[receiver][assetId] = amount.String()
-			rawTransaction.TxOuts[routerMpc][assetId] = fmt.Sprint((allAssetsMap[assetId] - amount.Uint64()))
+			if allAssetsMap[assetId] > amount.Uint64() {
+				rawTransaction.TxOuts[routerMpc][assetId] = fmt.Sprint((allAssetsMap[assetId] - amount.Uint64()))
+			}
 		} else {
 			if policyId != PolicyId {
 				return nil, tokens.ErrTokenBalancesNotEnough
 			} else {
 				rawTransaction.Mint = map[string]string{
-					assetId: amount.String(),
+					assetId: fmt.Sprint(amount.Uint64() - allAssetsMap[assetId]),
 				}
 				rawTransaction.TxOuts[receiver][assetId] = amount.String()
 			}
 		}
 	}
 	rawTransaction.TxOuts[receiver][AdaAssetId] = adaAmount.String()
-	rawTransaction.TxOuts[routerMpc][AdaAssetId] = fmt.Sprint((allAssetsMap[AdaAssetId] - adaAmount.Uint64()))
+	if allAssetsMap[AdaAssetId] > adaAmount.Uint64() {
+		rawTransaction.TxOuts[routerMpc][AdaAssetId] = fmt.Sprint((allAssetsMap[AdaAssetId] - adaAmount.Uint64()))
+	}
 	for assetIdWithName, assetAmount := range allAssetsMap {
 		if assetIdWithName != AdaAssetId && assetIdWithName != assetId {
 			rawTransaction.TxOuts[routerMpc][assetIdWithName] = fmt.Sprint(assetAmount)
