@@ -11,14 +11,14 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-func (c *CosmosRestClient) IsValidAddress(address string) bool {
+func IsValidAddress(address string) bool {
 	if _, err := sdk.AccAddressFromBech32(address); err != nil {
 		return false
 	}
 	return true
 }
 
-func (c *CosmosRestClient) PublicKeyToAddress(pubKeyHex string) (string, error) {
+func PublicKeyToAddress(pubKeyHex string) (string, error) {
 	if pk, err := PubKeyFromStr(pubKeyHex); err != nil {
 		return "", err
 	} else {
@@ -52,8 +52,8 @@ func PubKeyFromBytes(pubKeyBytes []byte) (cryptotypes.PubKey, error) {
 	}
 }
 
-func (c *CosmosRestClient) VerifyPubKey(address, pubkey string) error {
-	if addr, err := c.PublicKeyToAddress(pubkey); err != nil {
+func VerifyPubKey(address, pubkey string) error {
+	if addr, err := PublicKeyToAddress(pubkey); err != nil {
 		return err
 	} else {
 		if address != addr {

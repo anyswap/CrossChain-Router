@@ -37,3 +37,16 @@ type BroadcastTxRequest struct {
 type BroadcastTxResponse struct {
 	TxResponse *v1beta11.TxResponse `protobuf:"bytes,1,opt,name=tx_response,json=txResponse,proto3" json:"tx_response,omitempty"`
 }
+
+// QueryAccountResponse is the response type for the Query/Account RPC method.
+type QueryAccountResponse struct {
+	// account defines the account of the corresponding address.
+	Account *BaseAccount `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+}
+
+// BaseAccount base account
+type BaseAccount struct {
+	Address       string `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`
+	AccountNumber uint64 `protobuf:"varint,3,opt,name=account_number,json=accountNumber,proto3" json:"account_number,omitempty"`
+	Sequence      uint64 `protobuf:"varint,4,opt,name=sequence,proto3" json:"sequence,omitempty"`
+}
