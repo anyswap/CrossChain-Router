@@ -1,7 +1,6 @@
 package cosmosSDK
 
 import (
-	"errors"
 	"fmt"
 	"math/big"
 	"strconv"
@@ -83,7 +82,9 @@ func (c *CosmosRestClient) GetBaseAccount(address string) (*QueryAccountResponse
 		restApi := url + AccountInfo + address
 		if err := client.RPCGet(&result, restApi); err == nil {
 			if result.Status == "ERROR" {
-				return nil, errors.New(fmt.Sprintf("GetBaseAccount error:%v address:%v", result.Msg, address))
+				return nil, fmt.Errorf(
+					"GetBaseAccount error, address: %v, msg: %v",
+					address, result.Msg)
 			} else {
 				return result, nil
 			}
