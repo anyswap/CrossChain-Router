@@ -348,8 +348,6 @@ func (b *Bridge) getMaxGasPrice(urlsSlice ...[]string) (*big.Int, error) {
 
 // get median gas price as the rpc result fluctuates too widely
 func (b *Bridge) getMedianGasPrice(urlsSlice ...[]string) (*big.Int, error) {
-	logFunc := log.GetPrintFuncOr(params.IsDebugMode, log.Info, log.Trace)
-
 	allGasPrices := make([]*big.Int, 0, 10)
 	urlCount := 0
 
@@ -359,11 +357,11 @@ func (b *Bridge) getMedianGasPrice(urlsSlice ...[]string) (*big.Int, error) {
 		for _, url := range urls {
 			var result hexutil.Big
 			if err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_gasPrice"); err != nil {
-				logFunc("call eth_gasPrice failed", "url", url, "err", err)
+				log.Info("call eth_gasPrice failed", "chainID", b.ChainConfig.ChainID, "url", url, "err", err)
 				continue
 			}
 			gasPrice := result.ToInt()
-			logFunc("call eth_gasPrice success", "url", url, "gasPrice", gasPrice)
+			log.Info("call eth_gasPrice success", "chainID", b.ChainConfig.ChainID, "url", url, "gasPrice", gasPrice)
 			allGasPrices = append(allGasPrices, gasPrice)
 		}
 	}
@@ -383,7 +381,7 @@ func (b *Bridge) getMedianGasPrice(urlsSlice ...[]string) (*big.Int, error) {
 		mdGasPrice = new(big.Int).Add(allGasPrices[mdInd], allGasPrices[mdInd+1])
 		mdGasPrice.Div(mdGasPrice, big.NewInt(2))
 	}
-	logFunc("getMedianGasPrice success", "urls", urlCount, "count", count, "median", mdGasPrice)
+	log.Info("getMedianGasPrice success", "chainID", b.ChainConfig.ChainID, "urls", urlCount, "count", count, "median", mdGasPrice)
 	return mdGasPrice, nil
 }
 
