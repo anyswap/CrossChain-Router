@@ -273,6 +273,7 @@ func (b *Bridge) getGasPrice(args *tokens.BuildTxArgs) (price *big.Int, err erro
 
 	maxGasPrice := params.GetMaxGasPrice(b.ChainConfig.ChainID)
 	if maxGasPrice != nil && price.Cmp(maxGasPrice) > 0 {
+		log.Warn("gas price exceeded maximum limit", "chainID", b.ChainConfig.ChainID, "gasPrice", price, "max", maxGasPrice)
 		return nil, fmt.Errorf("gas price %v exceeded maximum limit", price)
 	}
 
