@@ -2,6 +2,7 @@ package cosmosHub
 
 import (
 	"math/big"
+	"strconv"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -42,39 +43,37 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 	swapInfo.LogIndex = logIndex                      // LogIndex
 	swapInfo.FromChainID = b.ChainConfig.GetChainID() // FromChainID
 
-	txr, err := b.GetTransactionByHash(txHash)
-	if err != nil {
+	if txr, err := b.GetTransactionByHash(txHash); err != nil {
 		log.Debug("[verifySwapin] "+b.ChainConfig.BlockChain+" Bridge::GetTransaction fail", "tx", txHash, "err", err)
 		return swapInfo, tokens.ErrTxNotFound
-	}
-
-	if txHeight, err := b.checkTxStatus(txr, allowUnstable); err != nil {
-		return swapInfo, err
 	} else {
-		swapInfo.Height = txHeight // Height
-	}
+		if txHeight, err := b.checkTxStatus(txr, allowUnstable); err != nil {
+			return swapInfo, err
+		} else {
+			swapInfo.Height = txHeight // Height
+		}
 
-	tx := txr.TxResponse.Tx.(*TxBody)
-	if err := ParseMemo(swapInfo, tx.Memo); err != nil {
-		return swapInfo, err
-	}
+		if err := ParseMemo(swapInfo, txr.Tx.Body.Memo); err != nil {
+			return swapInfo, err
+		}
 
-	if err := b.ParseAmountTotal(txr, swapInfo); err != nil {
-		return swapInfo, err
-	}
+		if err := b.ParseAmountTotal(txr, swapInfo); err != nil {
+			return swapInfo, err
+		}
 
-	if checkErr := b.checkSwapoutInfo(swapInfo); checkErr != nil {
-		return swapInfo, checkErr
-	}
+		if checkErr := b.checkSwapoutInfo(swapInfo); checkErr != nil {
+			return swapInfo, checkErr
+		}
 
-	if !allowUnstable {
-		log.Info("verify swapout pass",
-			"token", swapInfo.ERC20SwapInfo.Token, "from", swapInfo.From, "to", swapInfo.To,
-			"bind", swapInfo.Bind, "value", swapInfo.Value, "txid", swapInfo.Hash,
-			"height", swapInfo.Height, "timestamp", swapInfo.Timestamp, "logIndex", swapInfo.LogIndex)
-	}
+		if !allowUnstable {
+			log.Info("verify swapout pass",
+				"token", swapInfo.ERC20SwapInfo.Token, "from", swapInfo.From, "to", swapInfo.To,
+				"bind", swapInfo.Bind, "value", swapInfo.Value, "txid", swapInfo.Hash,
+				"height", swapInfo.Height, "timestamp", swapInfo.Timestamp, "logIndex", swapInfo.LogIndex)
+		}
 
-	return swapInfo, nil
+		return swapInfo, nil
+	}
 }
 
 func (b *Bridge) checkSwapoutInfo(swapInfo *tokens.SwapTxInfo) error {
@@ -119,25 +118,27 @@ func (b *Bridge) checkSwapoutInfo(swapInfo *tokens.SwapTxInfo) error {
 }
 
 func (b *Bridge) checkTxStatus(txres *cosmosSDK.GetTxResponse, allowUnstable bool) (txHeight uint64, err error) {
-	txHeight = uint64(txres.TxResponse.Height)
+	if txHeight, err := strconv.ParseUint(txres.TxResponse.Height, 10, 64); err != nil {
+		return 0, nil
+	} else {
+		if txres.TxResponse.Code != 0 {
+			return txHeight, tokens.ErrTxWithWrongStatus
+		}
 
-	if txres.TxResponse.Code != 0 {
-		return txHeight, tokens.ErrTxWithWrongStatus
-	}
-
-	if !allowUnstable {
-		if h, err := b.GetLatestBlockNumber(); err != nil {
-			return txHeight, err
-		} else {
-			if h < txHeight+b.GetChainConfig().Confirmations {
-				return txHeight, tokens.ErrTxNotStable
-			}
-			if h < b.ChainConfig.InitialHeight {
-				return txHeight, tokens.ErrTxBeforeInitialHeight
+		if !allowUnstable {
+			if h, err := b.GetLatestBlockNumber(); err != nil {
+				return txHeight, err
+			} else {
+				if h < txHeight+b.GetChainConfig().Confirmations {
+					return txHeight, tokens.ErrTxNotStable
+				}
+				if h < b.ChainConfig.InitialHeight {
+					return txHeight, tokens.ErrTxBeforeInitialHeight
+				}
 			}
 		}
+		return txHeight, err
 	}
-	return txHeight, err
 }
 
 func ParseMemo(swapInfo *tokens.SwapTxInfo, memo string) error {
@@ -150,7 +151,7 @@ func ParseMemo(swapInfo *tokens.SwapTxInfo, memo string) error {
 			if dstBridge != nil && dstBridge.IsValidAddress(fields[0]) {
 				swapInfo.Bind = fields[0]      // Bind
 				swapInfo.ToChainID = toChainID // ToChainID
-				swapInfo.To = fields[0]        // To
+				swapInfo.To = swapInfo.Bind    // To
 				return nil
 			}
 		}
@@ -187,9 +188,16 @@ func (b *Bridge) ParseAmountTotal(txres *cosmosSDK.GetTxResponse, swapInfo *toke
 			}
 		}
 	}
+
 	if amount.Cmp(big.NewInt(0)) > 0 {
 		swapInfo.Value = amount
-		return nil
+		swapInfo.ERC20SwapInfo.Token = CoinSymbol
+		if tokenCfg := b.GetTokenConfig(swapInfo.ERC20SwapInfo.Token); tokenCfg == nil {
+			return tokens.ErrMissTokenConfig
+		} else {
+			swapInfo.ERC20SwapInfo.TokenID = tokenCfg.TokenID
+			return nil
+		}
 	}
 	return tokens.ErrTxWithWrongValue
 }

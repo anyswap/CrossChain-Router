@@ -1,12 +1,13 @@
 package cosmosSDK
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
+	"strconv"
 
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
-	tendermintTypes "github.com/cosmos/cosmos-sdk/api/tendermint/types"
 	bankTypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 )
 
@@ -17,23 +18,27 @@ const (
 	AtomBalance = "/cosmos/bank/v1beta1/balances/%s/by_denom?denom=%s"
 )
 
-func (c *CosmosRestClient) GetLatestBlockNumber(apiAddress string) (uint64, error) {
-	var result tendermintTypes.Block
-	if apiAddress == "" {
-		restApi := apiAddress + LatestBlock
-		if err := client.RPCGet(&result, restApi); err == nil {
-			return uint64(result.Header.Height), nil
-		} else {
-			return 0, err
-		}
-	}
+func (c *CosmosRestClient) GetLatestBlockNumber() (uint64, error) {
+	var result *GetLatestBlockResponse
 	for _, url := range c.BaseUrls {
 		restApi := url + LatestBlock
 		if err := client.RPCGet(&result, restApi); err == nil {
-			return uint64(result.Header.Height), nil
+			if height, err := strconv.ParseUint(result.Block.Header.Height, 10, 64); err == nil {
+				return height, nil
+			}
 		}
 	}
 	return 0, tokens.ErrRPCQueryError
+}
+
+func GetLatestBlockNumberByApiUrl(apiAddress string) (uint64, error) {
+	var result *GetLatestBlockResponse
+	restApi := apiAddress + LatestBlock
+	if err := client.RPCGet(&result, restApi); err == nil {
+		return strconv.ParseUint(result.Block.Header.Height, 10, 64)
+	} else {
+		return 0, err
+	}
 }
 
 func (c *CosmosRestClient) GetTransactionByHash(txHash string) (*GetTxResponse, error) {
@@ -77,7 +82,11 @@ func (c *CosmosRestClient) GetBaseAccount(address string) (*QueryAccountResponse
 	for _, url := range c.BaseUrls {
 		restApi := url + AccountInfo + address
 		if err := client.RPCGet(&result, restApi); err == nil {
-			return result, nil
+			if result.Status == "ERROR" {
+				return nil, errors.New(fmt.Sprintf("GetBaseAccount error:%v address:%v", result.Msg, address))
+			} else {
+				return result, nil
+			}
 		}
 	}
 	return nil, tokens.ErrRPCQueryError

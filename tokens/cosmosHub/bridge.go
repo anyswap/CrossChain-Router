@@ -2,6 +2,7 @@ package cosmosHub
 
 import (
 	"math/big"
+	"strconv"
 	"sync"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -50,7 +51,7 @@ func NewCrossChainBridge() *Bridge {
 
 // GetStubChainID get stub chainID
 func GetStubChainID(network string) *big.Int {
-	stubChainID := new(big.Int).SetBytes([]byte("CosmosHub"))
+	stubChainID := new(big.Int).SetBytes([]byte("cosmoshub-4"))
 	switch network {
 	case mainnetNetWork:
 	case testnetNetWork:
@@ -65,12 +66,12 @@ func GetStubChainID(network string) *big.Int {
 
 // GetLatestBlockNumber gets latest block number
 func (b *Bridge) GetLatestBlockNumber() (uint64, error) {
-	return b.CosmosRestClient.GetLatestBlockNumber("")
+	return b.CosmosRestClient.GetLatestBlockNumber()
 }
 
 // GetLatestBlockNumberOf gets latest block number from single api
 func (b *Bridge) GetLatestBlockNumberOf(apiAddress string) (uint64, error) {
-	return b.CosmosRestClient.GetLatestBlockNumber(apiAddress)
+	return cosmosSDK.GetLatestBlockNumberByApiUrl(apiAddress)
 }
 
 // GetTransaction impl
@@ -90,11 +91,14 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 		log.Trace(b.ChainConfig.BlockChain+" Bridge::GetElectTransactionStatus fail", "tx", txHash, "err", err)
 		return status, err
 	} else {
-
 		if res.TxResponse.Code != 0 {
 			return status, tokens.ErrTxWithWrongStatus
 		}
-		txStatus.BlockHeight = uint64(res.TxResponse.Height)
+		if txHeight, err := strconv.ParseUint(res.TxResponse.Height, 10, 64); err != nil {
+			return status, err
+		} else {
+			txStatus.BlockHeight = txHeight
+		}
 		if blockNumber, err := b.GetLatestBlockNumber(); err != nil {
 			return status, err
 		} else {
