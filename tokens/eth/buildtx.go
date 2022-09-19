@@ -17,7 +17,8 @@ var (
 	retryRPCCount    = 3
 	retryRPCInterval = 1 * time.Second
 
-	latestGasPrice *big.Int
+	latestGasPrice  *big.Int
+	autoMaxGasPrice *big.Int
 )
 
 // BuildRawTransaction build raw tx
@@ -274,7 +275,11 @@ func (b *Bridge) getGasPrice(args *tokens.BuildTxArgs) (price *big.Int, err erro
 	maxGasPrice := params.GetMaxGasPrice(b.ChainConfig.ChainID)
 	if maxGasPrice != nil && price.Cmp(maxGasPrice) > 0 {
 		log.Warn("gas price exceeded maximum limit", "chainID", b.ChainConfig.ChainID, "gasPrice", price, "max", maxGasPrice)
-		return nil, fmt.Errorf("gas price %v exceeded maximum limit", price)
+		return nil, fmt.Errorf("gas price %v exceeded config maximum limit", price)
+	}
+	if maxGasPrice == nil && price.Cmp(autoMaxGasPrice) > 0 {
+		log.Warn("gas price exceeded auto maximum limit", "chainID", b.ChainConfig.ChainID, "gasPrice", price, "autoMax", autoMaxGasPrice)
+		return nil, fmt.Errorf("gas price %v exceeded auto maximum limit", price)
 	}
 
 	smallestGasPriceUnit := params.GetLocalChainConfig(b.ChainConfig.ChainID).SmallestGasPriceUnit
@@ -326,6 +331,13 @@ func (b *Bridge) adjustSwapGasPrice(args *tokens.BuildTxArgs, oldGasPrice *big.I
 		if replaceNum == 0 { // exclude replace situation
 			latestGasPrice = newGasPrice
 		}
+	}
+	tempMaxGasPrice := new(big.Int).Mul(newGasPrice, big.NewInt(10))
+	if autoMaxGasPrice == nil || autoMaxGasPrice.Cmp(tempMaxGasPrice) > 0 {
+		autoMaxGasPrice = tempMaxGasPrice
+	} else {
+		added := new(big.Int).Div(autoMaxGasPrice, big.NewInt(10))
+		autoMaxGasPrice = new(big.Int).Add(autoMaxGasPrice, added)
 	}
 	return newGasPrice, nil
 }
