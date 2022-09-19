@@ -1,4 +1,4 @@
-package cosmos
+package cosmosSDK
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
-	"github.com/cosmos/cosmos-sdk/api/tendermint/types"
+	tendermintTypes "github.com/cosmos/cosmos-sdk/api/tendermint/types"
 	bankTypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 )
 
@@ -18,7 +18,7 @@ const (
 )
 
 func (c *CosmosRestClient) GetLatestBlockNumber(apiAddress string) (uint64, error) {
-	var result types.Block
+	var result tendermintTypes.Block
 	if apiAddress == "" {
 		restApi := apiAddress + LatestBlock
 		if err := client.RPCGet(&result, restApi); err == nil {

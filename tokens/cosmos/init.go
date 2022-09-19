@@ -1,4 +1,4 @@
-package cosmos
+package cosmosSDK
 
 func NewCosmosRestClient(urls []string) *CosmosRestClient {
 	return &CosmosRestClient{

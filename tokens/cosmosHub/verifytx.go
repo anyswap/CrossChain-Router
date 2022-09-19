@@ -8,7 +8,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
-	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmos"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmosSDK"
 )
 
 const (
@@ -118,7 +118,7 @@ func (b *Bridge) checkSwapoutInfo(swapInfo *tokens.SwapTxInfo) error {
 	return nil
 }
 
-func (b *Bridge) checkTxStatus(txres *cosmos.GetTxResponse, allowUnstable bool) (txHeight uint64, err error) {
+func (b *Bridge) checkTxStatus(txres *cosmosSDK.GetTxResponse, allowUnstable bool) (txHeight uint64, err error) {
 	txHeight = uint64(txres.TxResponse.Height)
 
 	if txres.TxResponse.Code != 0 {
@@ -159,7 +159,7 @@ func ParseMemo(swapInfo *tokens.SwapTxInfo, memo string) error {
 }
 
 //nolint:goconst // allow big check logic
-func (b *Bridge) ParseAmountTotal(txres *cosmos.GetTxResponse, swapInfo *tokens.SwapTxInfo) error {
+func (b *Bridge) ParseAmountTotal(txres *cosmosSDK.GetTxResponse, swapInfo *tokens.SwapTxInfo) error {
 	mpc := b.GetRouterContract("")
 	amount := big.NewInt(0)
 	for _, log := range txres.TxResponse.Logs {
@@ -172,7 +172,7 @@ func (b *Bridge) ParseAmountTotal(txres *cosmos.GetTxResponse, swapInfo *tokens.
 						event.Attributes[i+2].Key == "amount" {
 						// receiver mismatch
 						if common.IsEqualIgnoreCase(event.Attributes[i].Value, mpc) {
-							if recvCoins, err := cosmos.ParseCoinsNormalized(event.Attributes[i+2].Value); err == nil {
+							if recvCoins, err := cosmosSDK.ParseCoinsNormalized(event.Attributes[i+2].Value); err == nil {
 								recvAmount := recvCoins.AmountOfNoDenomValidation(CoinSymbol)
 								if !recvAmount.IsNil() && !recvAmount.IsZero() {
 									if swapInfo.From == "" {

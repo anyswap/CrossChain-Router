@@ -1,4 +1,4 @@
-package cosmos
+package cosmosSDK
 
 import (
 	v1beta11 "cosmossdk.io/api/cosmos/base/abci/v1beta1"

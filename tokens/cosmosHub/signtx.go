@@ -13,7 +13,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
-	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmos"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmosSDK"
 	"github.com/anyswap/CrossChain-Router/v3/tools/crypto"
 	cosmosClient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
@@ -24,7 +24,7 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 	if txBulider, ok := rawTx.(cosmosClient.TxBuilder); !ok {
 		return nil, txHash, errors.New("wrong raw tx param")
 	} else {
-		if txBytes, err := cosmos.GetTxDataBytes(txBulider); err != nil {
+		if txBytes, err := cosmosSDK.GetTxDataBytes(txBulider); err != nil {
 			return nil, txHash, err
 		} else {
 			mpcParams := params.GetMPCConfig(b.UseFastMPC)
@@ -67,14 +67,14 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 					return nil, "", errors.New("wrong signature length")
 				}
 
-				if pubKey, err := cosmos.PubKeyFromStr(mpcPubkey); err != nil {
+				if pubKey, err := cosmosSDK.PubKeyFromStr(mpcPubkey); err != nil {
 					return nil, "", err
 				} else {
 					if !pubKey.VerifySignature(txBytes, signature) {
 						log.Error("verify signature failed", "signBytes", common.ToHex(txBytes), "signature", signature)
 						return nil, "", errors.New("wrong signature")
 					}
-					sig := cosmos.BuildSignatures(pubKey, *args.Extra.Sequence, signature)
+					sig := cosmosSDK.BuildSignatures(pubKey, *args.Extra.Sequence, signature)
 					if err := txBulider.SetSignatures(sig); err != nil {
 						return nil, "", err
 					}
@@ -82,7 +82,7 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 						return nil, "", err
 					}
 
-					if signBytes, err := cosmos.GetTxDataBytes(txBulider); err != nil {
+					if signBytes, err := cosmosSDK.GetTxDataBytes(txBulider); err != nil {
 						return nil, "", err
 					} else {
 						signedTx = []byte(base64.StdEncoding.EncodeToString(signBytes))
@@ -101,7 +101,7 @@ func (b *Bridge) SignTransactionWithPrivateKey(txBulider cosmosClient.TxBuilder,
 		return nil, "", err
 	} else {
 		ecPriv := &secp256k1.PrivKey{Key: ecPrikey.D.Bytes()}
-		if txBytes, err := cosmos.GetTxDataBytes(txBulider); err != nil {
+		if txBytes, err := cosmosSDK.GetTxDataBytes(txBulider); err != nil {
 			return nil, "", err
 		} else {
 			if signature, err := ecPriv.Sign(txBytes); err != nil {
@@ -122,7 +122,7 @@ func (b *Bridge) SignTransactionWithPrivateKey(txBulider cosmosClient.TxBuilder,
 					log.Error("verify signature failed", "signBytes", common.ToHex(txBytes), "signature", signature)
 					return nil, "", errors.New("wrong signature")
 				}
-				sig := cosmos.BuildSignatures(pubKey, *args.Extra.Sequence, signature)
+				sig := cosmosSDK.BuildSignatures(pubKey, *args.Extra.Sequence, signature)
 				if err := txBulider.SetSignatures(sig); err != nil {
 					return nil, "", err
 				}
@@ -130,7 +130,7 @@ func (b *Bridge) SignTransactionWithPrivateKey(txBulider cosmosClient.TxBuilder,
 					return nil, "", err
 				}
 
-				if signBytes, err := cosmos.GetTxDataBytes(txBulider); err != nil {
+				if signBytes, err := cosmosSDK.GetTxDataBytes(txBulider); err != nil {
 					return nil, "", err
 				} else {
 					signedTx = []byte(base64.StdEncoding.EncodeToString(signBytes))

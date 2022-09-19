@@ -5,32 +5,27 @@ SwapType = "erc20swap"
 # default subtype is empty. anycall has subtype of 'curve'
 SwapSubType = ""
 
-
 # modgodb database connection config
 [Server.MongoDB]
-DBURLs = ["localhost:27017"]
 DBName = "testdb"
-UserName = "testuser"
-Password = "testpasswd"
-
+DBURLs = ["192.168.110.70:27017"]
+Password = "123456"
+UserName = "tester"
 
 # bridge API service
 [Server.APIServer]
 # listen port
 Port = 11556
 
-
 # OnChain config
 [OnChain]
-Contract = "0x1111111111111111111111111111111111111111"
-APIAddress = ["https://data-seed-prebsc-1-s1.binance.org:8545"]
-
+APIAddress = ["https://rinkeby.infura.io/v3/8e1493b73b104925b1d3b95abd3fd767"]
+Contract = "0x4342F2b5224a43541BE7C8F39B92D7fEaA74d038"
 
 # Gateways config. key is chainID
 [Gateways]
-97 = ["https://data-seed-prebsc-1-s1.binance.org:8545/"]
 1000005788241 = ["wss://s.altnet.rippletest.net:51233"]
-
+4 = ["https://rinkeby.infura.io/v3/8e1493b73b104925b1d3b95abd3fd767"]
 
 # MPC config
 [MPC]
@@ -39,5 +34,5 @@ SignWithPrivateKey = true
 
 # set signer's private key, key is chain ID (use for testing)
 [MPC.SignerPrivateKeys]
-97            = "1111111111111111111111111111111111111111111111111111111111111111"
 1000005788241 = "1111111111111111111111111111111111111111111111111111111111111111"
+97 = "1111111111111111111111111111111111111111111111111111111111111111"

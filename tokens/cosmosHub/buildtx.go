@@ -11,7 +11,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
-	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmos"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmosSDK"
 )
 
 var (
@@ -70,7 +70,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 			} else {
 				memo := "Multichain_" + args.SwapID
 				mpcPubkey := router.GetMPCPublicKey(args.From)
-				if txBuilder, err := cosmos.BuildTx(args.From, receiver, CoinSymbol, memo, amount, extra, mpcPubkey); err != nil {
+				if txBuilder, err := cosmosSDK.BuildTx(args.From, receiver, CoinSymbol, memo, amount, extra, mpcPubkey); err != nil {
 					return nil, err
 				} else {
 					return txBuilder, nil

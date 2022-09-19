@@ -1,6 +1,6 @@
 module github.com/anyswap/CrossChain-Router/v3
 
-go 1.18
+go 1.15
 
 require (
 	cosmossdk.io/api v0.2.0

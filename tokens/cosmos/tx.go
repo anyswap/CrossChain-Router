@@ -1,4 +1,4 @@
-package cosmos
+package cosmosSDK
 
 import (
 	"encoding/json"
@@ -9,12 +9,12 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	cosmosClient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/codec"
-	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-	"github.com/cosmos/cosmos-sdk/crypto/types"
-	sdk "github.com/cosmos/cosmos-sdk/types"
+	codecTypes "github.com/cosmos/cosmos-sdk/codec/types"
+	cryptoTypes "github.com/cosmos/cosmos-sdk/crypto/types"
+	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	authTx "github.com/cosmos/cosmos-sdk/x/auth/tx"
-	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	bankTypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 )
 
 const (
@@ -57,7 +57,7 @@ func (c *CosmosRestClient) BroadcastTx(req *BroadcastTxRequest) (string, error) 
 }
 
 func NewTxBuilder() cosmosClient.TxBuilder {
-	interfaceRegistry := codectypes.NewInterfaceRegistry()
+	interfaceRegistry := codecTypes.NewInterfaceRegistry()
 	protoCodec := codec.NewProtoCodec(interfaceRegistry)
 	txConfig := authTx.NewTxConfig(protoCodec, authTx.DefaultSignModes)
 	return txConfig.NewTxBuilder()
@@ -74,17 +74,17 @@ func NewTxBuilder() cosmosClient.TxBuilder {
 // 	}
 // }
 
-func BuildSendMgs(from, to, unit string, amount *big.Int) *banktypes.MsgSend {
-	return &banktypes.MsgSend{
+func BuildSendMgs(from, to, unit string, amount *big.Int) *bankTypes.MsgSend {
+	return &bankTypes.MsgSend{
 		FromAddress: from,
 		ToAddress:   to,
-		Amount: sdk.Coins{
-			sdk.NewCoin(unit, sdk.NewIntFromBigInt(amount)),
+		Amount: types.Coins{
+			types.NewCoin(unit, types.NewIntFromBigInt(amount)),
 		},
 	}
 }
 
-func BuildSignatures(publicKey types.PubKey, sequence uint64, signature []byte) signing.SignatureV2 {
+func BuildSignatures(publicKey cryptoTypes.PubKey, sequence uint64, signature []byte) signing.SignatureV2 {
 	return signing.SignatureV2{
 		PubKey: publicKey,
 		Data: &signing.SingleSignatureData{

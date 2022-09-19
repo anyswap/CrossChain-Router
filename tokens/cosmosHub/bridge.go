@@ -7,7 +7,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/base"
-	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmos"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmosSDK"
 )
 
 var (
@@ -28,7 +28,7 @@ const (
 // Bridge near bridge
 type Bridge struct {
 	*base.NonceSetterBase
-	*cosmos.CosmosRestClient
+	*cosmosSDK.CosmosRestClient
 }
 
 // SupportsChainID supports chainID
@@ -44,7 +44,7 @@ func SupportsChainID(chainID *big.Int) bool {
 func NewCrossChainBridge() *Bridge {
 	return &Bridge{
 		NonceSetterBase:  base.NewNonceSetterBase(),
-		CosmosRestClient: cosmos.NewCosmosRestClient([]string{""}),
+		CosmosRestClient: cosmosSDK.NewCosmosRestClient([]string{""}),
 	}
 }
 
@@ -79,7 +79,7 @@ func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
 }
 
 // GetTransactionByHash get tx response by hash
-func (b *Bridge) GetTransactionByHash(txHash string) (*cosmos.GetTxResponse, error) {
+func (b *Bridge) GetTransactionByHash(txHash string) (*cosmosSDK.GetTxResponse, error) {
 	return b.CosmosRestClient.GetTransactionByHash(txHash)
 }
 
