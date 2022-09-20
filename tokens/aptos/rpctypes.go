@@ -90,25 +90,25 @@ type TransactionSignature struct {
 	Signature string `json:"signature,omitempty"`
 }
 
-type ModuleTransaction struct {
-	Sender                  string                `json:"sender"`
-	SequenceNumber          string                `json:"sequence_number"`
-	MaxGasAmount            string                `json:"max_gas_amount"`
-	GasUnitPrice            string                `json:"gas_unit_price"`
-	GasCurrencyCode         string                `json:"gas_currency_code,omitempty"`
-	ExpirationTimestampSecs string                `json:"expiration_timestamp_secs"`
-	Payload                 *ModulePayload        `json:"payload"`
-	Signature               *TransactionSignature `json:"signature,omitempty"`
-}
+// type ModuleTransaction struct {
+// 	Sender                  string                `json:"sender"`
+// 	SequenceNumber          string                `json:"sequence_number"`
+// 	MaxGasAmount            string                `json:"max_gas_amount"`
+// 	GasUnitPrice            string                `json:"gas_unit_price"`
+// 	GasCurrencyCode         string                `json:"gas_currency_code,omitempty"`
+// 	ExpirationTimestampSecs string                `json:"expiration_timestamp_secs"`
+// 	Payload                 *ModulePayload        `json:"payload"`
+// 	Signature               *TransactionSignature `json:"signature,omitempty"`
+// }
 
-type ModulePayload struct {
-	Type    string          `json:"type"`
-	Modules *[]ModuleDefine `json:"modules"`
-}
+// type ModulePayload struct {
+// 	Type    string          `json:"type"`
+// 	Modules *[]ModuleDefine `json:"modules"`
+// }
 
-type ModuleDefine struct {
-	Bytecode string `json:"bytecode"`
-}
+// type ModuleDefine struct {
+// 	Bytecode string `json:"bytecode"`
+// }
 
 type EventData struct {
 	Version         string `json:"version"`

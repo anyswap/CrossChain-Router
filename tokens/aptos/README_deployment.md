@@ -20,8 +20,8 @@ go run tokens/aptos/tools/deployModule/main.go -h
 ```
 
 ### c. issue new token
-1. copy `PoolCoin` and rename to `MultichainUSDT`, check the struct name `AnyMyCoin` to `USDT`)
-2. use the deployModule to deploy , modules is the path like `-module ../aptos-contract/router/build/multichain/bytecode_modules/MultichainUSDT.mv` 
+1. add new struct name `AnyMyCoin` as `anyUSDT` in anycoin/sources/PoolCoin.move
+2. use the deployModule to deploy , modules is the path like `-module ../aptos-contract/anycoin/build/anycoin/bytecode_modules/PoolCoin.mv` 
 ```
 go run tokens/aptos/tools/deployModule/main.go -h
 ```
@@ -65,6 +65,7 @@ go run tokens/aptos/tools/setStatus/main.go -h
 ```
 [Gateways]
 1000004280406 = ["http://fullnode.devnet.aptoslabs.com"] #devnet
+1000004280405 = ["https://testnet.aptoslabs.com"]
 ```
 
 ### b. config contract aptos token config

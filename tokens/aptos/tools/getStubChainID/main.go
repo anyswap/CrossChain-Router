@@ -29,9 +29,12 @@ func main() {
 		network = os.Args[1]
 	}
 	if network == "" {
-		log.Fatal("miss network argument")
+		for _, v := range []string{"mainnet", "testnet", "devnet"} {
+			chainID := aptos.GetStubChainID(v)
+			fmt.Printf("%v: %v\n", v, chainID)
+		}
+	} else {
+		chainID := aptos.GetStubChainID(network)
+		fmt.Printf("%v: %v\n", network, chainID)
 	}
-
-	chainID := aptos.GetStubChainID(network)
-	fmt.Printf("%v: %v\n", network, chainID)
 }

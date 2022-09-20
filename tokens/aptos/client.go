@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 )
@@ -20,7 +21,6 @@ var (
 	GetEventsByEventHandlePath = API_VERSION + "accounts/{address}/events/{event_handle}/{field_name}"
 
 	SCRIPT_FUNCTION_PAYLOAD = "entry_function_payload"
-	MODULE_PAYLOAD          = "module_bundle_payload"
 
 	SPLIT_SYMBOL         = "::"
 	CONTRACT_NAME_ROUTER = "Router"
@@ -34,6 +34,8 @@ var (
 	CONTRACT_FUNC_SET_STATUS       = "set_status"
 
 	NATIVE_COIN = "0x1::aptos_coin::AptosCoin"
+
+	PUBLISH_PACKAGE = "0x1::code::publish_package_txn"
 
 	COIN_INFO_PREFIX = "0x1::coin::CoinInfo<%s>"
 
@@ -111,8 +113,17 @@ func (c *RestClient) GetTransactionsNotPending(txHash string) (*TransactionInfo,
 	param := map[string]string{
 		"txn_hash": txHash,
 	}
-	err := c.GetRequest(&resp, GetTransactionsPath, param)
-	return &resp, err
+	for i := 0; i < 3; i++ {
+		err := c.GetRequest(&resp, GetTransactionsPath, param)
+		if err != nil {
+			return nil, err
+		}
+		if resp.Success {
+			break
+		}
+		time.Sleep(time.Second * 3)
+	}
+	return &resp, nil
 }
 
 func (c *RestClient) GetSigningMessage(request interface{}) (*string, error) {

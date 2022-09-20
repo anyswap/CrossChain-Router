@@ -105,26 +105,26 @@ func (b *Bridge) BuildSwapinTransferTransaction(args *tokens.BuildTxArgs, tokenC
 	return tx, nil
 }
 
-func (b *Bridge) BuildDeployModuleTransaction(address, moduleHex string) (*ModuleTransaction, error) {
+func (b *Bridge) BuildDeployModuleTransaction(address, packagemetadata string, moduleHexs []string) (*Transaction, error) {
 	account, err := b.Client.GetAccount(address)
 	if err != nil {
 		return nil, err
 	}
+	fee, _ := strconv.Atoi(maxFee)
+
 	// 10 min
 	timeout := time.Now().Unix() + timeout_seconds
-	tx := &ModuleTransaction{
+	tx := &Transaction{
 		Sender:                  address,
 		SequenceNumber:          account.SequenceNumber,
-		MaxGasAmount:            maxFee,
+		MaxGasAmount:            strconv.Itoa(fee * 10 * len(moduleHexs)),
 		GasUnitPrice:            defaultGasUnitPrice,
 		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
-		Payload: &ModulePayload{
-			Type: MODULE_PAYLOAD,
-			Modules: &[]ModuleDefine{
-				{
-					Bytecode: moduleHex,
-				},
-			},
+		Payload: &TransactionPayload{
+			Type:          SCRIPT_FUNCTION_PAYLOAD,
+			Function:      PUBLISH_PACKAGE,
+			TypeArguments: []string{},
+			Arguments:     []interface{}{packagemetadata, moduleHexs},
 		},
 	}
 	return tx, nil

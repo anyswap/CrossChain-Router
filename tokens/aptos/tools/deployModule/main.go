@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -25,7 +25,8 @@ var (
 	paramPublicKey string
 	paramPriKey    string
 
-	paramModule string
+	paramPath    string
+	paramModules string
 
 	mpcConfig *mpc.Config
 )
@@ -37,7 +38,8 @@ func initFlags() {
 	flag.StringVar(&paramPublicKey, "pubkey", "", "signer public key")
 	flag.StringVar(&paramPriKey, "priKey", "", "signer priKey key")
 
-	flag.StringVar(&paramModule, "module", "", "deploy module path")
+	flag.StringVar(&paramPath, "path", "", "contract build path")
+	flag.StringVar(&paramModules, "modules", "", "deploy module name,split with ','")
 
 	flag.Parse()
 }
@@ -45,11 +47,20 @@ func initFlags() {
 func main() {
 	log.SetLogger(6, false, true)
 	initAll()
-	if paramModule == "" {
-		log.Fatal("paramModule can't be empty")
+	if paramPath == "" {
+		log.Fatal("path can't be empty")
 	}
-	moveHex := readMove(paramModule)
-	fmt.Println(moveHex)
+
+	packageMetaData := readMove(paramPath + "/package-metadata.bcs")
+	// fmt.Println("packageMetaData", packageMetaData)
+
+	moduleArray := strings.Split(paramModules, ",")
+	moveHexs := []string{}
+	for _, moduleName := range moduleArray {
+		moveHex := readMove(paramPath + "/bytecode_modules/" + moduleName + ".mv")
+		// fmt.Println(moveHex)
+		moveHexs = append(moveHexs, moveHex)
+	}
 
 	var account *aptos.Account
 	if paramPriKey != "" {
@@ -58,7 +69,7 @@ func main() {
 		account = aptos.NewAccountFromPubkey(paramPublicKey)
 	}
 
-	tx, err := bridge.BuildDeployModuleTransaction(account.GetHexAddress(), moveHex)
+	tx, err := bridge.BuildDeployModuleTransaction(account.GetHexAddress(), packageMetaData, moveHexs)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
@@ -86,7 +97,6 @@ func main() {
 		jsondata, _ := json.Marshal(tx)
 		msgContext := string(jsondata)
 
-		mpcConfig := mpc.GetMPCConfig(bridge.UseFastMPC)
 		keyID, rsvs, err := mpcConfig.DoSignOneED(mpcPubkey, msgContent, msgContext)
 		if err != nil {
 			log.Fatal("DoSignOneED", "err", err)
@@ -106,9 +116,14 @@ func main() {
 	}
 	txInfo, err := bridge.Client.SubmitTranscation(tx)
 	if err != nil {
-		log.Fatal("SignString", "err", err)
+		log.Fatal("SubmitTranscation", "err", err)
 	}
-	log.Info("SubmitTranscation", "txHash", txInfo.Hash, "Success", txInfo.Success, "Type", txInfo.Type)
+
+	result, err := bridge.Client.GetTransactionsNotPending(txInfo.Hash)
+	if err != nil {
+		log.Fatal("GetTransactionsNotPending", "err", err)
+	}
+	log.Info("SubmitTranscation", "txHash", txInfo.Hash, "Success", result.Success)
 }
 
 func initAll() {

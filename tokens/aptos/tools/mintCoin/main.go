@@ -80,7 +80,6 @@ func main() {
 		jsondata, _ := json.Marshal(tx)
 		msgContext := string(jsondata)
 
-		mpcConfig := mpc.GetMPCConfig(bridge.UseFastMPC)
 		keyID, rsvs, err := mpcConfig.DoSignOneED(mpcPubkey, msgContent, msgContext)
 		if err != nil {
 			log.Fatal("DoSignOneED", "err", err)
