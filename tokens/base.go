@@ -79,7 +79,9 @@ type CrossChainBridgeBase struct {
 	ChainConfig    *ChainConfig
 	GatewayConfig  *GatewayConfig
 	TokenConfigMap *sync.Map // key is token address
+
 	UseFastMPC     bool
+	AllGatewayURLs []string
 }
 
 // NewCrossChainBridgeBase new base bridge
@@ -117,6 +119,7 @@ func (b *CrossChainBridgeBase) SetGatewayConfig(gatewayCfg *GatewayConfig) {
 		log.Fatal("empty gateway 'APIAddress'")
 	}
 	b.GatewayConfig = gatewayCfg
+	b.AllGatewayURLs = append(gatewayCfg.APIAddress, gatewayCfg.APIAddressExt...)
 }
 
 // SetTokenConfig set token config
