@@ -19,6 +19,7 @@ const (
 )
 
 // BuildRawTransaction build raw tx
+//
 //nolint:funlen,gocyclo // ok
 func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{}, err error) {
 	if !params.IsTestMode && args.ToChainID.String() != b.ChainConfig.ChainID {
@@ -104,7 +105,12 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		}
 	}
 
-	if messageBuilder := BuildMessage(inputs, outputs, nil); messageBuilder == nil {
+	indexationPayload := &iotago.Indexation{
+		Index: []byte("swapIn"),
+		Data:  []byte(args.SwapID),
+	}
+
+	if messageBuilder := BuildMessage(inputs, outputs, indexationPayload); messageBuilder == nil {
 		return nil, tokens.ErrInputAndOutputLength
 	} else {
 		return messageBuilder, nil
