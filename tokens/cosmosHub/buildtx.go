@@ -62,15 +62,15 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, err
 	} else {
 		args.SwapValue = amount // SwapValue
-		if err := b.CheckCoinBalance(args.From, CoinSymbol, amount); err != nil {
+		if err := b.CheckCoinBalance(args.From, args.ERC20SwapInfo.Token, amount); err != nil {
 			return nil, err
 		} else {
 			if extra, err := b.initExtra(args); err != nil {
 				return nil, err
 			} else {
-				memo := "Multichain_" + args.SwapID
+				memo := fmt.Sprintf("Multichain_swapIn_%s_%d", args.SwapID, args.LogIndex)
 				mpcPubkey := router.GetMPCPublicKey(args.From)
-				if txBuilder, err := cosmosSDK.BuildTx(args.From, receiver, CoinSymbol, memo, amount, extra, mpcPubkey); err != nil {
+				if txBuilder, err := cosmosSDK.BuildTx(args.From, receiver, args.ERC20SwapInfo.Token, memo, amount, extra, mpcPubkey); err != nil {
 					return nil, err
 				} else {
 					return txBuilder, nil

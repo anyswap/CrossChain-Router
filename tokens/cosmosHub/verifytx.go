@@ -10,10 +10,10 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmosSDK"
+	"github.com/cosmos/cosmos-sdk/types"
 )
 
 const (
-	CoinSymbol   = "uatom"
 	TransferType = "transfer"
 )
 
@@ -57,7 +57,7 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 			return swapInfo, err
 		}
 
-		if err := b.ParseAmountTotal(txr, swapInfo); err != nil {
+		if err := b.ParseAmountTotal(txr.TxResponse.Logs[logIndex-1], swapInfo); err != nil {
 			return swapInfo, err
 		}
 
@@ -147,7 +147,7 @@ func ParseMemo(swapInfo *tokens.SwapTxInfo, memo string) error {
 		if toChainID, err := common.GetBigIntFromStr(fields[1]); err != nil {
 			return err
 		} else {
-			dstBridge := router.GetBridgeByChainID(fields[1])
+			dstBridge := router.GetBridgeByChainID(toChainID.String())
 			if dstBridge != nil && dstBridge.IsValidAddress(fields[0]) {
 				swapInfo.Bind = fields[0]      // Bind
 				swapInfo.ToChainID = toChainID // ToChainID
@@ -160,38 +160,21 @@ func ParseMemo(swapInfo *tokens.SwapTxInfo, memo string) error {
 }
 
 //nolint:goconst // allow big check logic
-func (b *Bridge) ParseAmountTotal(txres *cosmosSDK.GetTxResponse, swapInfo *tokens.SwapTxInfo) error {
-	mpc := b.GetRouterContract("")
-	amount := big.NewInt(0)
-	for _, log := range txres.TxResponse.Logs {
-		for _, event := range log.Events {
-			if event.Type == TransferType && len(event.Attributes)%3 == 0 {
-				for i := 0; i < len(event.Attributes); i += 3 {
-					// attribute key mismatch
-					if event.Attributes[i].Key == "recipient" &&
-						event.Attributes[i+1].Key == "sender" &&
-						event.Attributes[i+2].Key == "amount" {
-						// receiver mismatch
-						if common.IsEqualIgnoreCase(event.Attributes[i].Value, mpc) {
-							if recvCoins, err := cosmosSDK.ParseCoinsNormalized(event.Attributes[i+2].Value); err == nil {
-								recvAmount := recvCoins.AmountOfNoDenomValidation(CoinSymbol)
-								if !recvAmount.IsNil() && !recvAmount.IsZero() {
-									if swapInfo.From == "" {
-										swapInfo.From = event.Attributes[i+1].Value
-									}
-									amount.Add(amount, recvAmount.BigInt())
-								}
-							}
-						}
-					}
-				}
+func (b *Bridge) ParseAmountTotal(messageLog types.ABCIMessageLog, swapInfo *tokens.SwapTxInfo) error {
+	value := big.NewInt(0)
+	unit := ""
+	for index, event := range messageLog.Events {
+		if event.Type == TransferType {
+			if len(event.Attributes) == 2 {
+				b.ParseCoinAmount(value, swapInfo, messageLog.Events[index-1].Attributes[1], event.Attributes[0], event.Attributes[1], &unit)
+			} else if len(event.Attributes) == 3 {
+				b.ParseCoinAmount(value, swapInfo, event.Attributes[1], event.Attributes[0], event.Attributes[2], &unit)
 			}
 		}
 	}
-
-	if amount.Cmp(big.NewInt(0)) > 0 {
-		swapInfo.Value = amount
-		swapInfo.ERC20SwapInfo.Token = CoinSymbol
+	if value.Cmp(big.NewInt(0)) > 0 {
+		swapInfo.Value = value
+		swapInfo.ERC20SwapInfo.Token = unit
 		if tokenCfg := b.GetTokenConfig(swapInfo.ERC20SwapInfo.Token); tokenCfg == nil {
 			return tokens.ErrMissTokenConfig
 		} else {
@@ -200,4 +183,30 @@ func (b *Bridge) ParseAmountTotal(txres *cosmosSDK.GetTxResponse, swapInfo *toke
 		}
 	}
 	return tokens.ErrTxWithWrongValue
+}
+
+func (b *Bridge) ParseCoinAmount(value *big.Int, swapInfo *tokens.SwapTxInfo, sender, recipient, amount types.Attribute, unit *string) {
+	mpc := b.GetRouterContract("")
+	if sender.Key == "sender" &&
+		recipient.Key == "recipient" &&
+		amount.Key == "amount" {
+		// receiver mismatch
+		if common.IsEqualIgnoreCase(recipient.Value, mpc) {
+			if recvCoins, err := cosmosSDK.ParseCoinsNormalized(amount.Value); err == nil {
+				for _, coin := range recvCoins {
+					if *unit == "" || *unit == coin.Denom {
+						if swapInfo.From == "" {
+							swapInfo.From = sender.Value
+						}
+						*unit = coin.Denom
+						recvAmount := recvCoins.AmountOfNoDenomValidation(*unit)
+						if !recvAmount.IsNil() && !recvAmount.IsZero() {
+							value.Add(value, recvAmount.BigInt())
+						}
+					}
+				}
+			}
+		}
+	}
+
 }
