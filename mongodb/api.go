@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -157,10 +158,11 @@ func FindRouterSwap(fromChainID, txid string, logindex int) (*MgoSwap, error) {
 
 // FindRouterSwapAuto find router swap
 func FindRouterSwapAuto(fromChainID, txid string, logindex int) (*MgoSwap, error) {
-	if logindex == 0 {
+	swap, err := FindRouterSwap(fromChainID, txid, logindex)
+	if err != nil && logindex == 0 {
 		return findFirstRouterSwap(fromChainID, txid)
 	}
-	return FindRouterSwap(fromChainID, txid, logindex)
+	return swap, err
 }
 
 func findFirstRouterSwap(fromChainID, txid string) (*MgoSwap, error) {
@@ -423,10 +425,11 @@ func FindRouterSwapResult(fromChainID, txid string, logindex int) (*MgoSwapResul
 
 // FindRouterSwapResultAuto find router swap result
 func FindRouterSwapResultAuto(fromChainID, txid string, logindex int) (*MgoSwapResult, error) {
-	if logindex == 0 {
+	res, err := FindRouterSwapResult(fromChainID, txid, logindex)
+	if err != nil && logindex == 0 {
 		return findFirstRouterSwapResult(fromChainID, txid)
 	}
-	return FindRouterSwapResult(fromChainID, txid, logindex)
+	return res, err
 }
 
 func findFirstRouterSwapResult(fromChainID, txid string) (*MgoSwapResult, error) {
@@ -436,6 +439,45 @@ func findFirstRouterSwapResult(fromChainID, txid string) (*MgoSwapResult, error)
 	if err != nil {
 		return nil, mgoError(err)
 	}
+	return result, nil
+}
+
+// FindRouterSwapResultsOfTx find router swap results of tx
+func FindRouterSwapResultsOfTx(fromChainID, txid string) ([]*MgoSwapResult, error) {
+	query := getChainAndTxIDQuery(fromChainID, txid)
+	opts := &options.FindOptions{
+		Sort: bson.D{{Key: "logIndex", Value: 1}},
+	}
+
+	result := make([]*MgoSwapResult, 0, 10)
+	existIndexInResult := make(map[int]bool)
+
+	if cur, err := collRouterSwapResult.Find(clientCtx, query, opts); err == nil {
+		res := make([]*MgoSwapResult, 0, 5)
+		if errf := cur.All(clientCtx, &res); errf == nil {
+			for _, item := range res {
+				result = append(result, item)
+				existIndexInResult[item.LogIndex] = true
+			}
+		}
+	}
+
+	if cur, err := collRouterSwap.Find(clientCtx, query, opts); err == nil {
+		res := make([]*MgoSwap, 0, 5)
+		if errf := cur.All(clientCtx, &res); errf == nil {
+			for _, item := range res {
+				if existIndexInResult[item.LogIndex] {
+					continue
+				}
+				result = append(result, item.ToSwapResult())
+			}
+		}
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].LogIndex < result[j].LogIndex
+	})
+
 	return result, nil
 }
 

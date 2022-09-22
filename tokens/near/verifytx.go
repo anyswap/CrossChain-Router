@@ -168,6 +168,9 @@ func (b *Bridge) checkSwapoutInfo(swapInfo *tokens.SwapTxInfo) error {
 	if strings.EqualFold(swapInfo.From, swapInfo.To) {
 		return tokens.ErrTxWithWrongSender
 	}
+	if swapInfo.FromChainID.Cmp(swapInfo.ToChainID) == 0 {
+		return tokens.ErrSameFromAndToChainID
+	}
 
 	erc20SwapInfo := swapInfo.ERC20SwapInfo
 

@@ -325,6 +325,9 @@ func (b *Bridge) checkNFTSwapInfo(swapInfo *tokens.SwapTxInfo) error {
 		log.Error("nft swap tx with mismatched fromChainID in receipt", "txid", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "fromChainID", swapInfo.FromChainID, "toChainID", swapInfo.ToChainID, "chainID", b.ChainConfig.ChainID)
 		return tokens.ErrFromChainIDMismatch
 	}
+	if swapInfo.FromChainID.Cmp(swapInfo.ToChainID) == 0 {
+		return tokens.ErrSameFromAndToChainID
+	}
 	nftSwapInfo := swapInfo.NFTSwapInfo
 	dstBridge := router.GetBridgeByChainID(swapInfo.ToChainID.String())
 	if dstBridge == nil {

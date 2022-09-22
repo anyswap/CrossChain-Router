@@ -16,8 +16,6 @@ import (
 var (
 	retryRPCCount    = 3
 	retryRPCInterval = 1 * time.Second
-
-	latestGasPrice *big.Int
 )
 
 // BuildRawTransaction build raw tx
@@ -102,12 +100,21 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 
 	// assign nonce immediately before construct tx
 	// esp. for parallel signing, this can prevent nonce hole
-	if extra.Nonce == nil {
+	if extra.Nonce == nil { // server logic
 		extra.Nonce, err = b.getAccountNonce(args)
 		if err != nil {
 			return nil, err
 		}
+	} else { // oracle logic
+		cmpNonce, err := b.getPoolNonce(args)
+		if err != nil {
+			return nil, err
+		}
+		if *extra.Nonce > *cmpNonce+1000 {
+			return nil, fmt.Errorf("nonce is too big. mine %v, your %v", *cmpNonce, *extra.Nonce)
+		}
 	}
+
 	nonce := *extra.Nonce
 
 	if isDynamicFeeTx {
@@ -273,7 +280,12 @@ func (b *Bridge) getGasPrice(args *tokens.BuildTxArgs) (price *big.Int, err erro
 
 	maxGasPrice := params.GetMaxGasPrice(b.ChainConfig.ChainID)
 	if maxGasPrice != nil && price.Cmp(maxGasPrice) > 0 {
-		return nil, fmt.Errorf("gas price %v exceeded maximum limit", price)
+		log.Warn("gas price exceeded maximum limit", "chainID", b.ChainConfig.ChainID, "gasPrice", price, "max", maxGasPrice)
+		return nil, fmt.Errorf("gas price %v exceeded config maximum limit", price)
+	}
+	if maxGasPrice == nil && price.Cmp(b.autoMaxGasPrice) > 0 {
+		log.Warn("gas price exceeded auto maximum limit", "chainID", b.ChainConfig.ChainID, "gasPrice", price, "autoMax", b.autoMaxGasPrice)
+		return nil, fmt.Errorf("gas price %v exceeded auto maximum limit", price)
 	}
 
 	smallestGasPriceUnit := params.GetLocalChainConfig(b.ChainConfig.ChainID).SmallestGasPriceUnit
@@ -313,18 +325,25 @@ func (b *Bridge) adjustSwapGasPrice(args *tokens.BuildTxArgs, oldGasPrice *big.I
 	}
 	maxGasPriceFluctPercent := serverCfg.MaxGasPriceFluctPercent
 	if maxGasPriceFluctPercent > 0 {
-		if latestGasPrice != nil {
-			maxFluct := new(big.Int).Set(latestGasPrice)
+		if b.latestGasPrice != nil {
+			maxFluct := new(big.Int).Set(b.latestGasPrice)
 			maxFluct.Mul(maxFluct, new(big.Int).SetUint64(maxGasPriceFluctPercent))
 			maxFluct.Div(maxFluct, big.NewInt(100))
-			minGasPrice := new(big.Int).Sub(latestGasPrice, maxFluct)
+			minGasPrice := new(big.Int).Sub(b.latestGasPrice, maxFluct)
 			if newGasPrice.Cmp(minGasPrice) < 0 {
 				newGasPrice = minGasPrice
 			}
 		}
 		if replaceNum == 0 { // exclude replace situation
-			latestGasPrice = newGasPrice
+			b.latestGasPrice = newGasPrice
 		}
+	}
+	tempMaxGasPrice := new(big.Int).Mul(newGasPrice, big.NewInt(10))
+	if b.autoMaxGasPrice == nil || b.autoMaxGasPrice.Cmp(tempMaxGasPrice) > 0 {
+		b.autoMaxGasPrice = tempMaxGasPrice
+	} else {
+		added := new(big.Int).Div(b.autoMaxGasPrice, big.NewInt(10))
+		b.autoMaxGasPrice = new(big.Int).Add(b.autoMaxGasPrice, added)
 	}
 	return newGasPrice, nil
 }
@@ -336,6 +355,18 @@ func (b *Bridge) getAccountNonce(args *tokens.BuildTxArgs) (nonceptr *uint64, er
 		nonce, err = b.AllocateNonce(args)
 		return &nonce, err
 	}
+
+	res, err := b.getPoolNonce(args)
+	if err != nil {
+		return nil, err
+	}
+
+	nonce = b.AdjustNonce(args.From, *res)
+	return &nonce, nil
+}
+
+func (b *Bridge) getPoolNonce(args *tokens.BuildTxArgs) (nonceptr *uint64, err error) {
+	var nonce uint64
 
 	getPoolNonceBlockNumberOpt := "pending" // latest or pending
 	if params.IsAutoSwapNonceEnabled(b.ChainConfig.ChainID) {
@@ -352,7 +383,7 @@ func (b *Bridge) getAccountNonce(args *tokens.BuildTxArgs) (nonceptr *uint64, er
 	if err != nil {
 		return nil, err
 	}
-	nonce = b.AdjustNonce(args.From, nonce)
+
 	return &nonce, nil
 }
 

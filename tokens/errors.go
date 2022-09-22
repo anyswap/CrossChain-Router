@@ -33,6 +33,7 @@ var (
 	ErrRPCQueryError         = errors.New("rpc query error")
 	ErrMissDynamicFeeConfig  = errors.New("miss dynamic fee config")
 	ErrFromChainIDMismatch   = errors.New("from chainID mismatch")
+	ErrSameFromAndToChainID  = errors.New("from and to chainID are same")
 	ErrMissMPCPublicKey      = errors.New("miss mpc public key config")
 	ErrMissRouterInfo        = errors.New("miss router info")
 	ErrSenderMismatch        = errors.New("sender mismatch")
