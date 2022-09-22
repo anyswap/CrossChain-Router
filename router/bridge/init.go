@@ -254,7 +254,7 @@ func InitChainConfig(b tokens.IBridge, chainID *big.Int) {
 		if err == nil {
 			setRouterInfoLoaded(chainID.String(), routerContract)
 		} else {
-			logErrFunc("init chain router info failed", "routerContract", routerContract, "err", err)
+			logErrFunc("init chain router info failed", "chainID", chainID, "routerContract", routerContract, "err", err)
 			return
 		}
 	}
@@ -266,7 +266,7 @@ func InitTokenConfig(b tokens.IBridge, tokenID string, chainID *big.Int) {
 	isReload := router.IsReloading
 	logErrFunc := log.GetLogFuncOr(router.DontPanicInLoading(), log.Error, log.Fatal)
 	if tokenID == "" {
-		logErrFunc("empty token ID")
+		logErrFunc("empty token ID", "chainID", chainID)
 		return
 	}
 	tokenAddr, err := router.GetMultichainToken(tokenID, chainID)
@@ -318,7 +318,7 @@ func InitTokenConfig(b tokens.IBridge, tokenID string, chainID *big.Int) {
 		if err == nil {
 			setRouterInfoLoaded(chainID.String(), routerContract)
 		} else {
-			logErrFunc("init token router info failed", "routerContract", routerContract, "err", err)
+			logErrFunc("init token router info failed", "chainID", chainID, "routerContract", routerContract, "err", err)
 			return
 		}
 	}

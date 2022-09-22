@@ -129,30 +129,30 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 	if tokens.IsERC20Router() {
 		routerFactory, err = b.GetFactoryAddress(routerContract)
 		if err != nil {
-			log.Warn("get router factory address failed", "routerContract", routerContract, "err", err)
+			log.Warn("get router factory address failed", "chainID", chainID, "routerContract", routerContract, "err", err)
 		}
 		routerWNative, err = b.GetWNativeAddress(routerContract)
 		if err != nil {
-			log.Warn("get router wNative address failed", "routerContract", routerContract, "err", err)
+			log.Warn("get router wNative address failed", "chainID", chainID, "routerContract", routerContract, "err", err)
 		}
 	}
 	routerMPC, err := b.GetMPCAddress(routerContract)
 	if err != nil {
-		log.Warn("get router mpc address failed", "routerContract", routerContract, "err", err)
+		log.Warn("get router mpc address failed", "chainID", chainID, "routerContract", routerContract, "err", err)
 		return err
 	}
 	if common.HexToAddress(routerMPC) == (common.Address{}) {
-		log.Warn("get router mpc address return an empty address", "routerContract", routerContract)
-		return fmt.Errorf("empty router mpc address")
+		log.Warn("get router mpc address return an empty address", "chainID", chainID, "routerContract", routerContract, "routerMPC", routerMPC)
+		return fmt.Errorf("empty router mpc address of router contract %v on chain %v", routerContract, chainID)
 	}
 	log.Info("get router mpc address success", "chainID", chainID, "routerContract", routerContract, "routerMPC", routerMPC)
 	routerMPCPubkey, err := router.GetMPCPubkey(routerMPC)
 	if err != nil {
-		log.Warn("get mpc public key failed", "mpc", routerMPC, "err", err)
+		log.Warn("get mpc public key failed", "chainID", chainID, "mpc", routerMPC, "err", err)
 		return err
 	}
 	if err = VerifyMPCPubKey(routerMPC, routerMPCPubkey); err != nil {
-		log.Warn("verify mpc public key failed", "mpc", routerMPC, "mpcPubkey", routerMPCPubkey, "err", err)
+		log.Warn("verify mpc public key failed", "chainID", chainID, "mpc", routerMPC, "mpcPubkey", routerMPCPubkey, "err", err)
 		return err
 	}
 	router.SetRouterInfo(
@@ -193,10 +193,11 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 	}
 
 	tokenID := tokenCfg.TokenID
+	chainID := b.ChainConfig.ChainID
 
 	if tokenCfg.ContractVersion >= MintBurnWrapperTokenVersion {
 		log.Info("ignore wrapper token config checking",
-			"tokenID", tokenID, "tokenAddr", tokenAddr,
+			"chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr,
 			"decimals", tokenCfg.Decimals, "ContractVersion", tokenCfg.ContractVersion)
 		return
 	}
@@ -205,11 +206,11 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 
 	decimals, errt := b.GetErc20Decimals(tokenAddr)
 	if errt != nil {
-		logErrFunc("get token decimals failed", "tokenID", tokenID, "tokenAddr", tokenAddr, "err", errt)
+		logErrFunc("get token decimals failed", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "err", errt)
 		return
 	}
 	if decimals != tokenCfg.Decimals {
-		logErrFunc("token decimals mismatch", "tokenID", tokenID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract", decimals)
+		logErrFunc("token decimals mismatch", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract", decimals)
 		return
 	}
 	routerContract := tokenCfg.RouterContract
@@ -218,12 +219,12 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 	}
 	err := b.checkTokenMinter(routerContract, tokenCfg)
 	if err != nil && tokenCfg.IsStandardTokenVersion() {
-		logErrFunc("check token minter failed", "tokenID", tokenID, "tokenAddr", tokenAddr, "err", err)
+		logErrFunc("check token minter failed", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "err", err)
 		return
 	}
 	underlying, err := b.GetUnderlyingAddress(tokenAddr)
 	if err != nil && tokenCfg.IsStandardTokenVersion() {
-		logErrFunc("get underlying address failed", "tokenID", tokenID, "tokenAddr", tokenAddr, "err", err)
+		logErrFunc("get underlying address failed", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "err", err)
 		return
 	}
 	var underlyingIsMinted bool
