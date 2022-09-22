@@ -103,12 +103,16 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 
 	// assign nonce immediately before construct tx
 	// esp. for parallel signing, this can prevent nonce hole
-	if extra.Nonce == nil {
-		extra.Nonce, err = b.getAccountNonce(args)
-		if err != nil {
-			return nil, err
-		}
+	cmpNonce, err := b.getAccountNonce(args)
+	if err != nil {
+		return nil, err
 	}
+	if extra.Nonce == nil {
+		extra.Nonce = cmpNonce
+	} else if *extra.Nonce > *cmpNonce+1000 {
+		return nil, fmt.Errorf("nonce is too big. mine %v, your %v", *cmpNonce, *extra.Nonce)
+	}
+
 	nonce := *extra.Nonce
 
 	if isDynamicFeeTx {
