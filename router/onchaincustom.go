@@ -36,24 +36,31 @@ func InitOnchainCustomConfig(chainID *big.Int, tokenID string) {
 	}
 
 	addtionalFeeParts := strings.Split(addtionalFeeParams, ",")
-	if len(addtionalFeeParts) != 3 {
-		logErrFunc("wrong additional fee params", "chainID", chainID, "key", key, "param", addtionalFeeParams)
-		return
-	}
 
 	addtionalFeeRate, err := common.GetUint64FromStr(strings.TrimSpace(addtionalFeeParts[0]))
 	if err != nil {
 		logErrFunc("wrong custom addtional fee rate per million", "chainID", chainID, "tokenID", tokenID, "key", key, "value", addtionalFeeParams, "err", err)
 		return
 	}
-	additionalMinFee, err := common.GetBigIntFromStr(strings.TrimSpace(addtionalFeeParts[1]))
-	if err != nil {
-		logErrFunc("wrong custom addtional min fee", "chainID", chainID, "tokenID", tokenID, "key", key, "value", addtionalFeeParams, "err", err)
-		return
-	}
-	additionalMaxFee, err := common.GetBigIntFromStr(strings.TrimSpace(addtionalFeeParts[2]))
-	if err != nil {
-		logErrFunc("wrong custom addtional max fee", "chainID", chainID, "tokenID", tokenID, "key", key, "value", addtionalFeeParams, "err", err)
+
+	additionalMinFee := big.NewInt(0)
+	additionalMaxFee := big.NewInt(0)
+
+	switch len(addtionalFeeParts) {
+	case 1:
+	case 3:
+		additionalMinFee, err = common.GetBigIntFromStr(strings.TrimSpace(addtionalFeeParts[1]))
+		if err != nil {
+			logErrFunc("wrong custom addtional min fee", "chainID", chainID, "tokenID", tokenID, "key", key, "value", addtionalFeeParams, "err", err)
+			return
+		}
+		additionalMaxFee, err = common.GetBigIntFromStr(strings.TrimSpace(addtionalFeeParts[2]))
+		if err != nil {
+			logErrFunc("wrong custom addtional max fee", "chainID", chainID, "tokenID", tokenID, "key", key, "value", addtionalFeeParams, "err", err)
+			return
+		}
+	default:
+		logErrFunc("wrong additional fee params", "chainID", chainID, "key", key, "param", addtionalFeeParams)
 		return
 	}
 
