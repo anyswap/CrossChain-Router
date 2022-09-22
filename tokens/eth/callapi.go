@@ -192,7 +192,7 @@ func (b *Bridge) GetPoolNonce(address, height string) (mdPoolNonce uint64, err e
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_getTransactionCount", account, height)
 		if err == nil {
 			allPoolNonces = append(allPoolNonces, uint64(result))
-			log.Info("call eth_getTransactionCount success", "chainID", b.ChainConfig.ChainID, "url", url, "nonce", uint64(result))
+			log.Info("call eth_getTransactionCount success", "chainID", b.ChainConfig.ChainID, "url", url, "account", account, "nonce", uint64(result))
 		}
 	}
 	if len(allPoolNonces) == 0 {
@@ -209,7 +209,7 @@ func (b *Bridge) GetPoolNonce(address, height string) (mdPoolNonce uint64, err e
 	} else {
 		mdPoolNonce = (allPoolNonces[mdInd] + allPoolNonces[mdInd+1]) / 2
 	}
-	log.Info("GetPoolNonce success", "chainID", b.ChainConfig.ChainID, "urls", len(b.AllGatewayURLs), "validCount", count, "median", mdPoolNonce)
+	log.Info("GetPoolNonce success", "chainID", b.ChainConfig.ChainID, "account", account, "urls", len(b.AllGatewayURLs), "validCount", count, "median", mdPoolNonce)
 	return mdPoolNonce, nil
 }
 
