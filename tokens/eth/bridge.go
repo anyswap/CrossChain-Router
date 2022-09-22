@@ -31,6 +31,10 @@ type Bridge struct {
 	*base.NonceSetterBase
 	Signer        types.Signer
 	SignerChainID *big.Int
+
+	// internal usage
+	latestGasPrice  *big.Int
+	autoMaxGasPrice *big.Int
 }
 
 // NewCrossChainBridge new bridge
