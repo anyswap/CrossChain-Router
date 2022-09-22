@@ -184,23 +184,33 @@ func (b *Bridge) checkTxBlockHash(blockNumber *big.Int, blockHash common.Hash) e
 }
 
 // GetPoolNonce call eth_getTransactionCount
-func (b *Bridge) GetPoolNonce(address, height string) (maxNonce uint64, err error) {
+func (b *Bridge) GetPoolNonce(address, height string) (mdPoolNonce uint64, err error) {
+	allPoolNonces := make([]uint64, 0, 10)
 	account := common.HexToAddress(address)
-	var success bool
 	for _, url := range b.AllGatewayURLs {
 		var result hexutil.Uint64
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_getTransactionCount", account, height)
 		if err == nil {
-			success = true
-			if uint64(result) > maxNonce {
-				maxNonce = uint64(result)
-			}
+			allPoolNonces = append(allPoolNonces, uint64(result))
+			log.Info("call eth_getTransactionCount success", "chainID", b.ChainConfig.ChainID, "url", url, "nonce", uint64(result))
 		}
 	}
-	if success {
-		return maxNonce, nil
+	if len(allPoolNonces) == 0 {
+		log.Warn("GetPoolNonce failed", "chainID", b.ChainConfig.ChainID, "account", account, "height", height, "err", err)
+		return 0, wrapRPCQueryError(err, "eth_getTransactionCount", account, height)
 	}
-	return 0, wrapRPCQueryError(err, "eth_getTransactionCount", account, height)
+	sort.Slice(allPoolNonces, func(i, j int) bool {
+		return allPoolNonces[i] < allPoolNonces[j]
+	})
+	count := len(allPoolNonces)
+	mdInd := (count - 1) / 2
+	if count%2 != 0 {
+		mdPoolNonce = allPoolNonces[mdInd]
+	} else {
+		mdPoolNonce = (allPoolNonces[mdInd] + allPoolNonces[mdInd+1]) / 2
+	}
+	log.Info("GetPoolNonce success", "chainID", b.ChainConfig.ChainID, "urls", len(b.AllGatewayURLs), "validCount", count, "median", mdPoolNonce)
+	return mdPoolNonce, nil
 }
 
 // SuggestPrice call eth_gasPrice
