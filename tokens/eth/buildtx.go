@@ -103,14 +103,19 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 
 	// assign nonce immediately before construct tx
 	// esp. for parallel signing, this can prevent nonce hole
-	cmpNonce, err := b.getAccountNonce(args)
-	if err != nil {
-		return nil, err
-	}
-	if extra.Nonce == nil {
-		extra.Nonce = cmpNonce
-	} else if *extra.Nonce > *cmpNonce+1000 {
-		return nil, fmt.Errorf("nonce is too big. mine %v, your %v", *cmpNonce, *extra.Nonce)
+	if extra.Nonce == nil { // server logic
+		extra.Nonce, err = b.getAccountNonce(args)
+		if err != nil {
+			return nil, err
+		}
+	} else { // oracle logic
+		cmpNonce, err := b.getPoolNonce(args)
+		if err != nil {
+			return nil, err
+		}
+		if *extra.Nonce > *cmpNonce+1000 {
+			return nil, fmt.Errorf("nonce is too big. mine %v, your %v", *cmpNonce, *extra.Nonce)
+		}
 	}
 
 	nonce := *extra.Nonce
@@ -354,6 +359,18 @@ func (b *Bridge) getAccountNonce(args *tokens.BuildTxArgs) (nonceptr *uint64, er
 		return &nonce, err
 	}
 
+	res, err := b.getPoolNonce(args)
+	if err != nil {
+		return nil, err
+	}
+
+	nonce = b.AdjustNonce(args.From, *res)
+	return &nonce, nil
+}
+
+func (b *Bridge) getPoolNonce(args *tokens.BuildTxArgs) (nonceptr *uint64, err error) {
+	var nonce uint64
+
 	getPoolNonceBlockNumberOpt := "pending" // latest or pending
 	if params.IsAutoSwapNonceEnabled(b.ChainConfig.ChainID) {
 		getPoolNonceBlockNumberOpt = "latest"
@@ -369,7 +386,7 @@ func (b *Bridge) getAccountNonce(args *tokens.BuildTxArgs) (nonceptr *uint64, er
 	if err != nil {
 		return nil, err
 	}
-	nonce = b.AdjustNonce(args.From, nonce)
+
 	return &nonce, nil
 }
 
