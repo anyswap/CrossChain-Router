@@ -209,6 +209,7 @@ type BuildTxArgs struct {
 type AllExtras struct {
 	EthExtra   *EthExtraArgs `json:"ethExtra,omitempty"`
 	ReplaceNum uint64        `json:"replaceNum,omitempty"`
+	AccountNum *uint64       `json:"accountNum,omitempty"`
 	Sequence   *uint64       `json:"sequence,omitempty"`
 	Fee        *string       `json:"fee,omitempty"`
 	Gas        *uint64       `json:"gas,omitempty"`

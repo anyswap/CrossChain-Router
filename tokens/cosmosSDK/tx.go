@@ -1,24 +1,26 @@
 package cosmosSDK
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
 
+	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	cosmosClient "github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/codec"
-	codecTypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptoTypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	"github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/types/tx/signing"
-	authTx "github.com/cosmos/cosmos-sdk/x/auth/tx"
+	signingTypes "github.com/cosmos/cosmos-sdk/types/tx/signing"
+	"github.com/cosmos/cosmos-sdk/x/auth/signing"
 	bankTypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 )
 
 const (
-	BroadTx = "/cosmos/tx/v1beta1/txs/"
+	BroadTx = "/cosmos/tx/v1beta1/txs"
 )
 
 func (c *CosmosRestClient) SendTransaction(signedTx interface{}) (string, error) {
@@ -48,7 +50,7 @@ func (c *CosmosRestClient) BroadcastTx(req *BroadcastTxRequest) (string, error) 
 	} else {
 		for _, url := range c.BaseUrls {
 			restApi := url + BroadTx
-			if res, err := client.RPCRawPost(restApi, string(data)); err == nil {
+			if res, err := client.RPCRawPostWithTimeout(restApi, string(data), 60); err == nil {
 				return res, nil
 			}
 		}
@@ -56,23 +58,23 @@ func (c *CosmosRestClient) BroadcastTx(req *BroadcastTxRequest) (string, error) 
 	}
 }
 
-func NewTxBuilder() cosmosClient.TxBuilder {
-	interfaceRegistry := codecTypes.NewInterfaceRegistry()
-	protoCodec := codec.NewProtoCodec(interfaceRegistry)
-	txConfig := authTx.NewTxConfig(protoCodec, authTx.DefaultSignModes)
-	return txConfig.NewTxBuilder()
+func (c *CosmosRestClient) NewTxBuilder() cosmosClient.TxBuilder {
+	return c.NewTxBuilder()
 }
 
-// func NewTxBuilder() *Wrapper {
-// 	return &Wrapper{
-// 		tx: &tx.Tx{
-// 			Body: &tx.TxBody{},
-// 			AuthInfo: &tx.AuthInfo{
-// 				Fee: &tx.Fee{},
-// 			},
-// 		},
-// 	}
-// }
+func (c *CosmosRestClient) NewSignModeHandler() signing.SignModeHandler {
+	return c.TxConfig.SignModeHandler()
+}
+
+func BuildSignerData(address, chainID string, accountNumber, sequence uint64, pubKey cryptoTypes.PubKey) signing.SignerData {
+	return signing.SignerData{
+		Address:       address,
+		ChainID:       chainID,
+		AccountNumber: accountNumber,
+		Sequence:      sequence,
+		PubKey:        pubKey,
+	}
+}
 
 func BuildSendMgs(from, to, unit string, amount *big.Int) *bankTypes.MsgSend {
 	return &bankTypes.MsgSend{
@@ -84,25 +86,24 @@ func BuildSendMgs(from, to, unit string, amount *big.Int) *bankTypes.MsgSend {
 	}
 }
 
-func BuildSignatures(publicKey cryptoTypes.PubKey, sequence uint64, signature []byte) signing.SignatureV2 {
-	return signing.SignatureV2{
+func BuildSignatures(publicKey cryptoTypes.PubKey, sequence uint64, signature []byte) signingTypes.SignatureV2 {
+	return signingTypes.SignatureV2{
 		PubKey: publicKey,
-		Data: &signing.SingleSignatureData{
-			SignMode:  signing.SignMode_SIGN_MODE_DIRECT,
+		Data: &signingTypes.SingleSignatureData{
+			SignMode:  signingTypes.SignMode_SIGN_MODE_DIRECT,
 			Signature: signature,
 		},
 		Sequence: sequence,
 	}
 }
 
-func BuildTx(
-	from, to, CoinSymbol, memo string,
+func (c *CosmosRestClient) BuildTx(
+	from, to, denom, memo, publicKey string,
 	amount *big.Int,
 	extra *tokens.AllExtras,
-	publicKey string,
 ) (cosmosClient.TxBuilder, error) {
-	txBuilder := NewTxBuilder()
-	msg := BuildSendMgs(from, to, CoinSymbol, amount)
+	txBuilder := c.TxConfig.NewTxBuilder()
+	msg := BuildSendMgs(from, to, denom, amount)
 	if err := txBuilder.SetMsgs(msg); err != nil {
 		return nil, err
 	}
@@ -127,39 +128,29 @@ func BuildTx(
 	return txBuilder, nil
 }
 
-// func BuildTx(
-// 	from, to, CoinSymbol, memo string,
-// 	amount *big.Int,
-// 	extra *tokens.AllExtras,
-// 	publicKey string,
-// ) (*Wrapper, error) {
-// 	txBuilder := NewTxBuilder()
-// 	msg := BuildSendMgs(from, to, CoinSymbol, amount)
-// 	txBuilder.SetMsgs(msg)
-// 	txBuilder.SetMemo(memo)
-// 	if fee, err := ParseCoinsFee(*extra.Fee); err != nil {
-// 		return nil, err
-// 	} else {
-// 		txBuilder.SetFeeAmount(fee)
-// 	}
-// 	txBuilder.SetGasLimit(*extra.Gas)
-// 	if pubKey, err := PubKeyFromStr(publicKey); err != nil {
-// 		return nil, err
-// 	} else {
-// 		sig := BuildSignatures(pubKey, *extra.Sequence)
-// 		txBuilder.SetSignatures(sig)
-// 	}
-// 	if err := txBuilder.ValidateBasic(); err != nil {
-// 		return nil, err
-// 	}
-// 	return txBuilder, nil
-// }
-
-func GetTxDataBytes(txBuilder cosmosClient.TxBuilder) ([]byte, error) {
-	encoder := authTx.DefaultTxEncoder()
-	if txBz, err := encoder(txBuilder.GetTx()); err != nil {
+func (c *CosmosRestClient) GetSignBytes(txBuilder cosmosClient.TxBuilder, account string, accountNumber, sequence uint64, pubKey cryptoTypes.PubKey) ([]byte, error) {
+	handler := c.TxConfig.SignModeHandler()
+	if chainName, err := c.GetChainID(); err != nil {
 		return nil, err
 	} else {
-		return txBz, nil
+		signerData := BuildSignerData(account, chainName, accountNumber, sequence, pubKey)
+		return handler.GetSignBytes(signingTypes.SignMode_SIGN_MODE_DIRECT, signerData, txBuilder.GetTx())
 	}
+}
+
+func (c *CosmosRestClient) GetSignTx(tx signing.Tx) (signedTx []byte, txHash string, err error) {
+	if txBytes, err := c.TxConfig.TxEncoder()(tx); err != nil {
+		return nil, "", err
+	} else {
+		signedTx = []byte(base64.StdEncoding.EncodeToString(txBytes))
+		txHash = fmt.Sprintf("%X", Sha256Sum(txBytes))
+		log.Warn("GetSignTx", "signedTx", string(signedTx), "txHash", txHash)
+		return signedTx, txHash, nil
+	}
+}
+
+// Sha256Sum returns the SHA256 of the data.
+func Sha256Sum(data []byte) []byte {
+	h := sha256.Sum256(data)
+	return h[:]
 }

@@ -2,12 +2,10 @@ package cosmosSDK
 
 import (
 	"fmt"
-	"math/big"
 	"strconv"
 
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
-	bankTypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 )
 
 const (
@@ -30,6 +28,17 @@ func (c *CosmosRestClient) GetLatestBlockNumber() (uint64, error) {
 	return 0, tokens.ErrRPCQueryError
 }
 
+func (c *CosmosRestClient) GetChainID() (string, error) {
+	var result *GetLatestBlockResponse
+	for _, url := range c.BaseUrls {
+		restApi := url + LatestBlock
+		if err := client.RPCGet(&result, restApi); err == nil {
+			return result.Block.Header.ChainID, nil
+		}
+	}
+	return "", tokens.ErrRPCQueryError
+}
+
 func GetLatestBlockNumberByApiUrl(apiAddress string) (uint64, error) {
 	var result *GetLatestBlockResponse
 	restApi := apiAddress + LatestBlock
@@ -45,35 +54,16 @@ func (c *CosmosRestClient) GetTransactionByHash(txHash string) (*GetTxResponse, 
 	for _, url := range c.BaseUrls {
 		restApi := url + TxByHash + txHash
 		if err := client.RPCGet(&result, restApi); err == nil {
-			return result, nil
+			if result.Status == "ERROR" {
+				return nil, fmt.Errorf(
+					"GetTransactionByHash error, txHash: %v, msg: %v",
+					txHash, result.Msg)
+			} else {
+				return result, nil
+			}
 		}
 	}
 	return nil, tokens.ErrTxNotFound
-}
-
-func (c *CosmosRestClient) GetCoinBalance(account, denom string) (*big.Int, error) {
-	var result *bankTypes.QueryBalanceResponse
-	requestUrl := fmt.Sprintf(AtomBalance, account, denom)
-	for _, url := range c.BaseUrls {
-		restApi := url + requestUrl
-		if err := client.RPCGet(&result, restApi); err == nil {
-			return result.Balance.Amount.BigInt(), nil
-		}
-	}
-	return nil, tokens.ErrRPCQueryError
-}
-
-func (c *CosmosRestClient) CheckCoinBalance(account, denom string, amount *big.Int) error {
-	if balance, err := c.GetCoinBalance(account, denom); err != nil {
-		return err
-	} else {
-		if balance.Cmp(amount) > 0 {
-			return nil
-		}
-		return fmt.Errorf(
-			"insufficient native balance, need: %v, have: %v",
-			amount, amount)
-	}
 }
 
 func (c *CosmosRestClient) GetBaseAccount(address string) (*QueryAccountResponse, error) {

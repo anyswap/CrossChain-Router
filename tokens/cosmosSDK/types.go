@@ -2,11 +2,13 @@ package cosmosSDK
 
 import (
 	v1beta11 "cosmossdk.io/api/cosmos/base/abci/v1beta1"
+	cosmosClient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/types"
 )
 
 type CosmosRestClient struct {
 	BaseUrls []string
+	TxConfig cosmosClient.TxConfig
 }
 
 // GetLatestBlockResponse is the response type for the Query/GetLatestBlock RPC
@@ -28,6 +30,8 @@ type Header struct {
 }
 
 type GetTxResponse struct {
+	Status string `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	Msg    string `protobuf:"bytes,1,opt,name=msg,proto3" json:"msg,omitempty"`
 	// The request transaction bytes.
 	Tx *Tx `protobuf:"bytes,11,opt,name=tx,proto3" json:"tx,omitempty"`
 	// tx_response is the queried TxResponses.
@@ -79,6 +83,6 @@ type QueryAccountResponse struct {
 // BaseAccount base account
 type BaseAccount struct {
 	Address       string `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`
-	AccountNumber uint64 `protobuf:"varint,3,opt,name=account_number,json=accountNumber,proto3" json:"account_number,omitempty"`
-	Sequence      uint64 `protobuf:"varint,4,opt,name=sequence,proto3" json:"sequence,omitempty"`
+	AccountNumber string `protobuf:"varint,3,opt,name=account_number,json=accountNumber,proto3" json:"account_number,omitempty"`
+	Sequence      string `protobuf:"varint,4,opt,name=sequence,proto3" json:"sequence,omitempty"`
 }
