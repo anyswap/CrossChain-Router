@@ -72,6 +72,7 @@ func ConvertToSwapInfo(info *tokens.SwapInfo) SwapInfo {
 			Flags:    anycallSwapInfo.Flags,
 			AppID:    anycallSwapInfo.AppID,
 			Nonce:    anycallSwapInfo.Nonce,
+			ExtData:  common.ToHex(anycallSwapInfo.ExtData),
 		}
 	}
 	return swapinfo
@@ -140,6 +141,7 @@ func ConvertFromSwapInfo(swapinfo *SwapInfo) (tokens.SwapInfo, error) {
 			Flags:    anyCallSwapInfo.Flags,
 			AppID:    anyCallSwapInfo.AppID,
 			Nonce:    anyCallSwapInfo.Nonce,
+			ExtData:  common.FromHex(anyCallSwapInfo.ExtData),
 		}
 	}
 	return info, nil
