@@ -114,7 +114,7 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 
 	routerAccount, err := b.GetRouterAccount(routerContract)
 	if err != nil {
-		log.Fatal("get router account failed", "routerContract", routerContract, "err", err)
+		log.Fatal("get router account failed", "url", b.GatewayConfig.APIAddress[0], "routerContract", routerContract, "err", err)
 	}
 	if routerAccount.Bump != bump {
 		log.Fatal("get router account bump mismatch", "routerContract", routerContract, "have", routerAccount.Bump, "want", bump)
