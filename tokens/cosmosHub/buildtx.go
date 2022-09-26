@@ -12,6 +12,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmosSDK"
 )
 
 var (
@@ -70,7 +71,10 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 			if txBuilder, err := b.CosmosRestClient.BuildTx(args.From, receiver, multichainToken, memo, mpcPubkey, amount, extra); err != nil {
 				return nil, err
 			} else {
-				return txBuilder, nil
+				return &cosmosSDK.BuildRawTx{
+					TxBuilder: &txBuilder,
+					Extra:     extra,
+				}, nil
 			}
 		}
 	}

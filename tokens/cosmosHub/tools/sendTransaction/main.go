@@ -228,10 +228,9 @@ func SendTransaction(signedTx interface{}) (txHash string, err error) {
 		} else {
 			var txResponse *cosmosSDK.BroadcastTxResponse
 			if err := json.Unmarshal([]byte(txRes), &txResponse); err != nil {
-				log.Warnf("Unmarshal BroadcastTxResponse err:%+v", err)
 				return "", err
 			}
-			return txResponse.TxResponse.Txhash, nil
+			return txResponse.TxResponse.TxHash, nil
 		}
 	}
 }

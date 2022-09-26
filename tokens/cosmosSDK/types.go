@@ -1,7 +1,7 @@
 package cosmosSDK
 
 import (
-	v1beta11 "cosmossdk.io/api/cosmos/base/abci/v1beta1"
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	cosmosClient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/types"
 )
@@ -9,6 +9,11 @@ import (
 type CosmosRestClient struct {
 	BaseUrls []string
 	TxConfig cosmosClient.TxConfig
+}
+
+type BuildRawTx struct {
+	TxBuilder *cosmosClient.TxBuilder `protobuf:"bytes,2,opt,name=tx_builder,proto3" json:"tx_builder,omitempty"`
+	Extra     *tokens.AllExtras       `protobuf:"bytes,2,opt,name=extra,proto3" json:"extra,omitempty"`
 }
 
 // GetLatestBlockResponse is the response type for the Query/GetLatestBlock RPC
@@ -69,7 +74,7 @@ type BroadcastTxRequest struct {
 }
 
 type BroadcastTxResponse struct {
-	TxResponse *v1beta11.TxResponse `protobuf:"bytes,1,opt,name=tx_response,json=txResponse,proto3" json:"tx_response,omitempty"`
+	TxResponse *TxResponse `protobuf:"bytes,1,opt,name=tx_response,json=txResponse,proto3" json:"tx_response,omitempty"`
 }
 
 // QueryAccountResponse is the response type for the Query/Account RPC method.

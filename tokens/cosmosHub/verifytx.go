@@ -19,7 +19,34 @@ const (
 
 // VerifyMsgHash verify msg hash
 func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) (err error) {
-	return tokens.ErrNotImplemented
+	if len(msgHashes) < 1 {
+		return tokens.ErrWrongCountOfMsgHashes
+	}
+	if multichainTx, ok := rawTx.(*cosmosSDK.BuildRawTx); !ok {
+		return tokens.ErrWrongRawTx
+	} else {
+		txBuilder := multichainTx.TxBuilder
+		extra := multichainTx.Extra
+		mpc := b.GetRouterContract("")
+		mpcPubkey := router.GetMPCPublicKey(mpc)
+		if mpcPubkey == "" {
+			return tokens.ErrMissMPCPublicKey
+		}
+		pubKey, err := cosmosSDK.PubKeyFromStr(mpcPubkey)
+		if err != nil {
+			return err
+		}
+		if signBytes, err := b.CosmosRestClient.GetSignBytes(*txBuilder, mpc, *extra.AccountNum, *extra.Sequence, pubKey); err != nil {
+			return err
+		} else {
+			if !strings.EqualFold(string(signBytes), msgHashes[0]) {
+				log.Warn("message hash mismatch",
+					"want", msgHashes[0], "have", string(signBytes))
+				return tokens.ErrMsgHashMismatch
+			}
+			return nil
+		}
+	}
 }
 
 // VerifyTransaction impl
@@ -208,5 +235,4 @@ func (b *Bridge) ParseCoinAmount(value *big.Int, swapInfo *tokens.SwapTxInfo, se
 			}
 		}
 	}
-
 }

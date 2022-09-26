@@ -39,7 +39,12 @@ func (c *CosmosRestClient) SendTransaction(signedTx interface{}) (string, error)
 			if err := json.Unmarshal([]byte(txRes), &txResponse); err != nil {
 				return "", err
 			}
-			return txResponse.TxResponse.Txhash, nil
+			if txResponse.TxResponse.Code != 0 && txResponse.TxResponse.Code != 19 {
+				return "", fmt.Errorf(
+					"SendTransaction error, code: %v",
+					txResponse.TxResponse.Code)
+			}
+			return txResponse.TxResponse.TxHash, nil
 		}
 	}
 }
@@ -50,7 +55,7 @@ func (c *CosmosRestClient) BroadcastTx(req *BroadcastTxRequest) (string, error) 
 	} else {
 		for _, url := range c.BaseUrls {
 			restApi := url + BroadTx
-			if res, err := client.RPCRawPostWithTimeout(restApi, string(data), 60); err == nil {
+			if res, err := client.RPCRawPostWithTimeout(restApi, string(data), 60); err == nil && res != "" && res != "\n" {
 				return res, nil
 			}
 		}

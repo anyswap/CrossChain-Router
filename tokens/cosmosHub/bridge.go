@@ -86,7 +86,7 @@ func (b *Bridge) GetTransactionByHash(txHash string) (*cosmosSDK.GetTxResponse, 
 
 // GetTransactionStatus impl
 func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, err error) {
-	txStatus := &tokens.TxStatus{}
+	status = new(tokens.TxStatus)
 	if res, err := b.CosmosRestClient.GetTransactionByHash(txHash); err != nil {
 		log.Trace(b.ChainConfig.BlockChain+" Bridge::GetElectTransactionStatus fail", "tx", txHash, "err", err)
 		return status, err
@@ -97,13 +97,13 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 		if txHeight, err := strconv.ParseUint(res.TxResponse.Height, 10, 64); err != nil {
 			return status, err
 		} else {
-			txStatus.BlockHeight = txHeight
+			status.BlockHeight = txHeight
 		}
 		if blockNumber, err := b.GetLatestBlockNumber(); err != nil {
 			return status, err
 		} else {
-			if blockNumber > txStatus.BlockHeight {
-				txStatus.Confirmations = blockNumber - txStatus.BlockHeight
+			if blockNumber > status.BlockHeight {
+				status.Confirmations = blockNumber - status.BlockHeight
 			}
 			return status, nil
 		}

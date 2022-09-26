@@ -18,9 +18,10 @@ import (
 
 // MPCSignTransaction mpc sign raw tx
 func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs) (signedTx interface{}, txHash string, err error) {
-	if txBuilder, ok := rawTx.(cosmosClient.TxBuilder); !ok {
+	if buildRawTx, ok := rawTx.(*cosmosSDK.BuildRawTx); !ok {
 		return nil, txHash, errors.New("wrong raw tx param")
 	} else {
+		txBuilder := *buildRawTx.TxBuilder
 		mpcParams := params.GetMPCConfig(b.UseFastMPC)
 		if mpcParams.SignWithPrivateKey {
 			priKey := mpcParams.GetSignerPrivateKey(b.ChainConfig.ChainID)
