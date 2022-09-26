@@ -22,8 +22,16 @@ func (b *Bridge) GetMPCAddress(programID string) (types.PublicKey, error) {
 
 // GetRouterAccount query
 func (b *Bridge) GetRouterAccount(programID string) (*RouterAccount, error) {
+	// dataSize is depends on RouterAccount in router contract
+	// pub struct RouterAccount {
+	// 	pub mpc: Pubkey,//32
+	// 	pub bump: u8,//1
+	// 	pub pending_mpc: Pubkey,//32
+	// 	pub enable_swap_trade: bool, //1
+	// }
+	dataSize := 74
 	filters := []map[string]interface{}{
-		// {"dataSize": 41},
+		{"dataSize": dataSize},
 	}
 	res, err := b.GetProgramAccounts(programID, "base64", filters)
 	if err != nil {
@@ -42,13 +50,11 @@ func (b *Bridge) GetRouterAccount(programID string) (*RouterAccount, error) {
 		return nil, errDocedeAccountData
 	}
 	accData, err := base64.StdEncoding.DecodeString(base64Data)
-	if err != nil || len(accData) != 41 {
+	if err != nil || len(accData) != dataSize {
 		return nil, errDocedeAccountData
 	}
-
 	routerMPC := types.PublicKeyFromBytes(accData[8:40])
 	routerBump := uint8(accData[40])
-
 	routerAcc := RouterAccount{
 		MPC:  routerMPC,
 		Bump: routerBump,
