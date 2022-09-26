@@ -161,3 +161,31 @@ func CheckTokenBalance(url, token, account, amount string) error {
 	}
 	return tokens.ErrQueryTokenBalance
 }
+
+func CheckBalance(url, account, amount string) error {
+	request := &client.Request{}
+	request.Method = queryMethod
+	request.Params = map[string]string{"request_type": "view_account", "finality": "final", "account_id": account}
+	request.ID = int(time.Now().UnixNano())
+	request.Timeout = rpcTimeout
+	var result map[string]interface{}
+	err := client.RPCPostRequest(url, request, &result)
+	if err == nil {
+		if amountBigInt, err := common.GetBigIntFromStr(amount); err != nil {
+			return err
+		} else {
+			if result["amount"] != nil {
+				balanceStr := string(result["amount"].(string))
+				if balance, err := common.GetBigIntFromStr(balanceStr); err != nil {
+					return err
+				} else if balance.Cmp(amountBigInt) >= 0 {
+					return nil
+				} else {
+					return tokens.ErrTokenBalanceNotEnough
+				}
+			}
+			return tokens.ErrQueryTokenBalance
+		}
+	}
+	return err
+}

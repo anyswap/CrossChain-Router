@@ -122,6 +122,18 @@ func (b *Bridge) GetTransactionByHash(txHash string) (result *TransactionResult,
 	return nil, tokens.ErrTxNotFound
 }
 
+func (b *Bridge) CheckBalance(address, amount string) error {
+	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	for _, url := range urls {
+		if err := CheckBalance(url, address, amount); err == nil {
+			return nil
+		} else if err == tokens.ErrTokenBalanceNotEnough {
+			return err
+		}
+	}
+	return tokens.ErrQueryTokenBalance
+}
+
 func (b *Bridge) CheckTokenBalance(token, amount string) error {
 	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
 	router := b.ChainConfig.RouterContract
