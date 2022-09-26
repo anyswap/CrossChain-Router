@@ -25,6 +25,7 @@ var (
 )
 
 // BuildRawTransaction build raw tx
+//
 //nolint:gocyclo // ok
 func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{}, err error) {
 	if !params.IsTestMode && args.ToChainID.String() != b.ChainConfig.ChainID {
@@ -214,6 +215,10 @@ func (b *Bridge) CreateFunctionCall(txHash, multichainToken, to, amount, fromCha
 		methodName = "swap_in"
 		deposit = big.NewInt(0)
 	case 999:
+		routerMPC := b.GetRouterContract("")
+		if err := b.CheckBalance(routerMPC, amount); err != nil {
+			return "", nil, err
+		}
 		if value, err := common.GetBigIntFromStr(amount); err == nil {
 			return to, []Action{{
 				Enum: 3,
