@@ -23,7 +23,7 @@ func (b *Bridge) GetMPCAddress(programID string) (types.PublicKey, error) {
 // GetRouterAccount query
 func (b *Bridge) GetRouterAccount(programID string) (*RouterAccount, error) {
 	filters := []map[string]interface{}{
-		{"dataSize": 41},
+		// {"dataSize": 41},
 	}
 	res, err := b.GetProgramAccounts(programID, "base64", filters)
 	if err != nil {
