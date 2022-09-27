@@ -21,7 +21,7 @@ func (b *Bridge) GetTransactionStatus(txHash string) (*tokens.TxStatus, error) {
 
 	var txStatus tokens.TxStatus
 	// TODO The first message.header.numRequiredSignatures public keys must sign the transaction.
-	txStatus.Sender = txm.Transaction.Message.AccountKeys[0].String()
+	// txStatus.Sender = txm.Transaction.Message.AccountKeys[0].String()
 	txStatus.BlockHeight = uint64(txm.Slot)
 	txStatus.BlockHash = txm.Transaction.Message.RecentBlockhash.String()
 	txStatus.BlockTime = uint64(txm.BlockTime)
@@ -78,7 +78,7 @@ func (b *Bridge) getTransactionMeta(swapInfo *tokens.SwapTxInfo, allowUnstable b
 		return nil, tokens.ErrTxBeforeInitialHeight
 	}
 
-	swapInfo.From = txStatus.Sender         // From
+	// swapInfo.From = txStatus.Sender         // From
 	swapInfo.Height = txStatus.BlockHeight  // Height
 	swapInfo.Timestamp = txStatus.BlockTime // Timestamp
 
