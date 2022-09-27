@@ -33,10 +33,6 @@ func (b *Bridge) verifyTransactionWithArgs(tx *types.Transaction, args *tokens.B
 		return fmt.Errorf("[sign] verify FromChainID failed")
 	}
 
-	if swapin.Amount != args.OriginValue.Uint64() {
-		return fmt.Errorf("[sign] verify Amount failed swapin.Amount %v args.OriginValue %v", swapin.Amount, args.OriginValue.Uint64())
-	}
-
 	if swapin.Tx.String() != args.SwapID {
 		return fmt.Errorf("[sign] verify Tx failed swapin tx: %v OriginFrom: %v ", swapin.Tx.String(), args.SwapID)
 	}
