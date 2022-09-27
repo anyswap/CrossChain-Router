@@ -7,11 +7,14 @@ import (
 
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
 	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
 	"github.com/anyswap/CrossChain-Router/v3/mpc"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/anyswap/CrossChain-Router/v3/tools/fifo"
+	mapset "github.com/deckarep/golang-set"
 )
 
 var (
@@ -20,6 +23,9 @@ var (
 	treatAsNoncePassedInterval = int64(600) // seconds
 	defWaitTimeToReplace       = int64(300) // seconds
 	defMaxReplaceCount         = 20
+
+	replaceTaskQueues   = make(map[string]*fifo.Queue) // key is toChainID
+	replaceTasksInQueue = mapset.NewSet()
 )
 
 // StartReplaceJob replace job
@@ -36,44 +42,75 @@ func StartReplaceJob() {
 	}
 
 	allChainIDs := router.AllChainIDs
-	mongodb.MgoWaitGroup.Add(len(allChainIDs))
+
+	// init all replace swap task queue
 	for _, toChainID := range allChainIDs {
-		go doReplaceJob(toChainID.String())
+		if _, exist := replaceTaskQueues[toChainID.String()]; !exist {
+			replaceTaskQueues[toChainID.String()] = fifo.NewQueue()
+		}
 	}
+
+	// start comsumers
+	for _, toChainID := range allChainIDs {
+		if !router.IsNonceSupported(toChainID.String()) {
+			logWorker("replace", "ignore chain does not support nonce", "chainID", toChainID)
+			continue
+		}
+		mongodb.MgoWaitGroup.Add(1)
+		go startReplaceConsumer(toChainID.String())
+	}
+
+	// start producer
+	go startReplaceProducer()
 }
 
-func doReplaceJob(toChainID string) {
-	defer mongodb.MgoWaitGroup.Done()
-	logWorker("replace", "start router swap replace job", "toChainID", toChainID)
+func startReplaceProducer() {
+	logWorker("replace", "start router swap replace job")
 	for {
-		res, err := findRouterSwapResultToReplace(toChainID)
+		res, err := findRouterSwapResultToReplace()
 		if err != nil {
-			logWorkerError("replace", "find router swap result error", err, "toChainID", toChainID)
+			logWorkerError("replace", "find out router swap error", err)
+		}
+		if len(res) > 0 {
+			logWorker("replace", "find out router swap", "count", len(res))
 		}
 		for _, swap := range res {
 			if utils.IsCleanuping() {
-				logWorker("replace", "stop router swap replace job", "toChainID", toChainID)
+				logWorker("replace", "stop router swap replace job")
 				return
 			}
-			err = processRouterSwapReplace(swap)
-			if err != nil {
-				logWorkerError("replace", "process router swap replace error", err, "fromChainID", swap.FromChainID, "toChainID", toChainID, "txid", swap.TxID, "logIndex", swap.LogIndex)
+
+			if !router.IsNonceSupported(swap.ToChainID) {
+				continue
+			}
+
+			if replaceTasksInQueue.Contains(swap.Key) {
+				logWorkerTrace("replace", "ignore swap in queue", "key", swap.Key)
+				continue
+			}
+
+			err = dispatchSwapResultToReplace(swap)
+			ctx := []interface{}{"fromChainID", swap.FromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex}
+			if err == nil {
+				logWorker("replace", "replace router swap success", ctx...)
+			} else {
+				logWorkerError("replace", "replace router swap error", err, ctx...)
 			}
 		}
 		if utils.IsCleanuping() {
-			logWorker("replace", "stop router swap replace job", "toChainID", toChainID)
+			logWorker("replace", "stop router swap replace job")
 			return
 		}
 		restInJob(restIntervalInReplaceSwapJob)
 	}
 }
 
-func findRouterSwapResultToReplace(toChainID string) ([]*mongodb.MgoSwapResult, error) {
+func findRouterSwapResultToReplace() ([]*mongodb.MgoSwapResult, error) {
 	septime := getSepTimeInFind(maxReplaceSwapLifetime)
-	return mongodb.FindRouterSwapResultsToReplace(toChainID, septime)
+	return mongodb.FindRouterSwapResultsWithStatus(mongodb.MatchTxNotStable, septime)
 }
 
-func processRouterSwapReplace(res *mongodb.MgoSwapResult) error {
+func dispatchSwapResultToReplace(res *mongodb.MgoSwapResult) error {
 	waitTimeToReplace := serverCfg.WaitTimeToReplace
 	maxReplaceCount := serverCfg.MaxReplaceCount
 	if waitTimeToReplace == 0 {
@@ -89,7 +126,18 @@ func processRouterSwapReplace(res *mongodb.MgoSwapResult) error {
 	if res.SwapTx != "" && getSepTimeInFind(waitTimeToReplace) < res.Timestamp {
 		return nil
 	}
-	return ReplaceRouterSwap(res, nil, false)
+
+	taskQueue, exist := replaceTaskQueues[res.ToChainID]
+	if !exist {
+		return fmt.Errorf("no replace task queue for chainID '%v'", res.ToChainID)
+	}
+
+	logWorker("replace", "dispatch replace router swap task", "fromChainID", res.FromChainID, "toChainID", res.ToChainID, "txid", res.TxID, "logIndex", res.LogIndex, "value", res.SwapValue, "swapNonce", res.SwapNonce, "queue", taskQueue.Len())
+
+	taskQueue.Add(res)
+	replaceTasksInQueue.Add(res.Key)
+
+	return nil
 }
 
 func checkAndRecycleSwapNonce(res *mongodb.MgoSwapResult) {
@@ -115,8 +163,57 @@ func checkAndRecycleSwapNonce(res *mongodb.MgoSwapResult) {
 	nonceSetter.RecycleSwapNonce(res.MPC, res.SwapNonce)
 }
 
+func startReplaceConsumer(chainID string) {
+	defer mongodb.MgoWaitGroup.Done()
+	logWorker("replace", "start replace swap task", "chainID", chainID)
+
+	taskQueue, exist := replaceTaskQueues[chainID]
+	if !exist {
+		log.Fatal("no replace task queue", "chainID", chainID)
+	}
+
+	i := 0
+	for {
+		if utils.IsCleanuping() {
+			logWorker("doReplace", "stop replace swap task", "chainID", chainID)
+			return
+		}
+
+		if i%10 == 0 && taskQueue.Len() > 0 {
+			logWorker("doReplace", "tasks in replace queue", "chainID", chainID, "count", taskQueue.Len())
+		}
+		i++
+
+		front := taskQueue.Next()
+		if front == nil {
+			sleepSeconds(3)
+			continue
+		}
+
+		swap := front.(*mongodb.MgoSwapResult)
+
+		if swap.ToChainID != chainID {
+			logWorkerWarn("doReplace", "ignore replace task as toChainID mismatch", "want", chainID, "swap", swap)
+			continue
+		}
+
+		ctx := []interface{}{"fromChainID", swap.FromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex}
+		err := ReplaceRouterSwap(swap, nil, false)
+		if err == nil {
+			logWorker("doReplace", "replace router swap success", ctx...)
+		} else {
+			logWorkerError("doReplace", "replace router swap failed", err, ctx...)
+		}
+
+		replaceTasksInQueue.Remove(swap.Key)
+	}
+}
+
 // ReplaceRouterSwap api
 func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int, isManual bool) error {
+	if !router.IsNonceSupported(res.ToChainID) {
+		return tokens.ErrNonceNotSupport
+	}
 	swap, err := verifyReplaceSwap(res, isManual)
 	if err != nil {
 		return err

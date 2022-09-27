@@ -8,8 +8,10 @@ import (
 var (
 	ErrNotImplemented        = errors.New("not implemented")
 	ErrSwapTypeNotSupported  = errors.New("swap type not supported")
+	ErrUnknownSwapSubType    = errors.New("unknown swap sub type")
 	ErrNoBridgeForChainID    = errors.New("no bridge for chain id")
 	ErrSwapTradeNotSupport   = errors.New("swap trade not support")
+	ErrNonceNotSupport       = errors.New("nonce not support")
 	ErrNotFound              = errors.New("not found")
 	ErrTxNotFound            = errors.New("tx not found")
 	ErrTxNotStable           = errors.New("tx not stable")
@@ -31,6 +33,7 @@ var (
 	ErrRPCQueryError         = errors.New("rpc query error")
 	ErrMissDynamicFeeConfig  = errors.New("miss dynamic fee config")
 	ErrFromChainIDMismatch   = errors.New("from chainID mismatch")
+	ErrSameFromAndToChainID  = errors.New("from and to chainID are same")
 	ErrMissMPCPublicKey      = errors.New("miss mpc public key config")
 	ErrMissRouterInfo        = errors.New("miss router info")
 	ErrSenderMismatch        = errors.New("sender mismatch")
@@ -42,12 +45,27 @@ var (
 	ErrNoEnoughReserveBudget = errors.New("no enough reserve budget")
 	ErrTxWithNoPayment       = errors.New("tx with no payment")
 	ErrTxIsNotValidated      = errors.New("tx is not validated")
+	ErrPauseSwapInto         = errors.New("maintain: pause swap into")
+	ErrBuildTxErrorAndDelay  = errors.New("[build tx error]")
+	ErrSwapoutIDNotExist     = errors.New("swapoutID not exist")
 
 	// errors should register in router swap
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")
 	ErrTxWithWrongPath   = errors.New("swap trade tx with wrong path")
 	ErrMissTokenConfig   = errors.New("miss token config")
 	ErrNoUnderlyingToken = errors.New("no underlying token")
+	ErrVerifyTxUnsafe    = errors.New("[tx maybe unsafe]")
+
+	ErrQueryTokenBalance     = errors.New("query token balance error")
+	ErrTokenBalanceNotEnough = errors.New("token balance not enough")
+	ErrGetLatestBlockNumber  = errors.New("get latest block number error")
+	ErrBroadcastTx           = errors.New("broadcast tx error")
+	ErrGetAccountNonce       = errors.New("get account nonce error")
+	ErrGetUnderlying         = errors.New("get underlying address error")
+	ErrGetMPC                = errors.New("get mpc address error")
+	ErrTokenDecimals         = errors.New("get token decimals error")
+	ErrGetLatestBlockHash    = errors.New("get latest block hash error")
+	ErrTxResultType          = errors.New("tx type is not TransactionResult")
 )
 
 // ShouldRegisterRouterSwapForError return true if this error should record in database

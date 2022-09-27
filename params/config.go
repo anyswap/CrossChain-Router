@@ -15,6 +15,9 @@ const (
 	RouterSwapPrefixID = "routerswap"
 )
 
+// CustomizeConfigFunc customize config items
+var CustomizeConfigFunc func(*RouterConfig)
+
 // IsTestMode used for testing
 var IsTestMode bool
 
@@ -27,11 +30,12 @@ var (
 	// IsSwapServer is swap server
 	IsSwapServer bool
 
-	chainIDBlacklistMap = make(map[string]struct{})
-	tokenIDBlacklistMap = make(map[string]struct{})
-	accountBlacklistMap = make(map[string]struct{})
-	fixedGasPriceMap    = make(map[string]*big.Int) // key is chainID
-	maxGasPriceMap      = make(map[string]*big.Int) // key is chainID
+	chainIDBlacklistMap        = make(map[string]struct{})
+	tokenIDBlacklistMap        = make(map[string]struct{})
+	tokenIDBlacklistOnChainMap = make(map[string]map[string]struct{})
+	accountBlacklistMap        = make(map[string]struct{})
+	fixedGasPriceMap           = make(map[string]*big.Int) // key is chainID
+	maxGasPriceMap             = make(map[string]*big.Int) // key is chainID
 
 	callByContractWhitelist         map[string]map[string]struct{} // chainID -> caller
 	callByContractCodeHashWhitelist map[string]map[string]struct{} // chainID -> codehash
@@ -45,6 +49,8 @@ var (
 	disableUseFromChainIDInReceiptChains map[string]struct{}
 	useFastMPCChains                     map[string]struct{}
 	dontCheckReceivedTokenIDs            map[string]struct{}
+	dontCheckBalanceTokenIDs             map[string]struct{}
+	checkTokenBalanceEnabledChains       map[string]struct{}
 
 	isDebugMode           *bool
 	isNFTSwapWithData     *bool
@@ -64,10 +70,6 @@ type RouterServerConfig struct {
 	MongoDB    *MongoDBConfig
 	APIServer  *APIServerConfig
 
-	ChainIDBlackList []string `toml:",omitempty" json:",omitempty"`
-	TokenIDBlackList []string `toml:",omitempty" json:",omitempty"`
-	AccountBlackList []string `toml:",omitempty" json:",omitempty"`
-
 	AutoSwapNonceEnabledChains []string `toml:",omitempty" json:",omitempty"`
 
 	// extras
@@ -80,7 +82,6 @@ type RouterServerConfig struct {
 	MaxPlusGasPricePercentage  uint64            `toml:",omitempty" json:",omitempty"`
 	MaxGasPriceFluctPercent    uint64            `toml:",omitempty" json:",omitempty"`
 	SwapDeadlineOffset         int64             `toml:",omitempty" json:",omitempty"` // seconds
-	DefaultGasLimit            map[string]uint64 `toml:",omitempty" json:",omitempty"` // key is chain ID
 	FixedGasPrice              map[string]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	MaxGasPrice                map[string]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	NoncePassedConfirmInterval map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID
@@ -89,6 +90,10 @@ type RouterServerConfig struct {
 	SendTxLoopCount            map[string]int    `toml:",omitempty" json:",omitempty"` // key is chain ID
 	SendTxLoopInterval         map[string]int    `toml:",omitempty" json:",omitempty"` // key is chain ID
 	AutoResignTxIfFailed       map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID
+
+	DefaultGasLimit  map[string]uint64            `toml:",omitempty" json:",omitempty"` // key is chain ID
+	MaxGasLimit      map[string]uint64            `toml:",omitempty" json:",omitempty"` // key is chain ID
+	MaxTokenGasLimit map[string]map[string]uint64 `toml:",omitempty" json:",omitempty"` // key is tokenID,chainID
 
 	DynamicFeeTx map[string]*DynamicFeeTxConfig `toml:",omitempty" json:",omitempty"` // key is chain ID
 }
@@ -104,15 +109,21 @@ type RouterConfig struct {
 	Server *RouterServerConfig `toml:",omitempty" json:",omitempty"`
 	Oracle *RouterOracleConfig `toml:",omitempty" json:",omitempty"`
 
-	Identifier  string
-	SwapType    string
-	SwapSubType string
-	Onchain     *OnchainConfig
-	Gateways    map[string][]string // key is chain ID
-	GatewaysExt map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
-	MPC         *MPCConfig
-	FastMPC     *MPCConfig   `toml:",omitempty" json:",omitempty"`
-	Extra       *ExtraConfig `toml:",omitempty" json:",omitempty"`
+	Identifier     string
+	SwapType       string
+	SwapSubType    string
+	Onchain        *OnchainConfig
+	Gateways       map[string][]string // key is chain ID
+	GatewaysExt    map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+	EVMGatewaysExt map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+	MPC            *MPCConfig
+	FastMPC        *MPCConfig   `toml:",omitempty" json:",omitempty"`
+	Extra          *ExtraConfig `toml:",omitempty" json:",omitempty"`
+
+	ChainIDBlackList        []string            `toml:",omitempty" json:",omitempty"`
+	TokenIDBlackList        []string            `toml:",omitempty" json:",omitempty"`
+	TokenIDBlackListOnChain map[string][]string `toml:",omitempty" json:",omitempty"`
+	AccountBlackList        []string            `toml:",omitempty" json:",omitempty"`
 }
 
 // ExtraConfig extra config
@@ -143,10 +154,20 @@ type ExtraConfig struct {
 	DisableUseFromChainIDInReceiptChains []string `toml:",omitempty" json:",omitempty"`
 	UseFastMPCChains                     []string `toml:",omitempty" json:",omitempty"`
 	DontCheckReceivedTokenIDs            []string `toml:",omitempty" json:",omitempty"`
+	DontCheckBalanceTokenIDs             []string `toml:",omitempty" json:",omitempty"`
+	CheckTokenBalanceEnabledChains       []string `toml:",omitempty" json:",omitempty"`
 
 	RPCClientTimeout map[string]int `toml:",omitempty" json:",omitempty"` // key is chainID
 	// chainID,customKey => customValue
 	Customs map[string]map[string]string `toml:",omitempty" json:",omitempty"`
+
+	LocalChainConfig map[string]LocalChainConfig `toml:",omitempty" json:",omitempty"` // key is chain ID
+}
+
+// LocalChainConfig local chain config
+type LocalChainConfig struct {
+	EstimatedGasMustBePositive bool   `toml:",omitempty" json:",omitempty"`
+	SmallestGasPriceUnit       uint64 `toml:",omitempty" json:",omitempty"`
 }
 
 // OnchainConfig struct
@@ -155,6 +176,7 @@ type OnchainConfig struct {
 	APIAddress  []string
 	WSServers   []string
 	ReloadCycle uint64 // seconds
+	IgnoreCheck bool
 }
 
 // MPCConfig mpc related config
@@ -288,6 +310,24 @@ func GetMaxGasPrice(chainID string) *big.Int {
 		return new(big.Int).Set(maxGasPrice)
 	}
 	return nil
+}
+
+// GetMaxGasLimit get max gas limit of specified chain
+func GetMaxGasLimit(chainID string) uint64 {
+	serverCfg := GetRouterServerConfig()
+	if serverCfg == nil {
+		return 0
+	}
+	return serverCfg.MaxGasLimit[chainID]
+}
+
+// GetMaxTokenGasLimit get max token gas limit of specified tokenID and chainID
+func GetMaxTokenGasLimit(tokenID, chainID string) uint64 {
+	serverCfg := GetRouterServerConfig()
+	if serverCfg == nil {
+		return 0
+	}
+	return serverCfg.MaxTokenGasLimit[tokenID][chainID]
 }
 
 // GetNoncePassedConfirmInterval get nonce passed confirm interval
@@ -592,8 +632,8 @@ func initBigValueWhitelist() {
 	for tid, whitelist := range GetExtraConfig().BigValueWhitelist {
 		whitelistMap := make(map[string]struct{}, len(whitelist))
 		for _, address := range whitelist {
-			if !common.IsHexAddress(address) {
-				log.Fatal("initBigValueWhitelist wrong address", "tokenID", tid, "address", address)
+			if address == "" {
+				log.Fatal("initBigValueWhitelist empty address", "tokenID", tid)
 			}
 			whitelistMap[strings.ToLower(address)] = struct{}{}
 		}
@@ -667,6 +707,14 @@ func GetMPCConfig(isFastMPC bool) *MPCConfig {
 	return routerConfig.MPC
 }
 
+// GetLocalChainConfig get local chain config
+func GetLocalChainConfig(chainID string) LocalChainConfig {
+	if GetExtraConfig() != nil {
+		return GetExtraConfig().LocalChainConfig[chainID]
+	}
+	return LocalChainConfig{}
+}
+
 // GetOnchainContract get onchain config contract address
 func GetOnchainContract() string {
 	return routerConfig.Onchain.Contract
@@ -726,13 +774,21 @@ func AddOrRemoveChainIDBlackList(chainIDs []string, isAdd bool) {
 			delete(chainIDBlacklistMap, chainID)
 		}
 	}
-	if GetRouterServerConfig() != nil {
-		blacklist := make([]string, 0, len(chainIDBlacklistMap))
-		for chainID := range chainIDBlacklistMap {
-			blacklist = append(blacklist, chainID)
-		}
-		GetRouterServerConfig().ChainIDBlackList = blacklist
+	blacklist := make([]string, 0, len(chainIDBlacklistMap))
+	for chainID := range chainIDBlacklistMap {
+		blacklist = append(blacklist, chainID)
 	}
+	GetRouterConfig().ChainIDBlackList = blacklist
+}
+
+// IsTokenIDInBlackListOnChain is token id in black list on chain
+func IsTokenIDInBlackListOnChain(chainID, tokenID string) bool {
+	m, exist := tokenIDBlacklistOnChainMap[chainID]
+	if !exist {
+		return false
+	}
+	_, exist = m[strings.ToLower(tokenID)]
+	return exist
 }
 
 // IsTokenIDInBlackList is token id in black list
@@ -751,13 +807,11 @@ func AddOrRemoveTokenIDBlackList(tokenIDs []string, isAdd bool) {
 			delete(tokenIDBlacklistMap, key)
 		}
 	}
-	if GetRouterServerConfig() != nil {
-		blacklist := make([]string, 0, len(tokenIDBlacklistMap))
-		for tokenID := range tokenIDBlacklistMap {
-			blacklist = append(blacklist, tokenID)
-		}
-		GetRouterServerConfig().TokenIDBlackList = blacklist
+	blacklist := make([]string, 0, len(tokenIDBlacklistMap))
+	for tokenID := range tokenIDBlacklistMap {
+		blacklist = append(blacklist, tokenID)
 	}
+	GetRouterConfig().TokenIDBlackList = blacklist
 }
 
 // IsAccountInBlackList is account in black list
@@ -776,13 +830,11 @@ func AddOrRemoveAccountBlackList(accounts []string, isAdd bool) {
 			delete(accountBlacklistMap, key)
 		}
 	}
-	if GetRouterServerConfig() != nil {
-		blacklist := make([]string, 0, len(accountBlacklistMap))
-		for account := range accountBlacklistMap {
-			blacklist = append(blacklist, account)
-		}
-		GetRouterServerConfig().AccountBlackList = blacklist
+	blacklist := make([]string, 0, len(accountBlacklistMap))
+	for account := range accountBlacklistMap {
+		blacklist = append(blacklist, account)
 	}
+	GetRouterConfig().AccountBlackList = blacklist
 }
 
 func initAutoSwapNonceEnabledChains() {
@@ -920,6 +972,43 @@ func DontCheckTokenReceived(tokenID string) bool {
 	return exist
 }
 
+func initDontCheckBalanceTokenIDs() {
+	dontCheckBalanceTokenIDs = make(map[string]struct{})
+	if GetExtraConfig() == nil || len(GetExtraConfig().DontCheckBalanceTokenIDs) == 0 {
+		return
+	}
+	for _, tid := range GetExtraConfig().DontCheckBalanceTokenIDs {
+		dontCheckBalanceTokenIDs[strings.ToLower(tid)] = struct{}{}
+	}
+	log.Info("initDontCheckBalanceTokenIDs success")
+}
+
+// DontCheckTokenBalance do not check token balance (a security enhance checking)
+func DontCheckTokenBalance(tokenID string) bool {
+	_, exist := dontCheckBalanceTokenIDs[strings.ToLower(tokenID)]
+	return exist
+}
+
+func initCheckTokenBalanceEnabledChains() {
+	checkTokenBalanceEnabledChains = make(map[string]struct{})
+	if GetExtraConfig() == nil || len(GetExtraConfig().CheckTokenBalanceEnabledChains) == 0 {
+		return
+	}
+	for _, cid := range GetExtraConfig().CheckTokenBalanceEnabledChains {
+		if _, err := common.GetBigIntFromStr(cid); err != nil {
+			log.Fatal("initCheckTokenBalanceEnabledChains wrong chainID", "chainID", cid, "err", err)
+		}
+		checkTokenBalanceEnabledChains[cid] = struct{}{}
+	}
+	log.Info("initCheckTokenBalanceEnabledChains success", "chains", GetExtraConfig().CheckTokenBalanceEnabledChains)
+}
+
+// IsCheckTokenBalanceEnabled is check token balance enabled
+func IsCheckTokenBalanceEnabled(chainID string) bool {
+	_, exist := checkTokenBalanceEnabledChains[chainID]
+	return exist
+}
+
 // GetDynamicFeeTxConfig get dynamic fee tx config (EIP-1559)
 func GetDynamicFeeTxConfig(chainID string) *DynamicFeeTxConfig {
 	if !IsDynamicFeeTxEnabled(chainID) {
@@ -949,10 +1038,15 @@ func LoadRouterConfig(configFile string, isServer, check bool) *RouterConfig {
 		log.Fatalf("LoadRouterConfig error (toml DecodeFile): %v", err)
 	}
 
+	IsSwapServer = isServer
 	if !isServer {
 		config.Server = nil
 	} else {
 		config.Oracle = nil
+	}
+
+	if CustomizeConfigFunc != nil {
+		CustomizeConfigFunc(config)
 	}
 
 	routerConfig = config
@@ -992,6 +1086,10 @@ func ReloadRouterConfig() {
 		config.Server = nil
 	} else {
 		config.Oracle = nil
+	}
+
+	if CustomizeConfigFunc != nil {
+		CustomizeConfigFunc(config)
 	}
 
 	if err := config.CheckConfig(isServer); err != nil {

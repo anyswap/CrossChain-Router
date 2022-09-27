@@ -63,7 +63,7 @@ func (b *Bridge) VerifyTransaction(txHash string, args *tokens.VerifyArgs) (*tok
 	allowUnstable := args.AllowUnstable
 
 	switch swapType {
-	case tokens.ERC20SwapType:
+	case tokens.ERC20SwapType, tokens.ERC20SwapTypeMixPool:
 		return b.verifyERC20SwapTx(txHash, logIndex, allowUnstable)
 	case tokens.NFTSwapType:
 		return b.verifyNFTSwapTx(txHash, logIndex, allowUnstable)

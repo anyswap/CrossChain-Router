@@ -90,22 +90,22 @@ type SwapResultUpdateItems struct {
 
 // SwapInfo struct
 type SwapInfo struct {
-	ERC20SwapInfo        *ERC20SwapInfo        `bson:"routerSwapInfo,omitempty"  json:"routerSwapInfo,omitempty"`
-	NFTSwapInfo          *NFTSwapInfo          `bson:"nftSwapInfo,omitempty"     json:"nftSwapInfo,omitempty"`
-	AnyCallSwapInfo      *AnyCallSwapInfo      `bson:"anycallSwapInfo,omitempty" json:"anycallSwapInfo,omitempty"`
-	CurveAnyCallSwapInfo *CurveAnyCallSwapInfo `bson:"anycallSwapInfo2,omitempty" json:"anycallSwapInfo2,omitempty"`
+	ERC20SwapInfo   *ERC20SwapInfo   `bson:"routerSwapInfo,omitempty"  json:"routerSwapInfo,omitempty"`
+	NFTSwapInfo     *NFTSwapInfo     `bson:"nftSwapInfo,omitempty"     json:"nftSwapInfo,omitempty"`
+	AnyCallSwapInfo *AnyCallSwapInfo `bson:"anycallSwapInfo2,omitempty" json:"anycallSwapInfo2,omitempty"`
 }
 
 // ERC20SwapInfo struct
 type ERC20SwapInfo struct {
 	Token         string   `bson:"token"                   json:"token"`
 	TokenID       string   `bson:"tokenID"                 json:"tokenID"`
+	SwapoutID     string   `bson:"swapoutID,omitempty"     json:"swapoutID,omitempty"`
 	ForNative     bool     `bson:"forNative,omitempty"     json:"forNative,omitempty"`
 	ForUnderlying bool     `bson:"forUnderlying,omitempty" json:"forUnderlying,omitempty"`
 	Path          []string `bson:"path,omitempty"          json:"path,omitempty"`
 	AmountOutMin  string   `bson:"amountOutMin,omitempty"  json:"amountOutMin,omitempty"`
 	CallProxy     string   `bson:"callProxy,omitempty"     json:"callProxy,omitempty"`
-	CallData      string   `bson:"callData,omitempty"     json:"callData,omitempty"`
+	CallData      string   `bson:"callData,omitempty"      json:"callData,omitempty"`
 }
 
 // NFTSwapInfo struct
@@ -120,19 +120,13 @@ type NFTSwapInfo struct {
 
 // AnyCallSwapInfo struct
 type AnyCallSwapInfo struct {
-	CallFrom   string   `bson:"callFrom"   json:"callFrom"`
-	CallTo     []string `bson:"callTo"     json:"callTo"`
-	CallData   []string `bson:"callData"   json:"callData"`
-	Callbacks  []string `bson:"callbacks"  json:"callbacks"`
-	CallNonces []string `bson:"callNonces" json:"callNonces"`
-}
-
-// CurveAnyCallSwapInfo struct
-type CurveAnyCallSwapInfo struct {
-	CallFrom string `json:"callFrom"`
-	CallTo   string `json:"callTo"`
-	CallData string `json:"callData"`
-	Fallback string `json:"fallback"`
+	CallFrom string `bson:",omitempty" json:"callFrom,omitempty"`
+	CallTo   string `bson:",omitempty" json:"callTo,omitempty"`
+	CallData string `bson:",omitempty" json:"callData,omitempty"`
+	Fallback string `bson:",omitempty" json:"fallback,omitempty"`
+	Flags    string `bson:",omitempty" json:"flags,omitempty"`
+	AppID    string `bson:",omitempty" json:"appid,omitempty"`
+	Nonce    string `bson:",omitempty" json:"nonce,omitempty"`
 }
 
 // GetToken get token

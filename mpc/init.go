@@ -284,9 +284,7 @@ func (ni *NodeInfo) getUsableSignGroupIndexes() []int {
 	defer ni.signGroupsLock.RUnlock()
 
 	groupIndexes := make([]int, len(ni.usableSignGroupIndexes))
-	for i, groupInd := range ni.usableSignGroupIndexes {
-		groupIndexes[i] = groupInd
-	}
+	copy(groupIndexes, ni.usableSignGroupIndexes)
 
 	return groupIndexes
 }
@@ -300,6 +298,13 @@ func (ni *NodeInfo) deleteSignGroup(groupIndex int) {
 		if groupInd == groupIndex {
 			ni.usableSignGroupIndexes = append(ni.usableSignGroupIndexes[:i], ni.usableSignGroupIndexes[i+1:]...)
 			return
+		}
+	}
+
+	if len(ni.usableSignGroupIndexes) == 0 { // reinit to all origins
+		ni.usableSignGroupIndexes = make([]int, len(ni.originSignGroups))
+		for i := range ni.originSignGroups {
+			ni.usableSignGroupIndexes[i] = i
 		}
 	}
 }

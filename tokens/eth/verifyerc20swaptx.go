@@ -21,15 +21,26 @@ var (
 	LogAnySwapOutTopic = common.FromHex("0x97116cf6cd4f6412bb47914d6db18da9e16ab2142f543b86e207c24fbd16b23a")
 	// LogAnySwapOut(address token, address from, string to, uint amount, uint fromChainID, uint toChainID);
 	LogAnySwapOut2Topic = common.FromHex("0x409e0ad946b19f77602d6cf11d59e1796ddaa4828159a0b4fb7fa2ff6b161b79")
-	// LogAnySwapOutAndCall(address token, address from, string to, uint amount, uint fromChainID, uint toChainID, string anycallProxy, bytes data);
-	LogAnySwapOutAndCallTopic = common.FromHex("0x8e7e5695fff09074d4c7d6c71615fd382427677f75f460c522357233f3bd3ec3")
 	// LogAnySwapTradeTokensForTokens(address[] path, address from, address to, uint amountIn, uint amountOutMin, uint fromChainID, uint toChainID);
 	LogAnySwapTradeTokensForTokensTopic = common.FromHex("0xfea6abdf4fd32f20966dff7619354cd82cd43dc78a3bee479f04c74dbfc585b3")
 	// LogAnySwapTradeTokensForNative(address[] path, address from, address to, uint amountIn, uint amountOutMin, uint fromChainID, uint toChainID);
 	LogAnySwapTradeTokensForNativeTopic = common.FromHex("0x278277e0209c347189add7bd92411973b5f6b8644f7ac62ea1be984ce993f8f4")
+	// LogAnySwapOutMixPool(address token, address from, string to, uint256 amount, uint256 fromChainID, uint256 toChainID)
+	LogAnySwapOutMixPoolTopic = common.FromHex("0xb89f5e0fee14552a1edac7c525bc18eb2c5fad996def47de882b82fdea286fd7")
+	// LogAnySwapOut(bytes32 swapoutID, address token, address from, string receiver, uint256 amount, uint256 toChainID)
+	LogAnySwapOutV7Topic = common.FromHex("0x0d969ae475ff6fcaf0dcfa760d4d8607244e8d95e9bf426f8d5d69f9a3e525af")
+	// LogAnySwapOutAndCall(bytes32 swapoutID, address token, address from, string receiver, uint256 amount, uint256 toChainID, string anycallProxy, bytes data)
+	LogAnySwapOutAndCallV7Topic = common.FromHex("0x968608314ec29f6fd1a9f6ef9e96247a4da1a683917569706e2d2b60ca7c0a6d")
 
 	anySwapOutUnderlyingWithPermitFuncHash         = common.FromHex("0x8d7d3eea")
 	anySwapOutUnderlyingWithTransferPermitFuncHash = common.FromHex("0x1b91a934")
+
+	// PauseSwapIntoTokenVersion pause swap into a dest token which is configed with this version
+	// usage: when we replace an old token with a new one,
+	// but the old token has some swapouts not processed,
+	// then we can replace temply to the old token and with this special version,
+	// after old token swapouts are processed, we should replace back to the new token config.
+	PauseSwapIntoTokenVersion = uint64(90000)
 )
 
 func (b *Bridge) verifyERC20SwapTx(txHash string, logIndex int, allowUnstable bool) (*tokens.SwapTxInfo, error) {
@@ -62,6 +73,11 @@ func (b *Bridge) verifyERC20SwapTx(txHash string, logIndex int, allowUnstable bo
 		return swapInfo, err
 	}
 
+	err = b.checkTokenBalance(swapInfo, receipt)
+	if err != nil {
+		return swapInfo, err
+	}
+
 	if !allowUnstable {
 		ctx := []interface{}{
 			"identifier", params.GetIdentifier(),
@@ -75,7 +91,6 @@ func (b *Bridge) verifyERC20SwapTx(txHash string, logIndex int, allowUnstable bo
 		if len(swapInfo.ERC20SwapInfo.Path) > 0 {
 			ctx = append(ctx,
 				"forNative", swapInfo.ERC20SwapInfo.ForNative,
-				"forUnderlying", swapInfo.ERC20SwapInfo.ForUnderlying,
 				"amountOutMin", swapInfo.ERC20SwapInfo.AmountOutMin,
 			)
 		} else if swapInfo.ERC20SwapInfo.CallProxy != "" {
@@ -103,6 +118,9 @@ func (b *Bridge) checkERC20SwapInfo(swapInfo *tokens.SwapTxInfo) error {
 		log.Error("router swap tx with mismatched fromChainID in receipt", "txid", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "fromChainID", swapInfo.FromChainID, "toChainID", swapInfo.ToChainID, "chainID", b.ChainConfig.ChainID)
 		return tokens.ErrFromChainIDMismatch
 	}
+	if swapInfo.FromChainID.Cmp(swapInfo.ToChainID) == 0 {
+		return tokens.ErrSameFromAndToChainID
+	}
 	erc20SwapInfo := swapInfo.ERC20SwapInfo
 	fromTokenCfg := b.GetTokenConfig(erc20SwapInfo.Token)
 	if fromTokenCfg == nil || erc20SwapInfo.TokenID == "" {
@@ -121,6 +139,9 @@ func (b *Bridge) checkERC20SwapInfo(swapInfo *tokens.SwapTxInfo) error {
 	if toTokenCfg == nil {
 		log.Warn("get token config failed", "chainID", swapInfo.ToChainID, "token", multichainToken)
 		return tokens.ErrMissTokenConfig
+	}
+	if toTokenCfg.ContractVersion == PauseSwapIntoTokenVersion {
+		return tokens.ErrPauseSwapInto
 	}
 	if erc20SwapInfo.ForUnderlying && common.HexToAddress(toTokenCfg.GetUnderlying()) == (common.Address{}) {
 		return tokens.ErrNoUnderlyingToken
@@ -166,12 +187,12 @@ func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable boo
 
 	if receipt.Recipient == nil {
 		if !params.AllowCallByConstructor() {
+			log.Warn("disallow constructor tx", "chainID", b.ChainConfig.ChainID, "txid", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "err", tokens.ErrTxWithWrongContract)
 			return nil, tokens.ErrTxWithWrongContract
 		}
 	} else {
 		swapInfo.TxTo = receipt.Recipient.LowerHex() // TxTo
 	}
-	swapInfo.From = receipt.From.LowerHex() // From
 	if *receipt.From == (common.Address{}) {
 		return nil, tokens.ErrTxWithWrongSender
 	}
@@ -203,7 +224,7 @@ func (b *Bridge) checkCallByContract(swapInfo *tokens.SwapTxInfo) error {
 				return nil
 			}
 		}
-		log.Warn("tx to with wrong contract", "txTo", txTo, "want", routerContract)
+		log.Warn("tx to address mismatch", "have", txTo, "want", routerContract, "chainID", b.ChainConfig.ChainID, "txid", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "err", tokens.ErrTxWithWrongContract)
 		return tokens.ErrTxWithWrongContract
 	}
 
@@ -211,6 +232,10 @@ func (b *Bridge) checkCallByContract(swapInfo *tokens.SwapTxInfo) error {
 }
 
 func (b *Bridge) verifyERC20SwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
+	if rlog == nil || len(rlog.Topics) == 0 {
+		return tokens.ErrSwapoutLogNotFound
+	}
+
 	swapInfo.To = rlog.Address.LowerHex() // To
 
 	logTopic := rlog.Topics[0].Bytes()
@@ -219,8 +244,13 @@ func (b *Bridge) verifyERC20SwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.R
 		err = b.parseERC20SwapoutTxLog(swapInfo, rlog)
 	case bytes.Equal(logTopic, LogAnySwapOut2Topic):
 		err = b.parseERC20Swapout2TxLog(swapInfo, rlog)
-	case bytes.Equal(logTopic, LogAnySwapOutAndCallTopic):
-		err = b.parseERC20SwapoutAndCallTxLog(swapInfo, rlog)
+	case bytes.Equal(logTopic, LogAnySwapOutV7Topic):
+		err = b.parseERC20SwapoutV7TxLog(swapInfo, rlog, false)
+	case bytes.Equal(logTopic, LogAnySwapOutAndCallV7Topic):
+		err = b.parseERC20SwapoutV7TxLog(swapInfo, rlog, true)
+	case bytes.Equal(logTopic, LogAnySwapOutMixPoolTopic):
+		swapInfo.SwapType = tokens.ERC20SwapTypeMixPool // update SwapType
+		err = b.parseERC20SwapoutMixPoolTxLog(swapInfo, rlog)
 	case bytes.Equal(logTopic, LogAnySwapTradeTokensForTokensTopic):
 		err = b.parseERC20SwapTradeTxLog(swapInfo, rlog, false)
 	case bytes.Equal(logTopic, LogAnySwapTradeTokensForNativeTopic):
@@ -242,8 +272,23 @@ func (b *Bridge) verifyERC20SwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.R
 		return tokens.ErrMissRouterInfo
 	}
 	if !common.IsEqualIgnoreCase(rlog.Address.LowerHex(), routerContract) {
-		log.Warn("router contract mismatch", "have", rlog.Address.LowerHex(), "want", routerContract)
+		log.Warn("tx to address mismatch", "have", rlog.Address.LowerHex(), "want", routerContract, "chainID", b.ChainConfig.ChainID, "txid", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "err", tokens.ErrTxWithWrongContract)
 		return tokens.ErrTxWithWrongContract
+	}
+
+	swapoutID := swapInfo.ERC20SwapInfo.SwapoutID
+	if swapoutID != "" {
+		routerInfo := router.GetRouterInfo(routerContract, b.ChainConfig.ChainID)
+		if routerInfo == nil {
+			return tokens.ErrMissRouterInfo
+		}
+		exist, err := b.IsSwapoutIDExist(routerInfo.RouterSecurity, swapoutID)
+		if err != nil {
+			return err
+		}
+		if !exist {
+			return tokens.ErrSwapoutIDNotExist
+		}
 	}
 	return nil
 }
@@ -311,13 +356,13 @@ func (b *Bridge) parseERC20Swapout2TxLog(swapInfo *tokens.SwapTxInfo, rlog *type
 	return nil
 }
 
-func (b *Bridge) parseERC20SwapoutAndCallTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
+func (b *Bridge) parseERC20SwapoutMixPoolTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
 	logTopics := rlog.Topics
 	if len(logTopics) != 3 {
 		return tokens.ErrTxWithWrongTopics
 	}
 	logData := *rlog.Data
-	if len(logData) < 288 {
+	if len(logData) < 160 {
 		return abicoder.ErrParseDataError
 	}
 	erc20SwapInfo := swapInfo.ERC20SwapInfo
@@ -335,13 +380,45 @@ func (b *Bridge) parseERC20SwapoutAndCallTxLog(swapInfo *tokens.SwapTxInfo, rlog
 	}
 	swapInfo.ToChainID = common.GetBigInt(logData, 96, 32)
 
-	erc20SwapInfo.CallProxy, err = abicoder.ParseStringInData(logData, 128)
+	tokenCfg := b.GetTokenConfig(erc20SwapInfo.Token)
+	if tokenCfg == nil {
+		return tokens.ErrMissTokenConfig
+	}
+	erc20SwapInfo.TokenID = tokenCfg.TokenID
+
+	return nil
+}
+
+func (b *Bridge) parseERC20SwapoutV7TxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog, withCall bool) (err error) {
+	logTopics := rlog.Topics
+	if len(logTopics) != 4 {
+		return tokens.ErrTxWithWrongTopics
+	}
+	logData := *rlog.Data
+	if (!withCall && len(logData) < 128) || (withCall && len(logData) < 256) {
+		return abicoder.ErrParseDataError
+	}
+	erc20SwapInfo := swapInfo.ERC20SwapInfo
+	erc20SwapInfo.SwapoutID = common.BytesToHash(logTopics[1].Bytes()).Hex()
+	erc20SwapInfo.Token = common.BytesToAddress(logTopics[2].Bytes()).LowerHex()
+	swapInfo.From = common.BytesToAddress(logTopics[3].Bytes()).LowerHex()
+	swapInfo.Bind, err = abicoder.ParseStringInData(logData, 0)
 	if err != nil {
 		return err
 	}
-	erc20SwapInfo.CallData, err = abicoder.ParseBytesInData(logData, 160)
-	if err != nil {
-		return err
+	swapInfo.Value = common.GetBigInt(logData, 32, 32)
+	swapInfo.FromChainID = b.ChainConfig.GetChainID()
+	swapInfo.ToChainID = common.GetBigInt(logData, 64, 32)
+
+	if withCall {
+		erc20SwapInfo.CallProxy, err = abicoder.ParseStringInData(logData, 96)
+		if err != nil {
+			return err
+		}
+		erc20SwapInfo.CallData, err = abicoder.ParseBytesInData(logData, 128)
+		if err != nil {
+			return err
+		}
 	}
 
 	tokenCfg := b.GetTokenConfig(erc20SwapInfo.Token)
@@ -605,15 +682,84 @@ func (b *Bridge) checkTokenReceived(swapInfo *tokens.SwapTxInfo, receipt *types.
 	}
 	if recvAmount == nil {
 		log.Warn("check token received found none", "swapID", swapInfo.Hash)
-		return fmt.Errorf("no underlying token received")
+		return fmt.Errorf("%w %v", tokens.ErrVerifyTxUnsafe, "no underlying token received")
 	}
 	// at least receive 80% (consider fees and deflation burning)
 	minRecvAmount := new(big.Int).Mul(swapInfo.Value, big.NewInt(4))
 	minRecvAmount.Div(minRecvAmount, big.NewInt(5))
 	if recvAmount.Cmp(minRecvAmount) < 0 {
 		log.Warn("check token received failed", "isBurn", isBurn, "received", recvAmount, "swapValue", swapInfo.Value, "minRecvAmount", minRecvAmount, "swapID", swapInfo.Hash)
-		return fmt.Errorf("check underlying token received failed")
+		return fmt.Errorf("%w %v", tokens.ErrVerifyTxUnsafe, "check underlying token received failed")
 	}
 	log.Info("check token received success", "isBurn", isBurn, "received", recvAmount, "swapValue", swapInfo.Value, "swapID", swapInfo.Hash)
+	return nil
+}
+
+// check token balance updations
+func (b *Bridge) checkTokenBalance(swapInfo *tokens.SwapTxInfo, receipt *types.RPCTxReceipt) error {
+	if !params.IsCheckTokenBalanceEnabled(b.ChainConfig.ChainID) {
+		return nil
+	}
+	erc20SwapInfo := swapInfo.ERC20SwapInfo
+	token := erc20SwapInfo.Token
+	tokenID := erc20SwapInfo.TokenID
+	tokenCfg := b.GetTokenConfig(token)
+	if tokenCfg == nil || tokenID == "" {
+		return tokens.ErrMissTokenConfig
+	}
+	if params.DontCheckTokenBalance(tokenID) {
+		return nil
+	}
+	underlyingAddr := tokenCfg.GetUnderlying()
+	if common.HexToAddress(underlyingAddr) == (common.Address{}) {
+		return nil
+	}
+	blockHeight := receipt.BlockNumber.ToInt().Uint64()
+
+	minRecvAmount := new(big.Int).Mul(swapInfo.Value, big.NewInt(4))
+	minRecvAmount.Div(minRecvAmount, big.NewInt(5))
+
+	log.Info("start check token balance",
+		"token", token, "tokenID", tokenID, "logIndex", swapInfo.LogIndex,
+		"underlying", underlyingAddr, "blockHeight", blockHeight,
+		"swapFrom", swapInfo.From, "swapValue", swapInfo.Value, "swapID", swapInfo.Hash)
+
+	if !tokenCfg.IsUnderlyingMinted() {
+		prevBal, err := b.GetErc20BalanceAtHeight(underlyingAddr, token, fmt.Sprintf("0x%x", blockHeight-1))
+		if err != nil {
+			log.Info("get prev token balance failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight-1, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID, "err", err)
+			return nil
+		}
+
+		postBal, err := b.GetErc20BalanceAtHeight(underlyingAddr, token, fmt.Sprintf("0x%x", blockHeight))
+		if err != nil {
+			log.Info("get post token balance failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID, "err", err)
+			return nil
+		}
+
+		actRecvAmount := new(big.Int).Sub(postBal, prevBal)
+		if minRecvAmount.Cmp(actRecvAmount) > 0 {
+			log.Warn("check token balance failed", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "prevBal", prevBal, "postBal", postBal, "minRecvAmount", minRecvAmount, "actRecvAmount", actRecvAmount, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID)
+			return fmt.Errorf("%w %v", tokens.ErrVerifyTxUnsafe, "check token balance failed")
+		}
+	} else {
+		prevBal, err := b.GetErc20TotalSupplyAtHeight(underlyingAddr, fmt.Sprintf("0x%x", blockHeight-1))
+		if err != nil {
+			log.Info("get prev token total supply failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight-1, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID, "err", err)
+			return nil
+		}
+		postBal, err := b.GetErc20TotalSupplyAtHeight(underlyingAddr, fmt.Sprintf("0x%x", blockHeight))
+		if err != nil {
+			log.Info("get post token total supply failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID, "err", err)
+			return nil
+		}
+		actBurnAmount := new(big.Int).Sub(prevBal, postBal)
+		if minRecvAmount.Cmp(actBurnAmount) > 0 {
+			log.Warn("check token balance failed", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "prevBal", prevBal, "postBal", postBal, "minRecvAmount", minRecvAmount, "actBurnAmount", actBurnAmount, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID)
+			return fmt.Errorf("%w %v", tokens.ErrVerifyTxUnsafe, "check token balance failed")
+		}
+	}
+
+	log.Info("check token balance success", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID)
 	return nil
 }

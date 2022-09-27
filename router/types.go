@@ -41,10 +41,11 @@ func DontPanicInLoading() bool {
 
 // SwapRouterInfo swap router info
 type SwapRouterInfo struct {
-	RouterMPC     string
-	RouterFactory string
-	RouterWNative string
-	RouterPDA     string
+	RouterMPC      string
+	RouterFactory  string
+	RouterWNative  string
+	RouterPDA      string
+	RouterSecurity string
 }
 
 // SetBridge set bridge
@@ -229,6 +230,8 @@ func IsBlacklistSwap(swapInfo *tokens.SwapTxInfo) bool {
 	return params.IsChainIDInBlackList(swapInfo.FromChainID.String()) ||
 		params.IsChainIDInBlackList(swapInfo.ToChainID.String()) ||
 		params.IsTokenIDInBlackList(swapInfo.GetTokenID()) ||
+		params.IsTokenIDInBlackListOnChain(swapInfo.FromChainID.String(), swapInfo.GetTokenID()) ||
+		params.IsTokenIDInBlackListOnChain(swapInfo.ToChainID.String(), swapInfo.GetTokenID()) ||
 		params.IsAccountInBlackList(swapInfo.From) ||
 		params.IsAccountInBlackList(swapInfo.Bind) ||
 		params.IsAccountInBlackList(swapInfo.TxTo)
@@ -279,4 +282,13 @@ func GetPausedChainIDs() []*big.Int {
 // IsChainIDPaused is chainID paused
 func IsChainIDPaused(chainID string) bool {
 	return pausedChainIDs.Contains(chainID)
+}
+
+// IsNonceSupported is nonce supported
+func IsNonceSupported(chainID string) bool {
+	if bridge := GetBridgeByChainID(chainID); bridge != nil {
+		_, ok := bridge.(tokens.NonceSetter)
+		return ok
+	}
+	return false
 }

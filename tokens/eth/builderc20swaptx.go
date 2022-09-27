@@ -38,14 +38,30 @@ var (
 	AnySwapInExactTokensForTokensFuncHash = common.FromHex("0x2fc1e728")
 	// anySwapInExactTokensForNative(bytes32 txs, uint amountIn, uint amountOutMin, address[] path, address to, uint deadline, uint fromChainID)
 	AnySwapInExactTokensForNativeFuncHash = common.FromHex("0x52a397d5")
-	// anySwapInAndExec(bytes32 txs, address token, address to, uint amount, uint fromChainID, address anycallProxy, bytes calldata data)
-	AnySwapInAndExecFuncHash = common.FromHex("0x86377115")
-	// anySwapInUnderlyingAndExec(bytes32 txs, address token, address to, uint amount, uint fromChainID, address anycallProxy, bytes calldata data)
-	AnySwapInUnderlyingAndExecFuncHash = common.FromHex("0x3a4ff8dc")
+
+	// ----------------------- The following is for mixpool router --------------------
+
+	// anySwapIn(string swapID, address token, address to, uint256 amount, uint256 fromChainID)
+	MixPoolAnySwapInFuncHash = common.FromHex("0x8619c43d")
+
+	// ----------------------- The following is for router(v7) + anycall --------------------
+
+	// anySwapIn(string,(bytes32,address,address,uint256,uint256))
+	AnySwapInFuncHashV7 = common.FromHex("0x8fef8489")
+	// anySwapInUnderlying(string,(bytes32,address,address,uint256,uint256))
+	AnySwapInUnderlyingFuncHashV7 = common.FromHex("0x9ff1d3e8")
+	// anySwapInNative(string,(bytes32,address,address,uint256,uint256))
+	AnySwapInNativeFuncHashV7 = common.FromHex("0x5de26385")
+	// anySwapInAuto(string,(bytes32,address,address,uint256,uint256))
+	AnySwapInAutoFuncHashV7 = common.FromHex("0x81aa7a81")
+	// anySwapInAndExec(string,(bytes32,address,address,uint256,uint256),address,bytes)
+	AnySwapInAndExecFuncHashV7 = common.FromHex("0xf9ca3a5d")
+	// anySwapInUnderlyingAndExec(string,(bytes32,address,address,uint256,uint256),address,bytes)
+	AnySwapInUnderlyingAndExecFuncHashV7 = common.FromHex("0xcc95060a")
 )
 
-// GetSwapInFuncHash get swapin func hash
-func GetSwapInFuncHash(tokenCfg *tokens.TokenConfig, forUnderlying bool) []byte {
+// GetSwapInFuncHash1 get swapin func hash
+func GetSwapInFuncHash1(tokenCfg *tokens.TokenConfig, forUnderlying bool) []byte {
 	if forUnderlying {
 		return AnySwapInUnderlyingFuncHash
 	}
@@ -74,19 +90,45 @@ func GetSwapInFuncHash(tokenCfg *tokens.TokenConfig, forUnderlying bool) []byte 
 	return AnySwapInAutoFuncHash
 }
 
-// GetSwapInAndExecFuncHash get swapin and call func hash
-func GetSwapInAndExecFuncHash(tokenCfg *tokens.TokenConfig) []byte {
+// GetSwapInFuncHashV7 get swapin func hash
+func GetSwapInFuncHashV7(tokenCfg *tokens.TokenConfig) []byte {
 	switch tokenCfg.ContractVersion {
-	case ForceAnySwapInAndCallTokenVersion, MintBurnWrapperTokenVersion:
-		return AnySwapInAndExecFuncHash
-	case ForceAnySwapInUnerlyingAndCallTokenVersion:
-		return AnySwapInUnderlyingAndExecFuncHash
-	default:
+	case ForceAnySwapInAutoTokenVersion:
+		return AnySwapInAutoFuncHashV7
+	case ForceAnySwapInTokenVersion, ForceAnySwapInAndCallTokenVersion, MintBurnWrapperTokenVersion:
+		return AnySwapInFuncHashV7
+	case ForceAnySwapInUnderlyingTokenVersion, ForceAnySwapInUnerlyingAndCallTokenVersion:
+		return AnySwapInUnderlyingFuncHashV7
+	case ForceAnySwapInNativeTokenVersion:
+		return AnySwapInNativeFuncHashV7
+	case 0:
 		if common.HexToAddress(tokenCfg.GetUnderlying()) == (common.Address{}) {
-			return AnySwapInAndExecFuncHash
+			// without underlying
+			return AnySwapInFuncHashV7
+		}
+	default:
+		if common.HexToAddress(tokenCfg.GetUnderlying()) == (common.Address{}) &&
+			!params.IsForceAnySwapInAuto() {
+			// without underlying, and not force swapinAuto
+			return AnySwapInFuncHashV7
 		}
 	}
-	return AnySwapInUnderlyingAndExecFuncHash
+	return AnySwapInAutoFuncHashV7
+}
+
+// GetSwapInAndExecFuncHashV7 get swapin and call func hash
+func GetSwapInAndExecFuncHashV7(tokenCfg *tokens.TokenConfig) []byte {
+	switch tokenCfg.ContractVersion {
+	case ForceAnySwapInAndCallTokenVersion, MintBurnWrapperTokenVersion:
+		return AnySwapInAndExecFuncHashV7
+	case ForceAnySwapInUnerlyingAndCallTokenVersion:
+		return AnySwapInUnderlyingAndExecFuncHashV7
+	default:
+		if common.HexToAddress(tokenCfg.GetUnderlying()) == (common.Address{}) {
+			return AnySwapInAndExecFuncHashV7
+		}
+	}
+	return AnySwapInUnderlyingAndExecFuncHashV7
 }
 
 func (b *Bridge) buildERC20SwapTxInput(args *tokens.BuildTxArgs) (err error) {
@@ -100,13 +142,16 @@ func (b *Bridge) buildERC20SwapTxInput(args *tokens.BuildTxArgs) (err error) {
 		return tokens.ErrMissTokenConfig
 	}
 
+	if args.SwapType == tokens.ERC20SwapTypeMixPool {
+		return b.buildMixPoolSwapinTxInput(args, multichainToken)
+	}
 	if erc20SwapInfo.CallProxy != "" {
 		return b.buildSwapAndExecTxInput(args, multichainToken)
 	}
 	if len(erc20SwapInfo.Path) > 0 {
 		return b.buildERC20SwapTradeTxInput(args, multichainToken)
 	}
-	return b.buildERC20SwapoutTxInput(args, multichainToken)
+	return b.buildERC20SwapinTxInput(args, multichainToken)
 }
 
 func (b *Bridge) buildSwapAndExecTxInput(args *tokens.BuildTxArgs, multichainToken string) (err error) {
@@ -122,10 +167,11 @@ func (b *Bridge) buildSwapAndExecTxInput(args *tokens.BuildTxArgs, multichainTok
 
 	erc20SwapInfo := args.ERC20SwapInfo
 
-	funcHash := GetSwapInAndExecFuncHash(toTokenCfg)
+	funcHash := GetSwapInAndExecFuncHashV7(toTokenCfg)
 
 	input := abicoder.PackDataWithFuncHash(funcHash,
-		common.HexToHash(args.SwapID),
+		args.GetUniqueSwapIdentifier(),
+		common.HexToHash(erc20SwapInfo.SwapoutID),
 		common.HexToAddress(multichainToken),
 		receiver,
 		amount,
@@ -140,7 +186,7 @@ func (b *Bridge) buildSwapAndExecTxInput(args *tokens.BuildTxArgs, multichainTok
 	return nil
 }
 
-func (b *Bridge) buildERC20SwapoutTxInput(args *tokens.BuildTxArgs, multichainToken string) (err error) {
+func (b *Bridge) buildERC20SwapinTxInput(args *tokens.BuildTxArgs, multichainToken string) (err error) {
 	receiver, amount, err := b.getReceiverAndAmount(args, multichainToken)
 	if err != nil {
 		return err
@@ -151,10 +197,54 @@ func (b *Bridge) buildERC20SwapoutTxInput(args *tokens.BuildTxArgs, multichainTo
 		return tokens.ErrMissTokenConfig
 	}
 
-	funcHash := GetSwapInFuncHash(toTokenCfg, args.ERC20SwapInfo.ForUnderlying)
+	erc20SwapInfo := args.ERC20SwapInfo
+
+	var funcHash, input []byte
+
+	switch params.GetSwapSubType() {
+	case "v7":
+		funcHash = GetSwapInFuncHashV7(toTokenCfg)
+		input = abicoder.PackDataWithFuncHash(funcHash,
+			args.GetUniqueSwapIdentifier(),
+			common.HexToHash(erc20SwapInfo.SwapoutID),
+			common.HexToAddress(multichainToken),
+			receiver,
+			amount,
+			args.FromChainID,
+		)
+	default:
+		funcHash = GetSwapInFuncHash1(toTokenCfg, erc20SwapInfo.ForUnderlying)
+		input = abicoder.PackDataWithFuncHash(funcHash,
+			common.HexToHash(args.SwapID),
+			common.HexToAddress(multichainToken),
+			receiver,
+			amount,
+			args.FromChainID,
+		)
+	}
+
+	args.Input = (*hexutil.Bytes)(&input)          // input
+	args.To = b.GetRouterContract(multichainToken) // to
+	args.SwapValue = amount                        // swapValue
+
+	return nil
+}
+
+func (b *Bridge) buildMixPoolSwapinTxInput(args *tokens.BuildTxArgs, multichainToken string) (err error) {
+	receiver, amount, err := b.getReceiverAndAmount(args, multichainToken)
+	if err != nil {
+		return err
+	}
+
+	toTokenCfg := b.GetTokenConfig(multichainToken)
+	if toTokenCfg == nil {
+		return tokens.ErrMissTokenConfig
+	}
+
+	funcHash := MixPoolAnySwapInFuncHash
 
 	input := abicoder.PackDataWithFuncHash(funcHash,
-		common.HexToHash(args.SwapID),
+		args.GetUniqueSwapIdentifier(),
 		common.HexToAddress(multichainToken),
 		receiver,
 		amount,

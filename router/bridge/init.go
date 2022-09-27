@@ -52,6 +52,7 @@ func InitRouterBridges(isServer bool) {
 	client.InitHTTPClient()
 	router.InitRouterConfigClients()
 
+	log.Info("start get all chain ids")
 	allChainIDs, err := router.GetAllChainIDs()
 	if err != nil {
 		logErrFunc("call GetAllChainIDs failed", "err", err)
@@ -72,6 +73,7 @@ func InitRouterBridges(isServer bool) {
 		return
 	}
 
+	log.Info("start get all token ids")
 	allTokenIDs, err := router.GetAllTokenIDs()
 	if err != nil {
 		logErrFunc("call GetAllTokenIDs failed", "err", err)
@@ -329,9 +331,11 @@ func InitGatewayConfig(b tokens.IBridge, chainID *big.Int) {
 		return
 	}
 	apiAddrsExt := cfg.GatewaysExt[chainID.String()]
+	evmapiext := cfg.EVMGatewaysExt[chainID.String()]
 	b.SetGatewayConfig(&tokens.GatewayConfig{
 		APIAddress:    apiAddrs,
 		APIAddressExt: apiAddrsExt,
+		EVMAPIAddress: evmapiext,
 	})
 	if !isReload {
 		latestBlock, err := b.GetLatestBlockNumber()
@@ -427,11 +431,12 @@ func InitTokenConfig(b tokens.IBridge, tokenID string, chainID *big.Int) {
 		logErrFunc("check token config failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
 		return
 	}
+	router.InitOnchainCustomConfig(chainID, tokenID)
 	b.SetTokenConfig(tokenAddr, tokenCfg)
 
 	router.SetMultichainToken(tokenID, chainID.String(), tokenAddr)
 
-	log.Info(fmt.Sprintf("[%5v] init '%v' token config success", chainID, tokenID), "tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "isReload", isReload)
+	log.Info(fmt.Sprintf("[%5v] init '%v' token config success", chainID, tokenID), "tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "isReload", isReload, "underlying", tokenCfg.GetUnderlying(), "underlyingIsMinted", tokenCfg.IsUnderlyingMinted())
 
 	routerContract := tokenCfg.RouterContract
 	if routerContract != "" && !isRouterInfoLoaded(chainID.String(), routerContract) {
