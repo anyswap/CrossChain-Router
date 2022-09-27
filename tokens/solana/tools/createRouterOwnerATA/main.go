@@ -29,7 +29,7 @@ var (
 	paramPublicKey string
 	paramPriKey    string
 	owner          string
-	ownerAta       string
+	// ownerAta       string
 	tokenProgramID string
 	routerContract string
 
@@ -134,8 +134,7 @@ func initFlags() {
 
 	flag.StringVar(&paramPublicKey, "pubkey", "", "signer solana address")
 	flag.StringVar(&paramPriKey, "priKey", "", "signer base58 priKey")
-	flag.StringVar(&owner, "owner", "", "mint owner address")
-	flag.StringVar(&ownerAta, "ownerAta", "", "owner's associated token address")
+	flag.StringVar(&owner, "routerAccount", "", "routerAccount address")
 	flag.StringVar(&tokenProgramID, "token", "", "token address")
 	flag.StringVar(&routerContract, "router", "", "router address")
 

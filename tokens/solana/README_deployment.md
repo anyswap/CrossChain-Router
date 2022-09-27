@@ -35,7 +35,14 @@ Use tools issueToken to issue a token with privatekey or mpc key
 ```
 go run tokens/solana/tools/issueToken/main.go -h
 ```
+notice: the owner must be routerPDA which got in step c when you want to issue a mint/burn token 
 
+### e. create new token PDA for routerPDA
+Use tools createRouterOwnerATA
+```
+go run tokens/solana/tools/createRouterOwnerATA/main.go -h
+```
+ 
 ## 2. Setup CrossChain-Router Enviroment
 ### a. setup solana config
 ```
