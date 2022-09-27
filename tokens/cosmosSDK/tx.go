@@ -20,7 +20,8 @@ import (
 )
 
 const (
-	BroadTx = "/cosmos/tx/v1beta1/txs"
+	BroadTx    = "/cosmos/tx/v1beta1/txs"
+	SimulateTx = "/cosmos/tx/v1beta1/simulate"
 )
 
 func (c *CosmosRestClient) SendTransaction(signedTx interface{}) (string, error) {
@@ -41,8 +42,8 @@ func (c *CosmosRestClient) SendTransaction(signedTx interface{}) (string, error)
 			}
 			if txResponse.TxResponse.Code != 0 && txResponse.TxResponse.Code != 19 {
 				return "", fmt.Errorf(
-					"SendTransaction error, code: %v",
-					txResponse.TxResponse.Code)
+					"SendTransaction error, code: %v, log:%v",
+					txResponse.TxResponse.Code, txResponse.TxResponse.RawLog)
 			}
 			return txResponse.TxResponse.TxHash, nil
 		}
@@ -55,7 +56,7 @@ func (c *CosmosRestClient) BroadcastTx(req *BroadcastTxRequest) (string, error) 
 	} else {
 		for _, url := range c.BaseUrls {
 			restApi := url + BroadTx
-			if res, err := client.RPCRawPostWithTimeout(restApi, string(data), 60); err == nil && res != "" && res != "\n" {
+			if res, err := client.RPCRawPostWithTimeout(restApi, string(data), 120); err == nil && res != "" && res != "\n" {
 				return res, nil
 			}
 		}
@@ -119,18 +120,32 @@ func (c *CosmosRestClient) BuildTx(
 		txBuilder.SetFeeAmount(fee)
 	}
 	txBuilder.SetGasLimit(*extra.Gas)
-	if pubKey, err := PubKeyFromStr(publicKey); err != nil {
+	pubKey, err := PubKeyFromStr(publicKey)
+	if err != nil {
 		return nil, err
-	} else {
-		sig := BuildSignatures(pubKey, *extra.Sequence, nil)
-		if err := txBuilder.SetSignatures(sig); err != nil {
-			return nil, err
-		}
+	}
+	sig := BuildSignatures(pubKey, *extra.Sequence, nil)
+	if err := txBuilder.SetSignatures(sig); err != nil {
+		return nil, err
 	}
 	if err := txBuilder.GetTx().ValidateBasic(); err != nil {
 		return nil, err
 	}
 	return txBuilder, nil
+}
+
+func (c *CosmosRestClient) SimulateTx(simulateReq *SimulateRequest) (string, error) {
+	if data, err := json.Marshal(simulateReq); err != nil {
+		return "", err
+	} else {
+		for _, url := range c.BaseUrls {
+			restApi := url + SimulateTx
+			if res, err := client.RPCRawPostWithTimeout(restApi, string(data), 120); err == nil && res != "" && res != "\n" {
+				return res, nil
+			}
+		}
+		return "", tokens.ErrSimulateTx
+	}
 }
 
 func (c *CosmosRestClient) GetSignBytes(txBuilder cosmosClient.TxBuilder, account string, accountNumber, sequence uint64, pubKey cryptoTypes.PubKey) ([]byte, error) {

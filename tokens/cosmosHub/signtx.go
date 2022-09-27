@@ -3,6 +3,7 @@ package cosmosHub
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -47,7 +48,8 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 			log.Info(logPrefix+"start", "txid", txid)
 
 			mpcConfig := mpc.GetMPCConfig(b.UseFastMPC)
-			if keyID, rsvs, err := mpcConfig.DoSignOneEC(mpcPubkey, string(signBytes), msgContext); err != nil {
+			msgHash := fmt.Sprintf("%X", cosmosSDK.Sha256Sum(signBytes))
+			if keyID, rsvs, err := mpcConfig.DoSignOneEC(mpcPubkey, msgHash, msgContext); err != nil {
 				return nil, "", err
 			} else {
 				if len(rsvs) != 1 {

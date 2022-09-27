@@ -1,6 +1,7 @@
 package cosmosHub
 
 import (
+	"fmt"
 	"math/big"
 	"strconv"
 	"strings"
@@ -39,7 +40,8 @@ func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) (err error
 		if signBytes, err := b.CosmosRestClient.GetSignBytes(*txBuilder, mpc, *extra.AccountNum, *extra.Sequence, pubKey); err != nil {
 			return err
 		} else {
-			if !strings.EqualFold(string(signBytes), msgHashes[0]) {
+			msgHash := fmt.Sprintf("%X", cosmosSDK.Sha256Sum(signBytes))
+			if !strings.EqualFold(msgHash, msgHashes[0]) {
 				log.Warn("message hash mismatch",
 					"want", msgHashes[0], "have", string(signBytes))
 				return tokens.ErrMsgHashMismatch

@@ -52,6 +52,9 @@ type TxResponse struct {
 	TxHash string `protobuf:"bytes,2,opt,name=txhash,proto3" json:"txhash,omitempty"`
 	// Response code.
 	Code uint32 `protobuf:"varint,4,opt,name=code,proto3" json:"code,omitempty"`
+	// The output of the application's logger (raw string). May be
+	// non-deterministic.
+	RawLog string `protobuf:"bytes,6,opt,name=raw_log,json=rawLog,proto3" json:"raw_log,omitempty"`
 	// The output of the application's logger (typed). May be non-deterministic.
 	Logs types.ABCIMessageLogs `protobuf:"bytes,7,rep,name=logs,proto3,castrepeated=ABCIMessageLogs" json:"logs"`
 }
@@ -68,6 +71,12 @@ type TxBody struct {
 	Memo string `protobuf:"bytes,2,opt,name=memo,proto3" json:"memo,omitempty"`
 }
 
+// SimulateRequest is the request type for the Service.Simulate
+// RPC method.
+type SimulateRequest struct {
+	TxBytes string `json:"tx_bytes"`
+}
+
 type BroadcastTxRequest struct {
 	TxBytes string `json:"tx_bytes"`
 	Mode    string `json:"mode"`
@@ -75,6 +84,19 @@ type BroadcastTxRequest struct {
 
 type BroadcastTxResponse struct {
 	TxResponse *TxResponse `protobuf:"bytes,1,opt,name=tx_response,json=txResponse,proto3" json:"tx_response,omitempty"`
+}
+
+// SimulateResponse is the response type for the
+// Service.SimulateRPC method.
+type SimulateResponse struct {
+	// gas_info is the information about gas used in the simulation.
+	GasInfo *GasInfo `protobuf:"bytes,1,opt,name=gas_info,json=gasInfo,proto3" json:"gas_info,omitempty"`
+}
+
+// GasInfo defines tx execution gas context.
+type GasInfo struct {
+	// GasUsed is the amount of gas actually consumed.
+	GasUsed string `protobuf:"varint,2,opt,name=gas_used,json=gasUsed,proto3" json:"gas_used,omitempty"`
 }
 
 // QueryAccountResponse is the response type for the Query/Account RPC method.
