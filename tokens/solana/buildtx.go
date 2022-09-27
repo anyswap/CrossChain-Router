@@ -115,6 +115,7 @@ func (b *Bridge) BuildSwapinMintTransaction(args *tokens.BuildTxArgs, tokenCfg *
 		args.SwapID, amount, args.FromChainID.Uint64(),
 		mpc, routerAccount, receiver, tokenMint, token.TokenProgramID,
 	)
+	log.Info("BuildSwapinMintTransaction", "mpc", mpc.String(), "routerAccount", routerAccount.String(), "receiver", receiver.String(), "tokenMint", tokenMint.String())
 	instruction.RouterProgramID = routerContractPubkey
 	instructions := []types.TransactionInstruction{instruction}
 
@@ -165,6 +166,8 @@ func (b *Bridge) BuildSwapinTransferTransaction(args *tokens.BuildTxArgs, tokenC
 		args.SwapID, amount, args.FromChainID.Uint64(),
 		mpc, routerAccount, ata, receiver, tokenMint, token.TokenProgramID,
 	)
+
+	log.Info("BuildSwapinTransferTransaction", "mpc", mpc.String(), "routerAccount", routerAccount.String(), "ata", ata.String(), "receiver", receiver.String(), "tokenMint", tokenMint.String())
 	instruction.RouterProgramID = routerContractPubkey
 	instructions := []types.TransactionInstruction{instruction}
 
@@ -207,6 +210,7 @@ func (b *Bridge) BuildSwapinNativeTransaction(args *tokens.BuildTxArgs, tokenCfg
 		args.SwapID, amount, args.FromChainID.Uint64(),
 		mpc, routerAccount, receiver, system.SystemProgramID,
 	)
+	log.Info("BuildSwapinNativeTransaction", "mpc", mpc.String(), "routerAccount", routerAccount.String(), "receiver", receiver.String())
 	instruction.RouterProgramID = routerContractPubkey
 	instructions := []types.TransactionInstruction{instruction}
 
