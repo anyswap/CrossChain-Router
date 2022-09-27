@@ -4,6 +4,9 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"math/rand"
+	"strings"
+	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
@@ -65,7 +68,6 @@ func (b *Bridge) SendSignedTransaction(tx *types.Transaction, opts *types.SendTr
 	} else {
 		txHash, err = sendRawTransaction(sendTxParams, gateway.APIAddress)
 	}
-
 	if txHash != "" {
 		return txHash, nil
 	}
@@ -75,17 +77,26 @@ func (b *Bridge) SendSignedTransaction(tx *types.Transaction, opts *types.SendTr
 func sendRawTransaction(sendTxParams []interface{}, urls []string) (txHash string, err error) {
 	logFunc := log.GetPrintFuncOr(params.IsDebugMode, log.Info, log.Trace)
 	var result string
-	for _, url := range urls {
+
+	for i := 0; i < 5; i++ {
+		url := urls[rand.Intn(len(urls))]
 		err = client.RPCPost(&result, url, "sendTransaction", sendTxParams...)
 		if err != nil {
-			logFunc("SendSignedTransaction failed", "url", url, "err", err)
-			continue
-		}
-		logFunc("SendSignedTransaction success", "txHash", result, "url", url)
-		if txHash == "" {
+			if strings.Contains(err.Error(), "Blockhash not found") {
+				fmt.Println("send tx contiune after 5 sec ...")
+				time.Sleep(5 * time.Second)
+				continue
+			} else {
+				logFunc("SendSignedTransaction failed", "url", url, "err", err)
+				break
+			}
+		} else {
+			logFunc("SendSignedTransaction success", "txHash", result, "url", url)
 			txHash = result
+			break
 		}
 	}
+
 	if txHash != "" {
 		return txHash, nil
 	}
