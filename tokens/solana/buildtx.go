@@ -49,11 +49,10 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, err
 	}
 
-	// not waste time to SimulateTransaction
-	// _, err = b.SimulateTransaction(tx)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	_, err = b.SimulateTransaction(tx)
+	if err != nil {
+		return nil, err
+	}
 	return tx, nil
 }
 
@@ -119,11 +118,14 @@ func (b *Bridge) BuildSwapinMintTransaction(args *tokens.BuildTxArgs, tokenCfg *
 	instruction.RouterProgramID = routerContractPubkey
 	instructions := []types.TransactionInstruction{instruction}
 
-	recentBlockHash, blockHeight, err := b.getRecentBlockhash()
+	err = b.setExtraArgs(args)
 	if err != nil {
 		return nil, err
 	}
-	setExtraArgs(args, &blockHeight)
+	recentBlockHash, err := types.PublicKeyFromBase58(*args.Extra.BlockHash)
+	if err != nil {
+		return nil, err
+	}
 	return types.NewTransaction(instructions, recentBlockHash, types.TransactionPayer(mpc))
 }
 
@@ -166,11 +168,14 @@ func (b *Bridge) BuildSwapinTransferTransaction(args *tokens.BuildTxArgs, tokenC
 	instruction.RouterProgramID = routerContractPubkey
 	instructions := []types.TransactionInstruction{instruction}
 
-	recentBlockHash, blockHeight, err := b.getRecentBlockhash()
+	err = b.setExtraArgs(args)
 	if err != nil {
 		return nil, err
 	}
-	setExtraArgs(args, &blockHeight)
+	recentBlockHash, err := types.PublicKeyFromBase58(*args.Extra.BlockHash)
+	if err != nil {
+		return nil, err
+	}
 	return types.NewTransaction(instructions, recentBlockHash, types.TransactionPayer(mpc))
 }
 
@@ -205,23 +210,33 @@ func (b *Bridge) BuildSwapinNativeTransaction(args *tokens.BuildTxArgs, tokenCfg
 	instruction.RouterProgramID = routerContractPubkey
 	instructions := []types.TransactionInstruction{instruction}
 
-	recentBlockHash, blockHeight, err := b.getRecentBlockhash()
+	err = b.setExtraArgs(args)
 	if err != nil {
 		return nil, err
 	}
-	setExtraArgs(args, &blockHeight)
-	return types.NewTransaction(instructions, recentBlockHash, types.TransactionPayer(mpc))
+	blockHash, err := types.PublicKeyFromBase58(*args.Extra.BlockHash)
+	if err != nil {
+		return nil, err
+	}
+	return types.NewTransaction(instructions, blockHash, types.TransactionPayer(mpc))
 }
 
-func setExtraArgs(args *tokens.BuildTxArgs, blockHeight *uint64) {
+func (b *Bridge) setExtraArgs(args *tokens.BuildTxArgs) error {
 	if args.Extra == nil {
 		args.Extra = &tokens.AllExtras{}
 	}
 	extra := args.Extra
 	extra.EthExtra = nil // clear this which may be set in replace job
-	if extra.Sequence == nil {
-		extra.Sequence = blockHeight
+	if extra.Sequence == nil && extra.BlockHash == nil {
+		recentBlockHash, blockHeight, err := b.getRecentBlockhash()
+		if err != nil {
+			return err
+		}
+		extra.Sequence = &blockHeight
+		var blockhash string = recentBlockHash.String()
+		extra.BlockHash = &blockhash
 	}
+	return nil
 }
 
 // BuildMintSPLTransaction build mint spl token tx
