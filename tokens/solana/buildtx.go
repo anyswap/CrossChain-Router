@@ -239,6 +239,7 @@ func (b *Bridge) setExtraArgs(args *tokens.BuildTxArgs) error {
 		extra.Sequence = &blockHeight
 		var blockhash string = recentBlockHash.String()
 		extra.BlockHash = &blockhash
+		log.Info("BuildSwapin", "BlockHash", blockhash, "blockHeight", blockHeight)
 	}
 	return nil
 }
