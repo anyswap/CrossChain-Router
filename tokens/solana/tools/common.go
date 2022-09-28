@@ -3,8 +3,6 @@ package solanatools
 import (
 	"fmt"
 	"log"
-	"strings"
-	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/mpc"
@@ -61,18 +59,7 @@ func SignAndSend(mpcConfig *mpc.Config, bridge *solana.Bridge, signers []*Signer
 	}
 	fmt.Println("txhash", calctxHash)
 
-	var sendTxHash string
-	for i := 0; i < 10; i++ {
-		sendTxHash, err = bridge.SendTransaction(tx)
-		if err != nil {
-			if strings.Contains(err.Error(), "Blockhash not found") {
-				fmt.Println("send tx contiune after 5 sec ...")
-				time.Sleep(5 * time.Second)
-			} else {
-				break
-			}
-		}
-	}
+	sendTxHash, err := bridge.SendTransaction(tx)
 	if err != nil {
 		log.Fatal("SendTransaction err", err)
 	}

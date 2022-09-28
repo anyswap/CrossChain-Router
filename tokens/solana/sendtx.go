@@ -77,13 +77,13 @@ func (b *Bridge) SendSignedTransaction(tx *types.Transaction, opts *types.SendTr
 func sendRawTransaction(sendTxParams []interface{}, urls []string) (txHash string, err error) {
 	logFunc := log.GetPrintFuncOr(params.IsDebugMode, log.Info, log.Trace)
 	var result string
-
+	// the blockhash is ahead of blockchain when get,so need to retry wait for the blockhash in avaliable on solana
 	for i := 0; i < 5; i++ {
 		url := urls[rand.Intn(len(urls))]
 		err = client.RPCPost(&result, url, "sendTransaction", sendTxParams...)
 		if err != nil {
 			if strings.Contains(err.Error(), "Blockhash not found") {
-				log.Debug("solana sendRawTransaction: Blockhash not found, wait 5 sec retry", "retry times", i+1)
+				logFunc("solana sendRawTransaction: Blockhash not found, wait 5 sec retry", "retry times", i+1)
 				time.Sleep(5 * time.Second)
 				continue
 			} else {
