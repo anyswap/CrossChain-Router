@@ -14,7 +14,7 @@ deploy `Pool` and `Router`
 2. copy mpc address ,  replace `Multichain`'s address at `router-aptos-contract/blob/use-table/router/Move.toml`
 3. cd  router-aptos-contract and run `aptos move test --package-dir router` to test code
 4. run `aptos move compile --package-dir router` to build code 
-5. use the deployModule to deploy , modules is the path like `-module ../aptos-contract/router/build/multichain/bytecode_modules/Pool.mv` 
+5. use the deployModule to deploy , modules and path like `-module Pool,Router -path ../aptos-contract/router/build/multichain` 
 ```
 go run tokens/aptos/tools/deployModule/main.go -h
 ```

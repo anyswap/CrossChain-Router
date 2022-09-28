@@ -38,8 +38,8 @@ func initFlags() {
 	flag.StringVar(&paramPublicKey, "pubkey", "", "signer public key")
 	flag.StringVar(&paramPriKey, "priKey", "", "signer priKey key")
 
-	flag.StringVar(&underlyingCoin, "underlying", "", "underlying coin struct")
-	flag.StringVar(&poolCoin, "poolcoin", "", "anycoin struct")
+	flag.StringVar(&underlyingCoin, "underlying", "", "underlying coin resource")
+	flag.StringVar(&poolCoin, "poolcoin", "", "anycoin resource")
 
 	flag.StringVar(&poolCoinName, "name", "", "anycoin name")
 	flag.StringVar(&poolCoinSymbol, "symbol", "", "anycoin symbol")
@@ -58,6 +58,7 @@ func main() {
 	} else {
 		account = aptos.NewAccountFromPubkey(paramPublicKey)
 	}
+	log.Info("SignAccount", "address", account.GetHexAddress())
 	tx, err := bridge.BuildRegisterPoolCoinTransaction(account.GetHexAddress(), underlyingCoin, poolCoin, poolCoinName, poolCoinSymbol, uint8(decimals))
 	if err != nil {
 		log.Fatalf("%v", err)

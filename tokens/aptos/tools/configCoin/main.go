@@ -35,8 +35,8 @@ func initFlags() {
 	flag.StringVar(&paramPublicKey, "pubkey", "", "signer public key")
 	flag.StringVar(&paramPriKey, "priKey", "", "signer priKey key")
 
-	flag.StringVar(&coin, "coin", "", "anycoin name")
-	flag.IntVar(&coinType, "type", 0, "anycoin type")
+	flag.StringVar(&coin, "coin", "", "coin resource 0xc441fa1354b4544457df58b7bfdf53fae75e0d6f61ded55b72ae058d2d407c9d::Test01::Coin")
+	flag.IntVar(&coinType, "type", 0, "coin type 1:underlying 0:mint/burn coin ")
 
 	flag.Parse()
 }
@@ -51,6 +51,7 @@ func main() {
 	} else {
 		account = aptos.NewAccountFromPubkey(paramPublicKey)
 	}
+	log.Info("SignAccount", "address", account.GetHexAddress())
 	tx, err := bridge.BuildSetCoinTransaction(account.GetHexAddress(), coin, uint8(coinType))
 	if err != nil {
 		log.Fatalf("%v", err)

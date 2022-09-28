@@ -55,6 +55,7 @@ func main() {
 	} else {
 		account = aptos.NewAccountFromPubkey(paramPublicKey)
 	}
+	log.Info("SignAccount", "address", account.GetHexAddress())
 	tx, err := bridge.BuildSwapoutTransaction(account.GetHexAddress(), coin, toAddress, toChainId, amount)
 	if err != nil {
 		log.Fatalf("%v", err)

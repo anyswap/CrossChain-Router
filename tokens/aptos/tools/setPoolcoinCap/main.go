@@ -49,6 +49,7 @@ func main() {
 	} else {
 		account = aptos.NewAccountFromPubkey(paramPublicKey)
 	}
+	log.Info("SignAccount", "address", account.GetHexAddress())
 	tx, err := bridge.BuildSetPoolcoinCapTransaction(account.GetHexAddress(), coin)
 	if err != nil {
 		log.Fatalf("%v", err)

@@ -38,8 +38,8 @@ func initFlags() {
 	flag.StringVar(&paramPublicKey, "pubkey", "", "signer public key")
 	flag.StringVar(&paramPriKey, "priKey", "", "signer priKey key")
 
-	flag.StringVar(&paramPath, "path", "", "contract build path")
-	flag.StringVar(&paramModules, "modules", "", "deploy module name,split with ','")
+	flag.StringVar(&paramPath, "path", "", "contract build path: /Users/potti/multichain-workspace/aptos-contract/router/build/multichain")
+	flag.StringVar(&paramModules, "modules", "", "deploy module name split by ',': Pool,Router")
 
 	flag.Parse()
 }
@@ -69,6 +69,7 @@ func main() {
 		account = aptos.NewAccountFromPubkey(paramPublicKey)
 	}
 
+	log.Info("SignAccount", "address", account.GetHexAddress())
 	tx, err := bridge.BuildDeployModuleTransaction(account.GetHexAddress(), packageMetaData, moveHexs)
 	if err != nil {
 		log.Fatalf("%v", err)

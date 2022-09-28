@@ -49,6 +49,7 @@ func main() {
 	} else {
 		account = aptos.NewAccountFromPubkey(paramPublicKey)
 	}
+	log.Info("SignAccount", "address", account.GetHexAddress())
 	tx, err := bridge.BuildSetStatusTransaction(account.GetHexAddress(), uint8(status))
 	if err != nil {
 		log.Fatalf("%v", err)
