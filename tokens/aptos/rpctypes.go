@@ -151,3 +151,7 @@ type SwapoutData struct {
 	Amount    string `json:"amount"`
 	ToChainId string `json:"to_chain_id"`
 }
+
+type GasEstimate struct {
+	GasPrice int `json:"gas_estimate"`
+}

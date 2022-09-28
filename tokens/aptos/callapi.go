@@ -98,13 +98,13 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 	txres, ok := tx.(*TransactionInfo)
 	if !ok {
 		// unexpected
-		log.Warn("Ripple GetTransactionStatus", "error", errTxResultType)
+		log.Warn("Aptos GetTransactionStatus", "error", errTxResultType)
 		return nil, errTxResultType
 	}
 
 	// Check tx status
 	if !txres.Success {
-		log.Warn("Ripple tx status is not success", "result", txres.Success)
+		log.Warn("Aptos tx status is not success", "result", txres.Success)
 		return nil, tokens.ErrTxWithWrongStatus
 	}
 

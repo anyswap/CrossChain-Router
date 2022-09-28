@@ -19,6 +19,7 @@ var (
 	SubmitTranscationPath      = API_VERSION + "transactions"
 	SimulateTranscationPath    = API_VERSION + "transactions/simulate"
 	GetEventsByEventHandlePath = API_VERSION + "accounts/{address}/events/{event_handle}/{field_name}"
+	EstimateGasPricePath       = API_VERSION + "estimate_gas_price"
 
 	SCRIPT_FUNCTION_PAYLOAD = "entry_function_payload"
 
@@ -152,4 +153,10 @@ func (c *RestClient) GetEventsByEventHandle(request interface{}, target, struct_
 	}
 	err := c.GetRequest(request, GetEventsByEventHandlePath+"?start="+strconv.Itoa(start)+"&limit="+strconv.Itoa(limit), param)
 	return err
+}
+
+func (c *RestClient) EstimateGasPrice() (*GasEstimate, error) {
+	resp := GasEstimate{}
+	err := c.PostRequest(&resp, EstimateGasPricePath, nil)
+	return &resp, err
 }

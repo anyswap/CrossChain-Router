@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	maxFee              string = "2000"
-	defaultGasUnitPrice string = "1"
+	maxFee              string = "100000"
+	defaultGasUnitPrice string = "100"
 	timeout_seconds     int64  = 600
 )
 
@@ -93,7 +93,7 @@ func (b *Bridge) BuildSwapinTransferTransaction(args *tokens.BuildTxArgs, tokenC
 		Sender:                  routerInfo.RouterMPC,
 		SequenceNumber:          account.SequenceNumber,
 		MaxGasAmount:            maxFee,
-		GasUnitPrice:            defaultGasUnitPrice,
+		GasUnitPrice:            b.getGasPrice(),
 		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
 		Payload: &TransactionPayload{
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
@@ -103,6 +103,15 @@ func (b *Bridge) BuildSwapinTransferTransaction(args *tokens.BuildTxArgs, tokenC
 		},
 	}
 	return tx, nil
+}
+
+func (b *Bridge) getGasPrice() string {
+	estimateGasPrice, err := b.Client.EstimateGasPrice()
+	if err == nil {
+		return strconv.Itoa(estimateGasPrice.GasPrice)
+	} else {
+		return defaultGasUnitPrice
+	}
 }
 
 func (b *Bridge) BuildDeployModuleTransaction(address, packagemetadata string, moduleHexs []string) (*Transaction, error) {
@@ -118,7 +127,7 @@ func (b *Bridge) BuildDeployModuleTransaction(address, packagemetadata string, m
 		Sender:                  address,
 		SequenceNumber:          account.SequenceNumber,
 		MaxGasAmount:            strconv.Itoa(fee * 10 * len(moduleHexs)),
-		GasUnitPrice:            defaultGasUnitPrice,
+		GasUnitPrice:            b.getGasPrice(),
 		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
 		Payload: &TransactionPayload{
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
@@ -141,7 +150,7 @@ func (b *Bridge) BuildRegisterPoolCoinTransaction(address, underlyingCoin, poolC
 		Sender:                  address,
 		SequenceNumber:          account.SequenceNumber,
 		MaxGasAmount:            maxFee,
-		GasUnitPrice:            defaultGasUnitPrice,
+		GasUnitPrice:            b.getGasPrice(),
 		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
 		Payload: &TransactionPayload{
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
@@ -164,7 +173,7 @@ func (b *Bridge) BuildSetCoinTransaction(address, coin string, coinType uint8) (
 		Sender:                  address,
 		SequenceNumber:          account.SequenceNumber,
 		MaxGasAmount:            maxFee,
-		GasUnitPrice:            defaultGasUnitPrice,
+		GasUnitPrice:            b.getGasPrice(),
 		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
 		Payload: &TransactionPayload{
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
@@ -187,7 +196,7 @@ func (b *Bridge) BuildSetStatusTransaction(address string, status uint8) (*Trans
 		Sender:                  address,
 		SequenceNumber:          account.SequenceNumber,
 		MaxGasAmount:            maxFee,
-		GasUnitPrice:            defaultGasUnitPrice,
+		GasUnitPrice:            b.getGasPrice(),
 		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
 		Payload: &TransactionPayload{
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
@@ -209,7 +218,7 @@ func (b *Bridge) BuildSetPoolcoinCapTransaction(address, coin string) (*Transact
 		Sender:                  address,
 		SequenceNumber:          account.SequenceNumber,
 		MaxGasAmount:            maxFee,
-		GasUnitPrice:            defaultGasUnitPrice,
+		GasUnitPrice:            b.getGasPrice(),
 		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
 		Payload: &TransactionPayload{
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
@@ -232,7 +241,7 @@ func (b *Bridge) BuildManagedCoinInitializeTransaction(address, coin, poolCoinNa
 		Sender:                  address,
 		SequenceNumber:          account.SequenceNumber,
 		MaxGasAmount:            maxFee,
-		GasUnitPrice:            defaultGasUnitPrice,
+		GasUnitPrice:            b.getGasPrice(),
 		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
 		Payload: &TransactionPayload{
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
@@ -257,7 +266,7 @@ func (b *Bridge) BuildRegisterCoinTransaction(address, coin string) (*Transactio
 		Sender:                  address,
 		SequenceNumber:          account.SequenceNumber,
 		MaxGasAmount:            maxFee,
-		GasUnitPrice:            defaultGasUnitPrice,
+		GasUnitPrice:            b.getGasPrice(),
 		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
 		Payload: &TransactionPayload{
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
@@ -281,7 +290,7 @@ func (b *Bridge) BuildMintCoinTransaction(minter, toaddress, coin string, amount
 		Sender:                  minter,
 		SequenceNumber:          account.SequenceNumber,
 		MaxGasAmount:            maxFee,
-		GasUnitPrice:            defaultGasUnitPrice,
+		GasUnitPrice:            b.getGasPrice(),
 		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
 		Payload: &TransactionPayload{
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
@@ -304,8 +313,8 @@ func (b *Bridge) BuildSwapoutTransaction(sender, coin, toAddress, tochainId stri
 	tx := &Transaction{
 		Sender:                  sender,
 		SequenceNumber:          account.SequenceNumber,
-		MaxGasAmount:            "1000",
-		GasUnitPrice:            "1",
+		MaxGasAmount:            maxFee,
+		GasUnitPrice:            b.getGasPrice(),
 		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
 		Payload: &TransactionPayload{
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
