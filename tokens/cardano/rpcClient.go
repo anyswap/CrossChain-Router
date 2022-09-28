@@ -15,7 +15,7 @@ const (
 
 func GetTransactionByHash(url, txHash string) (*Transaction, error) {
 	request := &client.Request{}
-	request.Params = fmt.Sprintf(QueryMethod, txHash)
+	request.Params = fmt.Sprintf(QueryTransaction, txHash)
 	request.ID = int(time.Now().UnixNano())
 	request.Timeout = rpcTimeout
 	var result TransactionResult
@@ -26,6 +26,21 @@ func GetTransactionByHash(url, txHash string) (*Transaction, error) {
 		return nil, tokens.ErrTxNotFound
 	}
 	return &result.Transactions[0], nil
+}
+
+func GetOutputsByAddress(url, address string) (*[]Output, error) {
+	request := &client.Request{}
+	request.Params = fmt.Sprintf(QueryOutputs, address)
+	request.ID = int(time.Now().UnixNano())
+	request.Timeout = rpcTimeout
+	var result OutputsResult
+	if err := client.CardanoPostRequest(url, request, &result); err != nil {
+		return nil, err
+	}
+	if len(result.Outputs) == 0 {
+		return nil, tokens.ErrOutputLength
+	}
+	return &result.Outputs, nil
 }
 
 func GetLatestBlockNumber() (uint64, error) {

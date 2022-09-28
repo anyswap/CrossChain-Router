@@ -9,6 +9,15 @@ type Tip struct {
 	SyncProgress string `json:"syncProgress"`
 }
 
+type OutputKey struct {
+	TxHash string `json:"txHash"`
+	Index  uint64 `json:"index"`
+}
+
+type OutputsResult struct {
+	Outputs []Output `json:"utxos"`
+}
+
 type TransactionResult struct {
 	Transactions []Transaction `json:"transactions"`
 }
@@ -27,6 +36,7 @@ type Output struct {
 	Index   uint64  `json:"index"`
 	Tokens  []Token `json:"tokens"`
 	Value   string  `json:"value"`
+	TxHash  string  `json:"txHash"`
 }
 
 type Input struct {
@@ -61,7 +71,6 @@ type MetadataValue struct {
 }
 
 type UtxoMap struct {
-	Index  string            `json:"index"`
 	Assets map[string]string `json:"assets"`
 }
 

@@ -27,7 +27,8 @@ var (
 	QueryUtxoCmd             = "cardano-cli query utxo --address %s " + NetWork
 	CalcTxIdCmd              = "cardano-cli transaction txid --tx-body-file %s"
 	QueryTipCmd              = "cardano-cli query tip " + NetWork
-	QueryMethod              = "{transactions(where: { hash: { _eq: \"%s\"}}) {block {number epochNo slotNo}hash metadata{key value}inputs{tokens{asset{ assetId assetName}quantity }value}outputs(order_by:{index:asc}){address index tokens{ asset{assetId assetName}quantity}value}validContract}}"
+	QueryTransaction         = "{transactions(where: { hash: { _eq: \"%s\"}}) {block {number epochNo slotNo}hash metadata{key value}inputs{tokens{asset{ assetId assetName}quantity }value}outputs(order_by:{index:asc}){address index tokens{ asset{assetId assetName}quantity}value}validContract}}"
+	QueryOutputs             = "{utxos(where: { address: { _eq: \"%s\"}}) {txHash index tokens {asset {assetId assetName} quantity} value}}"
 )
 
 func ExecCmd(cmdStr, space string) (string, error) {

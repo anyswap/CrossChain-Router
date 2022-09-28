@@ -102,6 +102,18 @@ func (b *Bridge) GetTransactionByHash(txHash string) (*Transaction, error) {
 	return nil, tokens.ErrTxNotFound
 }
 
+// GetTransactionByHash call eth_getTransactionByHash
+func (b *Bridge) GetOutputsByAddress(address string) (*[]Output, error) {
+	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	for _, url := range urls {
+		result, err := GetOutputsByAddress(url, address)
+		if err == nil {
+			return result, nil
+		}
+	}
+	return nil, tokens.ErrOutputLength
+}
+
 // GetTransactionStatus impl
 func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, err error) {
 	status = new(tokens.TxStatus)
