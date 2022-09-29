@@ -11,7 +11,6 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error
 	if _, err := ExecCmd(cmdString, " "); err != nil {
 		return "", err
 	} else {
-		pendingHash = signedTransaction.TxHash
 		return signedTransaction.TxHash, nil
 	}
 }

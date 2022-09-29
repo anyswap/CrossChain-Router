@@ -9,6 +9,12 @@ type Tip struct {
 	SyncProgress string `json:"syncProgress"`
 }
 
+type TargetAsset struct {
+	NeedAdaValue uint64 `json:"needAdaValue"`
+	TokenFinish  bool   `json:"tokenFinish"`
+	AdaFinish    bool   `json:"adaFinish"`
+}
+
 type OutputKey struct {
 	TxHash string `json:"txHash"`
 	Index  uint64 `json:"index"`

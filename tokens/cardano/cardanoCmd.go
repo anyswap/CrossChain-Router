@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"os/exec"
 	"strings"
+
+	"github.com/anyswap/CrossChain-Router/v3/log"
 )
 
 const (
@@ -39,6 +41,7 @@ func ExecCmd(cmdStr, space string) (string, error) {
 	cmd.Stdout = &cmdOut
 	cmd.Stderr = &cmdErr
 	if err := cmd.Run(); err != nil {
+		log.Warnf("cmd:%+v err:%+v", cmd.String(), err)
 		return "", err
 	} else {
 		return cmdOut.String(), nil

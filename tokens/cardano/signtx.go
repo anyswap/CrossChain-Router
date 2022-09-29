@@ -106,7 +106,7 @@ func (b *Bridge) SignTransactionWithPrivateKey(txPath, witnessPath, signedPath, 
 	if edPrivKey, err := StringToPrivateKey(privKey); err != nil {
 		return nil, "", err
 	} else {
-		if sig, err := edPrivKey.Sign(rand.Reader, []byte(txHash)[:], crypto.Hash(0)); err != nil {
+		if sig, err := edPrivKey.Sign(rand.Reader, common.Hex2Bytes(txHash), crypto.Hash(0)); err != nil {
 			return nil, "", err
 		} else {
 			if err := b.CreateWitness(witnessPath, mpcPubkey, sig); err != nil {

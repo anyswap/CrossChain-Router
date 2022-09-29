@@ -13,24 +13,10 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
-var (
-	pendingHash = ""
-)
-
 // BuildRawTransaction build raw tx
 //
 //nolint:funlen,gocyclo // ok
 func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{}, err error) {
-	if pendingHash != "" {
-		if res, err := b.GetTransactionByHash(pendingHash); err != nil {
-			return nil, err
-		} else {
-			if err := b.checkTxStatus(res, true); err != nil {
-				return nil, err
-			}
-		}
-	}
-
 	if !params.IsTestMode && args.ToChainID.String() != b.ChainConfig.ChainID {
 		return nil, tokens.ErrToChainIDMismatch
 	}
@@ -116,7 +102,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 }
 
 func (b *Bridge) BuildTx(swapId, receiver, assetId string, amount *big.Int, utxos map[OutputKey]UtxoMap) (*RawTransaction, error) {
-	log.Infof("build Tx:\nreceiver:%+v\nassetId:%+v\namount:%+v\nutxos:%+v\n", receiver, assetId, amount, utxos)
+	log.Infof("build Tx: receiver:%+v assetId:%+v amount:%+v", receiver, assetId, amount)
 	routerMpc := b.GetRouterContract("")
 	rawTransaction := &RawTransaction{
 		Fee:     "0",
@@ -125,30 +111,55 @@ func (b *Bridge) BuildTx(swapId, receiver, assetId string, amount *big.Int, utxo
 		TxInts:  map[string]string{},
 	}
 	allAssetsMap := map[string]uint64{}
+
+	targetAsset := &TargetAsset{
+		AdaFinish: false,
+	}
+
+	if assetId == AdaAssetId {
+		targetAsset.TokenFinish = true
+		targetAsset.NeedAdaValue = amount.Uint64()
+	} else {
+		targetAsset.TokenFinish = false
+		targetAsset.NeedAdaValue = FixAdaAmount.Uint64()
+	}
+
 	for outputKey, utxoInfo := range utxos {
-		rawTransaction.TxInts[outputKey.TxHash] = fmt.Sprint(outputKey.Index)
-		for asset, assetAmount := range utxoInfo.Assets {
-			if value, err := common.GetBigIntFromStr(assetAmount); err != nil {
-				return nil, err
-			} else {
-				allAssetsMap[asset] += value.Uint64()
+		if targetAsset.TokenFinish || utxoInfo.Assets[assetId] != "" {
+			rawTransaction.TxInts[outputKey.TxHash] = fmt.Sprint(outputKey.Index)
+			for asset, assetAmount := range utxoInfo.Assets {
+				if value, err := common.GetBigIntFromStr(assetAmount); err != nil {
+					return nil, err
+				} else {
+					allAssetsMap[asset] += value.Uint64()
+				}
+			}
+			if allAssetsMap[assetId] >= amount.Uint64() {
+				targetAsset.TokenFinish = true
+			}
+			if allAssetsMap[AdaAssetId] >= targetAsset.NeedAdaValue+DefaultAdaAmount.Uint64() {
+				targetAsset.AdaFinish = true
+			}
+			if targetAsset.TokenFinish && targetAsset.AdaFinish {
+				break
 			}
 		}
 	}
+
+	if !targetAsset.AdaFinish {
+		return nil, tokens.ErrAdaBalancesNotEnough
+	}
+
 	rawTransaction.TxOuts[receiver] = map[string]string{}
 	rawTransaction.TxOuts[routerMpc] = map[string]string{}
-	var adaAmount *big.Int
-	if assetId == AdaAssetId {
-		adaAmount = amount
-	} else {
-		adaAmount = FixAdaAmount
-		policyId := strings.Split(assetId, ".")[0]
-		if allAssetsMap[assetId] >= amount.Uint64() {
+	if assetId != AdaAssetId {
+		if targetAsset.TokenFinish {
 			rawTransaction.TxOuts[receiver][assetId] = amount.String()
 			if allAssetsMap[assetId] > amount.Uint64() {
 				rawTransaction.TxOuts[routerMpc][assetId] = fmt.Sprint((allAssetsMap[assetId] - amount.Uint64()))
 			}
 		} else {
+			policyId := strings.Split(assetId, ".")[0]
 			if policyId != PolicyId {
 				return nil, tokens.ErrTokenBalancesNotEnough
 			} else {
@@ -159,10 +170,10 @@ func (b *Bridge) BuildTx(swapId, receiver, assetId string, amount *big.Int, utxo
 			}
 		}
 	}
-	rawTransaction.TxOuts[receiver][AdaAssetId] = adaAmount.String()
-	if allAssetsMap[AdaAssetId] > adaAmount.Uint64() {
-		rawTransaction.TxOuts[routerMpc][AdaAssetId] = fmt.Sprint((allAssetsMap[AdaAssetId] - adaAmount.Uint64()))
-	}
+
+	rawTransaction.TxOuts[receiver][AdaAssetId] = fmt.Sprint(targetAsset.NeedAdaValue)
+	rawTransaction.TxOuts[routerMpc][AdaAssetId] = fmt.Sprint((allAssetsMap[AdaAssetId] - targetAsset.NeedAdaValue))
+
 	for assetIdWithName, assetAmount := range allAssetsMap {
 		if assetIdWithName != AdaAssetId && assetIdWithName != assetId {
 			rawTransaction.TxOuts[routerMpc][assetIdWithName] = fmt.Sprint(assetAmount)
@@ -170,62 +181,6 @@ func (b *Bridge) BuildTx(swapId, receiver, assetId string, amount *big.Int, utxo
 	}
 	return rawTransaction, nil
 }
-
-// func (b *Bridge) BuildTx(swapId, receiver, assetId string, amount *big.Int, utxos map[string]UtxoMap) (*RawTransaction, error) {
-// 	log.Infof("build Tx:\nreceiver:%+v\nassetId:%+v\namount:%+v\nutxos:%+v\n", receiver, assetId, amount, utxos)
-// 	routerMpc := b.GetRouterContract("")
-// 	rawTransaction := &RawTransaction{
-// 		Fee:     "0",
-// 		OutFile: swapId,
-// 		TxOuts:  map[string]map[string]string{},
-// 		TxInts:  map[string]string{},
-// 	}
-// 	allAssetsMap := map[string]uint64{}
-// 	for txHash, utxoInfo := range utxos {
-// 		rawTransaction.TxInts[txHash] = utxoInfo.Index
-// 		for asset, assetAmount := range utxoInfo.Assets {
-// 			if value, err := common.GetBigIntFromStr(assetAmount); err != nil {
-// 				return nil, err
-// 			} else {
-// 				allAssetsMap[asset] += value.Uint64()
-// 			}
-// 		}
-// 	}
-// 	rawTransaction.TxOuts[receiver] = map[string]string{}
-// 	rawTransaction.TxOuts[routerMpc] = map[string]string{}
-// 	var adaAmount *big.Int
-// 	if assetId == AdaAssetId {
-// 		adaAmount = amount
-// 	} else {
-// 		adaAmount = FixAdaAmount
-// 		policyId := strings.Split(assetId, ".")[0]
-// 		if allAssetsMap[assetId] >= amount.Uint64() {
-// 			rawTransaction.TxOuts[receiver][assetId] = amount.String()
-// 			if allAssetsMap[assetId] > amount.Uint64() {
-// 				rawTransaction.TxOuts[routerMpc][assetId] = fmt.Sprint((allAssetsMap[assetId] - amount.Uint64()))
-// 			}
-// 		} else {
-// 			if policyId != PolicyId {
-// 				return nil, tokens.ErrTokenBalancesNotEnough
-// 			} else {
-// 				rawTransaction.Mint = map[string]string{
-// 					assetId: fmt.Sprint(amount.Uint64() - allAssetsMap[assetId]),
-// 				}
-// 				rawTransaction.TxOuts[receiver][assetId] = amount.String()
-// 			}
-// 		}
-// 	}
-// 	rawTransaction.TxOuts[receiver][AdaAssetId] = adaAmount.String()
-// 	if allAssetsMap[AdaAssetId] > adaAmount.Uint64() {
-// 		rawTransaction.TxOuts[routerMpc][AdaAssetId] = fmt.Sprint((allAssetsMap[AdaAssetId] - adaAmount.Uint64()))
-// 	}
-// 	for assetIdWithName, assetAmount := range allAssetsMap {
-// 		if assetIdWithName != AdaAssetId && assetIdWithName != assetId {
-// 			rawTransaction.TxOuts[routerMpc][assetIdWithName] = fmt.Sprint(assetAmount)
-// 		}
-// 	}
-// 	return rawTransaction, nil
-// }
 
 func CreateRawTx(rawTransaction *RawTransaction) error {
 	cmdString := ""
@@ -345,52 +300,9 @@ func (b *Bridge) QueryUtxo(address string) (map[OutputKey]UtxoMap, error) {
 			}
 			utxos[outputKey].Assets[AdaAssetId] = output.Value
 			for _, token := range output.Tokens {
-				utxos[outputKey].Assets[token.Asset.AssetId] = token.Quantity
+				utxos[outputKey].Assets[token.Asset.AssetId[:56]+"."+token.Asset.AssetId[56:]] = token.Quantity
 			}
 		}
 		return utxos, nil
 	}
 }
-
-// func (b *Bridge) QueryUtxo(address string) (map[string]UtxoMap, error) {
-// 	utxos := make(map[string]UtxoMap)
-// 	cmdStr := fmt.Sprintf(QueryUtxoCmd, address)
-// 	if execRes, err := ExecCmd(cmdStr, " "); err != nil {
-// 		return nil, err
-// 	} else {
-// 		if list := strings.Split(execRes, "--------------------------------------------------------------------------------------"); len(list) != 2 {
-// 			return nil, errors.New("queryUtxo length not match")
-// 		} else {
-// 			if outputList := strings.Split(list[1], "\n"); len(outputList) < 3 {
-// 				return nil, errors.New("outputList length not match")
-// 			} else {
-// 				for _, output := range outputList[1 : len(outputList)-1] {
-// 					if assetsInfoList := strings.Split(output, "        "); len(assetsInfoList) != 2 {
-// 						return nil, errors.New("assetsInfoList length not match")
-// 					} else {
-// 						if txAndIndex := strings.Split(assetsInfoList[0], "     "); len(txAndIndex) != 2 {
-// 							return nil, errors.New("txAndIndex length not match")
-// 						} else {
-// 							utxos[txAndIndex[0]] = UtxoMap{
-// 								Index:  txAndIndex[1],
-// 								Assets: make(map[string]string),
-// 							}
-// 							if assetAndAmountList := strings.Split(assetsInfoList[1], " + "); len(assetAndAmountList) < 2 {
-// 								return nil, errors.New("assetAndAmountList length not match")
-// 							} else {
-// 								for _, assetAndAmount := range assetAndAmountList[:len(assetAndAmountList)-1] {
-// 									if assetAmount := strings.Split(assetAndAmount, " "); len(assetAmount) != 2 {
-// 										return nil, errors.New("assetAmount length not match")
-// 									} else {
-// 										utxos[txAndIndex[0]].Assets[assetAmount[1]] = assetAmount[0]
-// 									}
-// 								}
-// 							}
-// 						}
-// 					}
-// 				}
-// 				return utxos, nil
-// 			}
-// 		}
-// 	}
-// }
