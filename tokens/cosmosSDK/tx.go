@@ -64,10 +64,6 @@ func (c *CosmosRestClient) BroadcastTx(req *BroadcastTxRequest) (string, error) 
 	}
 }
 
-func (c *CosmosRestClient) NewTxBuilder() cosmosClient.TxBuilder {
-	return c.NewTxBuilder()
-}
-
 func (c *CosmosRestClient) NewSignModeHandler() signing.SignModeHandler {
 	return c.TxConfig.SignModeHandler()
 }
