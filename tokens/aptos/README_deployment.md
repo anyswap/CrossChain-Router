@@ -13,31 +13,48 @@ deploy `Pool` and `Router`
 1. git clone https://github.com/anyswap/router-aptos-contract/tree/use-table
 2. copy mpc address ,  replace `Multichain`'s address at `router-aptos-contract/blob/use-table/router/Move.toml`
 3. cd  router-aptos-contract and run `aptos move test --package-dir router` to test code
-4. run `aptos move compile --package-dir router` to build code 
+4. run `aptos move compile --save-metadata --package-dir router` to build code 
 5. use the deployModule to deploy , modules and path like `-module Pool,Router -path ../aptos-contract/router/build/multichain` 
 ```
 go run tokens/aptos/tools/deployModule/main.go -h
 ```
 
-### c. issue new token
+### c. issue anyCoin
 1. add new struct name `AnyMyCoin` as `anyUSDT` in anycoin/sources/PoolCoin.move
-2. use the deployModule to deploy , modules is the path like `-module ../aptos-contract/anycoin/build/anycoin/bytecode_modules/PoolCoin.mv` 
+2. run `aptos move compile --save-metadata --package-dir anycoin` to build code
+3. use the deployModule to deploy , modules is the path like `-module PoolCoin  -path ../aptos-contract/anycoin/build/anycoin` 
 ```
 go run tokens/aptos/tools/deployModule/main.go -h
 ```
 3. use `issueCoin` to issue a coin 
+```
+go run tokens/aptos/tools/issueCoin/main.go -h
+```  
 
-### d. register token to self
+### d. issue underlyingCoin
+1. copy `aptos-contract/anycoin/sources/wETH.move` to `aptos-contract/anycoin/sources/{coinName}.move`
+2. change the coin name in line 2,30,31  with your coinName
+```
+module TEST::wETH {
+
+string::utf8(b"wETH"),
+string::utf8(b"wETH"),
+
+```
+3. run `aptos move compile --save-metadata --package-dir anycoin` to build code
+4. use the deployModule to deploy , modules is the path like `-module {coinName}  -path ../aptos-contract/anycoin/build/anycoin` 
+
+### e. register token to self
 ```
 go run tokens/aptos/tools/registerCoin/main.go -h
 ```
 
-### e. mint token to address
+### f. mint token to address
 ```
 go run tokens/aptos/tools/mintCoin/main.go -h
 ```
 
-### f. register lp in pool
+### g. register lp in pool
 call registerPoolCoin to new a token and register a LP in pool
 1. deploy anytoken like `PoolCoin` (notice: if deploy multi anytoken, need to create new contract, eg. copy `PoolCoin` and rename to `anyXXCoin`, check the struct name `AnyMyCoin` to `anyXXCoin`)
 2. deploy the module
@@ -46,14 +63,14 @@ call registerPoolCoin to new a token and register a LP in pool
 go run tokens/aptos/tools/registerPoolCoin/main.go -h
 ```
 
-### g. set coin type
-anyCoin set 0
-underlying Coin set 1
+### h. set coin type
+1. anyCoin set 0
+2. underlying Coin set 1
 ```
 go run tokens/aptos/tools/configCoin/main.go -h
 ```
 
-### g. set router status
+### i. set router status
 router status `[1]:open [0]:close`
 ```
 go run tokens/aptos/tools/setStatus/main.go -h
