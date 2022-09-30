@@ -53,13 +53,12 @@ func main() {
 			start = uint64(ei.AbsoluteSlot)
 
 			for _, block := range *blocks {
-				result, err := bridge.GetBlock(block, false)
+				result, err := bridge.GetBlock(block, true)
 				if err != nil {
 					log.Errorf("GetBlock error %v", err)
 				}
-
 				for _, v := range result.Transactions {
-					if v.Transaction.Message.AccountKeys[len(v.Transaction.Message.AccountKeys)-1].String() == routerProgramID {
+					if v.Transaction.Message.AccountKeys[v.Transaction.Message.Instructions[0].ProgramIDIndex].String() == routerProgramID {
 						fmt.Println(v.Transaction.Signatures)
 					}
 				}
