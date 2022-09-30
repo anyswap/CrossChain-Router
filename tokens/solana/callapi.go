@@ -93,7 +93,7 @@ func (b *Bridge) GetFees() (result *types.GetFeesResult, err error) {
 func (b *Bridge) GetBlock(slot uint64, fullTx bool) (result *types.GetBlockResult, err error) {
 	transactionDetails := "full"
 	if !fullTx {
-		transactionDetails = "signatures"
+		transactionDetails = "accounts"
 	}
 	obj := map[string]interface{}{
 		"encoding":           "json",
@@ -221,4 +221,30 @@ func (b *Bridge) GetMinimumBalanceForRentExemption(datalength uint64) (uint64, e
 		return 0, err
 	}
 	return *result, nil
+}
+
+func (b *Bridge) GetEpochInfo() (*types.GetEpochInfoResult, error) {
+	obj := map[string]string{
+		"commitment": "finalized",
+	}
+	result := &types.GetEpochInfoResult{}
+	callMethod := "getEpochInfo"
+	err := RPCCall(result, b.GatewayConfig.APIAddress, callMethod, obj)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (b *Bridge) GetBlocks(start, end uint64) (*[]uint64, error) {
+	obj := map[string]string{
+		"commitment": "finalized",
+	}
+	result := &[]uint64{}
+	callMethod := "getBlocks"
+	err := RPCCall(result, b.GatewayConfig.APIAddress, callMethod, start, end, obj)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }

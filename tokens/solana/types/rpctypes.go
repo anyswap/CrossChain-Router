@@ -328,3 +328,12 @@ type SignatureStatus struct {
 	Err                interface{} `json:"err"`
 	ConfirmationStatus *string     `json:"confirmationStatus"`
 }
+
+type GetEpochInfoResult struct {
+	AbsoluteSlot     bin.Uint64 `json:"absoluteSlot"`
+	BlockHeight      bin.Uint64 `json:"blockHeight"`
+	Epoch            bin.Uint64 `json:"epoch"`
+	SlotIndex        bin.Uint64 `json:"slotIndex"`
+	SlotsInEpoch     bin.Uint64 `json:"slotsInEpoch"`
+	TransactionCount bin.Uint64 `json:"transactionCount"`
+}
