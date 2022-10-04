@@ -34,9 +34,9 @@ func main() {
 			utxos[outputKey] = cardano.UtxoMap{
 				Assets: make(map[string]string),
 			}
-			utxos[outputKey].Assets[cardano.AdaAssetId] = output.Value
+			utxos[outputKey].Assets[cardano.AdaAsset] = output.Value
 			for _, token := range output.Tokens {
-				utxos[outputKey].Assets[token.Asset.AssetId] = token.Quantity
+				utxos[outputKey].Assets[token.Asset.PolicyId+token.Asset.AssetName] = token.Quantity
 			}
 		}
 		log.Warnf("utxos:%+v", utxos)

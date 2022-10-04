@@ -9,6 +9,10 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
+const (
+	MetadataKey = "123"
+)
+
 // VerifyMsgHash verify msg hash
 func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) (err error) {
 	if rawTransaction, ok := rawTx.(*RawTransaction); !ok {
@@ -102,7 +106,7 @@ func (b *Bridge) getTxOutputs(swapInfo *tokens.SwapTxInfo, allowUnstable bool) (
 				return nil, nil, statusErr
 			}
 			for index, metadata := range txres.Metadata {
-				if metadata.Key == "123" {
+				if metadata.Key == MetadataKey {
 					return txres.Outputs, &txres.Metadata[index], nil
 				}
 			}
@@ -141,8 +145,8 @@ func (b *Bridge) parseTxOutput(output Output, logIndex int) (*Token, error) {
 			} else {
 				return &Token{
 					Asset: Asset{
-						AssetId:   AdaAssetId,
-						AssetName: AdaAssetId,
+						PolicyId:  AdaAsset,
+						AssetName: AdaAsset,
 					},
 					Quantity: amount.Sub(amount, DefaultAdaAmount).String(),
 				}, nil
@@ -164,10 +168,10 @@ func (b *Bridge) parseTokenInfo(swapInfo *tokens.SwapTxInfo, tokenInfo *Token, m
 
 	swapInfo.Value = amount
 
-	if tokenInfo.Asset.AssetId == AdaAssetId {
-		swapInfo.ERC20SwapInfo.Token = AdaAssetId
+	if tokenInfo.Asset.PolicyId == AdaAsset {
+		swapInfo.ERC20SwapInfo.Token = AdaAsset
 	} else {
-		swapInfo.ERC20SwapInfo.Token = strings.Replace(tokenInfo.Asset.AssetId, tokenInfo.Asset.AssetName, "."+tokenInfo.Asset.AssetName, 1)
+		swapInfo.ERC20SwapInfo.Token = tokenInfo.Asset.PolicyId + "." + tokenInfo.Asset.AssetName
 	}
 	swapInfo.From = mpc
 	swapInfo.Bind = metadata.Value.Bind

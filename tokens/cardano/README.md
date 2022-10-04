@@ -76,6 +76,6 @@ mpc.vkey:
 
 7 set config contract
 	7.1 routerAddress is mpc address
-	7.2 tokenAddress is assetId.assetName if token not ADA
+	7.2 tokenAddress is policyId.assetName if token not ADA
 	    tokenAddress is lovelace if token is ADA
 ```

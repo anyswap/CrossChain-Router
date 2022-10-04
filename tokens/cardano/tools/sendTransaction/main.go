@@ -22,7 +22,7 @@ var (
 	paramFrom       string
 	paramPublicKey  string
 	paramTo         string
-	paramAssetId    string
+	paramAsset    string
 	paramAmount     string
 	chainID         = big.NewInt(0)
 	mpcConfig       *mpc.Config
@@ -43,7 +43,7 @@ func main() {
 		if utxos, err := bridge.QueryUtxo(paramFrom); err != nil {
 			log.Fatal("QueryUtxo", "err", err)
 		} else {
-			if rawTransaction, err := bridge.BuildTx("swapId", paramTo, paramAssetId, value, utxos); err != nil {
+			if rawTransaction, err := bridge.BuildTx("swapId", paramTo, paramAsset, value, utxos); err != nil {
 				if err := cardano.CreateRawTx(rawTransaction); err != nil {
 					log.Fatal("CreateRawTx", "err", err)
 				} else {
@@ -54,7 +54,7 @@ func main() {
 							log.Fatal("feeList length not match")
 						} else {
 							rawTransaction.Fee = feeList[0]
-							if adaAmount, err := common.GetBigIntFromStr(rawTransaction.TxOuts[paramFrom][paramAssetId]); err != nil {
+							if adaAmount, err := common.GetBigIntFromStr(rawTransaction.TxOuts[paramFrom][paramAsset]); err != nil {
 								log.Fatal("GetBigIntFromStr", "err", err)
 							} else {
 								if feeAmount, err := common.GetBigIntFromStr(feeList[0]); err != nil {
@@ -64,7 +64,7 @@ func main() {
 									if returnAmount.Cmp(cardano.FixAdaAmount) < 0 {
 										log.Fatal("return value less than min value")
 									} else {
-										rawTransaction.TxOuts[paramFrom][paramAssetId] = returnAmount.String()
+										rawTransaction.TxOuts[paramFrom][paramAsset] = returnAmount.String()
 										if err := cardano.CreateRawTx(rawTransaction); err != nil {
 											log.Fatal("CreateRawTx", "err", err)
 										} else {
@@ -153,7 +153,7 @@ func initFlags() {
 	flag.StringVar(&paramFrom, "from", "", "sender address")
 	flag.StringVar(&paramTo, "to", "", "receive address")
 	flag.StringVar(&paramAmount, "amount", "", "receive amount")
-	flag.StringVar(&paramAssetId, "assetId", "", "asset id")
+	flag.StringVar(&paramAsset, "asset", "", "asset")
 
 	flag.Parse()
 

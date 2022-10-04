@@ -8,6 +8,9 @@ import (
 
 // IsValidAddress check address
 func (b *Bridge) IsValidAddress(addr string) bool {
+	if CmdArgsVerify(addr) {
+		return false
+	}
 	cmdStr := fmt.Sprintf(AddressInfoCmd, addr)
 	if _, err := ExecCmd(cmdStr, " "); err != nil {
 		return false

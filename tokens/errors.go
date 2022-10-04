@@ -53,6 +53,7 @@ var (
 	ErrTokenBalancesNotEnough = errors.New("token balance not enough")
 	ErrAdaBalancesNotEnough   = errors.New("ada balance not enough")
 	ErrOutputIndexSort        = errors.New("output not order by index asc")
+	ErrCmdArgVerify           = errors.New("cmd args verify fails")
 
 	// errors should register in router swap
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")

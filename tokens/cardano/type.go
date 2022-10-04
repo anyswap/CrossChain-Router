@@ -32,7 +32,6 @@ type Transaction struct {
 	Block         Block      `json:"block"`
 	Hash          string     `json:"hash"`
 	Metadata      []Metadata `json:"metadata"`
-	Inputs        []Input    `json:"inputs"`
 	Outputs       []Output   `json:"outputs"`
 	ValidContract bool       `json:"validContract"`
 }
@@ -45,18 +44,13 @@ type Output struct {
 	TxHash  string  `json:"txHash"`
 }
 
-type Input struct {
-	Tokens []Token `json:"tokens"`
-	Value  string  `json:"value"`
-}
-
 type Token struct {
 	Asset    Asset  `json:"asset"`
 	Quantity string `json:"quantity"`
 }
 
 type Asset struct {
-	AssetId   string `json:"assetId"`
+	PolicyId  string `json:"policyId"`
 	AssetName string `json:"assetName"`
 }
 
