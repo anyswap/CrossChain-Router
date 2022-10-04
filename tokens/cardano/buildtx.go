@@ -153,13 +153,19 @@ func (b *Bridge) BuildTx(swapId, receiver, asset string, amount *big.Int, utxos 
 	rawTransaction.TxOuts[receiver] = map[string]string{}
 	rawTransaction.TxOuts[routerMpc] = map[string]string{}
 	if asset != AdaAsset {
+		policyId := strings.Split(asset, ".")[0]
 		if targetAsset.TokenFinish {
 			rawTransaction.TxOuts[receiver][asset] = amount.String()
 			if allAssetsMap[asset] > amount.Uint64() {
-				rawTransaction.TxOuts[routerMpc][asset] = fmt.Sprint((allAssetsMap[asset] - amount.Uint64()))
+				if policyId != MPCPolicyId {
+					rawTransaction.TxOuts[routerMpc][asset] = fmt.Sprint((allAssetsMap[asset] - amount.Uint64()))
+				} else {
+					rawTransaction.Mint = map[string]string{
+						asset: fmt.Sprintf("-%s", fmt.Sprint(allAssetsMap[asset]-amount.Uint64())),
+					}
+				}
 			}
 		} else {
-			policyId := strings.Split(asset, ".")[0]
 			if policyId != MPCPolicyId {
 				return nil, tokens.ErrTokenBalancesNotEnough
 			} else {
