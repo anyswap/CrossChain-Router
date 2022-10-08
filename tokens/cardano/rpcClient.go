@@ -28,7 +28,7 @@ func GetTransactionByHash(url, txHash string) (*Transaction, error) {
 	return &result.Transactions[0], nil
 }
 
-func GetOutputsByAddress(url, address string) (*[]Output, error) {
+func GetUtxosByAddress(url, address string) (*[]Output, error) {
 	request := &client.Request{}
 	request.Params = fmt.Sprintf(QueryOutputs, address)
 	request.ID = int(time.Now().UnixNano())

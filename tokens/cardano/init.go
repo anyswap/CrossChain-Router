@@ -44,7 +44,7 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 	log.Info(fmt.Sprintf("[%5v] start init router info", chainID), "routerContract", routerContract)
 	routerMPC := routerContract // in ripple routerMPC is routerContract
 	if !b.IsValidAddress(routerMPC) {
-		log.Warn("wrong router mpc address (in ripple routerMPC is routerContract)", "routerMPC", routerMPC)
+		log.Warn("wrong router mpc address (in cardano routerMPC is routerContract)", "routerMPC", routerMPC)
 		return fmt.Errorf("wrong router mpc address: %v", routerMPC)
 	}
 	log.Info("get router mpc address success", "chainID", chainID, "routerContract", routerContract, "routerMPC", routerMPC)

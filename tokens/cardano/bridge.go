@@ -103,10 +103,10 @@ func (b *Bridge) GetTransactionByHash(txHash string) (*Transaction, error) {
 }
 
 // GetTransactionByHash call eth_getTransactionByHash
-func (b *Bridge) GetOutputsByAddress(address string) (*[]Output, error) {
+func (b *Bridge) GetUtxosByAddress(address string) (*[]Output, error) {
 	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
 	for _, url := range urls {
-		result, err := GetOutputsByAddress(url, address)
+		result, err := GetUtxosByAddress(url, address)
 		if err == nil {
 			return result, nil
 		}

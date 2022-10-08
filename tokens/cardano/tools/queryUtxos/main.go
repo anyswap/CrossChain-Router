@@ -24,19 +24,18 @@ func main() {
 		log.Warnf("transaction:%+v", res)
 	}
 
-	if outputs, err := cardano.GetOutputsByAddress(url, paramAddress); err != nil {
+	if outputs, err := cardano.GetUtxosByAddress(url, paramAddress); err != nil {
 		log.Fatal("get outputs by address error", "address", paramAddress, "err", err)
 	} else {
 		log.Warnf("outputs:%+v", outputs)
-		utxos := make(map[cardano.OutputKey]cardano.UtxoMap)
+		utxos := make(map[cardano.UtxoKey]cardano.AssetsMap)
 		for _, output := range *outputs {
-			outputKey := cardano.OutputKey{TxHash: output.TxHash, Index: output.Index}
-			utxos[outputKey] = cardano.UtxoMap{
-				Assets: make(map[string]string),
-			}
-			utxos[outputKey].Assets[cardano.AdaAsset] = output.Value
+			utxoKey := cardano.UtxoKey{TxHash: output.TxHash, TxIndex: output.Index}
+			utxos[utxoKey] = make(cardano.AssetsMap)
+
+			utxos[utxoKey][cardano.AdaAsset] = output.Value
 			for _, token := range output.Tokens {
-				utxos[outputKey].Assets[token.Asset.PolicyId+token.Asset.AssetName] = token.Quantity
+				utxos[utxoKey][token.Asset.PolicyId+token.Asset.AssetName] = token.Quantity
 			}
 		}
 		log.Warnf("utxos:%+v", utxos)

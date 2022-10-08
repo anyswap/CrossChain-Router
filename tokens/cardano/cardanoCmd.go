@@ -5,16 +5,19 @@ import (
 	"math/big"
 	"os/exec"
 	"strings"
-
-	"github.com/anyswap/CrossChain-Router/v3/log"
 )
 
 const (
-	NetWork     = "--testnet-magic 1"
-	MPCPolicyId = "8ce5ab9f1216a7559e14ab8e2dd7af4dcc34c7e718fe239902993586"
-	RawPath     = "txDb/raw/"
-	AdaAsset    = "lovelace"
-	RawSuffix   = ".raw"
+	NetWork       = "--testnet-magic 1"
+	MPCPolicyId   = "8ce5ab9f1216a7559e14ab8e2dd7af4dcc34c7e718fe239902993586"
+	RawPath       = "txDb/raw/"
+	AdaAsset      = "lovelace"
+	RawSuffix     = ".raw"
+	WitnessPath   = "txDb/witness/"
+	WitnessSuffix = ".witness"
+	WitnessType   = "TxWitness AlonzoEra"
+	SignedPath    = "txDb/signed/"
+	SignedSuffix  = ".signed"
 )
 
 var (
@@ -30,6 +33,7 @@ var (
 	QueryTipCmd              = "cardano-cli query tip " + NetWork
 	QueryTransaction         = "{transactions(where: { hash: { _eq: \"%s\"}}) {block {number epochNo slotNo}hash metadata{key value} outputs(order_by:{index:asc}){address index tokens{ asset{policyId assetName}quantity}value}validContract}}"
 	QueryOutputs             = "{utxos(where: { address: { _eq: \"%s\"}}) {txHash index tokens {asset {policyId assetName} quantity} value}}"
+	TransactionChaining      = &TransactionChainingMap{InputKey: UtxoKey{}, AssetsMap: make(map[string]string)}
 )
 
 func ExecCmd(cmdStr, space string) (string, error) {
@@ -40,7 +44,6 @@ func ExecCmd(cmdStr, space string) (string, error) {
 	cmd.Stdout = &cmdOut
 	cmd.Stderr = &cmdErr
 	if err := cmd.Run(); err != nil {
-		log.Warnf("cmd:%+v err:%+v", cmd.String(), err)
 		return "", err
 	} else {
 		return cmdOut.String(), nil

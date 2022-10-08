@@ -19,14 +19,6 @@ import (
 	"github.com/fxamacker/cbor/v2"
 )
 
-const (
-	WitnessPath   = "txDb/witness/"
-	WitnessSuffix = ".witness"
-	WitnessType   = "TxWitness AlonzoEra"
-	SignedPath    = "txDb/signed/"
-	SignedSuffix  = ".signed"
-)
-
 // MPCSignTransaction mpc sign raw tx
 func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs) (signTx interface{}, txHash string, err error) {
 	if rawTransaction, ok := rawTx.(*RawTransaction); !ok {
@@ -45,9 +37,11 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 				return nil, "", tokens.ErrMissMPCPublicKey
 			}
 
+			cacheAssetsMap := rawTransaction.TxOuts[args.From]
+			txIndex := rawTransaction.TxIndex
 			if mpcParams.SignWithPrivateKey {
 				priKey := mpcParams.GetSignerPrivateKey(b.ChainConfig.ChainID)
-				return b.SignTransactionWithPrivateKey(txPath, witnessPath, signedPath, txHash, mpcPubkey, priKey)
+				return b.SignTransactionWithPrivateKey(txIndex, cacheAssetsMap, txPath, witnessPath, signedPath, txHash, mpcPubkey, priKey)
 			}
 
 			jsondata, _ := json.Marshal(args.GetExtraArgs())
@@ -82,8 +76,10 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 						return nil, "", err
 					} else {
 						return &SignedTransaction{
-							FilePath: signedPath,
-							TxHash:   txHash,
+							FilePath:  signedPath,
+							TxHash:    txHash,
+							TxIndex:   txIndex,
+							AssetsMap: cacheAssetsMap,
 						}, txHash, nil
 					}
 				}
@@ -102,7 +98,7 @@ func CalcTxId(txPath string) (string, error) {
 }
 
 // SignTransactionWithPrivateKey sign tx with ECDSA private key
-func (b *Bridge) SignTransactionWithPrivateKey(txPath, witnessPath, signedPath, txHash, mpcPubkey string, privKey string) (*SignedTransaction, string, error) {
+func (b *Bridge) SignTransactionWithPrivateKey(txIndex uint64, assetsMap AssetsMap, txPath, witnessPath, signedPath, txHash, mpcPubkey, privKey string) (*SignedTransaction, string, error) {
 	if edPrivKey, err := StringToPrivateKey(privKey); err != nil {
 		return nil, "", err
 	} else {
@@ -116,8 +112,10 @@ func (b *Bridge) SignTransactionWithPrivateKey(txPath, witnessPath, signedPath, 
 					return nil, "", err
 				} else {
 					return &SignedTransaction{
-						FilePath: signedPath,
-						TxHash:   txHash,
+						FilePath:  signedPath,
+						TxHash:    txHash,
+						TxIndex:   txIndex,
+						AssetsMap: assetsMap,
 					}, txHash, nil
 				}
 			}

@@ -1,23 +1,17 @@
 package cardano
 
+type TransactionChainingMap struct {
+	InputKey  UtxoKey   `json:"inputKey"`
+	AssetsMap AssetsMap `json:"assetsMap"`
+}
+
 type Tip struct {
-	Block        uint64 `json:"block"`
-	Epoch        uint64 `json:"epoch"`
-	Era          string `json:"era"`
-	Hash         string `json:"hash"`
-	Slot         uint64 `json:"slot"`
-	SyncProgress string `json:"syncProgress"`
+	Slot uint64 `json:"slot"`
 }
 
-type TargetAsset struct {
-	NeedAdaValue uint64 `json:"needAdaValue"`
-	TokenFinish  bool   `json:"tokenFinish"`
-	AdaFinish    bool   `json:"adaFinish"`
-}
-
-type OutputKey struct {
-	TxHash string `json:"txHash"`
-	Index  uint64 `json:"index"`
+type UtxoKey struct {
+	TxHash  string `json:"txHash"`
+	TxIndex uint64 `json:"txIndex"`
 }
 
 type OutputsResult struct {
@@ -70,19 +64,20 @@ type MetadataValue struct {
 	ToChainId string `json:"toChainId,omitempty"`
 }
 
-type UtxoMap struct {
-	Assets map[string]string `json:"assets"`
-}
+type AssetsMap map[string]string
 
 type RawTransaction struct {
-	Fee     string                       `json:"fee"`
-	TxInts  map[string]string            `json:"txInts"`
-	TxOuts  map[string]map[string]string `json:"txOuts"`
-	Mint    map[string]string            `json:"mint"`
-	OutFile string                       `json:"outFile"`
+	Fee     string               `json:"fee"`
+	TxInts  []UtxoKey            `json:"txInts"`
+	TxOuts  map[string]AssetsMap `json:"txOuts"`
+	Mint    AssetsMap            `json:"mint"`
+	TxIndex uint64               `json:"txIndex"`
+	OutFile string               `json:"outFile"`
 }
 
 type SignedTransaction struct {
-	FilePath string `json:"filePath"`
-	TxHash   string `json:"txHash"`
+	FilePath  string    `json:"filePath"`
+	TxHash    string    `json:"txHash"`
+	TxIndex   uint64    `json:"txIndex"`
+	AssetsMap AssetsMap `json:"assetsMap"`
 }

@@ -34,6 +34,7 @@ func IsNativeCoin(name string) bool {
 }
 
 // InitRouterSwapType init router swap type
+//
 //nolint:goconst // allow dupl constant string
 func InitRouterSwapType(swapTypeStr string) {
 	switch strings.ToLower(swapTypeStr) {
@@ -258,7 +259,7 @@ func CheckTokenSwapValue(swapInfo *SwapTxInfo, fromDecimals, toDecimals uint8) b
 
 // CalcSwapValue calc swap value (get rid of fee and convert by decimals)
 func CalcSwapValue(tokenID, fromChainID, toChainID string, value *big.Int, fromDecimals, toDecimals uint8, originFrom, originTxTo string) *big.Int {
-	if !IsERC20Router() {
+	if IsERC20Router() {
 		return value
 	}
 	feeCfg := GetFeeConfig(tokenID, fromChainID, toChainID)

@@ -221,14 +221,14 @@ func (b *Bridge) checkSwapoutInfo(swapInfo *tokens.SwapTxInfo) error {
 		return tokens.ErrMissTokenConfig
 	}
 
-	if !tokens.CheckTokenSwapValue(swapInfo, fromTokenCfg.Decimals, toTokenCfg.Decimals) {
-		return tokens.ErrTxWithWrongValue
-	}
-
 	bindAddr := swapInfo.Bind
 	if !toBridge.IsValidAddress(bindAddr) {
 		log.Warn("wrong bind address in swapin", "bind", bindAddr)
 		return tokens.ErrWrongBindAddress
+	}
+
+	if !tokens.CheckTokenSwapValue(swapInfo, fromTokenCfg.Decimals, toTokenCfg.Decimals) {
+		return tokens.ErrTxWithWrongValue
 	}
 	return nil
 }

@@ -5,32 +5,27 @@ SwapType = "erc20swap"
 # default subtype is empty. anycall has subtype of 'curve'
 SwapSubType = ""
 
-
 # modgodb database connection config
 [Server.MongoDB]
-DBURLs = ["localhost:27017"]
 DBName = "testdb"
-UserName = "testuser"
-Password = "testpasswd"
-
+DBURLs = ["192.168.110.70:27017"]
+Password = "123456"
+UserName = "tester"
 
 # bridge API service
 [Server.APIServer]
 # listen port
 Port = 11556
 
-
 # OnChain config
 [OnChain]
-Contract = "0x1111111111111111111111111111111111111111"
-APIAddress = ["https://data-seed-prebsc-1-s1.binance.org:8545"]
-
+APIAddress = ["https://rpc.testnet.fantom.network/"]
+Contract = "0xBE04e6B86c7d5A14F83Bc8f57A6Eb68d4d974F64"
 
 # Gateways config. key is chainID
 [Gateways]
-97 = ["https://data-seed-prebsc-1-s1.binance.org:8545/"]
-1000005788241 = ["wss://s.altnet.rippletest.net:51233"]
-
+1645027868240 = ["http://localhost:3100/graphql"]
+4002 = ["https://rpc.testnet.fantom.network/"]
 
 # MPC config
 [MPC]
@@ -39,5 +34,5 @@ SignWithPrivateKey = true
 
 # set signer's private key, key is chain ID (use for testing)
 [MPC.SignerPrivateKeys]
-97            = "1111111111111111111111111111111111111111111111111111111111111111"
-1000005788241 = "1111111111111111111111111111111111111111111111111111111111111111"
+1645027868240 = "6aead8d951a9872e73d25adc707de47d10354c90ad61e72177900d2b42e6fcb3"
+4002 = "1380ad6b4394f646a868c8cfe17402c0e4d365b8ef0f1ecdfae4dd60a520f322"

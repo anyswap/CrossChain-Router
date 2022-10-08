@@ -22,7 +22,7 @@ var (
 	paramFrom       string
 	paramPublicKey  string
 	paramTo         string
-	paramAsset    string
+	paramAsset      string
 	paramAmount     string
 	chainID         = big.NewInt(0)
 	mpcConfig       *mpc.Config
@@ -40,11 +40,11 @@ func main() {
 	if value, err := common.GetBigIntFromStr(paramAmount); err != nil {
 		log.Fatal("GetBigIntFromStr fails", "paramAmount", paramAmount)
 	} else {
-		if utxos, err := bridge.QueryUtxo(paramFrom); err != nil {
+		if utxos, err := bridge.QueryUtxoOnChain(paramFrom); err != nil {
 			log.Fatal("QueryUtxo", "err", err)
 		} else {
 			if rawTransaction, err := bridge.BuildTx("swapId", paramTo, paramAsset, value, utxos); err != nil {
-				if err := cardano.CreateRawTx(rawTransaction); err != nil {
+				if err := cardano.CreateRawTx(rawTransaction, paramFrom); err != nil {
 					log.Fatal("CreateRawTx", "err", err)
 				} else {
 					if minFee, err := cardano.CalcMinFee(rawTransaction); err != nil {
@@ -65,7 +65,7 @@ func main() {
 										log.Fatal("return value less than min value")
 									} else {
 										rawTransaction.TxOuts[paramFrom][paramAsset] = returnAmount.String()
-										if err := cardano.CreateRawTx(rawTransaction); err != nil {
+										if err := cardano.CreateRawTx(rawTransaction, paramFrom); err != nil {
 											log.Fatal("CreateRawTx", "err", err)
 										} else {
 											txPath := cardano.RawPath + rawTransaction.OutFile + cardano.RawSuffix
