@@ -56,10 +56,11 @@ var (
 	ErrCmdArgVerify           = errors.New("cmd args verify fails")
 
 	// errors should register in router swap
-	ErrTxWithWrongValue  = errors.New("tx with wrong value")
-	ErrTxWithWrongPath   = errors.New("swap trade tx with wrong path")
-	ErrMissTokenConfig   = errors.New("miss token config")
-	ErrNoUnderlyingToken = errors.New("no underlying token")
+	ErrTxWithWrongValue       = errors.New("tx with wrong value")
+	ErrTxWithWrongAssetLength = errors.New("tx with wrong asset length")
+	ErrTxWithWrongPath        = errors.New("swap trade tx with wrong path")
+	ErrMissTokenConfig        = errors.New("miss token config")
+	ErrNoUnderlyingToken      = errors.New("no underlying token")
 )
 
 // ShouldRegisterRouterSwapForError return true if this error should record in database

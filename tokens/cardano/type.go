@@ -75,6 +75,8 @@ type RawTransaction struct {
 	OutFile string               `json:"outFile"`
 }
 
+func (*RawTransaction) ProtoMessage() {}
+
 type SignedTransaction struct {
 	FilePath  string    `json:"filePath"`
 	TxHash    string    `json:"txHash"`

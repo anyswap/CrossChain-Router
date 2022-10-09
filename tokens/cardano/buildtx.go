@@ -1,6 +1,7 @@
 package cardano
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -17,45 +18,55 @@ import (
 //
 //nolint:funlen,gocyclo // ok
 func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{}, err error) {
-	if !params.IsTestMode && args.ToChainID.String() != b.ChainConfig.ChainID {
-		return nil, tokens.ErrToChainIDMismatch
-	}
-	if args.Input != nil {
-		return nil, fmt.Errorf("forbid build raw swap tx with input data")
-	}
-	if args.From == "" {
-		return nil, fmt.Errorf("forbid empty sender")
-	}
-
-	routerMPC := b.GetRouterContract("")
-	if !common.IsEqualIgnoreCase(args.From, routerMPC) {
-		log.Error("build tx mpc mismatch", "have", args.From, "want", routerMPC)
-		return nil, tokens.ErrSenderMismatch
-	}
-
-	mpcPubkey := router.GetMPCPublicKey(args.From)
-	if mpcPubkey == "" {
-		return nil, tokens.ErrMissMPCPublicKey
-	}
-	erc20SwapInfo := args.ERC20SwapInfo
-	multichainToken := router.GetCachedMultichainToken(erc20SwapInfo.TokenID, args.ToChainID.String())
-	if multichainToken == "" {
-		log.Warn("get multichain token failed", "tokenID", erc20SwapInfo.TokenID, "chainID", args.ToChainID)
-		return nil, tokens.ErrMissTokenConfig
-	}
-
-	tokenCfg := b.GetTokenConfig(multichainToken)
-	if tokenCfg == nil {
-		return nil, tokens.ErrMissTokenConfig
-	}
-
-	if receiver, amount, err := b.getReceiverAndAmount(args, multichainToken); err != nil {
+	if extra, err := b.initExtra(args); err != nil {
 		return nil, err
 	} else {
-		args.SwapValue = amount // SwapValue
-		if _, err := b.initExtra(args); err != nil {
+		if extra.RawTx != nil {
+			var tx RawTransaction
+			if err := json.Unmarshal(extra.RawTx, &tx); err != nil {
+				return nil, err
+			}
+			if err := b.VerifyRawTransaction(tx, args); err != nil {
+				return nil, err
+			}
+			return &tx, nil
+		}
+		if !params.IsTestMode && args.ToChainID.String() != b.ChainConfig.ChainID {
+			return nil, tokens.ErrToChainIDMismatch
+		}
+		if args.Input != nil {
+			return nil, fmt.Errorf("forbid build raw swap tx with input data")
+		}
+		if args.From == "" {
+			return nil, fmt.Errorf("forbid empty sender")
+		}
+
+		routerMPC := b.GetRouterContract("")
+		if !common.IsEqualIgnoreCase(args.From, routerMPC) {
+			log.Error("build tx mpc mismatch", "have", args.From, "want", routerMPC)
+			return nil, tokens.ErrSenderMismatch
+		}
+
+		mpcPubkey := router.GetMPCPublicKey(args.From)
+		if mpcPubkey == "" {
+			return nil, tokens.ErrMissMPCPublicKey
+		}
+		erc20SwapInfo := args.ERC20SwapInfo
+		multichainToken := router.GetCachedMultichainToken(erc20SwapInfo.TokenID, args.ToChainID.String())
+		if multichainToken == "" {
+			log.Warn("get multichain token failed", "tokenID", erc20SwapInfo.TokenID, "chainID", args.ToChainID)
+			return nil, tokens.ErrMissTokenConfig
+		}
+
+		tokenCfg := b.GetTokenConfig(multichainToken)
+		if tokenCfg == nil {
+			return nil, tokens.ErrMissTokenConfig
+		}
+
+		if receiver, amount, err := b.getReceiverAndAmount(args, multichainToken); err != nil {
 			return nil, err
 		} else {
+			args.SwapValue = amount // SwapValue
 			if utxos, err := b.QueryUtxo(routerMPC, multichainToken, amount); err != nil {
 				return nil, err
 			} else {
@@ -87,7 +98,12 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 											if err := CreateRawTx(rawTransaction, routerMPC); err != nil {
 												return nil, err
 											} else {
-												return rawTransaction, nil
+												if rawBytes, err := json.Marshal(rawTransaction); err != nil {
+													return nil, err
+												} else {
+													extra.RawTx = rawBytes
+													return rawTransaction, nil
+												}
 											}
 										}
 									}
@@ -317,4 +333,56 @@ func (b *Bridge) QueryUtxoOnChain(address string) (map[UtxoKey]AssetsMap, error)
 		}
 		return utxos, nil
 	}
+}
+
+func (b *Bridge) VerifyRawTransaction(raw RawTransaction, args *tokens.BuildTxArgs) error {
+	mpcAddr := b.GetRouterContract("")
+	if len(raw.TxOuts) != 2 {
+		return tokens.ErrOutputLength
+	}
+
+	mpcAssetsMap := raw.TxOuts[mpcAddr]
+	receiverAssetsMap := raw.TxOuts[args.SwapArgs.Bind]
+	if mpcAssetsMap == nil || receiverAssetsMap == nil {
+		return tokens.ErrTxWithWrongReceiver
+	}
+	erc20SwapInfo := args.ERC20SwapInfo
+	multichainToken := router.GetCachedMultichainToken(erc20SwapInfo.TokenID, args.ToChainID.String())
+	if multichainToken == "" {
+		log.Warn("get multichain token failed", "tokenID", erc20SwapInfo.TokenID, "chainID", args.ToChainID)
+		return tokens.ErrMissTokenConfig
+	}
+
+	switch len(receiverAssetsMap) {
+	case 1:
+		adaAmount := receiverAssetsMap[AdaAsset]
+		if value, err := common.GetBigIntFromStr(adaAmount); err != nil {
+			return err
+		} else {
+			if value.Cmp(args.OriginValue) > 0 {
+				return tokens.ErrTxWithWrongValue
+			}
+		}
+	case 2:
+		adaAmount := receiverAssetsMap[AdaAsset]
+		if value, err := common.GetBigIntFromStr(adaAmount); err != nil {
+			return err
+		} else {
+			if value.Cmp(DefaultAdaAmount) > 0 {
+				return tokens.ErrTxWithWrongValue
+			}
+		}
+
+		assetAmount := receiverAssetsMap[multichainToken]
+		if value, err := common.GetBigIntFromStr(assetAmount); err != nil {
+			return err
+		} else {
+			if value.Cmp(args.OriginValue) > 0 {
+				return tokens.ErrTxWithWrongValue
+			}
+		}
+	default:
+		return tokens.ErrTxWithWrongAssetLength
+	}
+	return nil
 }
