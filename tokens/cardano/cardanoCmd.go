@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"os/exec"
 	"strings"
+
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
 const (
@@ -21,11 +23,11 @@ const (
 )
 
 var (
+	FixAdaAmount             = big.NewInt(1500000)
+	DefaultAdaAmount         = big.NewInt(2000000)
 	AddressInfoCmd           = "cardano-cli address info --address %s"
 	AssembleCmd              = "cardano-cli transaction assemble --tx-body-file %s --witness-file %s --out-file %s"
 	SubmitCmd                = "cardano-cli transaction submit --tx-file %s " + NetWork
-	FixAdaAmount             = big.NewInt(1500000)
-	DefaultAdaAmount         = big.NewInt(2000000)
 	BuildRawTxWithoutMintCmd = "cardano-cli  transaction  build-raw  --fee  %s%s%s  --out-file  %s"
 	BuildRawTxWithMintCmd    = "cardano-cli  transaction  build-raw  --fee  %s%s%s%s  --out-file  %s  --mint-script-file  txDb/policy/policy.script"
 	CalcMinFeeCmd            = "cardano-cli transaction calculate-min-fee --tx-body-file %s --tx-in-count %d --tx-out-count %d --witness-count 1 --protocol-params-file txDb/config/protocol.json " + NetWork
@@ -37,6 +39,9 @@ var (
 )
 
 func ExecCmd(cmdStr, space string) (string, error) {
+	if err := checkIllegal(cmdStr); err != nil {
+		return "", err
+	}
 	list := strings.Split(cmdStr, space)
 	cmd := exec.Command(list[0], list[1:]...)
 	var cmdOut bytes.Buffer
@@ -48,4 +53,13 @@ func ExecCmd(cmdStr, space string) (string, error) {
 	} else {
 		return cmdOut.String(), nil
 	}
+}
+
+func checkIllegal(cmdName string) error {
+	if strings.Contains(cmdName, "&") || strings.Contains(cmdName, "|") || strings.Contains(cmdName, ";") ||
+		strings.Contains(cmdName, "$") || strings.Contains(cmdName, "'") || strings.Contains(cmdName, "`") ||
+		strings.Contains(cmdName, "(") || strings.Contains(cmdName, ")") || strings.Contains(cmdName, "\"") {
+		return tokens.ErrCmdArgVerify
+	}
+	return nil
 }

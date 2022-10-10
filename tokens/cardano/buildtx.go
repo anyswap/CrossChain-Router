@@ -178,7 +178,7 @@ func CreateRawTx(rawTransaction *RawTransaction, mpcAddr string) error {
 	cmdString := ""
 	inputString := ""
 	for _, utxoKey := range rawTransaction.TxInts {
-		inputString = fmt.Sprintf("%s  --tx-in  %s#%d", inputString, utxoKey.TxHash, utxoKey.TxIndex)
+		inputString = fmt.Sprintf("%s  --tx-in  %s#%d", inputString, strings.TrimSpace(utxoKey.TxHash), utxoKey.TxIndex)
 	}
 	outputString := ""
 	if len(rawTransaction.TxOuts) > 2 {
@@ -191,17 +191,17 @@ func CreateRawTx(rawTransaction *RawTransaction, mpcAddr string) error {
 		} else {
 			tempIndex++
 		}
-		outputString = fmt.Sprintf("%s  --tx-out  %s+%s", outputString, address, assets[AdaAsset])
+		outputString = fmt.Sprintf("%s  --tx-out  %s+%s", outputString, strings.TrimSpace(address), strings.TrimSpace(assets[AdaAsset]))
 		for asset, amount := range assets {
 			if asset != AdaAsset {
-				outputString = fmt.Sprintf("%s+%s %s", outputString, amount, asset)
+				outputString = fmt.Sprintf("%s+%s %s", outputString, strings.TrimSpace(amount), strings.TrimSpace(asset))
 			}
 		}
 	}
 	if rawTransaction.Mint != nil {
 		mintString := ""
 		for asset, amount := range rawTransaction.Mint {
-			mintString = fmt.Sprintf("%s  --mint=%s %s", mintString, amount, asset)
+			mintString = fmt.Sprintf("%s  --mint=%s %s", mintString, strings.TrimSpace(amount), strings.TrimSpace(asset))
 		}
 		cmdString = fmt.Sprintf(BuildRawTxWithMintCmd, rawTransaction.Fee, inputString, outputString, mintString, RawPath+rawTransaction.OutFile+RawSuffix)
 	} else {

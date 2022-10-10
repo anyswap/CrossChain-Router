@@ -7,10 +7,10 @@ SwapSubType = ""
 
 # modgodb database connection config
 [Server.MongoDB]
-DBName = "testdb"
-DBURLs = ["192.168.110.70:27017"]
-Password = "123456"
-UserName = "tester"
+DBName = "databasename"
+DBURLs = ["localhost:27017", "localhost:12345"]
+Password = "password"
+UserName = "username"
 
 # bridge API service
 [Server.APIServer]
