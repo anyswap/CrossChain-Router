@@ -12,7 +12,7 @@ import (
 
 var (
 	maxFee              string = "100000"
-	defaultGasUnitPrice string = "1000"
+	defaultGasUnitPrice string = "2000"
 	timeout_seconds     int64  = 600
 )
 
@@ -111,6 +111,7 @@ func (b *Bridge) getGasPrice() string {
 		log.Debugln("estimateGasPrice", "GasPrice", estimateGasPrice.GasPrice)
 		return strconv.Itoa(estimateGasPrice.GasPrice)
 	} else {
+		log.Debugln("estimateGasPrice", "GasPrice", defaultGasUnitPrice)
 		return defaultGasUnitPrice
 	}
 }
