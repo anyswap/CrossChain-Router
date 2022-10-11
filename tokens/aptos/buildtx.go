@@ -12,7 +12,7 @@ import (
 
 var (
 	maxFee              string = "100000"
-	defaultGasUnitPrice string = "2000"
+	defaultGasUnitPrice string = "500"
 	timeout_seconds     int64  = 600
 )
 
@@ -128,7 +128,7 @@ func (b *Bridge) BuildDeployModuleTransaction(address, packagemetadata string, m
 	tx := &Transaction{
 		Sender:                  address,
 		SequenceNumber:          account.SequenceNumber,
-		MaxGasAmount:            strconv.Itoa(fee * 10 * len(moduleHexs)),
+		MaxGasAmount:            strconv.Itoa(fee * len(moduleHexs)),
 		GasUnitPrice:            b.getGasPrice(),
 		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
 		Payload: &TransactionPayload{
