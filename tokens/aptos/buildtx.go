@@ -108,6 +108,7 @@ func (b *Bridge) BuildSwapinTransferTransaction(args *tokens.BuildTxArgs, tokenC
 func (b *Bridge) getGasPrice() string {
 	estimateGasPrice, err := b.Client.EstimateGasPrice()
 	if err == nil {
+		log.Debugln("estimateGasPrice", "GasPrice", estimateGasPrice.GasPrice)
 		return strconv.Itoa(estimateGasPrice.GasPrice)
 	} else {
 		return defaultGasUnitPrice
