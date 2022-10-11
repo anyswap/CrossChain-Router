@@ -33,7 +33,7 @@ go run tokens/aptos/tools/issueCoin/main.go -h
 
 ### d. issue underlyingCoin
 1. copy `aptos-contract/anycoin/sources/wETH.move` to `aptos-contract/anycoin/sources/{coinName}.move`
-2. change the coin name in line 2,30,31  with your coinName
+2. change the coin name in line 2,35,36  with your coinName
 ```
 module TEST::wETH {
 
@@ -44,18 +44,18 @@ string::utf8(b"wETH"),
 3. run `aptos move compile --save-metadata --package-dir anycoin` to build code
 4. use the deployModule to deploy , modules is the path like `-module {coinName}  -path ../aptos-contract/anycoin/build/anycoin` 
 
-### e. register token to self
+### e. register coin to user so that user can hold coin
 ```
 go run tokens/aptos/tools/registerCoin/main.go -h
 ```
 
-### f. mint token to address
+### f. mint coin to user
 ```
 go run tokens/aptos/tools/mintCoin/main.go -h
 ```
 
 ### g. register lp in pool
-call registerPoolCoin to new a token and register a LP in pool
+call registerPoolCoin to new a poolCoin and register a LP in pool
 1. deploy anytoken like `PoolCoin` (notice: if deploy multi anytoken, need to create new contract, eg. copy `PoolCoin` and rename to `anyXXCoin`, check the struct name `AnyMyCoin` to `anyXXCoin`)
 2. deploy the module
 3. use `registerPoolCoin`  tools 
