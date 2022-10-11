@@ -284,6 +284,9 @@ func signAndSendReplaceTx(resBridge tokens.IBridge, rawTx interface{}, args *tok
 	txid := res.TxID
 	logIndex := res.LogIndex
 
+	cacheKey := mongodb.GetRouterSwapKey(fromChainID, txid, logIndex)
+	disagreeRecords.Delete(cacheKey)
+
 	err = mongodb.UpdateRouterOldSwapTxs(fromChainID, txid, logIndex, txHash)
 	if err != nil {
 		return
