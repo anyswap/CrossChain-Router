@@ -43,7 +43,7 @@ func initFlags() {
 	flag.StringVar(&poolCoinName, "name", "", "anycoin name")
 	flag.StringVar(&poolCoinSymbol, "symbol", "", "anycoin symbol")
 	flag.UintVar(&decimals, "decimals", 6, "anycoin decimals")
-	flag.BoolVar(&monitor_supply, "supply", false, "anycoin decimals")
+	flag.BoolVar(&monitor_supply, "supply", false, "need monitor supply")
 
 	flag.Parse()
 }
