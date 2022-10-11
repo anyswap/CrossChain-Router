@@ -2,6 +2,7 @@ package aptos
 
 import (
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -324,6 +325,30 @@ func (b *Bridge) BuildSwapoutTransaction(sender, coin, toAddress, tochainId stri
 			Function:      GetRouterFunctionId(sender, CONTRACT_NAME_ROUTER, CONTRACT_FUNC_SWAPOUT),
 			TypeArguments: []string{coin},
 			Arguments:     []interface{}{strconv.FormatUint(amount, 10), toAddress, tochainId},
+		},
+	}
+	return tx, nil
+}
+
+func (b *Bridge) BuildTestUnderlyingCoinMintTransaction(minter, toaddress, coin string, amount uint64) (*Transaction, error) {
+	account, err := b.Client.GetAccount(minter)
+	if err != nil {
+		return nil, err
+	}
+
+	// 10 min
+	timeout := time.Now().Unix() + timeout_seconds
+	tx := &Transaction{
+		Sender:                  minter,
+		SequenceNumber:          account.SequenceNumber,
+		MaxGasAmount:            maxFee,
+		GasUnitPrice:            b.getGasPrice(),
+		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
+		Payload: &TransactionPayload{
+			Type:          SCRIPT_FUNCTION_PAYLOAD,
+			Function:      GetRouterFunctionId(minter, strings.Split(coin, "::")[1], "mint"),
+			TypeArguments: []string{},
+			Arguments:     []interface{}{toaddress, strconv.FormatUint(amount, 10)},
 		},
 	}
 	return tx, nil

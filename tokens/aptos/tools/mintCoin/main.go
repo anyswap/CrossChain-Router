@@ -25,6 +25,7 @@ var (
 	coin      string
 	toAddress string
 	amount    uint64
+	cointype  string
 
 	mpcConfig *mpc.Config
 )
@@ -39,6 +40,7 @@ func initFlags() {
 	flag.StringVar(&coin, "coin", "", "coin resource")
 	flag.StringVar(&toAddress, "to", "", "toAddress")
 	flag.Uint64Var(&amount, "amount", 0, "coin amount")
+	flag.StringVar(&cointype, "cointype", "", "coin type: anytoken or underlying")
 
 	flag.Parse()
 }
@@ -54,9 +56,20 @@ func main() {
 		account = aptos.NewAccountFromPubkey(paramPublicKey)
 	}
 	log.Info("SignAccount", "address", account.GetHexAddress())
-	tx, err := bridge.BuildMintCoinTransaction(account.GetHexAddress(), toAddress, coin, amount)
-	if err != nil {
-		log.Fatalf("%v", err)
+
+	var tx *aptos.Transaction
+	var err error
+
+	if cointype == "anytoken" {
+		tx, err = bridge.BuildMintCoinTransaction(account.GetHexAddress(), toAddress, coin, amount)
+		if err != nil {
+			log.Fatalf("%v", err)
+		}
+	} else {
+		tx, err = bridge.BuildTestUnderlyingCoinMintTransaction(account.GetHexAddress(), toAddress, coin, amount)
+		if err != nil {
+			log.Fatalf("%v", err)
+		}
 	}
 	signingMessage, err := bridge.Client.GetSigningMessage(tx)
 	if err != nil {
