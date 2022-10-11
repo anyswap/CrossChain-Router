@@ -31,6 +31,10 @@ var (
 	swapTaskQueues   = make(map[string]*fifo.Queue) // key is toChainID
 	swapTasksInQueue = mapset.NewSet()
 
+	disagreeRecords      = new(sync.Map)
+	maxDisagreeCount     = uint64(10)
+	disagreeWaitInterval = int64(300)
+
 	errAlreadySwapped     = errors.New("already swapped")
 	errSendTxWithDiffHash = errors.New("send tx with different hash")
 	errChainIsPaused      = errors.New("from or to chain is paused")
@@ -147,6 +151,20 @@ func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
 
 	if strings.HasPrefix(res.Memo, tokens.ErrBuildTxErrorAndDelay.Error()) && res.Timestamp+300 > now() {
 		return nil
+	}
+
+	var disagreeCount uint64
+	cacheKey := mongodb.GetRouterSwapKey(fromChainID, txid, logIndex)
+	oldValue, exist := disagreeRecords.Load(cacheKey)
+	if exist {
+		disagreeCount = oldValue.(uint64)
+	}
+	if disagreeCount > maxDisagreeCount {
+		if res.Timestamp+disagreeWaitInterval > now() {
+			logWorkerTrace("swap", "disagree too many times", "txid", txid, "logIndex", logIndex, "fromChainID", fromChainID, "toChainID", toChainID, "token", swap.GetToken(), "tokenID", swap.GetTokenID())
+			return nil
+		}
+		disagreeRecords.Store(cacheKey, 0) // recount from zero
 	}
 
 	logWorker("swap", "start process router swap", "fromChainID", fromChainID, "txid", txid, "logIndex", logIndex, "status", swap.Status, "value", res.Value)
@@ -387,6 +405,8 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 	}
 	logWorker("doSwap", "sign tx success", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "txHash", txHash, "swapNonce", swapTxNonce)
 
+	disagreeRecords.Delete(cacheKey)
+
 	// recheck reswap before update db
 	res, err := mongodb.FindRouterSwapResult(fromChainID, txid, logIndex)
 	if err != nil {
@@ -496,6 +516,9 @@ func signAndSendTx(rawTx interface{}, args *tokens.BuildTxArgs) error {
 		return err
 	}
 
+	cacheKey := mongodb.GetRouterSwapKey(fromChainID, txid, logIndex)
+	disagreeRecords.Delete(cacheKey)
+
 	// update database before sending transaction
 	addSwapHistory(fromChainID, txid, logIndex, txHash)
 	_ = updateSwapTx(fromChainID, txid, logIndex, txHash)
@@ -535,6 +558,14 @@ func reverifySwap(args *tokens.BuildTxArgs) {
 		_ = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxNotStable, now(), "")
 		_ = mongodb.UpdateRouterSwapResultStatus(fromChainID, txid, logIndex, mongodb.TxNotStable, now(), err.Error())
 	}
+
+	var disagreeCount uint64
+	cacheKey := mongodb.GetRouterSwapKey(fromChainID, txid, logIndex)
+	oldValue, exist := disagreeRecords.Load(cacheKey)
+	if exist {
+		disagreeCount = oldValue.(uint64)
+	}
+	disagreeRecords.Store(cacheKey, disagreeCount+1)
 }
 
 // DeleteCachedSwap delete cached swap
