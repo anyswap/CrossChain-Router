@@ -121,14 +121,15 @@ func (b *Bridge) BuildDeployModuleTransaction(address, packagemetadata string, m
 	if err != nil {
 		return nil, err
 	}
-	fee, _ := strconv.Atoi(maxFee)
+	// fee, _ := strconv.Atoi(maxFee)
 
 	// 10 min
 	timeout := time.Now().Unix() + timeout_seconds
 	tx := &Transaction{
-		Sender:                  address,
-		SequenceNumber:          account.SequenceNumber,
-		MaxGasAmount:            strconv.Itoa(fee * len(moduleHexs)),
+		Sender:         address,
+		SequenceNumber: account.SequenceNumber,
+		// MaxGasAmount:            strconv.Itoa(fee * len(moduleHexs)),
+		MaxGasAmount:            maxFee,
 		GasUnitPrice:            b.getGasPrice(),
 		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
 		Payload: &TransactionPayload{
