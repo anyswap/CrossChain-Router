@@ -22,6 +22,7 @@ var (
 	paramPublicKey string
 	paramPriKey    string
 
+	router    string
 	coin      string
 	toAddress string
 	toChainId string
@@ -38,6 +39,7 @@ func initFlags() {
 	flag.StringVar(&paramPriKey, "priKey", "", "signer priKey key")
 
 	flag.StringVar(&coin, "coin", "", "coin resource")
+	flag.StringVar(&router, "router", "", "router address")
 	flag.StringVar(&toAddress, "toAddress", "", "toAddress")
 	flag.StringVar(&toChainId, "toChainId", "", "toChainId")
 	flag.Uint64Var(&amount, "amount", 0, "anycoin name")
@@ -56,7 +58,7 @@ func main() {
 		account = aptos.NewAccountFromPubkey(paramPublicKey)
 	}
 	log.Info("SignAccount", "address", account.GetHexAddress())
-	tx, err := bridge.BuildSwapoutTransaction(account.GetHexAddress(), coin, toAddress, toChainId, amount)
+	tx, err := bridge.BuildSwapoutTransaction(account.GetHexAddress(), router, coin, toAddress, toChainId, amount)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
