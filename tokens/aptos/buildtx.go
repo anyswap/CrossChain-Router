@@ -306,7 +306,7 @@ func (b *Bridge) BuildMintCoinTransaction(minter, toaddress, coin string, amount
 	return tx, nil
 }
 
-func (b *Bridge) BuildSwapoutTransaction(sender, coin, toAddress, tochainId string, amount uint64) (*Transaction, error) {
+func (b *Bridge) BuildSwapoutTransaction(sender, router, coin, toAddress, tochainId string, amount uint64) (*Transaction, error) {
 	account, err := b.Client.GetAccount(sender)
 	if err != nil {
 		return nil, err
@@ -322,7 +322,7 @@ func (b *Bridge) BuildSwapoutTransaction(sender, coin, toAddress, tochainId stri
 		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
 		Payload: &TransactionPayload{
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
-			Function:      GetRouterFunctionId(sender, CONTRACT_NAME_ROUTER, CONTRACT_FUNC_SWAPOUT),
+			Function:      GetRouterFunctionId(router, CONTRACT_NAME_ROUTER, CONTRACT_FUNC_SWAPOUT),
 			TypeArguments: []string{coin},
 			Arguments:     []interface{}{strconv.FormatUint(amount, 10), toAddress, tochainId},
 		},
