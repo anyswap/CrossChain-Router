@@ -52,10 +52,9 @@ go run tokens/aptos/tools/mintCoin/main.go -h
 ```
 
 ### g. register lp in pool
-call registerPoolCoin to new a poolCoin and register a LP in pool
-1. deploy anytoken like `PoolCoin` (notice: if deploy multi anytoken, need to create new contract, eg. copy `PoolCoin` and rename to `anyXXCoin`, check the struct name `AnyMyCoin` to `anyXXCoin`)
-2. deploy the module
-3. use `registerPoolCoin`  tools 
+call registerPoolCoin to new a poolCoin and register a LP in pool.
+this will automatically issue anytoken for the given resource, so define the anycoin name and -decimals at the same time
+1. use `registerPoolCoin`  tools 
 ```
 go run tokens/aptos/tools/registerPoolCoin/main.go -h
 ```
