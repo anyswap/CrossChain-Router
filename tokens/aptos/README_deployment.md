@@ -48,8 +48,9 @@ string::utf8(b"wETH"),
 ```
 go run tokens/aptos/tools/registerCoin/main.go -h
 ```
+you should register anytoken and underlying both
 
-### f. mint coin to user
+### f. mint coin to user for test
 ```
 go run tokens/aptos/tools/mintCoin/main.go -h
 ```
