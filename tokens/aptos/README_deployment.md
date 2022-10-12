@@ -19,19 +19,15 @@ deploy `Pool` and `Router`
 go run tokens/aptos/tools/deployModule/main.go -h
 ```
 
-### c. issue anyCoin
+### c. deploy anyCoin
 1. add new struct name `AnyMyCoin` as `anyUSDT` in anycoin/sources/PoolCoin.move
 2. run `aptos move compile --save-metadata --package-dir anycoin` to build code
 3. use the deployModule to deploy , modules is the path like `-module PoolCoin  -path ../aptos-contract/anycoin/build/anycoin` 
 ```
 go run tokens/aptos/tools/deployModule/main.go -h
 ```
-3. use `issueCoin` to issue a coin 
-```
-go run tokens/aptos/tools/issueCoin/main.go -h
-```  
 
-### d. issue underlyingCoin
+### d. deploy and issue underlyingCoin
 1. copy `aptos-contract/anycoin/sources/wETH.move` to `aptos-contract/anycoin/sources/{coinName}.move`
 2. change the coin name in line 2,35,36  with your coinName
 ```
@@ -64,14 +60,14 @@ call registerPoolCoin to new a poolCoin and register a LP in pool
 go run tokens/aptos/tools/registerPoolCoin/main.go -h
 ```
 
-### h. set coin type
+### h. set coin type 
 1. anyCoin set 0
 2. underlying Coin set 1
 ```
 go run tokens/aptos/tools/configCoin/main.go -h
 ```
 
-### i. set router status
+### i. set router status (admin)
 router status `[1]:open [0]:close`
 ```
 go run tokens/aptos/tools/setStatus/main.go -h
