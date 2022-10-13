@@ -103,6 +103,11 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 		}
 	}
 	b.CrossChainBridgeBase.SetTokenConfig(tokenAddr, tokenCfg)
+
+	if tokenCfg.Extra != "" {
+		b.SetTokenConfig(tokenCfg.Extra, tokenCfg)
+	}
+
 }
 
 func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
