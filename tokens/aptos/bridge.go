@@ -104,7 +104,7 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 	}
 	b.CrossChainBridgeBase.SetTokenConfig(tokenAddr, tokenCfg)
 
-	if tokenCfg.Extra != "" {
+	if tokenCfg.Extra != "" && tokenCfg.Extra != tokenAddr {
 		b.SetTokenConfig(tokenCfg.Extra, tokenCfg)
 	}
 
