@@ -94,6 +94,7 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 
 		err = b.checkCoinBalance(args.From, needValue)
 		if err != nil {
+			log.Warn("not enough coin balance", "tx.value", value, "gasFee", gasFee, "gasLimit", gasLimit, "gasPrice", gasPrice, "gasFeeCap", gasFeeCap, "minReserveFee", minReserveFee, "needValue", needValue, "isDynamic", isDynamicFeeTx, "swapID", args.SwapID, "err", err)
 			return nil, err
 		}
 	}
@@ -212,11 +213,19 @@ func (b *Bridge) setDefaults(args *tokens.BuildTxArgs) (err error) {
 		maxTokenGasLimit := params.GetMaxTokenGasLimit(args.GetTokenID(), b.ChainConfig.ChainID)
 		if maxTokenGasLimit > 0 {
 			if esGasLimit > maxTokenGasLimit {
+				log.Warn(fmt.Sprintf("build %s tx estimated gas is too large", args.SwapType.String()),
+					"swapID", args.SwapID, "from", args.From, "to", args.To,
+					"value", args.Value, "data", *args.Input,
+					"gasLimit", esGasLimit, "maxTokenGasLimit", maxTokenGasLimit)
 				return fmt.Errorf("%w %v %v on chain %v", tokens.ErrBuildTxErrorAndDelay, "estimated gas is too large for token", args.GetTokenID(), b.ChainConfig.ChainID)
 			}
 		} else {
 			maxGasLimit := params.GetMaxGasLimit(b.ChainConfig.ChainID)
 			if maxGasLimit > 0 && esGasLimit > maxGasLimit {
+				log.Warn(fmt.Sprintf("build %s tx estimated gas is too large", args.SwapType.String()),
+					"swapID", args.SwapID, "from", args.From, "to", args.To,
+					"value", args.Value, "data", *args.Input,
+					"gasLimit", esGasLimit, "maxGasLimit", maxGasLimit)
 				return fmt.Errorf("%w %v on chain %v", tokens.ErrBuildTxErrorAndDelay, "estimated gas is too large", b.ChainConfig.ChainID)
 			}
 		}
@@ -244,7 +253,7 @@ func (b *Bridge) getGasPrice(args *tokens.BuildTxArgs) (price *big.Int, err erro
 			if price1, err1 := b.SuggestPrice(); err1 == nil {
 				max := params.GetMaxGasPrice(b.ChainConfig.ChainID)
 				if max != nil && price1.Cmp(max) > 0 {
-					log.Debugf("call eth_gasPrice got gas price %v exceeded maximum limit %v", price1, max)
+					log.Warnf("call eth_gasPrice got gas price %v exceeded maximum limit %v", price1, max)
 				}
 			}
 		}
