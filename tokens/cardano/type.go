@@ -5,6 +5,11 @@ type TransactionChainingMap struct {
 	AssetsMap AssetsMap `json:"assetsMap"`
 }
 
+type TransactionChainingKey struct {
+	SpentUtxoMap  map[UtxoKey]bool `json:"SpentUtxoMap"`
+	SpentUtxoList []UtxoKey        `json:"SpentUtxoList"`
+}
+
 type Tip struct {
 	Slot uint64 `json:"slot"`
 }
@@ -68,7 +73,7 @@ type AssetsMap map[string]string
 
 type RawTransaction struct {
 	Fee     string               `json:"fee"`
-	TxInts  []UtxoKey            `json:"txInts"`
+	TxIns   []UtxoKey            `json:"txIns"`
 	TxOuts  map[string]AssetsMap `json:"txOuts"`
 	Mint    AssetsMap            `json:"mint"`
 	TxIndex uint64               `json:"txIndex"`
@@ -79,6 +84,7 @@ func (*RawTransaction) ProtoMessage() {}
 
 type SignedTransaction struct {
 	FilePath  string    `json:"filePath"`
+	TxIns     []UtxoKey `json:"txIns"`
 	TxHash    string    `json:"txHash"`
 	TxIndex   uint64    `json:"txIndex"`
 	AssetsMap AssetsMap `json:"assetsMap"`

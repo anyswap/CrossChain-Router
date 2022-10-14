@@ -38,10 +38,11 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 			}
 
 			cacheAssetsMap := rawTransaction.TxOuts[args.From]
+			txInputs := rawTransaction.TxIns
 			txIndex := rawTransaction.TxIndex
 			if mpcParams.SignWithPrivateKey {
 				priKey := mpcParams.GetSignerPrivateKey(b.ChainConfig.ChainID)
-				return b.SignTransactionWithPrivateKey(txIndex, cacheAssetsMap, txPath, witnessPath, signedPath, txHash, mpcPubkey, priKey)
+				return b.SignTransactionWithPrivateKey(txInputs, txIndex, cacheAssetsMap, txPath, witnessPath, signedPath, txHash, mpcPubkey, priKey)
 			}
 
 			jsondata, _ := json.Marshal(args.GetExtraArgs())
@@ -77,6 +78,7 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 					} else {
 						return &SignedTransaction{
 							FilePath:  signedPath,
+							TxIns:     txInputs,
 							TxHash:    txHash,
 							TxIndex:   txIndex,
 							AssetsMap: cacheAssetsMap,
@@ -98,7 +100,7 @@ func CalcTxId(txPath string) (string, error) {
 }
 
 // SignTransactionWithPrivateKey sign tx with ECDSA private key
-func (b *Bridge) SignTransactionWithPrivateKey(txIndex uint64, assetsMap AssetsMap, txPath, witnessPath, signedPath, txHash, mpcPubkey, privKey string) (*SignedTransaction, string, error) {
+func (b *Bridge) SignTransactionWithPrivateKey(txInputs []UtxoKey, txIndex uint64, assetsMap AssetsMap, txPath, witnessPath, signedPath, txHash, mpcPubkey, privKey string) (*SignedTransaction, string, error) {
 	if edPrivKey, err := StringToPrivateKey(privKey); err != nil {
 		return nil, "", err
 	} else {
@@ -113,6 +115,7 @@ func (b *Bridge) SignTransactionWithPrivateKey(txIndex uint64, assetsMap AssetsM
 				} else {
 					return &SignedTransaction{
 						FilePath:  signedPath,
+						TxIns:     txInputs,
 						TxHash:    txHash,
 						TxIndex:   txIndex,
 						AssetsMap: assetsMap,

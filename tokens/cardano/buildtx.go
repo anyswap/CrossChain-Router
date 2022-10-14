@@ -124,11 +124,11 @@ func (b *Bridge) BuildTx(swapId, receiver, assetId string, amount *big.Int, utxo
 		Fee:     "0",
 		OutFile: swapId,
 		TxOuts:  make(map[string]AssetsMap),
-		TxInts:  []UtxoKey{},
+		TxIns:   []UtxoKey{},
 	}
 	allAssetsMap := map[string]uint64{}
 	for utxoKey, assetsMap := range utxos {
-		rawTransaction.TxInts = append(rawTransaction.TxInts, utxoKey)
+		rawTransaction.TxIns = append(rawTransaction.TxIns, utxoKey)
 		for asset, assetAmount := range assetsMap {
 			if value, err := common.GetBigIntFromStr(assetAmount); err != nil {
 				return nil, err
@@ -177,7 +177,7 @@ func (b *Bridge) BuildTx(swapId, receiver, assetId string, amount *big.Int, utxo
 func CreateRawTx(rawTransaction *RawTransaction, mpcAddr string) error {
 	cmdString := ""
 	inputString := ""
-	for _, utxoKey := range rawTransaction.TxInts {
+	for _, utxoKey := range rawTransaction.TxIns {
 		inputString = fmt.Sprintf("%s  --tx-in  %s#%d", inputString, strings.TrimSpace(utxoKey.TxHash), utxoKey.TxIndex)
 	}
 	outputString := ""
@@ -215,7 +215,7 @@ func CreateRawTx(rawTransaction *RawTransaction, mpcAddr string) error {
 
 func CalcMinFee(rawTransaction *RawTransaction) (string, error) {
 	txBodyPath := RawPath + rawTransaction.OutFile + RawSuffix
-	cmdString := fmt.Sprintf(CalcMinFeeCmd, txBodyPath, len(rawTransaction.TxInts), len(rawTransaction.TxOuts))
+	cmdString := fmt.Sprintf(CalcMinFeeCmd, txBodyPath, len(rawTransaction.TxIns), len(rawTransaction.TxOuts))
 	if execRes, err := ExecCmd(cmdString, " "); err != nil {
 		return "", err
 	} else {
@@ -306,7 +306,7 @@ func (b *Bridge) GetTransactionChainingMap(assetName string, amount *big.Int) (m
 			return nil, err
 		} else {
 			if assetName == AdaAsset {
-				needAmount.Add(needAmount, amount)
+				needAmount.Add(needAmount, DefaultAdaAmount)
 			}
 			if balance.Cmp(needAmount) >= 0 {
 				utxoKey := UtxoKey{TxHash: TransactionChaining.InputKey.TxHash, TxIndex: TransactionChaining.InputKey.TxIndex}
@@ -325,10 +325,12 @@ func (b *Bridge) QueryUtxoOnChain(address string) (map[UtxoKey]AssetsMap, error)
 	} else {
 		for _, output := range *outputs {
 			utxoKey := UtxoKey{TxHash: output.TxHash, TxIndex: output.Index}
-			utxos[utxoKey] = make(AssetsMap)
-			utxos[utxoKey][AdaAsset] = output.Value
-			for _, token := range output.Tokens {
-				utxos[utxoKey][token.Asset.PolicyId+"."+token.Asset.AssetName] = token.Quantity
+			if !TransactionChainingKeyCache.SpentUtxoMap[utxoKey] {
+				utxos[utxoKey] = make(AssetsMap)
+				utxos[utxoKey][AdaAsset] = output.Value
+				for _, token := range output.Tokens {
+					utxos[utxoKey][token.Asset.PolicyId+"."+token.Asset.AssetName] = token.Quantity
+				}
 			}
 		}
 		return utxos, nil
