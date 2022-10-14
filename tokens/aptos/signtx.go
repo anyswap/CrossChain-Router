@@ -23,10 +23,11 @@ func (b *Bridge) verifyTransactionWithArgs(tx *Transaction, args *tokens.BuildTx
 		return fmt.Errorf("[sign] verify FromChainID failed")
 	}
 
-	amount, err := strconv.ParseUint(swapin[1].(string), 10, 64)
-	if err != nil || amount != args.OriginValue.Uint64() {
-		return fmt.Errorf("[sign] verify Amount failed swapin.Amount %v args.OriginValue %v", amount, args.OriginValue.Uint64())
-	}
+	// no need to check 2022/10/14
+	// amount, err := strconv.ParseUint(swapin[1].(string), 10, 64)
+	// if err != nil || amount != args.OriginValue.Uint64() {
+	// 	return fmt.Errorf("[sign] verify Amount failed swapin.Amount %v args.OriginValue %v", amount, args.OriginValue.Uint64())
+	// }
 
 	if swapin[2] != args.SwapID {
 		return fmt.Errorf("[sign] verify Tx failed swapin tx: %v OriginFrom: %v ", swapin[2], args.SwapID)
