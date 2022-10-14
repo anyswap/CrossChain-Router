@@ -21,7 +21,11 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (string, error) {
 		}
 		cacheListLength := len(TransactionChainingKeyCache.SpentUtxoList)
 		if cacheListLength > 100 {
-			TransactionChainingKeyCache.SpentUtxoList = TransactionChainingKeyCache.SpentUtxoList[cacheListLength-100 : cacheListLength]
+			deleteKey := TransactionChainingKeyCache.SpentUtxoList[:cacheListLength-100]
+			for _, key := range deleteKey {
+				delete(TransactionChainingKeyCache.SpentUtxoMap, key)
+			}
+			TransactionChainingKeyCache.SpentUtxoList = TransactionChainingKeyCache.SpentUtxoList[cacheListLength-100:]
 		}
 		return signedTransaction.TxHash, nil
 	}
