@@ -26,22 +26,41 @@ var (
 	LogAnyCallV6Topic = common.FromHex("0xa17aef042e1a5dd2b8e68f0d0d92f9a6a0b35dc25be1d12c0cb3135bfd8951c9")
 	AnyExecV6FuncHash = common.FromHex("0x4a578150")
 
+	// v7 LogAnyCall(address,address,bytes,uint256,uint256,string,uint256,bytes)
+	LogAnyCallV7Topic = common.FromHex("0x17dac14bf31c4070ebb2dc182fc25ae5df58f14162a7f24a65b103e22385af0d")
+	// v7 LogAnyCall(address,string,bytes,uint256,uint256,string,uint256,bytes)
+	LogAnyCallV7Topic2 = common.FromHex("0x36850177870d3e3dca07a29dcdc3994356392b81c60f537c1696468b1a01e61d")
+	AnyExecV7FuncHash  = common.FromHex("0xd7328bad")
+
 	defMinReserveBudget = big.NewInt(1e16)
 )
 
-func getAnyCallLogTopic() ([]byte, error) {
+func checkAnyCallLogTopic(logTopic []byte) error {
+	var filterTopics [][]byte
 	switch params.GetSwapSubType() {
-	case tokens.AnycallSubTypeV5, tokens.CurveAnycallSubType:
-		return LogAnyCallV5Topic, nil
+	case tokens.AnycallSubTypeV7:
+		filterTopics = [][]byte{LogAnyCallV7Topic, LogAnyCallV7Topic2}
 	case tokens.AnycallSubTypeV6:
-		return LogAnyCallV6Topic, nil
+		filterTopics = [][]byte{LogAnyCallV6Topic}
+	case tokens.AnycallSubTypeV5, tokens.CurveAnycallSubType:
+		filterTopics = [][]byte{LogAnyCallV5Topic}
 	default:
-		return nil, tokens.ErrUnknownSwapSubType
+		return tokens.ErrUnknownSwapSubType
 	}
+
+	for _, topic := range filterTopics {
+		if bytes.Equal(logTopic, topic) {
+			return nil
+		}
+	}
+
+	return tokens.ErrSwapoutLogNotFound
 }
 
 func getAnyExecFuncHash() ([]byte, error) {
 	switch params.GetSwapSubType() {
+	case tokens.AnycallSubTypeV7:
+		return AnyExecV7FuncHash, nil
 	case tokens.AnycallSubTypeV5, tokens.CurveAnycallSubType:
 		return AnyExecV5FuncHash, nil
 	case tokens.AnycallSubTypeV6:
@@ -164,17 +183,124 @@ func (b *Bridge) verifyAnyCallSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types
 }
 
 func (b *Bridge) parseAnyCallSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
+	if rlog == nil || len(rlog.Topics) == 0 {
+		return tokens.ErrSwapoutLogNotFound
+	}
+
+	logTopic := rlog.Topics[0].Bytes()
+	err = checkAnyCallLogTopic(logTopic)
+	if err != nil {
+		return err
+	}
+
+	switch {
+	case bytes.Equal(logTopic, LogAnyCallV7Topic):
+		return b.parseAnyCallV7Log(swapInfo, rlog, false)
+	case bytes.Equal(logTopic, LogAnyCallV7Topic2):
+		return b.parseAnyCallV7Log(swapInfo, rlog, true)
+	case bytes.Equal(logTopic, LogAnyCallV6Topic):
+		return b.parseAnyCallV6Log(swapInfo, rlog)
+	case bytes.Equal(logTopic, LogAnyCallV5Topic):
+		return b.parseAnyCallV5Log(swapInfo, rlog)
+	default:
+		return tokens.ErrSwapoutLogNotFound
+	}
+}
+
+func (b *Bridge) parseAnyCallV7Log(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog, isStringToAddr bool) (err error) {
+	logTopics := rlog.Topics
+	if len(logTopics) != 2 {
+		return tokens.ErrTxWithWrongTopics
+	}
+
+	var minDataLen int
+	if isStringToAddr {
+		minDataLen = 352
+	} else {
+		minDataLen = 320
+	}
+
+	logData := *rlog.Data
+	if len(logData) < minDataLen {
+		return abicoder.ErrParseDataError
+	}
+
+	swapInfo.SwapInfo = tokens.SwapInfo{AnyCallSwapInfo: &tokens.AnyCallSwapInfo{}}
+	anycallSwapInfo := swapInfo.AnyCallSwapInfo
+
+	anycallSwapInfo.CallFrom = common.BytesToAddress(logTopics[1].Bytes()).LowerHex()
+
+	if isStringToAddr {
+		anycallSwapInfo.CallTo, err = abicoder.ParseStringInData(logData, 0)
+		if err != nil {
+			return err
+		}
+	} else {
+		anycallSwapInfo.CallTo = common.BytesToAddress(common.GetData(logData, 0, 32)).LowerHex()
+	}
+
+	anycallSwapInfo.CallData, err = abicoder.ParseBytesInData(logData, 32)
+	if err != nil {
+		return err
+	}
+
+	swapInfo.ToChainID = common.GetBigInt(logData, 64, 32)
+
+	anycallSwapInfo.Flags = common.GetBigInt(logData, 96, 32).String()
+
+	anycallSwapInfo.AppID, err = abicoder.ParseStringInData(logData, 128)
+	if err != nil {
+		return err
+	}
+
+	anycallSwapInfo.Nonce = common.GetBigInt(logData, 160, 32).String()
+
+	anycallSwapInfo.ExtData, err = abicoder.ParseBytesInData(logData, 192)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (b *Bridge) parseAnyCallV6Log(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
 	logTopics := rlog.Topics
 	if len(logTopics) != 4 {
 		return tokens.ErrTxWithWrongTopics
 	}
-	anycallLogTopic, err := getAnyCallLogTopic()
+
+	logData := *rlog.Data
+	if len(logData) < 224 {
+		return abicoder.ErrParseDataError
+	}
+
+	swapInfo.SwapInfo = tokens.SwapInfo{AnyCallSwapInfo: &tokens.AnyCallSwapInfo{}}
+	anycallSwapInfo := swapInfo.AnyCallSwapInfo
+
+	anycallSwapInfo.CallFrom = common.BytesToAddress(logTopics[1].Bytes()).LowerHex()
+	anycallSwapInfo.CallTo = common.BytesToAddress(logTopics[2].Bytes()).LowerHex()
+	swapInfo.ToChainID = new(big.Int).SetBytes(logTopics[3].Bytes())
+
+	anycallSwapInfo.CallData, err = abicoder.ParseBytesInData(logData, 0)
 	if err != nil {
 		return err
 	}
-	logTopic := rlog.Topics[0].Bytes()
-	if !bytes.Equal(logTopic, anycallLogTopic) {
-		return tokens.ErrSwapoutLogNotFound
+	anycallSwapInfo.Fallback = common.BytesToAddress(common.GetData(logData, 32, 32)).LowerHex()
+
+	anycallSwapInfo.Flags = common.GetBigInt(logData, 64, 32).String()
+	anycallSwapInfo.AppID, err = abicoder.ParseStringInData(logData, 96)
+	if err != nil {
+		return err
+	}
+	anycallSwapInfo.Nonce = common.GetBigInt(logData, 128, 32).String()
+
+	return nil
+}
+
+func (b *Bridge) parseAnyCallV5Log(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
+	logTopics := rlog.Topics
+	if len(logTopics) != 4 {
+		return tokens.ErrTxWithWrongTopics
 	}
 
 	logData := *rlog.Data
@@ -194,21 +320,6 @@ func (b *Bridge) parseAnyCallSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.
 		return err
 	}
 	anycallSwapInfo.Fallback = common.BytesToAddress(common.GetData(logData, 32, 32)).LowerHex()
-
-	if params.GetSwapSubType() == tokens.AnycallSubTypeV5 || params.GetSwapSubType() == tokens.CurveAnycallSubType {
-		return nil
-	}
-
-	if len(logData) < 224 {
-		return abicoder.ErrParseDataError
-	}
-
-	anycallSwapInfo.Flags = common.GetBigInt(logData, 64, 32).String()
-	anycallSwapInfo.AppID, err = abicoder.ParseStringInData(logData, 96)
-	if err != nil {
-		return err
-	}
-	anycallSwapInfo.Nonce = common.GetBigInt(logData, 128, 32).String()
 
 	return nil
 }
@@ -256,6 +367,26 @@ func (b *Bridge) buildAnyCallSwapTxInput(args *tokens.BuildTxArgs) (err error) {
 
 	var input []byte
 	switch params.GetSwapSubType() {
+	case tokens.AnycallSubTypeV7:
+		nonce, err := common.GetBigIntFromStr(anycallSwapInfo.Nonce)
+		if err != nil {
+			return err
+		}
+		flags, err := common.GetBigIntFromStr(anycallSwapInfo.Flags)
+		if err != nil {
+			return err
+		}
+		input = abicoder.PackDataWithFuncHash(funcHash,
+			common.HexToAddress(anycallSwapInfo.CallTo),
+			anycallSwapInfo.CallData,
+			anycallSwapInfo.AppID,
+			common.HexToHash(args.SwapID),
+			common.HexToAddress(anycallSwapInfo.CallFrom),
+			args.FromChainID,
+			nonce,
+			flags,
+			anycallSwapInfo.ExtData,
+		)
 	case tokens.AnycallSubTypeV5, tokens.CurveAnycallSubType:
 		input = abicoder.PackDataWithFuncHash(funcHash,
 			common.HexToAddress(anycallSwapInfo.CallFrom),

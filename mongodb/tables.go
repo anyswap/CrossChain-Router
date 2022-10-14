@@ -127,6 +127,7 @@ type AnyCallSwapInfo struct {
 	Flags    string `bson:",omitempty" json:"flags,omitempty"`
 	AppID    string `bson:",omitempty" json:"appid,omitempty"`
 	Nonce    string `bson:",omitempty" json:"nonce,omitempty"`
+	ExtData  string `bson:",omitempty" json:"extdata,omitempty"`
 }
 
 // GetToken get token

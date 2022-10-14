@@ -27,12 +27,13 @@ const (
 	CurveAnycallSubType = "curve"
 	AnycallSubTypeV5    = "v5" // for curve
 	AnycallSubTypeV6    = "v6" // for hundred
+	AnycallSubTypeV7    = "v7" // add callback
 )
 
 // IsValidAnycallSubType is valid anycall subType
 func IsValidAnycallSubType(subType string) bool {
 	switch subType {
-	case CurveAnycallSubType, AnycallSubTypeV5, AnycallSubTypeV6:
+	case CurveAnycallSubType, AnycallSubTypeV5, AnycallSubTypeV6, AnycallSubTypeV7:
 		return true
 	default:
 		return false
@@ -93,6 +94,7 @@ type AnyCallSwapInfo struct {
 	Flags    string        `json:"flags,omitempty"`
 	AppID    string        `json:"appid,omitempty"`
 	Nonce    string        `json:"nonce,omitempty"`
+	ExtData  hexutil.Bytes `json:"extdata,omitempty"`
 }
 
 // SwapInfo struct
