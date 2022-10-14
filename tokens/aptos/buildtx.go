@@ -353,3 +353,51 @@ func (b *Bridge) BuildTestUnderlyingCoinMintTransaction(minter, toaddress, coin 
 	}
 	return tx, nil
 }
+
+func (b *Bridge) BuildDepositTransaction(sender, pool, underlying, anycoin string, amount uint64) (*Transaction, error) {
+	account, err := b.Client.GetAccount(sender)
+	if err != nil {
+		return nil, err
+	}
+
+	// 10 min
+	timeout := time.Now().Unix() + 600
+	tx := &Transaction{
+		Sender:                  sender,
+		SequenceNumber:          account.SequenceNumber,
+		MaxGasAmount:            maxFee,
+		GasUnitPrice:            b.getGasPrice(),
+		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
+		Payload: &TransactionPayload{
+			Type:          SCRIPT_FUNCTION_PAYLOAD,
+			Function:      GetRouterFunctionId(pool, CONTRACT_NAME_POOL, CONTRACT_FUNC_DEPOSIT),
+			TypeArguments: []string{underlying, anycoin},
+			Arguments:     []interface{}{strconv.FormatUint(amount, 10)},
+		},
+	}
+	return tx, nil
+}
+
+func (b *Bridge) BuildWithdrawTransaction(sender, pool, underlying, anycoin string, amount uint64) (*Transaction, error) {
+	account, err := b.Client.GetAccount(sender)
+	if err != nil {
+		return nil, err
+	}
+
+	// 10 min
+	timeout := time.Now().Unix() + 600
+	tx := &Transaction{
+		Sender:                  sender,
+		SequenceNumber:          account.SequenceNumber,
+		MaxGasAmount:            maxFee,
+		GasUnitPrice:            b.getGasPrice(),
+		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
+		Payload: &TransactionPayload{
+			Type:          SCRIPT_FUNCTION_PAYLOAD,
+			Function:      GetRouterFunctionId(pool, CONTRACT_NAME_POOL, CONTRACT_FUNC_WITHDRAW),
+			TypeArguments: []string{anycoin, underlying},
+			Arguments:     []interface{}{strconv.FormatUint(amount, 10)},
+		},
+	}
+	return tx, nil
+}

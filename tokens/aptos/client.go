@@ -34,6 +34,9 @@ var (
 	CONTRACT_FUNC_SET_POOLCOIN_CAP = "set_poolcoin_cap"
 	CONTRACT_FUNC_SET_STATUS       = "set_status"
 
+	CONTRACT_FUNC_DEPOSIT  = "deposit"
+	CONTRACT_FUNC_WITHDRAW = "withdraw"
+
 	NATIVE_COIN = "0x1::aptos_coin::AptosCoin"
 
 	PUBLISH_PACKAGE = "0x1::code::publish_package_txn"
