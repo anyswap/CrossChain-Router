@@ -85,6 +85,7 @@ func (b *Bridge) verifySwapoutTx(txHash string, _ int, allowUnstable bool) (*tok
 	if !allowUnstable {
 		log.Info("verify swapout pass",
 			"from", swapInfo.From, "to", swapInfo.To,
+			"fromChainId", swapInfo.FromChainID.String(), "to", swapInfo.ToChainID.String(),
 			"bind", swapInfo.Bind, "value", swapInfo.Value, "txid", swapInfo.Hash,
 			"height", swapInfo.Height, "timestamp", swapInfo.Timestamp, "logIndex", swapInfo.LogIndex)
 	}
