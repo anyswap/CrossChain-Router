@@ -33,10 +33,12 @@ type Bridge struct {
 
 // NewCrossChainBridge new bridge
 func NewCrossChainBridge() *Bridge {
-	return &Bridge{
+	instance := &Bridge{
 		NonceSetterBase:  base.NewNonceSetterBase(),
 		RPCClientTimeout: 60,
 	}
+	// BridgeInstance = instance
+	return instance
 }
 
 // SupportsChainID supports chainID

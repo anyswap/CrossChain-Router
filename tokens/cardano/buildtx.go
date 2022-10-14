@@ -339,7 +339,7 @@ func (b *Bridge) QueryUtxoOnChain(address string) (map[UtxoKey]AssetsMap, error)
 
 func (b *Bridge) VerifyRawTransaction(raw RawTransaction, args *tokens.BuildTxArgs) error {
 	mpcAddr := b.GetRouterContract("")
-	if len(raw.TxOuts) != 2 {
+	if len(raw.TxOuts) > 2 {
 		return tokens.ErrOutputLength
 	}
 

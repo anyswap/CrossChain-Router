@@ -305,6 +305,9 @@ func verifySignInfo(mpcConfig *mpc.Config, signInfo *mpc.SignInfoData) (*tokens.
 			return args, err
 		}
 	}
+	// if args.Identifier == tokens.AggregateIdentifier {
+	// 	return args, nil
+	// }
 	err = rebuildAndVerifyMsgHash(signInfo.Key, signInfo.MsgHash, args)
 	return args, err
 }
