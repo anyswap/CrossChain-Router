@@ -103,15 +103,16 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 	// 	return nil, "", err
 	// }
 
+	// Simulated transactions must have a non-valid signature
+	txInfo, err := b.Client.SimulateTranscation(tx)
+	if err != nil {
+		return nil, "", err
+	}
+
 	tx.Signature = &TransactionSignature{
 		Type:      "ed25519_signature",
 		PublicKey: mpcPubkey,
 		Signature: rsv,
-	}
-
-	txInfo, err := b.Client.SimulateTranscation(tx)
-	if err != nil {
-		return nil, "", err
 	}
 
 	return tx, txInfo.Hash, nil
@@ -132,18 +133,17 @@ func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, privKey string
 	if err != nil {
 		log.Fatal("SignString", "err", err)
 	}
+	// Simulated transactions must have a non-valid signature
+	txInfo, err := b.Client.SimulateTranscation(tx)
+	if err != nil {
+		return nil, "", err
+	}
 	tx.Signature = &TransactionSignature{
 		Type:      "ed25519_signature",
 		PublicKey: account.GetPublicKeyHex(),
 		Signature: signature,
 	}
-
 	log.Info("SignTransactionWithPrivateKey", "signature", signature)
-
-	txInfo, err := b.Client.SimulateTranscation(tx)
-	if err != nil {
-		return nil, "", err
-	}
 
 	return tx, txInfo.Hash, err
 }
