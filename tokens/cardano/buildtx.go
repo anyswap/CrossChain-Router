@@ -162,6 +162,9 @@ func (b *Bridge) BuildTx(swapId, receiver, assetId string, amount *big.Int, utxo
 			}
 		}
 	}
+	if adaAmount.Cmp(FixAdaAmount) < 0 {
+		return nil, tokens.ErrAdaSwapOutAmount
+	}
 	rawTransaction.TxOuts[receiver][AdaAsset] = adaAmount.String()
 	if allAssetsMap[AdaAsset] > adaAmount.Uint64() {
 		rawTransaction.TxOuts[routerMpc][AdaAsset] = fmt.Sprint((allAssetsMap[AdaAsset] - adaAmount.Uint64()))

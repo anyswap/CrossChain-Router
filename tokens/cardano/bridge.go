@@ -37,7 +37,7 @@ func NewCrossChainBridge() *Bridge {
 		NonceSetterBase:  base.NewNonceSetterBase(),
 		RPCClientTimeout: 60,
 	}
-	// BridgeInstance = instance
+	BridgeInstance = instance
 	return instance
 }
 

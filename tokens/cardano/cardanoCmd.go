@@ -11,7 +11,7 @@ import (
 
 const (
 	NetWork       = "--testnet-magic 1"
-	MPCPolicyId   = "8ce5ab9f1216a7559e14ab8e2dd7af4dcc34c7e718fe239902993586"
+	MPCPolicyId   = "f73d0275b986a17537f0dfa94060313f922ac1d7a81aec677fa3bdbe"
 	RawPath       = "txDb/raw/"
 	AdaAsset      = "lovelace"
 	RawSuffix     = ".raw"

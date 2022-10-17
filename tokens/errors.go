@@ -54,6 +54,7 @@ var (
 	ErrAdaBalancesNotEnough   = errors.New("ada balance not enough")
 	ErrOutputIndexSort        = errors.New("output not order by index asc")
 	ErrCmdArgVerify           = errors.New("cmd args verify fails")
+	ErrAggregateTx            = errors.New("aggregate tx fails")
 
 	// errors should register in router swap
 	ErrTxWithWrongValue       = errors.New("tx with wrong value")
