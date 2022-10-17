@@ -1,7 +1,6 @@
 package worker
 
 import (
-	"math/big"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
@@ -10,16 +9,8 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens/cardano"
 )
 
-const (
-	mainnetNetWork = "mainnet"
-	testnetNetWork = "testnet"
-	devnetNetWork  = "devnet"
-)
-
 var (
-	utxoPageLimit = 100
-	aggInterval   = 7 * 24 * time.Hour
-	targetChainId = big.NewInt(0)
+	aggInterval = 7 * 24 * time.Hour
 )
 
 // StartAggregateJob aggregate job
