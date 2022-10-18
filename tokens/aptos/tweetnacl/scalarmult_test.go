@@ -64,7 +64,7 @@ func BenchmarkScalarMultBase(b *testing.B) {
 		0xb1, 0x77, 0xfb, 0xa5, 0x1d, 0xb9, 0x2c, 0x2a}
 
 	for i := 0; i < b.N; i++ {
-		ScalarMultBase(n)
+		_, _ = ScalarMultBase(n)
 	}
 }
 
@@ -170,6 +170,6 @@ func BenchMarkScalarMult(b *testing.B) {
 		0xad, 0xfc, 0x7e, 0x14, 0x6f, 0x88, 0x2b, 0x4f}
 
 	for i := 0; i < b.N; i++ {
-		ScalarMult(n, p)
+		_, _ = ScalarMult(n, p)
 	}
 }
