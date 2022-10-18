@@ -102,9 +102,15 @@ func main() {
 		}
 		log.Info("DoSignOneED", "signature", rsv)
 	}
+
+	txhash, err := bridge.CalcTxHashByTSScirpt(tx, "uint64,string,uint64")
+	if err != nil {
+		log.Fatal("CalcTxHashByTSScirpt", "err", err)
+	}
+	log.Info("SubmitTranscation", "calc txHash", txhash)
 	txInfo, err := bridge.Client.SubmitTranscation(tx)
 	if err != nil {
-		log.Fatal("SignString", "err", err)
+		log.Fatal("SubmitTranscation", "err", err)
 	}
 	time.Sleep(time.Duration(10) * time.Second)
 	result, _ := bridge.Client.GetTransactions(txInfo.Hash)
