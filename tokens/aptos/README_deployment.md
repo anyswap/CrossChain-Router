@@ -66,7 +66,13 @@ go run tokens/aptos/tools/registerPoolCoin/main.go -h
 go run tokens/aptos/tools/configCoin/main.go -h
 ```
 
-### i. set router status (admin)
+### i. set Poolcoin MintCap to Router
+mpc account sign tx to copy MintCap to Router
+```
+go run tokens/aptos/tools/setPoolcoinCap/main.go -h
+```
+
+### g. set router status (admin)
 router status `[1]:open [0]:close`
 ```
 go run tokens/aptos/tools/setStatus/main.go -h
