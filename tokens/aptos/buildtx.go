@@ -77,9 +77,10 @@ func (b *Bridge) setExtraArgs(args *tokens.BuildTxArgs, tokenCfg *tokens.TokenCo
 		}
 		extra.Sequence = &sequence
 	}
-	if extra.ReplaceNum == 0 {
+	if extra.BlockHash == nil {
 		// 10 min
-		extra.ReplaceNum = uint64(time.Now().Unix() + timeout_seconds)
+		expiration := strconv.FormatInt(time.Now().Unix()+timeout_seconds, 10)
+		extra.BlockHash = &expiration
 	}
 	if extra.Gas == nil {
 		gas, err := strconv.ParseUint(b.getGasPrice(), 10, 64)
@@ -110,7 +111,7 @@ func (b *Bridge) BuildSwapinTransferTransaction(args *tokens.BuildTxArgs, tokenC
 		SequenceNumber:          strconv.FormatUint(*args.Extra.Sequence, 10),
 		MaxGasAmount:            *args.Extra.Fee,
 		GasUnitPrice:            strconv.FormatUint(*args.Extra.Gas, 10),
-		ExpirationTimestampSecs: strconv.FormatUint(args.Extra.ReplaceNum, 10),
+		ExpirationTimestampSecs: *args.Extra.BlockHash,
 		Payload: &TransactionPayload{
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
 			Function:      GetRouterFunctionId(routerInfo.RouterMPC, CONTRACT_NAME_ROUTER, CONTRACT_FUNC_SWAPIN),
