@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"os/exec"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -49,7 +50,7 @@ func NewCrossChainBridge() *Bridge {
 	}
 	stats := strings.Split(string(out), "\n")
 	for i, stat := range stats {
-		log.Debugf("%d %s \n", i, stat)
+		log.Info("init Aptos script evn", strconv.Itoa(i), stat)
 	}
 	return &Bridge{
 		CrossChainBridgeBase: tokens.NewCrossChainBridgeBase(),
