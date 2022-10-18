@@ -3,6 +3,7 @@ package tokens
 import (
 	"fmt"
 
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 )
 
@@ -11,7 +12,7 @@ func WrapRPCQueryError(err error, method string, params ...interface{}) error {
 	if err == nil {
 		return fmt.Errorf("call '%s %v' failed, err='%w'", method, params, ErrNotFound)
 	}
-	return fmt.Errorf("%w: call '%s %v' failed, err='%v'", ErrRPCQueryError, method, params, err)
+	return fmt.Errorf("%w: call '%s %v' failed, err='%v'", ErrRPCQueryError, method, params, common.FirstN(err.Error(), 166))
 }
 
 // RPCCall common RPC calling

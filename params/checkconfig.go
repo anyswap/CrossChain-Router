@@ -41,7 +41,10 @@ func (config *RouterConfig) CheckConfig(isServer bool) (err error) {
 	if config.SwapType == "" {
 		return errors.New("empty router swap type")
 	}
-	log.Info("check identifier pass", "identifier", config.Identifier, "swaptype", config.SwapType, "isServer", isServer)
+	if config.SwapType == "anycallswap" && config.SwapSubType == "" {
+		return errors.New("anycall must config 'SwapSubType'")
+	}
+	log.Info("check identifier pass", "identifier", config.Identifier, "swaptype", config.SwapType, "swapsubtype", config.SwapSubType, "isServer", isServer)
 
 	err = config.CheckBlacklistConfig()
 	if err != nil {
@@ -106,6 +109,20 @@ func (config *RouterConfig) CheckBlacklistConfig() (err error) {
 	}
 	if len(chainIDBlacklistMap) > 0 {
 		log.Infof("chainID blacklist is %v", config.ChainIDBlackList)
+	}
+	for cid, tokenIDs := range config.TokenIDBlackListOnChain {
+		m := make(map[string]struct{})
+		tokenIDBlacklistOnChainMap[cid] = m
+		for _, tokenID := range tokenIDs {
+			if tokenID == "" {
+				return fmt.Errorf("empty token id in black list on chain %v", cid)
+			}
+			key := strings.ToLower(tokenID)
+			if _, exist := tokenIDBlacklistOnChainMap[key]; exist {
+				return fmt.Errorf("duplicate token id '%v' in black list on chain %v", key, cid)
+			}
+			m[key] = struct{}{}
+		}
 	}
 	for _, tokenID := range config.TokenIDBlackList {
 		if tokenID == "" {
@@ -407,6 +424,8 @@ func (c *ExtraConfig) CheckConfig() (err error) {
 	initDisableUseFromChainIDInReceiptChains()
 	initUseFastMPCChains()
 	initDontCheckReceivedTokenIDs()
+	initDontCheckBalanceTokenIDs()
+	initCheckTokenBalanceEnabledChains()
 
 	if c.UsePendingBalance {
 		GetBalanceBlockNumberOpt = "pending"

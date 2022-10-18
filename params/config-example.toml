@@ -2,7 +2,7 @@
 Identifier = "routerswap#20210326"
 # router swap type (eg. erc20swap, nftswap, anycallswap)
 SwapType = "erc20swap"
-# default subtype is empty. anycall has subtype of 'curve'
+# anycall has subtype of v5 (curve) and v6 (hundred)
 SwapSubType = ""
 
 # chain id black list of string array
@@ -11,6 +11,10 @@ ChainIDBlackList = []
 TokenIDBlackList = []
 # account black list of string array
 AccountBlackList = []
+# token id black list on chain
+[TokenIDBlackListOnChain]
+43114 = []
+25    = []
 
 # router sever config (server only)
 [Server]
@@ -140,9 +144,11 @@ EnableCheckTxBlockHashChains = ["1285"]
 EnableCheckTxBlockIndexChains = ["1", "56"]
 # chains don't use fromChainID from receipt log
 DisableUseFromChainIDInReceiptChains = ["1666600000"]
+CheckTokenBalanceEnabledChains = ["1"]
 # chains use fast mpc
 UseFastMPCChains = ["1001313161554"]
 DontCheckReceivedTokenIDs = ["USDC", "MIM"]
+DontCheckBalanceTokenIDs = ["USDC", "MIM"]
 # allow call into router from contract's constructor
 AllowCallByConstructor = false
 # allow call into router from contract
@@ -185,6 +191,12 @@ MIM  = ["0x2222222222222222222222222222222222222222"]
 4 = [
 	"0x1111111111111111111111111111111111111111111111111111111111111111"
 ]
+# the last key is chainID
+[Extra.LocalChainConfig.2025]
+EstimatedGasMustBePositive = true
+
+[Extra.LocalChainConfig.86]
+SmallestGasPriceUnit = 1000000000
 
 
 # OnChain config

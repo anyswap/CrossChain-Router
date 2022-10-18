@@ -156,6 +156,8 @@ func isBlacked(swap *mongodb.MgoSwap) bool {
 	return params.IsChainIDInBlackList(swap.FromChainID) ||
 		params.IsChainIDInBlackList(swap.ToChainID) ||
 		params.IsTokenIDInBlackList(swap.GetTokenID()) ||
+		params.IsTokenIDInBlackListOnChain(swap.FromChainID, swap.GetTokenID()) ||
+		params.IsTokenIDInBlackListOnChain(swap.ToChainID, swap.GetTokenID()) ||
 		params.IsAccountInBlackList(swap.From) ||
 		params.IsAccountInBlackList(swap.Bind) ||
 		params.IsAccountInBlackList(swap.TxTo)
@@ -241,6 +243,8 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.MissTokenConfig, now(), err.Error())
 	case errors.Is(err, tokens.ErrNoUnderlyingToken):
 		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.NoUnderlyingToken, now(), err.Error())
+	case errors.Is(err, tokens.ErrVerifyTxUnsafe):
+		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxMaybeUnsafe, now(), err.Error())
 	default:
 		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxVerifyFailed, now(), err.Error())
 	}
