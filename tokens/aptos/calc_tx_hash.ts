@@ -2,13 +2,9 @@ import { BCS, TxnBuilderTypes, TransactionBuilder, HexString } from "aptos";
 
 async function main() {
 
-    process.argv.forEach((val, index) => {
-        console.log(`${index}: ${val}`);
-    });
-    // #############
-    // let json = "{\"sender\":\"0x06da2b6027d581ded49b2314fa43016079e0277a17060437236f8009550961d6\",\"sequence_number\":\"41\",\"max_gas_amount\":\"100000\",\"gas_unit_price\":\"1000\",\"expiration_timestamp_secs\":\"1666000058\",\"payload\":{\"type\":\"entry_function_payload\",\"function\":\"0x06da2b6027d581ded49b2314fa43016079e0277a17060437236f8009550961d6::wETH::mint\",\"type_arguments\":[],\"arguments\":[\"0x10878abd3802be00d674709b1e5554488823f5f825bce8d1efaf370e9aaac777\",\"100000000000000000\"]}}"
-    // let argumentsTyps = ["address", "uint64"]
-    // #############
+    // process.argv.forEach((val, index) => {
+    //     console.log(`${index}: ${val}`);
+    // });
     let json = process.argv[2]
     console.log(json)
 
@@ -20,7 +16,7 @@ async function main() {
 
 
     let originTX = JSON.parse(json)
-    console.log(originTX)
+    // console.log(originTX)
     let payload = originTX.payload
 
     let ty_args: TxnBuilderTypes.TypeTagStruct[] = new Array()
@@ -39,16 +35,16 @@ async function main() {
         switch (type) {
             case "string":
                 args.push(BCS.bcsSerializeStr(value))
-                console.log(type, value, HexString.fromUint8Array(BCS.bcsSerializeStr(value)).hex())
+                // console.log(type, value, HexString.fromUint8Array(BCS.bcsSerializeStr(value)).hex())
                 break;
             case "uint64":
                 let bi = BigInt(value)
                 args.push(BCS.bcsSerializeUint64(value))
-                console.log(type, bi, HexString.fromUint8Array(BCS.bcsSerializeUint64(bi)).hex())
+                // console.log(type, bi, HexString.fromUint8Array(BCS.bcsSerializeUint64(bi)).hex())
                 break;
             case "address":
                 args.push(BCS.bcsToBytes(TxnBuilderTypes.AccountAddress.fromHex(value)))
-                console.log(type, value, HexString.fromUint8Array(BCS.bcsToBytes(TxnBuilderTypes.AccountAddress.fromHex(value))).hex())
+                // console.log(type, value, HexString.fromUint8Array(BCS.bcsToBytes(TxnBuilderTypes.AccountAddress.fromHex(value))).hex())
                 break;
             default:
                 break;
@@ -58,7 +54,7 @@ async function main() {
 
     if (payload.type == "entry_function_payload") {
 
-        console.log("########### entry_function_payload ###########")
+        // console.log("########### entry_function_payload ###########")
 
         let modules = payload.function.split("::")
         const scriptFunctionPayload = new TxnBuilderTypes.TransactionPayloadEntryFunction(

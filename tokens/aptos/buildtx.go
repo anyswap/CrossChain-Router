@@ -44,7 +44,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, tokens.ErrMissTokenConfig
 	}
 
-	err = b.setExtraArgs(args, tokenCfg)
+	err = b.SetExtraArgs(args, tokenCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	return tx, nil
 }
 
-func (b *Bridge) setExtraArgs(args *tokens.BuildTxArgs, tokenCfg *tokens.TokenConfig) error {
+func (b *Bridge) SetExtraArgs(args *tokens.BuildTxArgs, tokenCfg *tokens.TokenConfig) error {
 	if args.Extra == nil {
 		args.Extra = &tokens.AllExtras{}
 	}
@@ -117,6 +117,28 @@ func (b *Bridge) BuildSwapinTransferTransaction(args *tokens.BuildTxArgs, tokenC
 			Function:      GetRouterFunctionId(routerInfo.RouterMPC, CONTRACT_NAME_ROUTER, CONTRACT_FUNC_SWAPIN),
 			TypeArguments: []string{tokenCfg.Extra, tokenCfg.ContractAddress},
 			Arguments:     []interface{}{receiver, strconv.FormatUint(amount, 10), args.SwapID, args.FromChainID.String()},
+		},
+	}
+	return tx, nil
+}
+
+func (b *Bridge) BuildSwapinTransferTransactionForScript(router, coin, poolcoin, receiver, amount, swapID, FromChainID string) (*Transaction, error) {
+	account, err := b.Client.GetAccount(router)
+	if err != nil {
+		return nil, err
+	}
+	timeout := time.Now().Unix() + timeout_seconds
+	tx := &Transaction{
+		Sender:                  router,
+		SequenceNumber:          account.SequenceNumber,
+		MaxGasAmount:            maxFee,
+		GasUnitPrice:            defaultGasUnitPrice,
+		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
+		Payload: &TransactionPayload{
+			Type:          SCRIPT_FUNCTION_PAYLOAD,
+			Function:      GetRouterFunctionId(router, CONTRACT_NAME_ROUTER, CONTRACT_FUNC_SWAPIN),
+			TypeArguments: []string{coin, poolcoin},
+			Arguments:     []interface{}{receiver, amount, swapID, FromChainID},
 		},
 	}
 	return tx, nil
