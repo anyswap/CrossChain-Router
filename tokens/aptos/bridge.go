@@ -89,21 +89,25 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 		tokenCfg.RouterContract = b.ChainConfig.RouterContract
 	}
 
-	// if tokens.IsERC20Router() {
-	// 	if b.IsNative(tokenAddr) {
-	// 		if tokenCfg.Decimals != 8 {
-	// 			log.Fatal("token decimals mismatch", "tokenID", tokenCfg.TokenID, "chainID", b.ChainConfig.ChainID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract")
-	// 		}
-	// 	} else {
-	// 		decimals, errt := b.GetTokenDecimals(tokenAddr)
-	// 		if errt != nil {
-	// 			log.Fatal("get token decimals failed tokenAddr:", tokenAddr, "err", errt)
-	// 		}
-	// 		if decimals != tokenCfg.Decimals {
-	// 			log.Fatal("token decimals mismatch", "tokenID", tokenCfg.TokenID, "chainID", b.ChainConfig.ChainID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract", decimals)
-	// 		}
-	// 	}
-	// }
+	if tokens.IsERC20Router() {
+		if b.IsNative(tokenAddr) {
+			if tokenCfg.Decimals != 8 {
+				log.Fatal("token decimals mismatch", "tokenID", tokenCfg.TokenID, "chainID", b.ChainConfig.ChainID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract")
+			}
+		} else {
+			decimals, errt := b.GetTokenDecimals(tokenAddr)
+			if errt != nil {
+				log.Fatal("get token decimals failed tokenAddr:", tokenAddr, "err", errt)
+			}
+			if decimals != tokenCfg.Decimals {
+				log.Fatal("token decimals mismatch", "tokenID", tokenCfg.TokenID, "chainID", b.ChainConfig.ChainID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract", decimals)
+			}
+		}
+	}
+	// aptos every coin has Extra, Extra is underlying if anytoken, Extra is ContractAddress when others
+	if tokenCfg.Extra == "" {
+		tokenCfg.Extra = tokenCfg.ContractAddress
+	}
 	b.CrossChainBridgeBase.SetTokenConfig(tokenAddr, tokenCfg)
 
 	if tokenCfg.Extra != "" && tokenCfg.Extra != tokenAddr {

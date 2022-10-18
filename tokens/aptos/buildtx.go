@@ -115,7 +115,7 @@ func (b *Bridge) BuildSwapinTransferTransaction(args *tokens.BuildTxArgs, tokenC
 		Payload: &TransactionPayload{
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
 			Function:      GetRouterFunctionId(routerInfo.RouterMPC, CONTRACT_NAME_ROUTER, CONTRACT_FUNC_SWAPIN),
-			TypeArguments: []string{tokenCfg.ContractAddress, tokenCfg.Extra},
+			TypeArguments: []string{tokenCfg.Extra, tokenCfg.ContractAddress},
 			Arguments:     []interface{}{receiver, strconv.FormatUint(amount, 10), args.SwapID, args.FromChainID.String()},
 		},
 	}

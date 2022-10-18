@@ -1,6 +1,7 @@
 package aptos
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -143,10 +144,10 @@ func (c *RestClient) SubmitTranscation(request interface{}) (*TransactionInfo, e
 	return &resp, err
 }
 
-func (c *RestClient) SimulateTranscation(request interface{}, publikKey string) (*TransactionInfo, error) {
+func (c *RestClient) SimulateTranscation(request interface{}, publikKey string) error {
 	tx, ok := request.(*Transaction)
 	if !ok {
-		return nil, fmt.Errorf("not aptos Transaction")
+		return fmt.Errorf("not aptos Transaction")
 	}
 	tx.Signature = &TransactionSignature{
 		Type:      "ed25519_signature",
@@ -155,7 +156,17 @@ func (c *RestClient) SimulateTranscation(request interface{}, publikKey string) 
 	}
 	resp := []TransactionInfo{}
 	err := c.PostRequest(&resp, SimulateTranscationPath, tx)
-	return &resp[0], err
+	if err != nil {
+		return err
+	}
+	if len(resp) <= 0 {
+		return fmt.Errorf("SimulateTranscation with no result")
+	}
+	if !resp[0].Success {
+		result, _ := json.Marshal(resp[0])
+		return fmt.Errorf("SimulateTranscation fals %s", string(result))
+	}
+	return err
 }
 
 func (c *RestClient) GetEventsByEventHandle(request interface{}, target, struct_resource, field_name string, start, limit int) error {

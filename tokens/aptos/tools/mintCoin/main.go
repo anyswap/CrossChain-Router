@@ -92,11 +92,10 @@ func main() {
 		// 	PublicKey: account.GetPublicKeyHex(),
 		// 	Signature: common.ToHex(make([]byte, 64)),
 		// }
-		txinfo, err := bridge.Client.SimulateTranscation(tx, account.GetPublicKeyHex())
+		err := bridge.Client.SimulateTranscation(tx, account.GetPublicKeyHex())
 		if err != nil {
 			log.Fatal("SimulateTranscation", "err", err)
 		}
-		log.Info("SimulateTranscation", "txHash", txinfo.Hash)
 
 		signature, err := account.SignString(*signingMessage)
 		if err != nil {

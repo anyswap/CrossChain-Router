@@ -98,7 +98,7 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 	log.Trace(logPrefix+"get rsv signature success", "keyID", keyID, "txid", txid, "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "rsv", rsv)
 
 	// Simulated transactions must have a non-valid signature
-	_, err = b.Client.SimulateTranscation(tx, mpcPubkey)
+	err = b.Client.SimulateTranscation(tx, mpcPubkey)
 	if err != nil {
 		return nil, "", err
 	}
@@ -126,7 +126,7 @@ func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, privKey string
 	}
 	account := NewAccountFromSeed(privKey)
 	// Simulated transactions must have a non-valid signature
-	_, err = b.Client.SimulateTranscation(tx, account.GetPublicKeyHex())
+	err = b.Client.SimulateTranscation(tx, account.GetPublicKeyHex())
 	if err != nil {
 		return nil, "", err
 	}
