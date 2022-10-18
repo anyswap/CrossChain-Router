@@ -44,9 +44,79 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, tokens.ErrMissTokenConfig
 	}
 
+	err = b.setExtraArgs(args, tokenCfg)
+	if err != nil {
+		return nil, err
+	}
+
 	tx, err := b.BuildSwapinTransferTransaction(args, tokenCfg)
 	if err != nil {
 		return nil, err
+	}
+	return tx, nil
+}
+
+func (b *Bridge) setExtraArgs(args *tokens.BuildTxArgs, tokenCfg *tokens.TokenConfig) error {
+	if args.Extra == nil {
+		args.Extra = &tokens.AllExtras{}
+	}
+	extra := args.Extra
+	extra.EthExtra = nil // clear this which may be set in replace job
+	if extra.Sequence == nil {
+		routerInfo, err := router.GetTokenRouterInfo(tokenCfg.TokenID, b.ChainConfig.ChainID)
+		if err != nil {
+			return err
+		}
+		account, err := b.Client.GetAccount(routerInfo.RouterMPC)
+		if err != nil {
+			return err
+		}
+		sequence, err := strconv.ParseUint(account.SequenceNumber, 10, 64)
+		if err != nil {
+			return err
+		}
+		extra.Sequence = &sequence
+	}
+	if extra.ReplaceNum == 0 {
+		// 10 min
+		extra.ReplaceNum = uint64(time.Now().Unix() + timeout_seconds)
+	}
+	if extra.Gas == nil {
+		gas, err := strconv.ParseUint(b.getGasPrice(), 10, 64)
+		if err != nil {
+			return err
+		}
+		extra.Gas = &gas
+	}
+	if extra.Fee == nil {
+		extra.Fee = &maxFee
+	}
+	log.Info("BuildSwapin", "SequenceNumber", extra.Sequence, "ReplaceNum", extra.ReplaceNum)
+	return nil
+}
+
+// BuildSwapinTransferTransaction build swapin transfer tx
+func (b *Bridge) BuildSwapinTransferTransaction(args *tokens.BuildTxArgs, tokenCfg *tokens.TokenConfig) (*Transaction, error) {
+	receiver, amount, err := b.getReceiverAndAmount(args, tokenCfg.ContractAddress)
+	if err != nil {
+		return nil, err
+	}
+	routerInfo, err := router.GetTokenRouterInfo(tokenCfg.TokenID, b.ChainConfig.ChainID)
+	if err != nil {
+		return nil, err
+	}
+	tx := &Transaction{
+		Sender:                  routerInfo.RouterMPC,
+		SequenceNumber:          strconv.FormatUint(*args.Extra.Sequence, 10),
+		MaxGasAmount:            *args.Extra.Fee,
+		GasUnitPrice:            strconv.FormatUint(*args.Extra.Gas, 10),
+		ExpirationTimestampSecs: strconv.FormatUint(args.Extra.ReplaceNum, 10),
+		Payload: &TransactionPayload{
+			Type:          SCRIPT_FUNCTION_PAYLOAD,
+			Function:      GetRouterFunctionId(routerInfo.RouterMPC, CONTRACT_NAME_ROUTER, CONTRACT_FUNC_SWAPIN),
+			TypeArguments: []string{tokenCfg.ContractAddress, tokenCfg.Extra},
+			Arguments:     []interface{}{receiver, strconv.FormatUint(amount, 10), args.SwapID, args.FromChainID.String()},
+		},
 	}
 	return tx, nil
 }
@@ -72,38 +142,6 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 		return receiver, amount, tokens.ErrTxWithWrongValue
 	}
 	return receiver, swapValue.Uint64(), err
-}
-
-// BuildSwapinTransferTransaction build swapin transfer tx
-func (b *Bridge) BuildSwapinTransferTransaction(args *tokens.BuildTxArgs, tokenCfg *tokens.TokenConfig) (*Transaction, error) {
-	receiver, amount, err := b.getReceiverAndAmount(args, tokenCfg.ContractAddress)
-	if err != nil {
-		return nil, err
-	}
-	routerInfo, err := router.GetTokenRouterInfo(tokenCfg.TokenID, b.ChainConfig.ChainID)
-	if err != nil {
-		return nil, err
-	}
-	account, err := b.Client.GetAccount(routerInfo.RouterMPC)
-	if err != nil {
-		return nil, err
-	}
-	// 10 min
-	timeout := time.Now().Unix() + timeout_seconds
-	tx := &Transaction{
-		Sender:                  routerInfo.RouterMPC,
-		SequenceNumber:          account.SequenceNumber,
-		MaxGasAmount:            maxFee,
-		GasUnitPrice:            b.getGasPrice(),
-		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
-		Payload: &TransactionPayload{
-			Type:          SCRIPT_FUNCTION_PAYLOAD,
-			Function:      GetRouterFunctionId(routerInfo.RouterMPC, CONTRACT_NAME_ROUTER, CONTRACT_FUNC_SWAPIN),
-			TypeArguments: []string{tokenCfg.ContractAddress, tokenCfg.Extra},
-			Arguments:     []interface{}{receiver, strconv.FormatUint(amount, 10), args.SwapID, args.FromChainID.String()},
-		},
-	}
-	return tx, nil
 }
 
 func (b *Bridge) getGasPrice() string {

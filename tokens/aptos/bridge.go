@@ -3,6 +3,8 @@ package aptos
 import (
 	"fmt"
 	"math/big"
+	"os/exec"
+	"strings"
 	"sync"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -39,6 +41,16 @@ type Bridge struct {
 
 // NewCrossChainBridge new bridge
 func NewCrossChainBridge() *Bridge {
+	cmd := exec.Command("bash", "-c", "yarn -i")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Printf("combined out:\n%s\n", string(out))
+		log.Fatalf("cmd.Run() failed with %s\n", err)
+	}
+	stats := strings.Split(string(out), "\n")
+	for i, stat := range stats {
+		log.Debugf("%d %s \n", i, stat)
+	}
 	return &Bridge{
 		CrossChainBridgeBase: tokens.NewCrossChainBridgeBase(),
 		RPCClientTimeout:     60,
@@ -87,21 +99,21 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 		tokenCfg.RouterContract = b.ChainConfig.RouterContract
 	}
 
-	if tokens.IsERC20Router() {
-		if b.IsNative(tokenAddr) {
-			if tokenCfg.Decimals != 8 {
-				log.Fatal("token decimals mismatch", "tokenID", tokenCfg.TokenID, "chainID", b.ChainConfig.ChainID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract")
-			}
-		} else {
-			decimals, errt := b.GetTokenDecimals(tokenAddr)
-			if errt != nil {
-				log.Fatal("get token decimals failed tokenAddr:", tokenAddr, "err", errt)
-			}
-			if decimals != tokenCfg.Decimals {
-				log.Fatal("token decimals mismatch", "tokenID", tokenCfg.TokenID, "chainID", b.ChainConfig.ChainID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract", decimals)
-			}
-		}
-	}
+	// if tokens.IsERC20Router() {
+	// 	if b.IsNative(tokenAddr) {
+	// 		if tokenCfg.Decimals != 8 {
+	// 			log.Fatal("token decimals mismatch", "tokenID", tokenCfg.TokenID, "chainID", b.ChainConfig.ChainID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract")
+	// 		}
+	// 	} else {
+	// 		decimals, errt := b.GetTokenDecimals(tokenAddr)
+	// 		if errt != nil {
+	// 			log.Fatal("get token decimals failed tokenAddr:", tokenAddr, "err", errt)
+	// 		}
+	// 		if decimals != tokenCfg.Decimals {
+	// 			log.Fatal("token decimals mismatch", "tokenID", tokenCfg.TokenID, "chainID", b.ChainConfig.ChainID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract", decimals)
+	// 		}
+	// 	}
+	// }
 	b.CrossChainBridgeBase.SetTokenConfig(tokenAddr, tokenCfg)
 
 	if tokenCfg.Extra != "" && tokenCfg.Extra != tokenAddr {

@@ -81,7 +81,10 @@ http: TBA
 ### js sdk
 web3: https://aptos.dev/sdks/typescript-sdk
 
-
+### calc tx hash script
+```
+yarn txhash '{"sender":"0x06da2b6027d581ded49b2314fa43016079e0277a17060437236f8009550961d6","sequence_number":"41","max_gas_amount":"100000","gas_unit_price":"1000","expiration_timestamp_secs":"1666000058","payload":{"type":"entry_function_payload","function":"0x06da2b6027d581ded49b2314fa43016079e0277a17060437236f8009550961d6::wETH::mint","type_arguments":[],"arguments":["0x10878abd3802be00d674709b1e5554488823f5f825bce8d1efaf370e9aaac777","100000000000000000"]}}' address,uint64 2 
+```
 
 
 

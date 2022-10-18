@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -48,6 +49,7 @@ func initFlags() {
 func main() {
 	log.SetLogger(6, false, true)
 	initAll()
+	var err error
 
 	var account *aptos.Account
 	if paramPriKey != "" {
@@ -58,7 +60,6 @@ func main() {
 	log.Info("SignAccount", "address", account.GetHexAddress())
 
 	var tx *aptos.Transaction
-	var err error
 
 	if cointype == "anytoken" {
 		tx, err = bridge.BuildMintCoinTransaction(account.GetHexAddress(), toAddress, coin, amount)
@@ -71,11 +72,32 @@ func main() {
 			log.Fatalf("%v", err)
 		}
 	}
+
+	txjson, _ := json.Marshal(tx)
+	fmt.Println("origin tx ", string(txjson))
+
 	signingMessage, err := bridge.Client.GetSigningMessage(tx)
 	if err != nil {
 		log.Fatal("GetSigningMessage", "err", err)
 	}
+	fmt.Println("signingMessage", *signingMessage)
 	if paramPriKey != "" {
+		// testA := aptos.NewAccount()
+		// // signatureA, err := testA.SignString(*signingMessage)
+		// // if err != nil {
+		// // 	log.Fatal("SignString", "err", err)
+		// }
+		// tx.Signature = &aptos.TransactionSignature{
+		// 	Type:      "ed25519_signature",
+		// 	PublicKey: account.GetPublicKeyHex(),
+		// 	Signature: common.ToHex(make([]byte, 64)),
+		// }
+		txinfo, err := bridge.Client.SimulateTranscation(tx, account.GetPublicKeyHex())
+		if err != nil {
+			log.Fatal("SimulateTranscation", "err", err)
+		}
+		log.Info("SimulateTranscation", "txHash", txinfo.Hash)
+
 		signature, err := account.SignString(*signingMessage)
 		if err != nil {
 			log.Fatal("SignString", "err", err)
@@ -111,9 +133,16 @@ func main() {
 		}
 		log.Info("DoSignOneED", "signature", rsv)
 	}
+
+	txhash, err := bridge.CalcTxHashByTSScirpt(tx, "address,uint64")
+	if err != nil {
+		log.Fatal("CalcTxHashByTSScirpt", "err", err)
+	}
+	log.Info("SubmitTranscation", "calc txHash", txhash)
+
 	txInfo, err := bridge.Client.SubmitTranscation(tx)
 	if err != nil {
-		log.Fatal("SignString", "err", err)
+		log.Fatal("SubmitTranscation", "err", err)
 	}
 	time.Sleep(time.Duration(10) * time.Second)
 	result, _ := bridge.Client.GetTransactions(txInfo.Hash)

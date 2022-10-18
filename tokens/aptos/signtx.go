@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os/exec"
 	"strconv"
+	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mpc"
@@ -97,14 +99,8 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 	rsv := rsvs[0]
 	log.Trace(logPrefix+"get rsv signature success", "keyID", keyID, "txid", txid, "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "rsv", rsv)
 
-	// sig, err := types.NewSignatureFromString(rsv)
-	// if err != nil {
-	// 	log.Error("get signature from rsv failed", "keyID", keyID, "txid", txid, "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "err", err)
-	// 	return nil, "", err
-	// }
-
 	// Simulated transactions must have a non-valid signature
-	txInfo, err := b.Client.SimulateTranscation(tx)
+	_, err = b.Client.SimulateTranscation(tx, mpcPubkey)
 	if err != nil {
 		return nil, "", err
 	}
@@ -114,8 +110,14 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 		PublicKey: mpcPubkey,
 		Signature: rsv,
 	}
+	// only for swapin
+	// receiver: address, amount: u64, _fromEvent: string, _fromChainID: u64
+	txHash, err = b.CalcTxHashByTSScirpt(tx, "address,uint64,string,uint64")
+	if err != nil {
+		return nil, "", err
+	}
 
-	return tx, txInfo.Hash, nil
+	return tx, txHash, nil
 }
 
 // SignTransactionWithPrivateKey sign tx with ECDSA private key
@@ -125,6 +127,11 @@ func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, privKey string
 		return nil, "", errors.New("wrong signed transaction type")
 	}
 	account := NewAccountFromSeed(privKey)
+	// Simulated transactions must have a non-valid signature
+	_, err = b.Client.SimulateTranscation(tx, account.GetPublicKeyHex())
+	if err != nil {
+		return nil, "", err
+	}
 	signingMessage, err := b.Client.GetSigningMessage(tx)
 	if err != nil {
 		log.Fatal("GetSigningMessage", "err", err)
@@ -133,17 +140,52 @@ func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, privKey string
 	if err != nil {
 		log.Fatal("SignString", "err", err)
 	}
-	// Simulated transactions must have a non-valid signature
-	txInfo, err := b.Client.SimulateTranscation(tx)
-	if err != nil {
-		return nil, "", err
-	}
 	tx.Signature = &TransactionSignature{
 		Type:      "ed25519_signature",
 		PublicKey: account.GetPublicKeyHex(),
 		Signature: signature,
 	}
 	log.Info("SignTransactionWithPrivateKey", "signature", signature)
+	// only for swapin
+	// receiver: address, amount: u64, _fromEvent: string, _fromChainID: u64
+	txHash, err = b.CalcTxHashByTSScirpt(tx, "address,uint64,string,uint64")
+	if err != nil {
+		return nil, "", err
+	}
+	return tx, txHash, err
+}
 
-	return tx, txInfo.Hash, err
+func (b *Bridge) CalcTxHashByTSScirpt(rawTx interface{}, argTypes string) (txHash string, err error) {
+	tx, ok := rawTx.(*Transaction)
+	if !ok {
+		return "", fmt.Errorf("not aptos Transaction")
+	}
+
+	jsonStr, err := json.Marshal(tx)
+	if err != nil {
+		return "", err
+	}
+
+	ledgerInfo, err := b.Client.GetLedger()
+	if err != nil {
+		return "", err
+	}
+
+	cmd := exec.Command("bash", "-c", fmt.Sprintf("yarn txhash '%s' %s %d", string(jsonStr), argTypes, ledgerInfo.ChainId))
+	out, err := cmd.CombinedOutput()
+	stats := strings.Split(string(out), "\n")
+	for i, stat := range stats {
+		log.Info("CalcTxHashByTSScirpt", strconv.Itoa(i), stat)
+	}
+	if err != nil {
+		return "", fmt.Errorf(string(out))
+	}
+	if len(stats) < 3 {
+		return "", fmt.Errorf("CalcTxHashByTSScirpt ts output error")
+	}
+	if !strings.HasPrefix(stats[len(stats)-2], "Done") {
+		return "", fmt.Errorf(stats[len(stats)-2])
+	}
+	return stats[len(stats)-3], nil
+
 }

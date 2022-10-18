@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 )
 
@@ -142,10 +143,19 @@ func (c *RestClient) SubmitTranscation(request interface{}) (*TransactionInfo, e
 	return &resp, err
 }
 
-func (c *RestClient) SimulateTranscation(request interface{}) (*TransactionInfo, error) {
-	resp := TransactionInfo{}
-	err := c.PostRequest(&resp, SimulateTranscationPath, request)
-	return &resp, err
+func (c *RestClient) SimulateTranscation(request interface{}, publikKey string) (*TransactionInfo, error) {
+	tx, ok := request.(*Transaction)
+	if !ok {
+		return nil, fmt.Errorf("not aptos Transaction")
+	}
+	tx.Signature = &TransactionSignature{
+		Type:      "ed25519_signature",
+		PublicKey: publikKey,
+		Signature: common.ToHex(make([]byte, 64)),
+	}
+	resp := []TransactionInfo{}
+	err := c.PostRequest(&resp, SimulateTranscationPath, tx)
+	return &resp[0], err
 }
 
 func (c *RestClient) GetEventsByEventHandle(request interface{}, target, struct_resource, field_name string, start, limit int) error {
