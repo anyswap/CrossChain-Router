@@ -3,9 +3,6 @@ package aptos
 import (
 	"fmt"
 	"math/big"
-	"os/exec"
-	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -42,16 +39,8 @@ type Bridge struct {
 
 // NewCrossChainBridge new bridge
 func NewCrossChainBridge() *Bridge {
-	cmd := exec.Command("bash", "-c", "yarn -i")
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Printf("combined out:\n%s\n", string(out))
-		log.Fatalf("cmd.Run() failed with %s\n", err)
-	}
-	stats := strings.Split(string(out), "\n")
-	for i, stat := range stats {
-		log.Info("init Aptos script evn", strconv.Itoa(i), stat)
-	}
+
+	InstallTsModules()
 	return &Bridge{
 		CrossChainBridgeBase: tokens.NewCrossChainBridgeBase(),
 		RPCClientTimeout:     60,

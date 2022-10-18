@@ -4,9 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os/exec"
 	"strconv"
-	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mpc"
@@ -171,21 +169,7 @@ func (b *Bridge) CalcTxHashByTSScirpt(rawTx interface{}, argTypes string) (txHas
 		return "", err
 	}
 
-	cmd := exec.Command("bash", "-c", fmt.Sprintf("yarn txhash '%s' %s %d", string(jsonStr), argTypes, ledgerInfo.ChainId))
-	out, err := cmd.CombinedOutput()
-	stats := strings.Split(string(out), "\n")
-	for i, stat := range stats {
-		log.Info("CalcTxHashByTSScirpt", strconv.Itoa(i), stat)
-	}
-	if err != nil {
-		return "", fmt.Errorf(string(out))
-	}
-	if len(stats) < 3 {
-		return "", fmt.Errorf("CalcTxHashByTSScirpt ts output error")
-	}
-	if !strings.HasPrefix(stats[len(stats)-2], "Done") {
-		return "", fmt.Errorf(stats[len(stats)-2])
-	}
-	return stats[len(stats)-3], nil
+	txbody := string(jsonStr)
+	return RunTxHashScript(&txbody, &argTypes, ledgerInfo.ChainId)
 
 }
