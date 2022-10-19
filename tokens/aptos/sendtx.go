@@ -2,8 +2,10 @@ package aptos
 
 import (
 	"errors"
+	"strconv"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 )
 
 // SendTransaction impl
@@ -14,10 +16,14 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error
 	}
 	txInfo, err := b.Client.SubmitTranscation(tx)
 	if err != nil {
-		log.Info("Solana SendTransaction failed", "err", err)
+		log.Info("Aptos SendTransaction failed", "err", err)
 	} else {
-		log.Info("Solana SendTransaction success", "hash", txInfo.Hash)
+		log.Info("Aptos SendTransaction success", "hash", txInfo.Hash)
 
+		if !params.IsParallelSwapEnabled() {
+			sequence, _ := strconv.ParseUint(tx.SequenceNumber, 10, 64)
+			b.SetNonce(tx.Sender, sequence+1)
+		}
 	}
 	return txInfo.Hash, err
 }

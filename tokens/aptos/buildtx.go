@@ -7,6 +7,7 @@ import (
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
@@ -63,19 +64,11 @@ func (b *Bridge) SetExtraArgs(args *tokens.BuildTxArgs, tokenCfg *tokens.TokenCo
 	extra := args.Extra
 	extra.EthExtra = nil // clear this which may be set in replace job
 	if extra.Sequence == nil {
-		routerInfo, err := router.GetTokenRouterInfo(tokenCfg.TokenID, b.ChainConfig.ChainID)
+		sequence, err := b.getAccountNonce(args)
 		if err != nil {
 			return err
 		}
-		account, err := b.Client.GetAccount(routerInfo.RouterMPC)
-		if err != nil {
-			return err
-		}
-		sequence, err := strconv.ParseUint(account.SequenceNumber, 10, 64)
-		if err != nil {
-			return err
-		}
-		extra.Sequence = &sequence
+		extra.Sequence = sequence
 	}
 	if extra.BlockHash == nil {
 		// 10 min
@@ -102,19 +95,15 @@ func (b *Bridge) BuildSwapinTransferTransaction(args *tokens.BuildTxArgs, tokenC
 	if err != nil {
 		return nil, err
 	}
-	routerInfo, err := router.GetTokenRouterInfo(tokenCfg.TokenID, b.ChainConfig.ChainID)
-	if err != nil {
-		return nil, err
-	}
 	tx := &Transaction{
-		Sender:                  routerInfo.RouterMPC,
+		Sender:                  args.From,
 		SequenceNumber:          strconv.FormatUint(*args.Extra.Sequence, 10),
 		MaxGasAmount:            *args.Extra.Fee,
 		GasUnitPrice:            strconv.FormatUint(*args.Extra.Gas, 10),
 		ExpirationTimestampSecs: *args.Extra.BlockHash,
 		Payload: &TransactionPayload{
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
-			Function:      GetRouterFunctionId(routerInfo.RouterMPC, CONTRACT_NAME_ROUTER, CONTRACT_FUNC_SWAPIN),
+			Function:      GetRouterFunctionId(args.From, CONTRACT_NAME_ROUTER, CONTRACT_FUNC_SWAPIN),
 			TypeArguments: []string{tokenCfg.Extra, tokenCfg.ContractAddress},
 			Arguments:     []interface{}{receiver, strconv.FormatUint(amount, 10), args.SwapID, args.FromChainID.String()},
 		},
@@ -176,6 +165,23 @@ func (b *Bridge) getGasPrice() string {
 		log.Debugln("estimateGasPrice", "GasPrice", defaultGasUnitPrice)
 		return defaultGasUnitPrice
 	}
+}
+
+func (b *Bridge) getAccountNonce(args *tokens.BuildTxArgs) (nonceptr *uint64, err error) {
+	var nonce uint64
+
+	if params.IsParallelSwapEnabled() {
+		nonce, err = b.AllocateNonce(args)
+		return &nonce, err
+	}
+
+	res, err := b.GetPoolNonce(args.From, "")
+	if err != nil {
+		return nil, err
+	}
+
+	nonce = b.AdjustNonce(args.From, res)
+	return &nonce, nil
 }
 
 func (b *Bridge) BuildDeployModuleTransaction(address, packagemetadata string, moduleHexs []string) (*Transaction, error) {

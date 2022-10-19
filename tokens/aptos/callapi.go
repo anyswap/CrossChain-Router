@@ -38,7 +38,7 @@ func (b *Bridge) GetTxBlockInfo(txHash string) (blockHeight, blockTime uint64) {
 func (b *Bridge) GetPoolNonce(address, _height string) (uint64, error) {
 	account, err := b.Client.GetAccount(address)
 	if err != nil {
-		return 0, fmt.Errorf("solana GetBlockHeight, %w", err)
+		return 0, fmt.Errorf("Aptos GetAccount, %w", err)
 	}
 	return strconv.ParseUint(account.SequenceNumber, 10, 64)
 }
