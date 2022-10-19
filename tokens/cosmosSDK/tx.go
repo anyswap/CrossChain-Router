@@ -78,7 +78,7 @@ func BuildSignerData(address, chainID string, accountNumber, sequence uint64, pu
 	}
 }
 
-func BuildSendMgs(from, to, unit string, amount *big.Int) *bankTypes.MsgSend {
+func BuildSendMsg(from, to, unit string, amount *big.Int) *bankTypes.MsgSend {
 	return &bankTypes.MsgSend{
 		FromAddress: from,
 		ToAddress:   to,
@@ -105,7 +105,7 @@ func (c *CosmosRestClient) BuildTx(
 	extra *tokens.AllExtras,
 ) (cosmosClient.TxBuilder, error) {
 	txBuilder := c.TxConfig.NewTxBuilder()
-	msg := BuildSendMgs(from, to, denom, amount)
+	msg := BuildSendMsg(from, to, denom, amount)
 	if err := txBuilder.SetMsgs(msg); err != nil {
 		return nil, err
 	}

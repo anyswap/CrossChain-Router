@@ -8,6 +8,7 @@ import (
 	cryptoTypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	authTx "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	bankTypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	ibcTypes "github.com/cosmos/ibc-go/v6/modules/apps/transfer/types"
 )
 
 func NewCosmosRestClient(urls []string) *CosmosRestClient {
@@ -24,6 +25,7 @@ func (c *CosmosRestClient) SetBaseUrls(urls []string) {
 func BuildNewTxConfig() cosmosClient.TxConfig {
 	interfaceRegistry := codecTypes.NewInterfaceRegistry()
 	bankTypes.RegisterInterfaces(interfaceRegistry)
+	ibcTypes.RegisterInterfaces(interfaceRegistry)
 	PublicKeyRegisterInterfaces(interfaceRegistry)
 	protoCodec := codec.NewProtoCodec(interfaceRegistry)
 	return authTx.NewTxConfig(protoCodec, authTx.DefaultSignModes)
