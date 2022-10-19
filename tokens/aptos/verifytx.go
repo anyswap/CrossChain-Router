@@ -15,8 +15,20 @@ import (
 
 // VerifyMsgHash verify msg hash
 func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) (err error) {
+	tx, ok := rawTx.(*Transaction)
+	if !ok {
+		return tokens.ErrWrongRawTx
+	}
 	if len(msgHashes) < 1 {
-		return fmt.Errorf("must provide msg hash")
+		return tokens.ErrWrongCountOfMsgHashes
+	}
+	signingMessage, err := b.GetSigningMessage(tx)
+	if err != nil {
+		return fmt.Errorf("unable to encode message for signing: %w", err)
+	}
+	if !strings.EqualFold(*signingMessage, msgHashes[0]) {
+		log.Trace("message hash mismatch", "want", *signingMessage, "have", msgHashes[0])
+		return tokens.ErrMsgHashMismatch
 	}
 	return nil
 }
