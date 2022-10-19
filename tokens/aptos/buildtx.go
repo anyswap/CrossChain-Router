@@ -112,7 +112,7 @@ func (b *Bridge) BuildSwapinTransferTransaction(args *tokens.BuildTxArgs, tokenC
 }
 
 func (b *Bridge) BuildSwapinTransferTransactionForScript(router, coin, poolcoin, receiver, amount, swapID, FromChainID string) (*Transaction, error) {
-	account, err := b.Client.GetAccount(router)
+	account, err := b.GetAccount(router)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +157,7 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 }
 
 func (b *Bridge) getGasPrice() string {
-	estimateGasPrice, err := b.Client.EstimateGasPrice()
+	estimateGasPrice, err := b.EstimateGasPrice()
 	if err == nil {
 		log.Debugln("estimateGasPrice", "GasPrice", estimateGasPrice.GasPrice)
 		return strconv.Itoa(estimateGasPrice.GasPrice)
@@ -185,7 +185,7 @@ func (b *Bridge) getAccountNonce(args *tokens.BuildTxArgs) (nonceptr *uint64, er
 }
 
 func (b *Bridge) BuildDeployModuleTransaction(address, packagemetadata string, moduleHexs []string) (*Transaction, error) {
-	account, err := b.Client.GetAccount(address)
+	account, err := b.GetAccount(address)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +211,7 @@ func (b *Bridge) BuildDeployModuleTransaction(address, packagemetadata string, m
 }
 
 func (b *Bridge) BuildRegisterPoolCoinTransaction(address, underlyingCoin, poolCoin, poolCoinName, poolCoinSymbol string, decimals uint8) (*Transaction, error) {
-	account, err := b.Client.GetAccount(address)
+	account, err := b.GetAccount(address)
 	if err != nil {
 		return nil, err
 	}
@@ -234,7 +234,7 @@ func (b *Bridge) BuildRegisterPoolCoinTransaction(address, underlyingCoin, poolC
 }
 
 func (b *Bridge) BuildSetCoinTransaction(address, coin string, coinType uint8) (*Transaction, error) {
-	account, err := b.Client.GetAccount(address)
+	account, err := b.GetAccount(address)
 	if err != nil {
 		return nil, err
 	}
@@ -257,7 +257,7 @@ func (b *Bridge) BuildSetCoinTransaction(address, coin string, coinType uint8) (
 }
 
 func (b *Bridge) BuildSetStatusTransaction(address string, status uint8) (*Transaction, error) {
-	account, err := b.Client.GetAccount(address)
+	account, err := b.GetAccount(address)
 	if err != nil {
 		return nil, err
 	}
@@ -279,7 +279,7 @@ func (b *Bridge) BuildSetStatusTransaction(address string, status uint8) (*Trans
 	return tx, nil
 }
 func (b *Bridge) BuildSetPoolcoinCapTransaction(address, coin string) (*Transaction, error) {
-	account, err := b.Client.GetAccount(address)
+	account, err := b.GetAccount(address)
 	if err != nil {
 		return nil, err
 	}
@@ -302,7 +302,7 @@ func (b *Bridge) BuildSetPoolcoinCapTransaction(address, coin string) (*Transact
 }
 
 func (b *Bridge) BuildManagedCoinInitializeTransaction(address, coin, poolCoinName, poolCoinSymbol string, decimals uint8, monitor_supply bool) (*Transaction, error) {
-	account, err := b.Client.GetAccount(address)
+	account, err := b.GetAccount(address)
 	if err != nil {
 		return nil, err
 	}
@@ -326,7 +326,7 @@ func (b *Bridge) BuildManagedCoinInitializeTransaction(address, coin, poolCoinNa
 }
 
 func (b *Bridge) BuildRegisterCoinTransaction(address, coin string) (*Transaction, error) {
-	account, err := b.Client.GetAccount(address)
+	account, err := b.GetAccount(address)
 	if err != nil {
 		return nil, err
 	}
@@ -350,7 +350,7 @@ func (b *Bridge) BuildRegisterCoinTransaction(address, coin string) (*Transactio
 }
 
 func (b *Bridge) BuildMintCoinTransaction(minter, toaddress, coin string, amount uint64) (*Transaction, error) {
-	account, err := b.Client.GetAccount(minter)
+	account, err := b.GetAccount(minter)
 	if err != nil {
 		return nil, err
 	}
@@ -374,7 +374,7 @@ func (b *Bridge) BuildMintCoinTransaction(minter, toaddress, coin string, amount
 }
 
 func (b *Bridge) BuildSwapoutTransaction(sender, router, coin, toAddress, tochainId string, amount uint64) (*Transaction, error) {
-	account, err := b.Client.GetAccount(sender)
+	account, err := b.GetAccount(sender)
 	if err != nil {
 		return nil, err
 	}
@@ -398,7 +398,7 @@ func (b *Bridge) BuildSwapoutTransaction(sender, router, coin, toAddress, tochai
 }
 
 func (b *Bridge) BuildTestUnderlyingCoinMintTransaction(minter, toaddress, coin string, amount uint64) (*Transaction, error) {
-	account, err := b.Client.GetAccount(minter)
+	account, err := b.GetAccount(minter)
 	if err != nil {
 		return nil, err
 	}
@@ -422,7 +422,7 @@ func (b *Bridge) BuildTestUnderlyingCoinMintTransaction(minter, toaddress, coin 
 }
 
 func (b *Bridge) BuildDepositTransaction(sender, pool, underlying, anycoin string, amount uint64) (*Transaction, error) {
-	account, err := b.Client.GetAccount(sender)
+	account, err := b.GetAccount(sender)
 	if err != nil {
 		return nil, err
 	}
@@ -446,7 +446,7 @@ func (b *Bridge) BuildDepositTransaction(sender, pool, underlying, anycoin strin
 }
 
 func (b *Bridge) BuildWithdrawTransaction(sender, pool, underlying, anycoin string, amount uint64) (*Transaction, error) {
-	account, err := b.Client.GetAccount(sender)
+	account, err := b.GetAccount(sender)
 	if err != nil {
 		return nil, err
 	}

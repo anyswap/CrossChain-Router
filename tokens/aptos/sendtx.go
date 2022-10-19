@@ -14,7 +14,7 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error
 	if !ok {
 		return "", errors.New("wrong signed transaction type")
 	}
-	txInfo, err := b.Client.SubmitTranscation(tx)
+	txInfo, err := b.SubmitTranscation(tx)
 	if err != nil {
 		log.Info("Aptos SendTransaction failed", "err", err)
 	} else {

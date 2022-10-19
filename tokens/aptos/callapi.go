@@ -16,7 +16,7 @@ var errTxResultType = errors.New("tx type is not TransactionInfo")
 func (b *Bridge) GetTokenDecimals(resource string) (uint8, error) {
 	infos := strings.Split(resource, SPLIT_SYMBOL)
 
-	resp, err := b.Client.GetAccountResource(infos[0], fmt.Sprintf(COIN_INFO_PREFIX, resource))
+	resp, err := b.GetAccountResource(infos[0], fmt.Sprintf(COIN_INFO_PREFIX, resource))
 	if err != nil {
 		return 0, err
 	}
@@ -25,7 +25,7 @@ func (b *Bridge) GetTokenDecimals(resource string) (uint8, error) {
 
 // GetTxBlockInfo impl NonceSetter interface
 func (b *Bridge) GetTxBlockInfo(txHash string) (blockHeight, blockTime uint64) {
-	ledger, err := b.Client.GetLedger()
+	ledger, err := b.GetLedger()
 	if err != nil {
 		return 0, 0
 	}
@@ -36,7 +36,7 @@ func (b *Bridge) GetTxBlockInfo(txHash string) (blockHeight, blockTime uint64) {
 
 // GetPoolNonce impl NonceSetter interface
 func (b *Bridge) GetPoolNonce(address, _height string) (uint64, error) {
-	account, err := b.Client.GetAccount(address)
+	account, err := b.GetAccount(address)
 	if err != nil {
 		return 0, fmt.Errorf("Aptos GetAccount, %w", err)
 	}
@@ -45,7 +45,7 @@ func (b *Bridge) GetPoolNonce(address, _height string) (uint64, error) {
 
 func (b *Bridge) GetLatestBlockNumber() (num uint64, err error) {
 	for i := 0; i < rpcRetryTimes; i++ {
-		resp, err1 := b.Client.GetLedger()
+		resp, err1 := b.GetLedger()
 		if err1 != nil || resp == nil {
 			err = err1
 			log.Warn("Try get latest block number failed", "error", err1)
@@ -75,7 +75,7 @@ func (b *Bridge) GetLatestBlockNumberOf(apiAddress string) (num uint64, err erro
 // GetTransaction impl
 func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
 	for i := 0; i < rpcRetryTimes; i++ {
-		resp, err1 := b.Client.GetTransactions(txHash)
+		resp, err1 := b.GetTransactions(txHash)
 		if err1 != nil || resp == nil {
 			log.Warn("Try get transaction failed", "error", err1)
 			err = err1

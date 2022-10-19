@@ -64,7 +64,7 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 		return nil, "", tokens.ErrMissMPCPublicKey
 	}
 
-	signingMessage, err := b.Client.GetSigningMessage(tx)
+	signingMessage, err := b.GetSigningMessage(tx)
 	if err != nil {
 		return nil, "", fmt.Errorf("unable to encode message for signing: %w", err)
 	}
@@ -98,7 +98,7 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 	log.Trace(logPrefix+"get rsv signature success", "keyID", keyID, "txid", txid, "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "rsv", rsv)
 
 	// Simulated transactions must have a non-valid signature
-	err = b.Client.SimulateTranscation(tx, mpcPubkey)
+	err = b.SimulateTranscation(tx, mpcPubkey)
 	if err != nil {
 		return nil, "", err
 	}
@@ -126,11 +126,11 @@ func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, privKey string
 	}
 	account := NewAccountFromSeed(privKey)
 	// Simulated transactions must have a non-valid signature
-	err = b.Client.SimulateTranscation(tx, account.GetPublicKeyHex())
+	err = b.SimulateTranscation(tx, account.GetPublicKeyHex())
 	if err != nil {
 		return nil, "", err
 	}
-	signingMessage, err := b.Client.GetSigningMessage(tx)
+	signingMessage, err := b.GetSigningMessage(tx)
 	if err != nil {
 		log.Fatal("GetSigningMessage", "err", err)
 	}
@@ -164,7 +164,7 @@ func (b *Bridge) CalcTxHashByTSScirpt(rawTx interface{}, argTypes string) (txHas
 		return "", err
 	}
 
-	ledgerInfo, err := b.Client.GetLedger()
+	ledgerInfo, err := b.GetLedger()
 	if err != nil {
 		return "", err
 	}

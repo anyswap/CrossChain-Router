@@ -66,7 +66,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
-	signingMessage, err := bridge.Client.GetSigningMessage(tx)
+	signingMessage, err := bridge.GetSigningMessage(tx)
 	if err != nil {
 		log.Fatal("GetSigningMessage", "err", err)
 	}
@@ -112,12 +112,12 @@ func main() {
 		log.Fatal("CalcTxHashByTSScirpt", "err", err)
 	}
 	log.Info("CalcTxHashByTSScirpt", "calc txHash", txhash)
-	txInfo, err := bridge.Client.SubmitTranscation(tx)
+	txInfo, err := bridge.SubmitTranscation(tx)
 	if err != nil {
 		log.Fatal("SubmitTranscation", "err", err)
 	}
 	time.Sleep(time.Duration(10) * time.Second)
-	result, _ := bridge.Client.GetTransactions(txInfo.Hash)
+	result, _ := bridge.GetTransactions(txInfo.Hash)
 	log.Info("SubmitTranscation", "txHash", txInfo.Hash, "Success", result.Success, "version", result.Version, "vm_status", result.VmStatus)
 }
 

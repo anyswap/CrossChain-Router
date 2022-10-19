@@ -76,7 +76,7 @@ func main() {
 	txjson, _ := json.Marshal(tx)
 	fmt.Println("origin tx ", string(txjson))
 
-	signingMessage, err := bridge.Client.GetSigningMessage(tx)
+	signingMessage, err := bridge.GetSigningMessage(tx)
 	if err != nil {
 		log.Fatal("GetSigningMessage", "err", err)
 	}
@@ -92,7 +92,7 @@ func main() {
 		// 	PublicKey: account.GetPublicKeyHex(),
 		// 	Signature: common.ToHex(make([]byte, 64)),
 		// }
-		err := bridge.Client.SimulateTranscation(tx, account.GetPublicKeyHex())
+		err := bridge.SimulateTranscation(tx, account.GetPublicKeyHex())
 		if err != nil {
 			log.Fatal("SimulateTranscation", "err", err)
 		}
@@ -139,12 +139,12 @@ func main() {
 	}
 	log.Info("SubmitTranscation", "calc txHash", txhash)
 
-	txInfo, err := bridge.Client.SubmitTranscation(tx)
+	txInfo, err := bridge.SubmitTranscation(tx)
 	if err != nil {
 		log.Fatal("SubmitTranscation", "err", err)
 	}
 	time.Sleep(time.Duration(10) * time.Second)
-	result, _ := bridge.Client.GetTransactions(txInfo.Hash)
+	result, _ := bridge.GetTransactions(txInfo.Hash)
 	log.Info("SubmitTranscation", "txHash", txInfo.Hash, "Success", result.Success, "version", result.Version, "vm_status", result.VmStatus)
 }
 

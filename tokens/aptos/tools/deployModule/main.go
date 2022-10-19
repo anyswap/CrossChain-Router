@@ -75,7 +75,7 @@ func main() {
 		log.Fatalf("%v", err)
 	}
 
-	signingMessage, err := bridge.Client.GetSigningMessage(tx)
+	signingMessage, err := bridge.GetSigningMessage(tx)
 	if err != nil {
 		log.Fatal("GetSigningMessage", "err", err)
 	}
@@ -115,12 +115,12 @@ func main() {
 		}
 		log.Info("DoSignOneED", "signature", rsv)
 	}
-	txInfo, err := bridge.Client.SubmitTranscation(tx)
+	txInfo, err := bridge.SubmitTranscation(tx)
 	if err != nil {
 		log.Fatal("SubmitTranscation", "err", err)
 	}
 
-	result, err := bridge.Client.GetTransactionsNotPending(txInfo.Hash)
+	result, err := bridge.GetTransactionsNotPending(txInfo.Hash)
 	if err != nil {
 		log.Fatal("GetTransactionsNotPending", "err", err)
 	}

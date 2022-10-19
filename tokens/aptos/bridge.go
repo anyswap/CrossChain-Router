@@ -34,7 +34,6 @@ type Bridge struct {
 	*base.NonceSetterBase
 	*tokens.CrossChainBridgeBase
 	RPCClientTimeout int
-	Client           *RestClient
 }
 
 // NewCrossChainBridge new bridge
@@ -77,10 +76,6 @@ func GetStubChainID(network string) *big.Int {
 // SetGatewayConfig set gateway config
 func (b *Bridge) SetGatewayConfig(gatewayCfg *tokens.GatewayConfig) {
 	b.CrossChainBridgeBase.SetGatewayConfig(gatewayCfg)
-	b.Client = &RestClient{
-		Url:     gatewayCfg.APIAddress[0],
-		Timeout: b.RPCClientTimeout,
-	}
 }
 
 // SetTokenConfig set token config
