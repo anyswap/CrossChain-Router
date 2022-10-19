@@ -1,6 +1,8 @@
 package aptos
 
 import (
+	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -30,6 +32,18 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, tokens.ErrEmptyTokenID
 	}
 
+	if args.From == "" {
+		return nil, errors.New("forbid empty sender")
+	}
+	routerMPC, err := router.GetRouterMPC(args.GetTokenID(), b.ChainConfig.ChainID)
+	if err != nil {
+		return nil, err
+	}
+	if !common.IsEqualIgnoreCase(args.From, routerMPC) {
+		log.Error("build tx mpc mismatch", "have", args.From, "want", routerMPC)
+		return nil, tokens.ErrSenderMismatch
+	}
+
 	erc20SwapInfo := args.ERC20SwapInfo
 	tokenID := erc20SwapInfo.TokenID
 	chainID := b.ChainConfig.ChainID
@@ -54,6 +68,15 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	if err != nil {
 		return nil, err
 	}
+	ctx := []interface{}{
+		"identifier", args.Identifier, "swapID", args.SwapID,
+		"fromChainID", args.FromChainID, "toChainID", args.ToChainID,
+		"from", args.From, "bind", args.Bind, "nonce", tx.SequenceNumber,
+		"gasPrice", tx.GasUnitPrice, "gasCurrency", tx.GasCurrencyCode,
+		"originValue", args.OriginValue, "swapValue", args.SwapValue,
+		"replaceNum", args.GetReplaceNum(), "tokenID", tokenID,
+	}
+	log.Info(fmt.Sprintf("build %s raw tx", args.SwapType.String()), ctx...)
 	return tx, nil
 }
 
@@ -85,7 +108,7 @@ func (b *Bridge) SetExtraArgs(args *tokens.BuildTxArgs, tokenCfg *tokens.TokenCo
 	if extra.Fee == nil {
 		extra.Fee = &maxFee
 	}
-	log.Info("BuildSwapin", "SequenceNumber", extra.Sequence, "ReplaceNum", extra.ReplaceNum)
+	log.Info("Build tx with extra args", "extra", extra)
 	return nil
 }
 
@@ -136,6 +159,10 @@ func (b *Bridge) BuildSwapinTransferTransactionForScript(router, coin, poolcoin,
 func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken string) (receiver string, amount uint64, err error) {
 	erc20SwapInfo := args.ERC20SwapInfo
 	receiver = args.Bind
+	if !b.IsValidAddress(receiver) {
+		log.Warn("swapout to wrong receiver", "receiver", args.Bind)
+		return receiver, amount, errors.New("can not swapout to invalid receiver")
+	}
 	fromBridge := router.GetBridgeByChainID(args.FromChainID.String())
 	if fromBridge == nil {
 		return receiver, amount, tokens.ErrNoBridgeForChainID
