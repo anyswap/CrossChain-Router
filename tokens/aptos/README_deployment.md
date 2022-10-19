@@ -28,17 +28,21 @@ go run tokens/aptos/tools/deployModule/main.go -h
 ```
 
 ### d. deploy and issue underlyingCoin
-1. copy `aptos-contract/anycoin/sources/wETH.move` to `aptos-contract/anycoin/sources/{coinName}.move`
-2. change the coin name in line 2,35,36  with your coinName
+1. rename or copy `aptos-contract/mintable/sources/USDC.move` to `aptos-contract/mintable/sources/{coinName}.move`
+2. change the `USDC` in line 2,36,37  with your coinName
 ```
-module TEST::wETH {
+module Multichain::USDC {
 
-string::utf8(b"wETH"),
-string::utf8(b"wETH"),
+string::utf8(b"USDC"),
+string::utf8(b"USDC"),
 
 ```
-3. run `aptos move compile --save-metadata --package-dir anycoin` to build code
-4. use the deployModule to deploy , modules is the path like `-module {coinName}  -path ../aptos-contract/anycoin/build/anycoin` 
+3. run `aptos move compile --save-metadata --package-dir mintable` to build code
+4. use the deployModule to deploy , modules is the path like `-modules {coinName}  -path ../aptos-contract/mintable/build/mintable` 
+5. if your want router have MintCapability, run the following tool, and deployer must be the same as router
+    ```
+    go run tokens/aptos/tools/setUnderlyingCap/main.go -h
+    ```
 
 ### e. register coin to user so that user can hold coin
 ```
@@ -78,8 +82,15 @@ router status `[1]:open [0]:close`
 go run tokens/aptos/tools/setStatus/main.go -h
 ```
 
+## 2. deposit and withdraw with Multichain::Pool
+```
+go run tokens/aptos/tools/deposit/main.go -h
 
-## 2. Setup CrossChain-Router Enviroment
+go run tokens/aptos/tools/withdraw/main.go -h
+```
+
+
+## 3. Setup CrossChain-Router Enviroment
 ### a. setup aptos config
 ```
 [Gateways]

@@ -4,12 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
-	"io/ioutil"
-	"os"
-	"strings"
 	"time"
 
-	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mpc"
 	"github.com/anyswap/CrossChain-Router/v3/params"
@@ -26,8 +22,7 @@ var (
 	paramPublicKey string
 	paramPriKey    string
 
-	paramPath    string
-	paramModules string
+	coinName string
 
 	mpcConfig *mpc.Config
 )
@@ -39,8 +34,7 @@ func initFlags() {
 	flag.StringVar(&paramPublicKey, "pubkey", "", "signer public key")
 	flag.StringVar(&paramPriKey, "priKey", "", "signer priKey key")
 
-	flag.StringVar(&paramPath, "path", "", "contract build path: /Users/potti/multichain-workspace/aptos-contract/router/build/multichain")
-	flag.StringVar(&paramModules, "modules", "", "deploy module name split by ',': Pool,Router")
+	flag.StringVar(&coinName, "coinName", "", "underlying coin name only: USDC")
 
 	flag.Parse()
 }
@@ -48,20 +42,6 @@ func initFlags() {
 func main() {
 	log.SetLogger(6, false, true)
 	initAll()
-	if paramPath == "" {
-		log.Fatal("path can't be empty")
-	}
-
-	packageMetaData := readMove(paramPath + "/package-metadata.bcs")
-	// fmt.Println("packageMetaData", packageMetaData)
-
-	moduleArray := strings.Split(paramModules, ",")
-	moveHexs := []string{}
-	for _, moduleName := range moduleArray {
-		moveHex := readMove(paramPath + "/bytecode_modules/" + moduleName + ".mv")
-		// fmt.Println(moveHex)
-		moveHexs = append(moveHexs, moveHex)
-	}
 
 	var account *aptos.Account
 	if paramPriKey != "" {
@@ -69,13 +49,11 @@ func main() {
 	} else {
 		account = aptos.NewAccountFromPubkey(paramPublicKey)
 	}
-
 	log.Info("SignAccount", "address", account.GetHexAddress())
-	tx, err := bridge.BuildDeployModuleTransaction(account.GetHexAddress(), packageMetaData, moveHexs)
+	tx, err := bridge.BuildCopyCapTransaction(account.GetHexAddress(), coinName)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
-
 	signingMessage, err := bridge.GetSigningMessage(tx)
 	if err != nil {
 		log.Fatal("GetSigningMessage", "err", err)
@@ -120,13 +98,6 @@ func main() {
 	if err != nil {
 		log.Fatal("SubmitTranscation", "err", err)
 	}
-
-	// result, err := bridge.Client.GetTransactionsNotPending(txInfo.Hash)
-	// if err != nil {
-	// 	log.Fatal("GetTransactionsNotPending", "err", err)
-	// }
-	// log.Info("SubmitTranscation", "txHash", txInfo.Hash, "Success", result.Success)
-
 	time.Sleep(time.Duration(10) * time.Second)
 	result, _ := bridge.GetTransactions(txInfo.Hash)
 	log.Info("SubmitTranscation", "txHash", txInfo.Hash, "Success", result.Success, "version", result.Version, "vm_status", result.VmStatus)
@@ -159,17 +130,4 @@ func initBridge() {
 		APIAddressExt: apiAddrsExt,
 	})
 	log.Info("init bridge finished")
-}
-
-func readMove(filename string) string {
-	file, err := os.Open(filename)
-	if err != nil {
-		log.Fatal("readMove", "filename", filename)
-	}
-	defer file.Close()
-	content, err := ioutil.ReadAll(file)
-	if err != nil {
-		log.Fatal("ReadAll", "filename", filename)
-	}
-	return common.ToHex(content)
 }

@@ -495,3 +495,26 @@ func (b *Bridge) BuildWithdrawTransaction(sender, pool, underlying, anycoin stri
 	}
 	return tx, nil
 }
+
+func (b *Bridge) BuildCopyCapTransaction(address, coin string) (*Transaction, error) {
+	account, err := b.GetAccount(address)
+	if err != nil {
+		return nil, err
+	}
+	// 10 min
+	timeout := time.Now().Unix() + timeout_seconds
+	tx := &Transaction{
+		Sender:                  address,
+		SequenceNumber:          account.SequenceNumber,
+		MaxGasAmount:            maxFee,
+		GasUnitPrice:            b.getGasPrice(),
+		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
+		Payload: &TransactionPayload{
+			Type:          SCRIPT_FUNCTION_PAYLOAD,
+			Function:      GetRouterFunctionId(address, coin, CONTRACT_FUNC_SET_UNDERLYING_CAP),
+			TypeArguments: []string{},
+			Arguments:     []interface{}{},
+		},
+	}
+	return tx, nil
+}
