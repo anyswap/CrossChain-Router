@@ -47,43 +47,59 @@ func (b *Bridge) VerifyTransaction(txHash string, args *tokens.VerifyArgs) (*tok
 	}
 }
 
-//nolint:gocyclo,funlen // ok
-func (b *Bridge) verifySwapoutTx(txHash string, _ int, allowUnstable bool) (*tokens.SwapTxInfo, error) {
-	swapInfo := &tokens.SwapTxInfo{}
-	swapInfo.SwapType = tokens.ERC20SwapType          // SwapType
-	swapInfo.Hash = txHash                            // Hash
-	swapInfo.LogIndex = 0                             // LogIndex always 0 (do not support multiple in one tx)
-	swapInfo.FromChainID = b.ChainConfig.GetChainID() // FromChainID
-
+// GetTransactionInfo get tx info (verify tx status and check stable)
+func (b *Bridge) GetTransactionInfo(txHash string, allowUnstable bool) (*TransactionInfo, error) {
 	tx, err := b.GetTransaction(txHash)
 	if err != nil {
-		log.Debug("[verifySwapout] "+b.ChainConfig.BlockChain+" Bridge::GetTransaction fail", "tx", txHash, "err", err)
-		return swapInfo, tokens.ErrTxNotFound
+		log.Debug(b.ChainConfig.BlockChain+" Bridge::GetTransaction fail", "tx", txHash, "err", err)
+		return nil, tokens.ErrTxNotFound
 	}
 
 	txres, ok := tx.(*TransactionInfo)
 	if !ok {
-		return swapInfo, errTxResultType
+		return nil, errTxResultType
 	}
 
 	if !txres.Success {
-		return swapInfo, tokens.ErrTxWithWrongStatus
+		return nil, tokens.ErrTxWithWrongStatus
 	}
 
 	if !allowUnstable {
 		h, errf := b.GetLatestBlockNumber()
 		if errf != nil {
-			return swapInfo, errf
+			return nil, errf
 		}
-		ledger, _ := strconv.ParseUint(txres.Version, 10, 64)
+
+		ledger, errf := strconv.ParseUint(txres.Version, 10, 64)
+		if errf != nil {
+			return nil, errf
+		}
 
 		if h < ledger+b.GetChainConfig().Confirmations {
-			return swapInfo, tokens.ErrTxNotStable
+			return nil, tokens.ErrTxNotStable
 		}
+
 		if h < b.ChainConfig.InitialHeight {
-			return swapInfo, tokens.ErrTxBeforeInitialHeight
+			return nil, tokens.ErrTxBeforeInitialHeight
 		}
 	}
+
+	return txres, nil
+}
+
+//nolint:gocyclo,funlen // ok
+func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool) (*tokens.SwapTxInfo, error) {
+	swapInfo := &tokens.SwapTxInfo{}
+	swapInfo.SwapType = tokens.ERC20SwapType          // SwapType
+	swapInfo.Hash = txHash                            // Hash
+	swapInfo.LogIndex = logIndex                      // LogIndex
+	swapInfo.FromChainID = b.ChainConfig.GetChainID() // FromChainID
+
+	txres, err := b.GetTransactionInfo(txHash, allowUnstable)
+	if err != nil {
+		return swapInfo, err
+	}
+
 	err = b.verifySwapoutEvents(swapInfo, txres)
 	if err != nil {
 		return swapInfo, err
@@ -105,7 +121,16 @@ func (b *Bridge) verifySwapoutTx(txHash string, _ int, allowUnstable bool) (*tok
 }
 
 func (b *Bridge) verifySwapoutEvents(swapInfo *tokens.SwapTxInfo, txInfo *TransactionInfo) error {
+	if swapInfo.LogIndex >= len(txInfo.Events) {
+		return tokens.ErrLogIndexOutOfRange
+	}
+	swapOutInfo := &txInfo.Events[swapInfo.LogIndex]
+
 	routerProgramID := b.ChainConfig.RouterContract
+
+	if !common.IsEqualIgnoreCase(swapOutInfo.Type, GetRouterFunctionId(routerProgramID, CONTRACT_NAME_ROUTER, "SwapOutEvent")) {
+		return tokens.ErrSwapoutLogNotFound
+	}
 
 	swapInfo.TxTo = strings.Split(txInfo.PayLoad.Function, SPLIT_SYMBOL)[0]
 
@@ -114,19 +139,10 @@ func (b *Bridge) verifySwapoutEvents(swapInfo *tokens.SwapTxInfo, txInfo *Transa
 		!params.IsInCallByContractWhitelist(b.ChainConfig.ChainID, swapInfo.TxTo) {
 		return tokens.ErrTxWithWrongContract
 	}
-	var swapOutInfo *Event
-	for _, event := range txInfo.Events {
-		if common.IsEqualIgnoreCase(event.Type, GetRouterFunctionId(routerProgramID, CONTRACT_NAME_ROUTER, "SwapOutEvent")) {
-			swapOutInfo = &event
-		}
-	}
-	if swapOutInfo == nil {
-		return tokens.ErrSwapoutLogNotFound
-	}
 
 	swapInfo.To = routerProgramID
 	erc20SwapInfo := &tokens.ERC20SwapInfo{}
-	swapInfo.ERC20SwapInfo = erc20SwapInfo
+	swapInfo.SwapInfo = tokens.SwapInfo{ERC20SwapInfo: erc20SwapInfo}
 	// SwapOutEvent in Router.move
 	// struct SwapOutEvent has drop, store {
 	//     token: string::String,
@@ -148,7 +164,6 @@ func (b *Bridge) verifySwapoutEvents(swapInfo *tokens.SwapTxInfo, txInfo *Transa
 		return err
 	}
 	swapInfo.Value = new(big.Int).SetUint64(value)
-	swapInfo.FromChainID = b.ChainConfig.GetChainID()
 	toChainID, err := common.GetUint64FromStr(swapOutInfo.Data["to_chain_id"])
 	if err != nil {
 		return err
