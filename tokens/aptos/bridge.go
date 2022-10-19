@@ -34,17 +34,15 @@ const (
 // Bridge block bridge inherit from btc bridge
 type Bridge struct {
 	*base.NonceSetterBase
-	*tokens.CrossChainBridgeBase
 	RPCClientTimeout int
 }
 
 // NewCrossChainBridge new bridge
 func NewCrossChainBridge() *Bridge {
-
 	InstallTsModules()
 	return &Bridge{
-		CrossChainBridgeBase: tokens.NewCrossChainBridgeBase(),
-		RPCClientTimeout:     60,
+		NonceSetterBase:  base.NewNonceSetterBase(),
+		RPCClientTimeout: 60,
 	}
 }
 
