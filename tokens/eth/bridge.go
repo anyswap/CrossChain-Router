@@ -9,7 +9,6 @@ import (
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
-	"github.com/anyswap/CrossChain-Router/v3/mongodb"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
@@ -182,17 +181,6 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 		"routerContract", routerContract, "routerMPC", routerMPC,
 		"routerFactory", routerFactory, "routerWNative", routerWNative,
 		"routerSecurity", routerSecurity)
-
-	if mongodb.HasClient() {
-		var nextSwapNonce uint64
-		for i := 0; i < 3; i++ {
-			nextSwapNonce, err = mongodb.FindNextSwapNonce(chainID, strings.ToLower(routerMPC))
-			if err == nil {
-				break
-			}
-		}
-		b.InitSwapNonce(b, routerMPC, nextSwapNonce)
-	}
 
 	return nil
 }
