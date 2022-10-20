@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/base"
@@ -38,10 +39,16 @@ type Bridge struct {
 
 // NewCrossChainBridge new bridge
 func NewCrossChainBridge() *Bridge {
-	InstallTsModules()
 	return &Bridge{
 		NonceSetterBase:  base.NewNonceSetterBase(),
 		RPCClientTimeout: 60,
+	}
+}
+
+// InitAfterConfig init variables (ie. extra members) after loading config
+func (b *Bridge) InitAfterConfig() {
+	if params.IsSwapServer {
+		InstallTsModules()
 	}
 }
 
