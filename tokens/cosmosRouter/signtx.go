@@ -1,4 +1,4 @@
-package cosmosHub
+package cosmosRouter
 
 import (
 	"encoding/json"

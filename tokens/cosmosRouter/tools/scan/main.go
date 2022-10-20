@@ -10,7 +10,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/router/bridge"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
-	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmosHub"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmosRouter"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmosSDK"
 	"github.com/cosmos/cosmos-sdk/types"
 )
@@ -47,7 +47,7 @@ func main() {
 func ParseAmountTotal(messageLogs []types.ABCIMessageLog) (err error) {
 	for _, logDetail := range messageLogs {
 		for _, event := range logDetail.Events {
-			if event.Type == cosmosHub.TransferType {
+			if event.Type == cosmosRouter.TransferType {
 				if (len(event.Attributes) == 2 || len(event.Attributes) == 3) && event.Attributes[0].Value == paramMpc {
 					return nil
 				}

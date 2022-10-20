@@ -1,4 +1,4 @@
-package cosmosHub
+package cosmosRouter
 
 import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmosSDK"
@@ -6,14 +6,17 @@ import (
 
 // IsValidAddress check address
 func (b *Bridge) IsValidAddress(address string) bool {
-	return cosmosSDK.IsValidAddress(address)
+	prefix := b.GetChainConfig().Extra
+	return cosmosSDK.IsValidAddress(prefix, address)
 }
 
 // PublicKeyToAddress public key hex string (may be uncompressed) to address
 func (b *Bridge) PublicKeyToAddress(pubKeyHex string) (string, error) {
-	return cosmosSDK.PublicKeyToAddress(pubKeyHex)
+	prefix := b.GetChainConfig().Extra
+	return cosmosSDK.PublicKeyToAddress(prefix, pubKeyHex)
 }
 
 func (b *Bridge) VerifyPubKey(address, pubkey string) error {
-	return cosmosSDK.VerifyPubKey(address, pubkey)
+	prefix := b.GetChainConfig().Extra
+	return cosmosSDK.VerifyPubKey(address, prefix, pubkey)
 }

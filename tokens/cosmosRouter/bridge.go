@@ -1,9 +1,7 @@
-package cosmosHub
+package cosmosRouter
 
 import (
-	"math/big"
 	"strconv"
-	"sync"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
@@ -16,14 +14,6 @@ var (
 	_ tokens.IBridge = &Bridge{}
 	// ensure Bridge impl tokens.NonceSetter
 	_ tokens.NonceSetter = &Bridge{}
-
-	supportedChainIDs     = make(map[string]bool)
-	supportedChainIDsInit sync.Once
-)
-
-const (
-	mainnetNetWork = "mainnet"
-	testnetNetWork = "testnet"
 )
 
 // Bridge near bridge
@@ -32,36 +22,12 @@ type Bridge struct {
 	*cosmosSDK.CosmosRestClient
 }
 
-// SupportsChainID supports chainID
-func SupportsChainID(chainID *big.Int) bool {
-	supportedChainIDsInit.Do(func() {
-		supportedChainIDs[GetStubChainID(mainnetNetWork).String()] = true
-		supportedChainIDs[GetStubChainID(testnetNetWork).String()] = true
-	})
-	return supportedChainIDs[chainID.String()]
-}
-
 // NewCrossChainBridge new bridge
 func NewCrossChainBridge() *Bridge {
 	return &Bridge{
 		NonceSetterBase:  base.NewNonceSetterBase(),
 		CosmosRestClient: cosmosSDK.NewCosmosRestClient([]string{""}),
 	}
-}
-
-// GetStubChainID get stub chainID
-func GetStubChainID(network string) *big.Int {
-	stubChainID := new(big.Int).SetBytes([]byte("cosmoshub-4"))
-	switch network {
-	case mainnetNetWork:
-	case testnetNetWork:
-		stubChainID.Add(stubChainID, big.NewInt(1))
-	default:
-		log.Fatalf("unknown network %v", network)
-	}
-	stubChainID.Mod(stubChainID, tokens.StubChainIDBase)
-	stubChainID.Add(stubChainID, tokens.StubChainIDBase)
-	return stubChainID
 }
 
 // GetLatestBlockNumber gets latest block number

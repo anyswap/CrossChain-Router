@@ -10,10 +10,12 @@ import (
 
 var (
 	paramPublicKey string
+	paramPrefix    string
 )
 
 func initFlags() {
 	flag.StringVar(&paramPublicKey, "p", "", "publicKey")
+	flag.StringVar(&paramPrefix, "prefix", "", "prefix, eg. cosmos, sei, etc.")
 
 	flag.Parse()
 }
@@ -23,7 +25,7 @@ func main() {
 
 	initFlags()
 
-	if addr, err := cosmosSDK.PublicKeyToAddress(paramPublicKey); err != nil {
+	if addr, err := cosmosSDK.PublicKeyToAddress(paramPrefix, paramPublicKey); err != nil {
 		log.Fatal("err:%v \n", err)
 	} else {
 		fmt.Printf("addr:%v \n", addr)

@@ -35,6 +35,7 @@ addr:cosmos10yyn2er9k5cs9qn55l7t23yxxk7egecpw9lw90
 ```text
 1) chainConfig
 routerContract: mpc address
+extra: addressPrifix cosmosHub: cosmos
 
 2) tokenConfig
 tokenAddress: uatom 

@@ -6,14 +6,16 @@ import (
 	"os"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
-	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmosHub"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmosSDK"
 )
 
 var (
-	paramNetwork string
+	paramChainName string
+	paramNetwork   string
 )
 
 func initFlags() {
+	flag.StringVar(&paramChainName, "n", "", "chainName, eg. cosmoshub-4, kava, etc.")
 	flag.StringVar(&paramNetwork, "p", "", "network, eg. mainnet, testnet, etc.")
 
 	flag.Parse()
@@ -32,6 +34,6 @@ func main() {
 		log.Fatal("miss network argument")
 	}
 
-	chainID := cosmosHub.GetStubChainID(network)
+	chainID := cosmosSDK.GetStubChainID(paramChainName, network)
 	fmt.Printf("%v: %v\n", network, chainID)
 }

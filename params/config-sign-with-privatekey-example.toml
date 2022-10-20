@@ -7,10 +7,10 @@ SwapSubType = ""
 
 # modgodb database connection config
 [Server.MongoDB]
-DBName = "testdb"
-DBURLs = ["192.168.110.70:27017"]
-Password = "123456"
-UserName = "tester"
+DBName = ""
+DBURLs = [""]
+Password = ""
+UserName = ""
 
 # bridge API service
 [Server.APIServer]
@@ -19,13 +19,13 @@ Port = 11556
 
 # OnChain config
 [OnChain]
-APIAddress = ["https://rinkeby.infura.io/v3/8e1493b73b104925b1d3b95abd3fd767"]
-Contract = "0x4342F2b5224a43541BE7C8F39B92D7fEaA74d038"
+APIAddress = [""]
+Contract = ""
 
 # Gateways config. key is chainID
 [Gateways]
-1660545256757 = ["https://cosmos-mainnet-rpc.allthatnode.com:1317"]
-4 = ["https://rinkeby.infura.io/v3/8e1493b73b104925b1d3b95abd3fd767"]
+1660545256757 = [""]
+4 = [""]
 
 # MPC config
 [MPC]

@@ -1,6 +1,11 @@
 package cosmosSDK
 
 import (
+	"math/big"
+	"sync"
+
+	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	cosmosClient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/codec"
 	codecTypes "github.com/cosmos/cosmos-sdk/codec/types"
@@ -9,6 +14,17 @@ import (
 	authTx "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	bankTypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	ibcTypes "github.com/cosmos/ibc-go/v6/modules/apps/transfer/types"
+)
+
+var (
+	supportedChainIDs     = make(map[string]bool)
+	supportedChainIDsInit sync.Once
+)
+
+const (
+	mainnetNetWork = "mainnet"
+	testnetNetWork = "testnet"
+	CosmosHub      = "cosmoshub-4"
 )
 
 func NewCosmosRestClient(urls []string) *CosmosRestClient {
@@ -33,4 +49,28 @@ func BuildNewTxConfig() cosmosClient.TxConfig {
 
 func PublicKeyRegisterInterfaces(registry codecTypes.InterfaceRegistry) {
 	registry.RegisterImplementations((*cryptoTypes.PubKey)(nil), &secp256k1.PubKey{})
+}
+
+// SupportsChainID supports chainID
+func SupportsChainID(chainID *big.Int) bool {
+	supportedChainIDsInit.Do(func() {
+		supportedChainIDs[GetStubChainID(CosmosHub, mainnetNetWork).String()] = true
+		supportedChainIDs[GetStubChainID(CosmosHub, testnetNetWork).String()] = true
+	})
+	return supportedChainIDs[chainID.String()]
+}
+
+// GetStubChainID get stub chainID
+func GetStubChainID(chainName, network string) *big.Int {
+	stubChainID := new(big.Int).SetBytes([]byte(chainName))
+	switch network {
+	case mainnetNetWork:
+	case testnetNetWork:
+		stubChainID.Add(stubChainID, big.NewInt(1))
+	default:
+		log.Fatalf("unknown network %v", network)
+	}
+	stubChainID.Mod(stubChainID, tokens.StubChainIDBase)
+	stubChainID.Add(stubChainID, tokens.StubChainIDBase)
+	return stubChainID
 }

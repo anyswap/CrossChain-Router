@@ -1,4 +1,4 @@
-package cosmosHub
+package cosmosRouter
 
 import (
 	"fmt"
@@ -94,5 +94,5 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 
 // GetTokenDecimals query token decimals
 func (b *Bridge) GetTokenDecimals(tokenAddr string) (uint8, error) {
-	return 0, nil
+	return 6, nil
 }
