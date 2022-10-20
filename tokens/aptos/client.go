@@ -13,15 +13,16 @@ import (
 )
 
 var (
-	API_VERSION                = "/v1/"
-	AccountPath                = API_VERSION + "accounts/{address}"
-	AccountResourcePath        = API_VERSION + "accounts/{address}/resource/{resource_type}"
-	GetTransactionsPath        = API_VERSION + "transactions/by_hash/{txn_hash}"
-	GetSigningMessagePath      = API_VERSION + "transactions/encode_submission"
-	SubmitTranscationPath      = API_VERSION + "transactions"
-	SimulateTranscationPath    = API_VERSION + "transactions/simulate"
-	GetEventsByEventHandlePath = API_VERSION + "accounts/{address}/events/{event_handle}/{field_name}"
-	EstimateGasPricePath       = API_VERSION + "estimate_gas_price"
+	API_VERSION                 = "/v1/"
+	AccountPath                 = API_VERSION + "accounts/{address}"
+	AccountResourcePath         = API_VERSION + "accounts/{address}/resource/{resource_type}"
+	GetTransactionsPath         = API_VERSION + "transactions/by_hash/{txn_hash}"
+	GetTransactionByVersionPath = API_VERSION + "transactions/by_version/{txn_version}"
+	GetSigningMessagePath       = API_VERSION + "transactions/encode_submission"
+	SubmitTranscationPath       = API_VERSION + "transactions"
+	SimulateTranscationPath     = API_VERSION + "transactions/simulate"
+	GetEventsByEventHandlePath  = API_VERSION + "accounts/{address}/events/{event_handle}/{field_name}"
+	EstimateGasPricePath        = API_VERSION + "estimate_gas_price"
 
 	SCRIPT_FUNCTION_PAYLOAD = "entry_function_payload"
 
@@ -112,6 +113,15 @@ func (c *RestClient) GetTransactions(txHash string) (*TransactionInfo, error) {
 		"txn_hash": txHash,
 	}
 	err := c.GetRequest(&resp, GetTransactionsPath, param)
+	return &resp, err
+}
+
+func (c *RestClient) GetTransactionByVersion(version string) (*TransactionInfo, error) {
+	resp := TransactionInfo{}
+	param := map[string]string{
+		"txn_version": version,
+	}
+	err := c.GetRequest(&resp, GetTransactionByVersionPath, param)
 	return &resp, err
 }
 
