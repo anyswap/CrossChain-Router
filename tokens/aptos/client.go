@@ -25,6 +25,7 @@ var (
 	EstimateGasPricePath        = API_VERSION + "estimate_gas_price"
 
 	SCRIPT_FUNCTION_PAYLOAD = "entry_function_payload"
+	SCRIPT_PAYLOAD          = "script_payload"
 
 	SPLIT_SYMBOL         = "::"
 	CONTRACT_NAME_ROUTER = "Router"

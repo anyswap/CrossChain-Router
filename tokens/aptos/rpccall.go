@@ -112,7 +112,7 @@ func (b *Bridge) SimulateTranscation(request interface{}, publikKey string) (err
 }
 
 // SubmitTranscation submit to all urls
-func (b *Bridge) SubmitTranscation(tx *Transaction) (result *TransactionInfo, err error) {
+func (b *Bridge) SubmitTranscation(tx interface{}) (result *TransactionInfo, err error) {
 	var success bool
 	var temp *TransactionInfo
 	cli := RestClient{Timeout: b.RPCClientTimeout}

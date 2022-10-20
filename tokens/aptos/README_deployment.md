@@ -91,6 +91,11 @@ go run tokens/aptos/tools/withdraw/main.go -h
 
 
 ## 3. Setup CrossChain-Router Enviroment
+### a. needs node env
+```
+node >= v14.0.0
+yarn >= 1.22.19
+```
 ### a. setup aptos config
 ```
 [Gateways]

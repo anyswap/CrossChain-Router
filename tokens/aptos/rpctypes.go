@@ -90,6 +90,28 @@ type TransactionSignature struct {
 	Signature string `json:"signature,omitempty"`
 }
 
+type ScriptPayload struct {
+	Type          string            `json:"type"`
+	Code          ScriptPayloadCode `json:"code"`
+	TypeArguments []string          `json:"type_arguments"`
+	Arguments     []interface{}     `json:"arguments"`
+}
+
+type ScriptPayloadCode struct {
+	Bytecode string `json:"bytecode"`
+}
+
+type ScriptTransaction struct {
+	Sender                  string                `json:"sender"`
+	SequenceNumber          string                `json:"sequence_number"`
+	MaxGasAmount            string                `json:"max_gas_amount"`
+	GasUnitPrice            string                `json:"gas_unit_price"`
+	GasCurrencyCode         string                `json:"gas_currency_code,omitempty"`
+	ExpirationTimestampSecs string                `json:"expiration_timestamp_secs"`
+	Payload                 *ScriptPayload        `json:"payload"`
+	Signature               *TransactionSignature `json:"signature,omitempty"`
+}
+
 // type ModuleTransaction struct {
 // 	Sender                  string                `json:"sender"`
 // 	SequenceNumber          string                `json:"sequence_number"`
