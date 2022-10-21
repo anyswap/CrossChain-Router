@@ -82,6 +82,21 @@ router status `[1]:open [0]:close`
 go run tokens/aptos/tools/setStatus/main.go -h
 ```
 
+### h. setup anytoken all in one 
+you can use this tool to setup anycoin in one tx
+```
+go run tokens/aptos/tools/setupAnyCoin/main.go -h
+```
+
+the script includes functions: 
+```
+Pool::register_coin<UnderlyingCoinType, AnyCoinType>(sender, string::utf8(name), string::utf8(symbol), decimals);
+Router::set_coin<UnderlyingCoinType>(sender, 1);
+Router::set_coin<AnyCoinType>(sender, 0);
+Router::set_poolcoin_cap<AnyCoinType>(sender);
+```
+
+
 ## 2. deposit and withdraw with Multichain::Pool
 ```
 go run tokens/aptos/tools/deposit/main.go -h
