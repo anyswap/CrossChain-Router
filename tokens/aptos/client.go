@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 )
 
@@ -56,6 +57,21 @@ type RestClient struct {
 	Timeout int
 }
 
+type AptosError struct {
+	Message   string `json:"message"`
+	ErrCode   string `json:"error_code"`
+	VmErrCode int    `json:"vm_error_code,omitempty"`
+}
+
+func getAptosError(url string, body []byte) error {
+	var aptErr AptosError
+	if err := json.Unmarshal(body, &aptErr); err == nil {
+		log.Trace("aptos rpc error", "url", url, "message", aptErr.Message, "error_code", aptErr.ErrCode, "vm_error_code", aptErr.VmErrCode)
+		return fmt.Errorf("AptosError: %v", aptErr.ErrCode)
+	}
+	return nil
+}
+
 func (c *RestClient) GetRequest(result interface{}, uri string, params map[string]string) error {
 	headers := map[string]string{
 		"Content-Type": "application/json",
@@ -63,14 +79,26 @@ func (c *RestClient) GetRequest(result interface{}, uri string, params map[strin
 	for key, val := range params {
 		uri = strings.Replace(uri, "{"+key+"}", url.QueryEscape(val), -1)
 	}
-	return client.RPCGetRequest(result, c.Url+uri, nil, headers, c.Timeout)
+	errBody, err := client.RPCGetRequest2(result, c.Url+uri, nil, headers, c.Timeout)
+	if err != nil && errBody != nil {
+		if aptErr := getAptosError(c.Url+uri, errBody); aptErr != nil {
+			return aptErr
+		}
+	}
+	return err
 }
 
 func (c *RestClient) PostRequest(result interface{}, uri string, body interface{}) error {
 	headers := map[string]string{
 		"Content-Type": "application/json",
 	}
-	return client.RPCPostBody(c.Url+uri, nil, headers, body, result, c.Timeout, SUCCESS_HTTP_STATUS_CODE)
+	errBody, err := client.RPCPostBody(c.Url+uri, nil, headers, body, result, c.Timeout, SUCCESS_HTTP_STATUS_CODE)
+	if err != nil && errBody != nil {
+		if aptErr := getAptosError(c.Url+uri, errBody); aptErr != nil {
+			return aptErr
+		}
+	}
+	return err
 }
 
 func (c *RestClient) GetLedger() (*LedgerInfo, error) {
