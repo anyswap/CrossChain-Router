@@ -82,7 +82,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		// Simulated transactions must have a non-valid signature
 		err = b.SimulateTranscation(tx, mpcPubkey)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, err)
 		}
 	}
 	ctx := []interface{}{
@@ -126,6 +126,9 @@ func (b *Bridge) SetExtraArgs(args *tokens.BuildTxArgs, tokenCfg *tokens.TokenCo
 	if extra.Sequence == nil {
 		sequence, err := b.getAccountNonce(args)
 		if err != nil {
+			if strings.Contains(err.Error(), "AptosError:") {
+				return fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, err)
+			}
 			return err
 		}
 		extra.Sequence = sequence
