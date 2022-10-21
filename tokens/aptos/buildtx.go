@@ -73,6 +73,16 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	if err != nil {
 		return nil, err
 	}
+
+	mpcPubkey := router.GetMPCPublicKey(args.From)
+	if mpcPubkey == "" {
+		return nil, tokens.ErrMissMPCPublicKey
+	}
+	// Simulated transactions must have a non-valid signature
+	err = b.SimulateTranscation(tx, mpcPubkey)
+	if err != nil {
+		return nil, err
+	}
 	ctx := []interface{}{
 		"identifier", args.Identifier, "swapID", args.SwapID,
 		"fromChainID", args.FromChainID, "toChainID", args.ToChainID,

@@ -97,12 +97,6 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 	rsv := rsvs[0]
 	log.Trace(logPrefix+"get rsv signature success", "keyID", keyID, "txid", txid, "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "rsv", rsv)
 
-	// Simulated transactions must have a non-valid signature
-	err = b.SimulateTranscation(tx, mpcPubkey)
-	if err != nil {
-		return nil, "", err
-	}
-
 	tx.Signature = &TransactionSignature{
 		Type:      "ed25519_signature",
 		PublicKey: mpcPubkey,
