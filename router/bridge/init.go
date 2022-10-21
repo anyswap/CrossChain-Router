@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/mongodb"
 	"github.com/anyswap/CrossChain-Router/v3/mpc"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
@@ -122,6 +123,8 @@ func InitRouterBridges(isServer bool) {
 		}(wg, chainID)
 	}
 	wg.Wait()
+
+	initSwapNonces()
 
 	router.AllChainIDs = chainIDs
 	router.AllTokenIDs = tokenIDs
@@ -448,4 +451,46 @@ func InitTokenConfig(b tokens.IBridge, tokenID string, chainID *big.Int) {
 			return
 		}
 	}
+}
+
+func initSwapNonces() {
+	if !mongodb.HasClient() {
+		return
+	}
+
+	routerInfoIsLoaded.Range(func(k, v interface{}) bool {
+		key := k.(string)
+		parts := strings.Split(key, ":")
+		if len(parts) != 2 {
+			return true
+		}
+
+		chainID := parts[0]
+		routerContract := parts[1]
+
+		br := router.GetBridgeByChainID(chainID)
+		if br == nil {
+			return true
+		}
+		nonceSetter, ok := br.(tokens.NonceSetter)
+		if !ok {
+			return true
+		}
+
+		routerInfo := router.GetRouterInfo(routerContract, chainID)
+		if routerInfo == nil {
+			return true
+		}
+		routerMPC := routerInfo.RouterMPC
+
+		for i := 0; i < 3; i++ {
+			nextSwapNonce, err := mongodb.FindNextSwapNonce(chainID, routerMPC)
+			if err == nil {
+				nonceSetter.InitSwapNonce(nonceSetter, routerMPC, nextSwapNonce)
+				break
+			}
+		}
+
+		return true
+	})
 }

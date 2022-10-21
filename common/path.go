@@ -19,9 +19,28 @@ package common
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
+
+	"github.com/anyswap/CrossChain-Router/v3/log"
 )
+
+// MustRunBashCommand for tool usage
+func MustRunBashCommand(cwd, cmdStr string) []string {
+	cmd := exec.Command("bash", "-c", cmdStr)
+	cmd.Dir = cwd
+	output, err := cmd.CombinedOutput()
+	outputStr := strings.TrimSuffix(string(output), "\n")
+	if err != nil {
+		fmt.Println(outputStr)
+		log.Fatalf("run command %v (cwd='%v') failed. error is '%v'", cmdStr, cwd, err)
+	} else {
+		log.Printf("run command %v (cwd='%v') success.\n%v", cmdStr, cwd, outputStr)
+	}
+	return strings.Split(outputStr, "\n")
+}
 
 // MakeName creates a node name that follows the ethereum convention
 // for such names. It adds the operation system name and Go runtime version
