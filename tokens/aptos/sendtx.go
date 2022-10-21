@@ -17,6 +17,7 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error
 	txInfo, err := b.SubmitTranscation(tx)
 	if err != nil {
 		log.Info("Aptos SendTransaction failed", "err", err)
+		return "", err
 	} else {
 		log.Info("Aptos SendTransaction success", "hash", txInfo.Hash)
 
