@@ -89,14 +89,13 @@ func (c *RestClient) GetAccountCoin(address, coinType string) (*CoinStoreResourc
 	return &resp, err
 }
 
-func (c *RestClient) GetAccountResource(address, resourceType string) (*CoinInfoResource, error) {
-	resp := CoinInfoResource{}
+func (c *RestClient) GetAccountResource(address, resourceType string, resp interface{}) error {
 	param := map[string]string{
 		"address":       address,
 		"resource_type": resourceType,
 	}
-	err := c.GetRequest(&resp, AccountResourcePath, param)
-	return &resp, err
+	err := c.GetRequest(resp, AccountResourcePath, param)
+	return err
 }
 
 func (c *RestClient) GetAccount(address string) (*AccountInfo, error) {

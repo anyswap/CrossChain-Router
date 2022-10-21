@@ -59,6 +59,11 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, tokens.ErrMissTokenConfig
 	}
 
+	err = b.HasRegisterAptosCoin(args.Bind, tokenCfg)
+	if err != nil {
+		return nil, err
+	}
+
 	err = b.SetExtraArgs(args, tokenCfg)
 	if err != nil {
 		return nil, err
@@ -78,6 +83,26 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	}
 	log.Info(fmt.Sprintf("build %s raw tx", args.SwapType.String()), ctx...)
 	return tx, nil
+}
+
+func (b *Bridge) HasRegisterAptosCoin(address string, tokenCfg *tokens.TokenConfig) error {
+	result, err := b.GetAccountBalance(address, tokenCfg.ContractAddress)
+	if err != nil {
+		return err
+	}
+	if result == nil || result.Data == nil {
+		return fmt.Errorf("%s not register coin %s ", address, tokenCfg.ContractAddress)
+	}
+	if !strings.EqualFold(tokenCfg.ContractAddress, tokenCfg.Extra) {
+		result, err := b.GetAccountBalance(address, tokenCfg.Extra)
+		if err != nil {
+			return err
+		}
+		if result == nil || result.Data == nil {
+			return fmt.Errorf("%s not register coin %s ", address, tokenCfg.Extra)
+		}
+	}
+	return nil
 }
 
 func (b *Bridge) SetExtraArgs(args *tokens.BuildTxArgs, tokenCfg *tokens.TokenConfig) error {

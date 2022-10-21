@@ -59,6 +59,14 @@ func main() {
 	}
 	log.Info("SignAccount", "address", account.GetHexAddress())
 
+	balance, err := bridge.GetAccountBalance(toAddress, coin)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	if balance.Data == nil {
+		log.Fatalf("%v", fmt.Errorf("%s not register coin %s ", toAddress, coin))
+	}
+
 	var tx *aptos.Transaction
 
 	if cointype == "anytoken" {

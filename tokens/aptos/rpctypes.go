@@ -28,8 +28,8 @@ type CoinCoinInfoData struct {
 }
 
 type CoinStoreResource struct {
-	Type string        `json:"type"`
-	Data CoinStoreData `json:"data"`
+	Type string         `json:"type"`
+	Data *CoinStoreData `json:"data,omitempty"`
 }
 type CoinStoreData struct {
 	Coin           CoinValue              `json:"coin"`

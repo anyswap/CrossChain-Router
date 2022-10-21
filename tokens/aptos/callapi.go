@@ -15,8 +15,8 @@ var errTxResultType = errors.New("tx type is not TransactionInfo")
 // GetTokenDecimals query
 func (b *Bridge) GetTokenDecimals(resource string) (uint8, error) {
 	infos := strings.Split(resource, SPLIT_SYMBOL)
-
-	resp, err := b.GetAccountResource(infos[0], fmt.Sprintf(COIN_INFO_PREFIX, resource))
+	resp := &CoinInfoResource{}
+	err := b.GetAccountResource(infos[0], fmt.Sprintf(COIN_INFO_PREFIX, resource), resp)
 	if err != nil {
 		return 0, err
 	}

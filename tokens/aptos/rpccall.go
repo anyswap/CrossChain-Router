@@ -1,6 +1,8 @@
 package aptos
 
 import (
+	"strings"
+
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
@@ -34,16 +36,32 @@ func (b *Bridge) GetAccount(address string) (result *AccountInfo, err error) {
 }
 
 // GetAccountResource get account resource
-func (b *Bridge) GetAccountResource(address, resourceType string) (result *CoinInfoResource, err error) {
+func (b *Bridge) GetAccountResource(address, resourceType string, resp interface{}) (err error) {
 	cli := RestClient{Timeout: b.RPCClientTimeout}
 	for _, url := range b.AllGatewayURLs {
 		cli.Url = url
-		result, err = cli.GetAccountResource(address, resourceType)
+		err := cli.GetAccountResource(address, resourceType, resp)
+		if err == nil {
+			return nil
+		}
+	}
+	return wrapRPCQueryError(err, "GetAccountResource")
+}
+
+func (b *Bridge) GetAccountBalance(address, resourceType string) (result *CoinStoreResource, err error) {
+	cli := RestClient{Timeout: b.RPCClientTimeout}
+	for _, url := range b.AllGatewayURLs {
+		cli.Url = url
+		result, err := cli.GetAccountCoin(address, resourceType)
 		if err == nil {
 			return result, nil
 		}
+		// resource not found
+		if strings.Contains(err.Error(), "404") {
+			return result, nil
+		}
 	}
-	return nil, wrapRPCQueryError(err, "GetAccountResource")
+	return nil, wrapRPCQueryError(err, "GetAccountBalance")
 }
 
 // GetTransactions get tx by hash
