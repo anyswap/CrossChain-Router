@@ -26,7 +26,7 @@ type Bridge struct {
 func NewCrossChainBridge() *Bridge {
 	return &Bridge{
 		NonceSetterBase:  base.NewNonceSetterBase(),
-		CosmosRestClient: cosmosSDK.NewCosmosRestClient([]string{""}),
+		CosmosRestClient: cosmosSDK.NewCosmosRestClient([]string{""}, "", ""),
 	}
 }
 

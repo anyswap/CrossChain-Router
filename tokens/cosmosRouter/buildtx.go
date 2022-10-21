@@ -19,7 +19,7 @@ var (
 	retryRPCCount           = 3
 	retryRPCInterval        = 1 * time.Second
 	DefaultGasLimit  uint64 = 100000
-	DefaultFee              = "1000u"
+	DefaultFee              = "500"
 )
 
 // BuildRawTransaction build raw tx
@@ -81,7 +81,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 }
 
 func (b *Bridge) initExtra(args *tokens.BuildTxArgs) (extra *tokens.AllExtras, err error) {
-	prefix := b.GetChainConfig().Extra
+	denom := b.CosmosRestClient.Denom
 	extra = args.Extra
 	if extra == nil {
 		extra = &tokens.AllExtras{}
@@ -103,7 +103,7 @@ func (b *Bridge) initExtra(args *tokens.BuildTxArgs) (extra *tokens.AllExtras, e
 		extra.Gas = &DefaultGasLimit
 	}
 	if extra.Fee == nil {
-		fee := DefaultFee + prefix
+		fee := DefaultFee + denom
 		extra.Fee = &fee
 	}
 	return extra, nil

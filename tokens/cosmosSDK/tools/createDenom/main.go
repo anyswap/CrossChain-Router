@@ -12,22 +12,22 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tools/crypto"
 	cosmosClient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	// tokenfactoryTypes "github.com/sei-protocol/sei-chain/x/tokenfactory/types"
+	tokenfactoryTypes "github.com/sei-protocol/sei-chain/x/tokenfactory/types"
 )
 
 var (
-	Sender                 = "sei1hak8tpyulsw3up5ltgtx9t5usupysjjkmsqgn3"
-	Subdenom               = "uany1"
+	Sender                 = ""
+	Subdenom               = ""
 	Memo                   = "test BuildCreateDenomMsg"
 	Fee                    = "1usei"
 	DefaultGasLimit uint64 = 100000
-	publicKey              = "0x04eec4c8fe47be3f4f2576bff7a1c45a48363f2ae65afa03e32531bcecfaa02b2085118b678884c9862ff713767e2fd4bd99b8fe1ff23042ffd7ad9260193d13fc"
-	privateKey             = "861626f2765b464e59cbd7c1a53e2145232676b6e4139a73f9edf829f0470b74"
+	publicKey              = ""
+	privateKey             = ""
 	url                    = []string{"https://sei-testnet-rpc.allthatnode.com:1317"}
 )
 
 func main() {
-	client := cosmosSDK.NewCosmosRestClient(url)
+	client := cosmosSDK.NewCosmosRestClient(url, "", "")
 	if rawTx, err := BuildTx(client); err != nil {
 		log.Fatalf("BuildTx err:%+v", err)
 	} else {
@@ -43,16 +43,9 @@ func main() {
 	}
 }
 
-func BuildCreateDenomMsg() *cosmosSDK.MsgCreateDenom {
-	return &cosmosSDK.MsgCreateDenom{
-		Sender:   Sender,
-		Subdenom: Subdenom,
-	}
+func BuildCreateDenomMsg() *tokenfactoryTypes.MsgCreateDenom {
+	return tokenfactoryTypes.NewMsgCreateDenom(Sender, Subdenom)
 }
-
-// func BuildCreateDenomMsg() *tokenfactoryTypes.MsgCreateDenom {
-// 	return tokenfactoryTypes.NewMsgCreateDenom(Sender, Subdenom)
-// }
 
 func initExtra(client *cosmosSDK.CosmosRestClient) (*tokens.AllExtras, error) {
 	extra := &tokens.AllExtras{}

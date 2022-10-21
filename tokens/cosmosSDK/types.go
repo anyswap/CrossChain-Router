@@ -9,6 +9,8 @@ import (
 type CosmosRestClient struct {
 	BaseUrls []string
 	TxConfig cosmosClient.TxConfig
+	Prefix   string
+	Denom    string
 }
 
 type BuildRawTx struct {

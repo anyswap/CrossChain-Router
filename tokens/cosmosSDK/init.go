@@ -13,7 +13,7 @@ import (
 	cryptoTypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	authTx "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	bankTypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	ibcTypes "github.com/cosmos/ibc-go/v6/modules/apps/transfer/types"
+	// ibcTypes "github.com/cosmos/ibc-go/v6/modules/apps/transfer/types"
 	// tokenfactoryTypes "github.com/sei-protocol/sei-chain/x/tokenfactory/types"
 )
 
@@ -28,10 +28,12 @@ const (
 	testnetNetWork = "testnet"
 )
 
-func NewCosmosRestClient(urls []string) *CosmosRestClient {
+func NewCosmosRestClient(urls []string, prefix, denom string) *CosmosRestClient {
 	return &CosmosRestClient{
 		BaseUrls: urls,
 		TxConfig: BuildNewTxConfig(),
+		Prefix:   prefix,
+		Denom:    denom,
 	}
 }
 
@@ -39,10 +41,15 @@ func (c *CosmosRestClient) SetBaseUrls(urls []string) {
 	c.BaseUrls = urls
 }
 
+func (c *CosmosRestClient) SetPrefixAndDenom(prefix, denom string) {
+	c.Prefix = prefix
+	c.Denom = denom
+}
+
 func BuildNewTxConfig() cosmosClient.TxConfig {
 	interfaceRegistry := codecTypes.NewInterfaceRegistry()
 	bankTypes.RegisterInterfaces(interfaceRegistry)
-	ibcTypes.RegisterInterfaces(interfaceRegistry)
+	// ibcTypes.RegisterInterfaces(interfaceRegistry)
 	// tokenfactoryTypes.RegisterInterfaces(interfaceRegistry)
 	PublicKeyRegisterInterfaces(interfaceRegistry)
 	protoCodec := codec.NewProtoCodec(interfaceRegistry)

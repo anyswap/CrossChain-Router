@@ -16,12 +16,21 @@ func (b *Bridge) InitAfterConfig() {
 
 // InitRouterInfo init router info
 func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
+
 	if routerContract == "" {
 		return nil
 	}
 
 	chainID := b.ChainConfig.ChainID
 	log.Info(fmt.Sprintf("[%5v] start init router info", chainID), "routerContract", routerContract)
+
+	extra := strings.Split(b.ChainConfig.Extra, ":")
+	if len(extra) != 2 {
+		return ErrChainConfigExtra
+	} else {
+		b.CosmosRestClient.SetPrefixAndDenom(extra[0], extra[1])
+	}
+
 	routerMPC := b.GetRouterContract("")
 	if routerMPC == "" {
 		log.Warn("get router mpc address return an empty address", "routerContract", routerContract)

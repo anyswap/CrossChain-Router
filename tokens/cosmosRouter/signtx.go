@@ -79,9 +79,9 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 				if err := txBuilder.SetSignatures(sig); err != nil {
 					return nil, "", err
 				}
-				if err := txBuilder.GetTx().ValidateBasic(); err != nil {
-					return nil, "", err
-				}
+				// if err := txBuilder.GetTx().ValidateBasic(); err != nil {
+				// 	return nil, "", err
+				// }
 				return b.CosmosRestClient.GetSignTx(txBuilder.GetTx())
 			}
 		}
@@ -120,9 +120,9 @@ func (b *Bridge) SignTransactionWithPrivateKey(txBuilder cosmosClient.TxBuilder,
 				if err := txBuilder.SetSignatures(sig); err != nil {
 					return nil, "", err
 				}
-				if err := txBuilder.GetTx().ValidateBasic(); err != nil {
-					return nil, "", err
-				}
+				// if err := txBuilder.GetTx().ValidateBasic(); err != nil {
+				// 	return nil, "", err
+				// }
 
 				return b.CosmosRestClient.GetSignTx(txBuilder.GetTx())
 			}

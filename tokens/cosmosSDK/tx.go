@@ -70,11 +70,11 @@ func (c *CosmosRestClient) NewSignModeHandler() signing.SignModeHandler {
 
 func BuildSignerData(address, chainID string, accountNumber, sequence uint64, pubKey cryptoTypes.PubKey) signing.SignerData {
 	return signing.SignerData{
-		Address:       address,
+		// Address:       address,
 		ChainID:       chainID,
 		AccountNumber: accountNumber,
 		Sequence:      sequence,
-		PubKey:        pubKey,
+		// PubKey:        pubKey,
 	}
 }
 
@@ -124,9 +124,9 @@ func (c *CosmosRestClient) BuildTx(
 	if err := txBuilder.SetSignatures(sig); err != nil {
 		return nil, err
 	}
-	if err := txBuilder.GetTx().ValidateBasic(); err != nil {
-		return nil, err
-	}
+	// if err := txBuilder.GetTx().ValidateBasic(); err != nil {
+	// 	return nil, err
+	// }
 	return txBuilder, nil
 }
 

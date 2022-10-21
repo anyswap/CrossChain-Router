@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"strings"
 
+	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
@@ -28,7 +29,7 @@ func PublicKeyToAddress(prefix, pubKeyHex string) (string, error) {
 	if pk, err := PubKeyFromStr(pubKeyHex); err != nil {
 		return "", err
 	} else {
-		if accAddress, err := types.AccAddressFromHexUnsafe(pk.Address().String()); err != nil {
+		if accAddress, err := types.AccAddressFromHex(pk.Address().String()); err != nil {
 			return "", err
 		} else {
 			if bech32Addr, err := bech32.ConvertAndEncode(prefix, accAddress); err == nil {
@@ -63,6 +64,7 @@ func PubKeyFromBytes(pubKeyBytes []byte) (cryptoTypes.PubKey, error) {
 }
 
 func VerifyPubKey(address, prefix, pubkey string) error {
+	log.Warnf("prefix:%+v pubkey:%+v", prefix, pubkey)
 	if addr, err := PublicKeyToAddress(prefix, pubkey); err != nil {
 		return err
 	} else {
