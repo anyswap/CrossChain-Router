@@ -30,8 +30,8 @@ require (
 	github.com/cosmos/ibc-go/v6 v6.0.0-alpha1
 	github.com/jonboulle/clockwork v0.3.0 // indirect
 	github.com/lestrrat-go/strftime v1.0.6 // indirect
+	github.com/sei-protocol/sei-chain v0.0.0-20221020231357-7705edb69a11
 	golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab // indirect
-	google.golang.org/grpc v1.49.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 )
 

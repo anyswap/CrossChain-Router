@@ -56,7 +56,7 @@ func (c *CosmosRestClient) BroadcastTx(req *BroadcastTxRequest) (string, error) 
 	} else {
 		for _, url := range c.BaseUrls {
 			restApi := url + BroadTx
-			if res, err := client.RPCRawPostWithTimeout(restApi, string(data), 120); err == nil && res != "" && res != "\n" {
+			if res, err := client.RPCJsonPostWithTimeout(restApi, string(data), 120); err == nil {
 				return res, nil
 			}
 		}

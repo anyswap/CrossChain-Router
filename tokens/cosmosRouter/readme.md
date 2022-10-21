@@ -2,8 +2,8 @@
 
 ```text
 1) chainId
-mainnet: 1660545256756
-testnet: 1660545256757
+mainnet: 1293698254146
+testnet: 1293698254147
 
 2) apiUrl
 mainnet: https://cosmos-mainnet-rpc.allthatnode.com:1317
@@ -20,12 +20,12 @@ https://www.allthatnode.com/faucet/cosmos.dsrv
 
 ```text
 1) getChainId
-go run ./tokens/cosmosHub/tools/getStubChainID/main.go -p testnet
+go run ./tokens/cosmosSDK/tools/getStubChainID/main.go -n COSMOSHUB -p testnet
 
-testnet: 1660545256757
+testnet: 1293698254147
 
 2) publicKeyToAddress
-go run ./tokens/cosmosHub/tools/publicKeyToAddress/main.go -p 0x0468438a94627b0de2b6a7c9af99136ef7e607f7944b749c3534bb27a89e742d583b1c8b3aecfae45dea2ac58730aa6ba654c73c435d44755e5cd1500c8f4d036b
+go run ./tokens/cosmosSDK/tools/publicKeyToAddress/main.go -p 0x0468438a94627b0de2b6a7c9af99136ef7e607f7944b749c3534bb27a89e742d583b1c8b3aecfae45dea2ac58730aa6ba654c73c435d44755e5cd1500c8f4d036b -prefix cosmos
 
 addr:cosmos10yyn2er9k5cs9qn55l7t23yxxk7egecpw9lw90
 ```

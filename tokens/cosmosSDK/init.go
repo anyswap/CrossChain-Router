@@ -14,17 +14,18 @@ import (
 	authTx "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	bankTypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	ibcTypes "github.com/cosmos/ibc-go/v6/modules/apps/transfer/types"
+	// tokenfactoryTypes "github.com/sei-protocol/sei-chain/x/tokenfactory/types"
 )
 
 var (
 	supportedChainIDs     = make(map[string]bool)
 	supportedChainIDsInit sync.Once
+	ChainsList            = []string{"COSMOSHUB", "SEI"}
 )
 
 const (
 	mainnetNetWork = "mainnet"
 	testnetNetWork = "testnet"
-	CosmosHub      = "cosmoshub-4"
 )
 
 func NewCosmosRestClient(urls []string) *CosmosRestClient {
@@ -42,6 +43,7 @@ func BuildNewTxConfig() cosmosClient.TxConfig {
 	interfaceRegistry := codecTypes.NewInterfaceRegistry()
 	bankTypes.RegisterInterfaces(interfaceRegistry)
 	ibcTypes.RegisterInterfaces(interfaceRegistry)
+	// tokenfactoryTypes.RegisterInterfaces(interfaceRegistry)
 	PublicKeyRegisterInterfaces(interfaceRegistry)
 	protoCodec := codec.NewProtoCodec(interfaceRegistry)
 	return authTx.NewTxConfig(protoCodec, authTx.DefaultSignModes)
@@ -54,8 +56,10 @@ func PublicKeyRegisterInterfaces(registry codecTypes.InterfaceRegistry) {
 // SupportsChainID supports chainID
 func SupportsChainID(chainID *big.Int) bool {
 	supportedChainIDsInit.Do(func() {
-		supportedChainIDs[GetStubChainID(CosmosHub, mainnetNetWork).String()] = true
-		supportedChainIDs[GetStubChainID(CosmosHub, testnetNetWork).String()] = true
+		for _, chainName := range ChainsList {
+			supportedChainIDs[GetStubChainID(chainName, mainnetNetWork).String()] = true
+			supportedChainIDs[GetStubChainID(chainName, testnetNetWork).String()] = true
+		}
 	})
 	return supportedChainIDs[chainID.String()]
 }

@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -182,4 +183,31 @@ func RPCRawPostWithTimeout(url, reqBody string, timeout int) (string, error) {
 		return "", fmt.Errorf("wrong response status %v. message: %v", resp.StatusCode, string(body))
 	}
 	return string(body), nil
+}
+
+// RPCRawPostWithTimeout rpc raw post with timeout
+func RPCJsonPostWithTimeout(url, reqBody string, timeout int) (string, error) {
+	jsonStr := []byte(reqBody)
+	if req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr)); err != nil {
+		return "", err
+	} else {
+		req.Header.Set("Content-Type", "application/json")
+		client := &http.Client{}
+		if resp, err := client.Do(req); err != nil {
+			return "", err
+		} else {
+			defer func() {
+				_ = resp.Body.Close()
+			}()
+			const maxReadContentLength int64 = 1024 * 1024 * 10 // 10M
+			if body, err := ioutil.ReadAll(io.LimitReader(resp.Body, maxReadContentLength)); err != nil {
+				return "", fmt.Errorf("read body error: %w", err)
+			} else {
+				if resp.StatusCode != 200 {
+					return "", fmt.Errorf("wrong response status %v. message: %v", resp.StatusCode, string(body))
+				}
+				return string(body), nil
+			}
+		}
+	}
 }
