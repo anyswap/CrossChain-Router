@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	maxFee              string = "100000"
-	defaultGasUnitPrice string = "1000"
+	maxFee              string = "2000"
+	defaultGasUnitPrice string = "100"
 	timeout_seconds     int64  = 600
 )
 
