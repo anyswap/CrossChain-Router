@@ -12,7 +12,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	cryptoTypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	authTx "github.com/cosmos/cosmos-sdk/x/auth/tx"
-	bankTypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	// bankTypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	// ibcTypes "github.com/cosmos/ibc-go/v6/modules/apps/transfer/types"
 	// tokenfactoryTypes "github.com/sei-protocol/sei-chain/x/tokenfactory/types"
 )
@@ -48,7 +48,7 @@ func (c *CosmosRestClient) SetPrefixAndDenom(prefix, denom string) {
 
 func BuildNewTxConfig() cosmosClient.TxConfig {
 	interfaceRegistry := codecTypes.NewInterfaceRegistry()
-	bankTypes.RegisterInterfaces(interfaceRegistry)
+	// bankTypes.RegisterInterfaces(interfaceRegistry)
 	// ibcTypes.RegisterInterfaces(interfaceRegistry)
 	// tokenfactoryTypes.RegisterInterfaces(interfaceRegistry)
 	PublicKeyRegisterInterfaces(interfaceRegistry)

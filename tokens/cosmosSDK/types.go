@@ -115,3 +115,8 @@ type BaseAccount struct {
 	AccountNumber string `protobuf:"varint,3,opt,name=account_number,json=accountNumber,proto3" json:"account_number,omitempty"`
 	Sequence      string `protobuf:"varint,4,opt,name=sequence,proto3" json:"sequence,omitempty"`
 }
+
+type QueryAllBalancesResponse struct {
+	// balances is the balances of all the coins.
+	Balances types.Coins `protobuf:"bytes,1,rep,name=balances,proto3,castrepeated=github.com/cosmos/cosmos-sdk/types.Coins" json:"balances"`
+}

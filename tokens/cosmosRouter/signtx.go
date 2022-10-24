@@ -37,7 +37,7 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 		if err != nil {
 			return nil, txHash, err
 		}
-		if signBytes, err := b.CosmosRestClient.GetSignBytes(txBuilder, args.From, *args.Extra.AccountNum, *args.Extra.Sequence, pubKey); err != nil {
+		if signBytes, err := b.CosmosRestClient.GetSignBytes(txBuilder, *args.Extra.AccountNum, *args.Extra.Sequence); err != nil {
 			return nil, "", err
 		} else {
 			jsondata, _ := json.Marshal(args.GetExtraArgs())
@@ -79,9 +79,7 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 				if err := txBuilder.SetSignatures(sig); err != nil {
 					return nil, "", err
 				}
-				// if err := txBuilder.GetTx().ValidateBasic(); err != nil {
-				// 	return nil, "", err
-				// }
+
 				return b.CosmosRestClient.GetSignTx(txBuilder.GetTx())
 			}
 		}
@@ -94,9 +92,8 @@ func (b *Bridge) SignTransactionWithPrivateKey(txBuilder cosmosClient.TxBuilder,
 		return nil, "", err
 	} else {
 		ecPriv := &secp256k1.PrivKey{Key: ecPrikey.D.Bytes()}
-		pubKey := ecPriv.PubKey()
 
-		if signBytes, err := b.CosmosRestClient.GetSignBytes(txBuilder, args.From, *args.Extra.AccountNum, *args.Extra.Sequence, pubKey); err != nil {
+		if signBytes, err := b.CosmosRestClient.GetSignBytes(txBuilder, *args.Extra.AccountNum, *args.Extra.Sequence); err != nil {
 			return nil, "", err
 		} else {
 			if signature, err := ecPriv.Sign(signBytes); err != nil {

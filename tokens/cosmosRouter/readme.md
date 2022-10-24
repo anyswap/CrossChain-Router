@@ -35,11 +35,12 @@ addr:cosmos10yyn2er9k5cs9qn55l7t23yxxk7egecpw9lw90
 ```text
 1) chainConfig
 routerContract: mpc address
-extra: addressPrifix cosmosHub: cosmos
+extra: prifix:Denom cosmosHub: cosmos:uatom sei: sei:usei
 
 2) tokenConfig
 tokenAddress: uatom 
 decimals: 0
+or(atom:6)
 
 3) example
 https://rinkeby.etherscan.io/address/0x4342F2b5224a43541BE7C8F39B92D7fEaA74d038

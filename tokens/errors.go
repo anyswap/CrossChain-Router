@@ -51,6 +51,7 @@ var (
 	ErrTxWithWrongMemo       = errors.New("tx with wrong memo")
 	// errors should register in router swap
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")
+	ErrBalanceNotEnough  = errors.New("balance not enough")
 	ErrTxWithWrongPath   = errors.New("swap trade tx with wrong path")
 	ErrMissTokenConfig   = errors.New("miss token config")
 	ErrNoUnderlyingToken = errors.New("no underlying token")

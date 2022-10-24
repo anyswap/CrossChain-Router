@@ -12,7 +12,7 @@ const (
 	LatestBlock = "/cosmos/base/tendermint/v1beta1/blocks/latest"
 	TxByHash    = "/cosmos/tx/v1beta1/txs/"
 	AccountInfo = "/cosmos/auth/v1beta1/accounts/"
-	AtomBalance = "/cosmos/bank/v1beta1/balances/%s/by_denom?denom=%s"
+	Balances    = "/cosmos/bank/v1beta1/balances/"
 )
 
 func (c *CosmosRestClient) GetLatestBlockNumber() (uint64, error) {
@@ -81,4 +81,20 @@ func (c *CosmosRestClient) GetBaseAccount(address string) (*QueryAccountResponse
 		}
 	}
 	return nil, tokens.ErrRPCQueryError
+}
+
+func (c *CosmosRestClient) GetDenomBalance(address, denom string) (uint64, error) {
+	var result *QueryAllBalancesResponse
+	for _, url := range c.BaseUrls {
+		restApi := url + Balances + address
+		if err := client.RPCGet(&result, restApi); err == nil {
+			for _, coin := range result.Balances {
+				if coin.Denom == denom {
+					return coin.Amount.Uint64(), nil
+				}
+			}
+			return 0, nil
+		}
+	}
+	return 0, tokens.ErrRPCQueryError
 }

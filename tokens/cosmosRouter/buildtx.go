@@ -18,7 +18,7 @@ import (
 var (
 	retryRPCCount           = 3
 	retryRPCInterval        = 1 * time.Second
-	DefaultGasLimit  uint64 = 100000
+	DefaultGasLimit  uint64 = 150000
 	DefaultFee              = "500"
 )
 

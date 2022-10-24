@@ -12,13 +12,16 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tools/crypto"
 	cosmosClient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	"github.com/cosmos/cosmos-sdk/types"
+	bankTypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	tokenfactoryTypes "github.com/sei-protocol/sei-chain/x/tokenfactory/types"
 )
 
 var (
 	Sender                 = "sei1hak8tpyulsw3up5ltgtx9t5usupysjjkmsqgn3"
-	Subdenom               = "anyToken1"
-	Memo                   = "test createDenom"
+	Receiver               = "sei16mdp65auqtv9w0dlz87ntxry2uww3fvzpu9d4v"
+	Amount                 = types.NewCoin("factory/sei1hak8tpyulsw3up5ltgtx9t5usupysjjkmsqgn3/anyToken1", types.NewIntFromUint64(100000))
+	Memo                   = "test mintToken"
 	Fee                    = "1usei"
 	DefaultGasLimit uint64 = 200000
 	publicKey              = "0x04eec4c8fe47be3f4f2576bff7a1c45a48363f2ae65afa03e32531bcecfaa02b2085118b678884c9862ff713767e2fd4bd99b8fe1ff23042ffd7ad9260193d13fc"
@@ -43,8 +46,16 @@ func main() {
 	}
 }
 
-func BuildCreateDenomMsg() *tokenfactoryTypes.MsgCreateDenom {
-	return tokenfactoryTypes.NewMsgCreateDenom(Sender, Subdenom)
+func BuildSendMsg() *bankTypes.MsgSend {
+	return &bankTypes.MsgSend{
+		FromAddress: Sender,
+		ToAddress:   Receiver,
+		Amount:      types.NewCoins(Amount),
+	}
+}
+
+func BuildMintMsg() *tokenfactoryTypes.MsgMint {
+	return tokenfactoryTypes.NewMsgMint(Sender, Amount)
 }
 
 func initExtra(client *cosmosSDK.CosmosRestClient) (*tokens.AllExtras, error) {
@@ -84,10 +95,15 @@ func BuildTx(client *cosmosSDK.CosmosRestClient) (*cosmosSDK.BuildRawTx, error) 
 		return nil, err
 	} else {
 		txBuilder := client.TxConfig.NewTxBuilder()
-		msg := BuildCreateDenomMsg()
-		if err := txBuilder.SetMsgs(msg); err != nil {
+		mintMsg := BuildMintMsg()
+		// sendMsg := BuildSendMsg()
+		// if err := txBuilder.SetMsgs(mintMsg, sendMsg); err != nil {
+		// 	log.Fatalf("SetMsgs error:%+v", err)
+		// }
+		if err := txBuilder.SetMsgs(mintMsg); err != nil {
 			log.Fatalf("SetMsgs error:%+v", err)
 		}
+
 		txBuilder.SetMemo(Memo)
 		if fee, err := cosmosSDK.ParseCoinsFee(*extra.Fee); err != nil {
 			log.Fatalf("ParseCoinsFee error:%+v", err)

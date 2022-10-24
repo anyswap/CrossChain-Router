@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
@@ -17,6 +18,7 @@ import (
 	signingTypes "github.com/cosmos/cosmos-sdk/types/tx/signing"
 	"github.com/cosmos/cosmos-sdk/x/auth/signing"
 	bankTypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	tokenfactoryTypes "github.com/sei-protocol/sei-chain/x/tokenfactory/types"
 )
 
 const (
@@ -28,7 +30,6 @@ func (c *CosmosRestClient) SendTransaction(signedTx interface{}) (string, error)
 	if txBytes, ok := signedTx.([]byte); !ok {
 		return "", errors.New("wrong signed transaction type")
 	} else {
-		// use sync mode because block mode may rpc call timeout
 		req := &BroadcastTxRequest{
 			TxBytes: string(txBytes),
 			Mode:    "BROADCAST_MODE_SYNC",
@@ -68,14 +69,20 @@ func (c *CosmosRestClient) NewSignModeHandler() signing.SignModeHandler {
 	return c.TxConfig.SignModeHandler()
 }
 
-func BuildSignerData(address, chainID string, accountNumber, sequence uint64, pubKey cryptoTypes.PubKey) signing.SignerData {
+func BuildSignerData(chainID string, accountNumber, sequence uint64) signing.SignerData {
 	return signing.SignerData{
-		// Address:       address,
 		ChainID:       chainID,
 		AccountNumber: accountNumber,
 		Sequence:      sequence,
-		// PubKey:        pubKey,
 	}
+}
+
+func BuildMintMsg(sender string, amount types.Coin) *tokenfactoryTypes.MsgMint {
+	return tokenfactoryTypes.NewMsgMint(sender, amount)
+}
+
+func BuildBurnMsg(sender string, amount types.Coin) *tokenfactoryTypes.MsgBurn {
+	return tokenfactoryTypes.NewMsgBurn(sender, amount)
 }
 
 func BuildSendMsg(from, to, unit string, amount *big.Int) *bankTypes.MsgSend {
@@ -104,30 +111,65 @@ func (c *CosmosRestClient) BuildTx(
 	amount *big.Int,
 	extra *tokens.AllExtras,
 ) (cosmosClient.TxBuilder, error) {
-	txBuilder := c.TxConfig.NewTxBuilder()
-	msg := BuildSendMsg(from, to, denom, amount)
-	if err := txBuilder.SetMsgs(msg); err != nil {
-		return nil, err
-	}
-	txBuilder.SetMemo(memo)
-	if fee, err := ParseCoinsFee(*extra.Fee); err != nil {
+	if balance, err := c.GetDenomBalance(from, denom); err != nil {
 		return nil, err
 	} else {
-		txBuilder.SetFeeAmount(fee)
+		var msgs []types.Msg
+		if balance >= amount.Uint64() {
+			sendMsg := BuildSendMsg(from, to, denom, amount)
+			msgs = append(msgs, sendMsg)
+
+			if strings.Contains(denom, "/") && balance != amount.Uint64() {
+				creater := strings.Split(denom, "/")[1]
+				if creater == from {
+					coin := types.NewCoin(denom, types.NewIntFromUint64(balance-amount.Uint64()))
+					burnMsg := BuildBurnMsg(from, coin)
+					msgs = append(msgs, burnMsg)
+				}
+			}
+		} else {
+			if strings.Contains(denom, "/") {
+				creater := strings.Split(denom, "/")[1]
+				if creater == from {
+					coin := types.NewCoin(denom, types.NewIntFromUint64(amount.Uint64()-balance))
+					mintMsg := BuildMintMsg(from, coin)
+					msgs = append(msgs, mintMsg)
+
+					sendMsg := BuildSendMsg(from, to, denom, amount)
+					msgs = append(msgs, sendMsg)
+				} else {
+					return nil, tokens.ErrBalanceNotEnough
+				}
+			} else {
+				return nil, tokens.ErrBalanceNotEnough
+			}
+		}
+
+		txBuilder := c.TxConfig.NewTxBuilder()
+		if err := txBuilder.SetMsgs(msgs...); err != nil {
+			return nil, err
+		}
+		txBuilder.SetMemo(memo)
+		if fee, err := ParseCoinsFee(*extra.Fee); err != nil {
+			return nil, err
+		} else {
+			txBuilder.SetFeeAmount(fee)
+		}
+		txBuilder.SetGasLimit(*extra.Gas)
+		pubKey, err := PubKeyFromStr(publicKey)
+		if err != nil {
+			return nil, err
+		}
+		sig := BuildSignatures(pubKey, *extra.Sequence, nil)
+		if err := txBuilder.SetSignatures(sig); err != nil {
+			return nil, err
+		}
+		if err := txBuilder.GetTx().ValidateBasic(); err != nil {
+			return nil, err
+		}
+
+		return txBuilder, nil
 	}
-	txBuilder.SetGasLimit(*extra.Gas)
-	pubKey, err := PubKeyFromStr(publicKey)
-	if err != nil {
-		return nil, err
-	}
-	sig := BuildSignatures(pubKey, *extra.Sequence, nil)
-	if err := txBuilder.SetSignatures(sig); err != nil {
-		return nil, err
-	}
-	// if err := txBuilder.GetTx().ValidateBasic(); err != nil {
-	// 	return nil, err
-	// }
-	return txBuilder, nil
 }
 
 func (c *CosmosRestClient) SimulateTx(simulateReq *SimulateRequest) (string, error) {
@@ -144,12 +186,12 @@ func (c *CosmosRestClient) SimulateTx(simulateReq *SimulateRequest) (string, err
 	}
 }
 
-func (c *CosmosRestClient) GetSignBytes(txBuilder cosmosClient.TxBuilder, account string, accountNumber, sequence uint64, pubKey cryptoTypes.PubKey) ([]byte, error) {
+func (c *CosmosRestClient) GetSignBytes(txBuilder cosmosClient.TxBuilder, accountNumber, sequence uint64) ([]byte, error) {
 	handler := c.TxConfig.SignModeHandler()
 	if chainName, err := c.GetChainID(); err != nil {
 		return nil, err
 	} else {
-		signerData := BuildSignerData(account, chainName, accountNumber, sequence, pubKey)
+		signerData := BuildSignerData(chainName, accountNumber, sequence)
 		return handler.GetSignBytes(signingTypes.SignMode_SIGN_MODE_DIRECT, signerData, txBuilder.GetTx())
 	}
 }

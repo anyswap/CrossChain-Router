@@ -33,11 +33,8 @@ func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) (err error
 		if mpcPubkey == "" {
 			return tokens.ErrMissMPCPublicKey
 		}
-		pubKey, err := cosmosSDK.PubKeyFromStr(mpcPubkey)
-		if err != nil {
-			return err
-		}
-		if signBytes, err := b.CosmosRestClient.GetSignBytes(*txBuilder, mpc, *extra.AccountNum, *extra.Sequence, pubKey); err != nil {
+
+		if signBytes, err := b.CosmosRestClient.GetSignBytes(*txBuilder, *extra.AccountNum, *extra.Sequence); err != nil {
 			return err
 		} else {
 			msgHash := fmt.Sprintf("%X", cosmosSDK.Sha256Sum(signBytes))
