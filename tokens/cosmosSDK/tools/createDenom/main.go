@@ -185,7 +185,6 @@ func MPCSignTransaction(client *cosmosSDK.CosmosRestClient, txBuilder cosmosClie
 		return nil, "", err
 	} else {
 
-		mpcConfig := mpc.GetMPCConfig(bridge.UseFastMPC)
 		msgHash := fmt.Sprintf("%X", cosmosSDK.Sha256Sum(signBytes))
 		if keyID, rsvs, err := mpcConfig.DoSignOneEC(mpcPubkey, msgHash, ""); err != nil {
 			return nil, "", err
