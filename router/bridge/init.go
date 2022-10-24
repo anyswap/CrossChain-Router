@@ -36,6 +36,7 @@ func setRouterInfoLoaded(chainID, routerContract string) {
 }
 
 // InitRouterBridges init router bridges
+//
 //nolint:funlen,gocyclo // ok
 func InitRouterBridges(isServer bool) {
 	log.Info("start init router bridges", "isServer", isServer)
@@ -391,6 +392,7 @@ func InitChainConfig(b tokens.IBridge, chainID *big.Int) {
 }
 
 // InitTokenConfig impl
+//
 //nolint:funlen,gocyclo // allow long init token config method
 func InitTokenConfig(b tokens.IBridge, tokenID string, chainID *big.Int) {
 	isReload := router.IsReloading

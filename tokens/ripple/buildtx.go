@@ -20,6 +20,7 @@ var (
 )
 
 // BuildRawTransaction build raw tx
+//
 //nolint:funlen,gocyclo // ok
 func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{}, err error) {
 	if !params.IsTestMode && args.ToChainID.String() != b.ChainConfig.ChainID {
