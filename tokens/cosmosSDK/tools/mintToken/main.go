@@ -18,14 +18,14 @@ import (
 )
 
 var (
-	Sender                 = "sei1hak8tpyulsw3up5ltgtx9t5usupysjjkmsqgn3"
-	Receiver               = "sei16mdp65auqtv9w0dlz87ntxry2uww3fvzpu9d4v"
-	Amount                 = types.NewCoin("factory/sei1hak8tpyulsw3up5ltgtx9t5usupysjjkmsqgn3/anyToken1", types.NewIntFromUint64(100000))
+	Sender                 = ""
+	Receiver               = ""
+	Amount                 = types.NewCoin("", types.NewIntFromUint64(100000))
 	Memo                   = "test mintToken"
 	Fee                    = "1usei"
 	DefaultGasLimit uint64 = 200000
-	publicKey              = "0x04eec4c8fe47be3f4f2576bff7a1c45a48363f2ae65afa03e32531bcecfaa02b2085118b678884c9862ff713767e2fd4bd99b8fe1ff23042ffd7ad9260193d13fc"
-	privateKey             = "861626f2765b464e59cbd7c1a53e2145232676b6e4139a73f9edf829f0470b74"
+	publicKey              = ""
+	privateKey             = ""
 	url                    = []string{"https://sei-testnet-rpc.allthatnode.com:1317"}
 )
 
