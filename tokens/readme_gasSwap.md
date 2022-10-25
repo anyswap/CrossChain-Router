@@ -1,10 +1,12 @@
 1) deploy contract
+
 ```text
 priceOracle: https://github.com/anyswap/multichain-smart-contracts/blob/dev/contracts/router/PriceFeedRouter.sol
 routerConfig: https://github.com/anyswap/router-config/blob/main/contracts/RouterConfigV2.sol
 ```
 
 2) update router code config
+
 ```text
 SwapType = "gasswap"
 
@@ -20,7 +22,8 @@ Contract = "0x758CDFaC7F0f88A27B3a6a18801553eE8D9e4c24"
 
 ```
 
-3) set router contract config 
+3) set router contract config
+
 ```text
 3.1 addChainID
 3.2 addTokenID
@@ -29,11 +32,13 @@ Contract = "0x758CDFaC7F0f88A27B3a6a18801553eE8D9e4c24"
 ```
 
 4) set price oracle config
+
 ```text
 4.1 initCurrencyInfo
 ```
 
 5) price feed code
+
 ```text
 https://github.com/anyswap/priceFeed
 ```

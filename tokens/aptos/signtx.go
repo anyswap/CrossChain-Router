@@ -106,7 +106,8 @@ func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, privKey string
 	log.Info("SignTransactionWithPrivateKey", "signature", signature)
 	// only for swapin
 	// receiver: address, amount: u64, _fromEvent: string, _fromChainID: u64
-	txHash, err = b.CalcTxHashByTSScirpt(tx, "address,uint64,string,uint64")
+	// txHash, err = b.CalcTxHashByTSScirpt(tx, "address,uint64,string,uint64")
+	txHash, err = b.CalcTxHashByTSScirpt(tx, "address,uint64")
 	if err != nil {
 		return nil, "", err
 	}
@@ -131,5 +132,4 @@ func (b *Bridge) CalcTxHashByTSScirpt(rawTx interface{}, argTypes string) (txHas
 
 	txbody := string(jsonStr)
 	return RunTxHashScript(&txbody, &argTypes, ledgerInfo.ChainId)
-
 }

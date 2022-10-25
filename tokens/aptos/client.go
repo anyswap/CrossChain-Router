@@ -26,7 +26,8 @@ var (
 	SPLIT_SYMBOL = "::"
 
 	NATIVE_COIN     = "0x1::aptos_coin::AptosCoin"
-	NATIVE_TRANSFER = "0x1::coin::transfer"
+	NATIVE_TRANSFER = "0x1::aptos_account::transfer"
+	// NATIVE_TRANSFER = "0x1::coin::transfer"
 
 	SUCCESS_HTTP_STATUS_CODE = map[int]bool{200: true, 202: true}
 )

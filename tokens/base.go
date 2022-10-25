@@ -36,6 +36,7 @@ func IsNativeCoin(name string) bool {
 }
 
 // InitRouterSwapType init router swap type
+//
 //nolint:goconst // allow dupl constant string
 func InitRouterSwapType(swapTypeStr string) {
 	switch strings.ToLower(swapTypeStr) {

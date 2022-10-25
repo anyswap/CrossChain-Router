@@ -61,6 +61,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, err
 	}
 
+	log.Warnf("=========:%+v payload:%+v mpcPubkey:%+v", tx, tx.Payload, mpcPubkey)
 	// Simulated transactions must have a non-valid signature
 	err = b.SimulateTranscation(tx, mpcPubkey)
 	if err != nil {
@@ -125,8 +126,8 @@ func (b *Bridge) BuildTransferTransaction(args *tokens.BuildTxArgs) (*Transactio
 		Payload: &TransactionPayload{
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
 			Function:      NATIVE_TRANSFER,
-			TypeArguments: []string{NATIVE_COIN},
-			Arguments:     []interface{}{args.To, args.Value},
+			TypeArguments: []string{},
+			Arguments:     []interface{}{args.To, args.Value.String()},
 		},
 	}
 	return tx, nil
