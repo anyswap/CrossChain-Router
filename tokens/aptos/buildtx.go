@@ -558,3 +558,25 @@ func (b *Bridge) BuildCopyCapTransaction(address, coin string) (*Transaction, er
 	}
 	return tx, nil
 }
+
+func (b *Bridge) BuildTransferTransaction(sender, coin, receiver, amount string) (*Transaction, error) {
+	account, err := b.GetAccount(sender)
+	if err != nil {
+		return nil, err
+	}
+	timeout := time.Now().Unix() + timeout_seconds
+	tx := &Transaction{
+		Sender:                  sender,
+		SequenceNumber:          account.SequenceNumber,
+		MaxGasAmount:            maxFee,
+		GasUnitPrice:            defaultGasUnitPrice,
+		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
+		Payload: &TransactionPayload{
+			Type:          SCRIPT_FUNCTION_PAYLOAD,
+			Function:      "0x1::aptos_account::transfer",
+			TypeArguments: []string{},
+			Arguments:     []interface{}{receiver, amount},
+		},
+	}
+	return tx, nil
+}
