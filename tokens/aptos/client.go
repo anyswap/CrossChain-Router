@@ -203,7 +203,8 @@ func (c *RestClient) SimulateTranscation(request interface{}, publikKey string) 
 	}
 	if !resp[0].Success {
 		result, _ := json.Marshal(resp[0])
-		return fmt.Errorf("SimulateTranscation fals %s", string(result))
+		log.Warnf("SimulateTranscation fails %s", string(result))
+		return fmt.Errorf("SimulateTranscation fails %s", string(result))
 	}
 	return err
 }
