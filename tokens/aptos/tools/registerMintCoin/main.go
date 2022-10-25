@@ -65,7 +65,7 @@ func main() {
 	tx := &aptos.ScriptTransaction{
 		Sender:                  account.GetHexAddress(),
 		SequenceNumber:          accountInfo.SequenceNumber,
-		MaxGasAmount:            "100000",
+		MaxGasAmount:            "20000",
 		GasUnitPrice:            "1000",
 		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
 		Payload: &aptos.ScriptPayload{

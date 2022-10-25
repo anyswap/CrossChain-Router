@@ -264,8 +264,8 @@ func (b *Bridge) BuildDeployModuleTransaction(address, packagemetadata string, m
 		Sender:         address,
 		SequenceNumber: account.SequenceNumber,
 		// MaxGasAmount:            strconv.Itoa(fee * len(moduleHexs)),
-		MaxGasAmount:            maxFee,
-		GasUnitPrice:            b.getGasPrice(),
+		MaxGasAmount:            "20000",
+		GasUnitPrice:            "1000",
 		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
 		Payload: &TransactionPayload{
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
