@@ -443,7 +443,7 @@ func CheckGasSwapValue(fromChainID *big.Int, gasSwapInfo *GasSwapInfo, receiveVa
 	upperThreshold := new(big.Int).Mul(minReceiveValue, big.NewInt(120))
 	upperThreshold = upperThreshold.Div(upperThreshold, big.NewInt(100))
 
-	if upperThreshold.Cmp(realReceiveValue) < 0 {
+	if upperThreshold.Cmp(realReceiveValue) < 0 && upperThreshold.Cmp(big.NewInt(0)) != 0 {
 		realReceiveValue = upperThreshold
 	}
 

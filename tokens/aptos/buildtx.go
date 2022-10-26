@@ -61,7 +61,6 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, err
 	}
 
-	log.Warnf("=========:%+v payload:%+v mpcPubkey:%+v", tx, tx.Payload, mpcPubkey)
 	// Simulated transactions must have a non-valid signature
 	err = b.SimulateTranscation(tx, mpcPubkey)
 	if err != nil {
