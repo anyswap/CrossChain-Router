@@ -169,7 +169,7 @@ func (b *Bridge) BuildSwapinTransferTransaction(args *tokens.BuildTxArgs, tokenC
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
 			Function:      GetRouterFunctionId(args.From, CONTRACT_NAME_ROUTER, CONTRACT_FUNC_SWAPIN),
 			TypeArguments: []string{tokenCfg.Extra, tokenCfg.ContractAddress},
-			Arguments:     []interface{}{receiver, strconv.FormatUint(amount, 10), args.SwapID, args.FromChainID.String()},
+			Arguments:     []interface{}{receiver, strconv.FormatUint(amount, 10), args.GetUniqueSwapIdentifier(), args.FromChainID.String()},
 		},
 	}
 	return tx, nil

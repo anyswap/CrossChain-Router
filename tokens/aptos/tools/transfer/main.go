@@ -23,12 +23,9 @@ var (
 	paramPublicKey string
 	paramPriKey    string
 
-	coin        string
-	poolcoin    string
-	toAddress   string
-	fromChainId string
-	fromTx      string
-	amount      uint64
+	coin      string
+	toAddress string
+	amount    uint64
 
 	mpcConfig *mpc.Config
 )
