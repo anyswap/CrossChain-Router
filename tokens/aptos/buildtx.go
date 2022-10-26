@@ -227,16 +227,16 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 func (b *Bridge) getGasPrice() string {
 	estimateGasPrice, err := b.EstimateGasPrice()
 	if err == nil {
-		log.Debugln("estimateGasPrice", "GasPrice", estimateGasPrice.GasPrice)
+		log.Info("aptos estimateGasPrice", "GasPrice", estimateGasPrice.GasPrice)
+		return strconv.Itoa(estimateGasPrice.GasPrice)
+	} else {
+		log.Warn("estimateGasPrice error", "err", err)
 		configGasPrice := params.GetMaxGasPrice(b.ChainConfig.ChainID)
 		if configGasPrice == nil {
-			return strconv.Itoa(estimateGasPrice.GasPrice)
+			return defaultGasUnitPrice
 		} else {
 			return strconv.FormatUint(configGasPrice.Uint64(), 10)
 		}
-	} else {
-		log.Debugln("estimateGasPrice", "GasPrice", defaultGasUnitPrice)
-		return defaultGasUnitPrice
 	}
 }
 
