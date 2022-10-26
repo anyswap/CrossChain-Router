@@ -40,7 +40,7 @@ func (b *Bridge) GetAccountResource(address, resourceType string, resp interface
 	cli := RestClient{Timeout: b.RPCClientTimeout}
 	for _, url := range b.AllGatewayURLs {
 		cli.Url = url
-		err := cli.GetAccountResource(address, resourceType, resp)
+		err = cli.GetAccountResource(address, resourceType, resp)
 		if err == nil {
 			return nil
 		}
@@ -52,7 +52,7 @@ func (b *Bridge) GetAccountBalance(address, resourceType string) (result *CoinSt
 	cli := RestClient{Timeout: b.RPCClientTimeout}
 	for _, url := range b.AllGatewayURLs {
 		cli.Url = url
-		result, err := cli.GetAccountCoin(address, resourceType)
+		result, err = cli.GetAccountCoin(address, resourceType)
 		if err == nil {
 			return result, nil
 		}
