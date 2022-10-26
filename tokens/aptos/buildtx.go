@@ -146,7 +146,8 @@ func (b *Bridge) SetExtraArgs(args *tokens.BuildTxArgs, tokenCfg *tokens.TokenCo
 		extra.Gas = &gas
 	}
 	if extra.Fee == nil {
-		extra.Fee = &maxFee
+		maxGasFee := b.getMaxFee()
+		extra.Fee = &maxGasFee
 	}
 	log.Info("Build tx with extra args", "extra", extra)
 	return nil
@@ -227,10 +228,24 @@ func (b *Bridge) getGasPrice() string {
 	estimateGasPrice, err := b.EstimateGasPrice()
 	if err == nil {
 		log.Debugln("estimateGasPrice", "GasPrice", estimateGasPrice.GasPrice)
-		return strconv.Itoa(estimateGasPrice.GasPrice)
+		configGasPrice := params.GetMaxGasPrice(b.ChainConfig.ChainID)
+		if configGasPrice == nil {
+			return strconv.Itoa(estimateGasPrice.GasPrice)
+		} else {
+			return strconv.FormatUint(configGasPrice.Uint64(), 10)
+		}
 	} else {
 		log.Debugln("estimateGasPrice", "GasPrice", defaultGasUnitPrice)
 		return defaultGasUnitPrice
+	}
+}
+
+func (b *Bridge) getMaxFee() string {
+	maxGasFee := params.GetMaxGasLimit(b.ChainConfig.ChainID)
+	if maxGasFee == 0 {
+		return maxFee
+	} else {
+		return strconv.FormatUint(maxGasFee, 10)
 	}
 }
 
