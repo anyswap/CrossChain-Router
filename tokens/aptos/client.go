@@ -202,9 +202,7 @@ func (c *RestClient) SimulateTranscation(request interface{}, publikKey string) 
 		return fmt.Errorf("SimulateTranscation with no result")
 	}
 	if !resp[0].Success {
-		result, _ := json.Marshal(resp[0])
-		log.Warnf("SimulateTranscation fails %s", string(result))
-		return fmt.Errorf("SimulateTranscation fails %s", string(result))
+		return fmt.Errorf("SimulateTranscation fails %s", resp[0].VmStatus)
 	}
 	return err
 }
