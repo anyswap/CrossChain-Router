@@ -29,12 +29,12 @@ func (b *Bridge) verifyTransactionWithArgs(tx *Transaction, args *tokens.BuildTx
 	// 	return fmt.Errorf("[sign] verify Amount failed swapin.Amount %v args.OriginValue %v", amount, args.OriginValue.Uint64())
 	// }
 
-	if swapin[2] != args.SwapID {
-		return fmt.Errorf("[sign] verify Tx failed swapin tx: %v OriginFrom: %v ", swapin[2], args.SwapID)
+	if swapin[2] != args.GetUniqueSwapIdentifier() {
+		return fmt.Errorf("[sign] swapid mismatch: have %v want %v ", swapin[2], args.GetUniqueSwapIdentifier())
 	}
 
 	if swapin[0] != args.Bind {
-		return fmt.Errorf("[sign] verify Tx failed swapin address: %v OriginAddress: %v ", swapin[0], args.Bind)
+		return fmt.Errorf("[sign] bind address mismatch: have %v want %v ", swapin[0], args.Bind)
 	}
 
 	return nil
@@ -49,7 +49,7 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 
 	err = b.verifyTransactionWithArgs(tx, args)
 	if err != nil {
-		log.Warn("Verify transaction failed", "error", err)
+		log.Warn("Verify transaction failed", "txid", args.SwapID, "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "err", err)
 		return nil, "", err
 	}
 
