@@ -4,12 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
-	"io/ioutil"
-	"os"
 	"strconv"
 	"time"
 
-	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mpc"
 	"github.com/anyswap/CrossChain-Router/v3/params"
@@ -26,7 +23,9 @@ var (
 	paramPublicKey string
 	paramPriKey    string
 
-	paramPath string
+	coin      string
+	toAddress string
+	amount    uint64
 
 	mpcConfig *mpc.Config
 )
@@ -38,7 +37,9 @@ func initFlags() {
 	flag.StringVar(&paramPublicKey, "pubkey", "", "signer public key")
 	flag.StringVar(&paramPriKey, "priKey", "", "signer priKey key")
 
-	flag.StringVar(&paramPath, "path", "", "contract build path: /Users/potti/multichain-workspace/aptos-contract/registerMintCoin/build/RegisterMintCoin")
+	flag.StringVar(&coin, "coin", "", "coin resource")
+	flag.StringVar(&toAddress, "toAddress", "", "toAddress")
+	flag.Uint64Var(&amount, "amount", 0, "anycoin name")
 
 	flag.Parse()
 }
@@ -55,28 +56,9 @@ func main() {
 	}
 	log.Info("SignAccount", "address", account.GetHexAddress())
 
-	accountInfo, err := bridge.GetAccount(account.GetHexAddress())
+	tx, err := bridge.BuildTransferTransaction(account.GetHexAddress(), coin, toAddress, strconv.FormatUint(amount, 10))
 	if err != nil {
-		log.Fatal("GetAccount", "err", err)
-	}
-	moduleHex := readMove(paramPath + "/bytecode_scripts/main.mv")
-	// 10 min
-	timeout := time.Now().Unix() + 600
-	tx := &aptos.ScriptTransaction{
-		Sender:                  account.GetHexAddress(),
-		SequenceNumber:          accountInfo.SequenceNumber,
-		MaxGasAmount:            "20000",
-		GasUnitPrice:            "1000",
-		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
-		Payload: &aptos.ScriptPayload{
-			Type: aptos.SCRIPT_PAYLOAD,
-			Code: aptos.ScriptPayloadCode{
-				Bytecode: moduleHex,
-			},
-			// TypeArguments: []string{account.GetHexAddress() + "::DAI::Coin", account.GetHexAddress() + "::ETH::Coin", account.GetHexAddress() + "::USDC::Coin", account.GetHexAddress() + "::USDT::Coin", account.GetHexAddress() + "::WBTC::Coin"},
-			TypeArguments: []string{},
-			Arguments:     []interface{}{},
-		},
+		log.Fatalf("%v", err)
 	}
 	signingMessage, err := bridge.GetSigningMessage(tx)
 	if err != nil {
@@ -118,6 +100,12 @@ func main() {
 		}
 		log.Info("DoSignOneED", "signature", rsv)
 	}
+
+	txhash, err := bridge.CalcTxHashByTSScirpt(tx, "address,uint64,string,uint64")
+	if err != nil {
+		log.Fatal("CalcTxHashByTSScirpt", "err", err)
+	}
+	log.Info("CalcTxHashByTSScirpt", "calc txHash", txhash)
 	txInfo, err := bridge.SubmitTranscation(tx)
 	if err != nil {
 		log.Fatal("SubmitTranscation", "err", err)
@@ -154,17 +142,4 @@ func initBridge() {
 		APIAddressExt: apiAddrsExt,
 	})
 	log.Info("init bridge finished")
-}
-
-func readMove(filename string) string {
-	file, err := os.Open(filename)
-	if err != nil {
-		log.Fatal("readMove", "filename", filename)
-	}
-	defer file.Close()
-	content, err := ioutil.ReadAll(file)
-	if err != nil {
-		log.Fatal("ReadAll", "filename", filename)
-	}
-	return common.ToHex(content)
 }

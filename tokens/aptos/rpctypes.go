@@ -154,7 +154,7 @@ type SwapinEvent struct {
 }
 
 type SwapinData struct {
-	TxHash      string `json:"tx_hash"`
+	SwapID      string `json:"swapid"`
 	Token       string `json:"token"`
 	To          string `json:"to"`
 	Amount      string `json:"amount"`

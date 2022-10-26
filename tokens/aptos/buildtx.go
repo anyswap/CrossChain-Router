@@ -146,7 +146,8 @@ func (b *Bridge) SetExtraArgs(args *tokens.BuildTxArgs, tokenCfg *tokens.TokenCo
 		extra.Gas = &gas
 	}
 	if extra.Fee == nil {
-		extra.Fee = &maxFee
+		maxGasFee := b.getMaxFee()
+		extra.Fee = &maxGasFee
 	}
 	log.Info("Build tx with extra args", "extra", extra)
 	return nil
@@ -168,7 +169,7 @@ func (b *Bridge) BuildSwapinTransferTransaction(args *tokens.BuildTxArgs, tokenC
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
 			Function:      GetRouterFunctionId(args.From, CONTRACT_NAME_ROUTER, CONTRACT_FUNC_SWAPIN),
 			TypeArguments: []string{tokenCfg.Extra, tokenCfg.ContractAddress},
-			Arguments:     []interface{}{receiver, strconv.FormatUint(amount, 10), args.SwapID, args.FromChainID.String()},
+			Arguments:     []interface{}{receiver, strconv.FormatUint(amount, 10), args.GetUniqueSwapIdentifier(), args.FromChainID.String()},
 		},
 	}
 	return tx, nil
@@ -227,10 +228,24 @@ func (b *Bridge) getGasPrice() string {
 	estimateGasPrice, err := b.EstimateGasPrice()
 	if err == nil {
 		log.Debugln("estimateGasPrice", "GasPrice", estimateGasPrice.GasPrice)
-		return strconv.Itoa(estimateGasPrice.GasPrice)
+		configGasPrice := params.GetMaxGasPrice(b.ChainConfig.ChainID)
+		if configGasPrice == nil {
+			return strconv.Itoa(estimateGasPrice.GasPrice)
+		} else {
+			return strconv.FormatUint(configGasPrice.Uint64(), 10)
+		}
 	} else {
 		log.Debugln("estimateGasPrice", "GasPrice", defaultGasUnitPrice)
 		return defaultGasUnitPrice
+	}
+}
+
+func (b *Bridge) getMaxFee() string {
+	maxGasFee := params.GetMaxGasLimit(b.ChainConfig.ChainID)
+	if maxGasFee == 0 {
+		return maxFee
+	} else {
+		return strconv.FormatUint(maxGasFee, 10)
 	}
 }
 
@@ -264,8 +279,8 @@ func (b *Bridge) BuildDeployModuleTransaction(address, packagemetadata string, m
 		Sender:         address,
 		SequenceNumber: account.SequenceNumber,
 		// MaxGasAmount:            strconv.Itoa(fee * len(moduleHexs)),
-		MaxGasAmount:            maxFee,
-		GasUnitPrice:            b.getGasPrice(),
+		MaxGasAmount:            "20000",
+		GasUnitPrice:            "1000",
 		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
 		Payload: &TransactionPayload{
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
@@ -554,6 +569,28 @@ func (b *Bridge) BuildCopyCapTransaction(address, coin string) (*Transaction, er
 			Function:      GetRouterFunctionId(address, coin, CONTRACT_FUNC_SET_UNDERLYING_CAP),
 			TypeArguments: []string{},
 			Arguments:     []interface{}{},
+		},
+	}
+	return tx, nil
+}
+
+func (b *Bridge) BuildTransferTransaction(sender, coin, receiver, amount string) (*Transaction, error) {
+	account, err := b.GetAccount(sender)
+	if err != nil {
+		return nil, err
+	}
+	timeout := time.Now().Unix() + timeout_seconds
+	tx := &Transaction{
+		Sender:                  sender,
+		SequenceNumber:          account.SequenceNumber,
+		MaxGasAmount:            maxFee,
+		GasUnitPrice:            defaultGasUnitPrice,
+		ExpirationTimestampSecs: strconv.FormatInt(timeout, 10),
+		Payload: &TransactionPayload{
+			Type:          SCRIPT_FUNCTION_PAYLOAD,
+			Function:      "0x1::aptos_account::transfer",
+			TypeArguments: []string{},
+			Arguments:     []interface{}{receiver, amount},
 		},
 	}
 	return tx, nil
