@@ -10,7 +10,7 @@ import (
 
 // GetTransactionStatus impl
 func (b *Bridge) GetTransactionStatus(txHash string) (*tokens.TxStatus, error) {
-	txr, url, err := b.GetTransactionReceipt(txHash)
+	txr, err := b.GetTransactionReceipt(txHash)
 	if err != nil {
 		return nil, err
 	}
@@ -23,7 +23,7 @@ func (b *Bridge) GetTransactionStatus(txHash string) (*tokens.TxStatus, error) {
 
 	if txStatus.BlockHeight != 0 {
 		for i := 0; i < 3; i++ {
-			latest, errt := b.GetLatestBlockNumberOf(url)
+			latest, errt := b.GetFinalizedBlockNumber()
 			if errt == nil {
 				if latest > txStatus.BlockHeight {
 					txStatus.Confirmations = latest - txStatus.BlockHeight

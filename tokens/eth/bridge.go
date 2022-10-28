@@ -87,6 +87,9 @@ func (b *Bridge) InitAfterConfig() {
 			"err", err)
 		return
 	}
+	if b.NeedsFinalizeAPIAddress() && len(b.GatewayConfig.FinalizeAPIAddress) == 0 {
+		logErrFunc("conflux has no 'FinalizeAPIAddress' gateway to get latest finalized block", "chainID", b.ChainConfig.ChainID)
+	}
 }
 
 func (b *Bridge) initSigner(chainID *big.Int) (err error) {
@@ -108,11 +111,13 @@ func (b *Bridge) initSigner(chainID *big.Int) (err error) {
 		return err
 	}
 	b.SignerChainID = signerChainID
-	if params.IsDynamicFeeTxEnabled(signerChainID.String()) {
+	isEip1559 := params.IsDynamicFeeTxEnabled(signerChainID.String())
+	if isEip1559 {
 		b.Signer = types.MakeSigner("London", signerChainID)
 	} else {
 		b.Signer = types.MakeSigner("EIP155", signerChainID)
 	}
+	log.Info("init signer success", "chainID", b.SignerChainID, "isEip1559", isEip1559)
 	return nil
 }
 

@@ -11,29 +11,7 @@ var (
 	wrapRPCQueryError = tokens.WrapRPCQueryError
 )
 
-// ------------------------ kusama specific apis -----------------------------
-
-// KsmGetLatestBlockNumberOf get latest block number
-func KsmGetLatestBlockNumberOf(url string, gateway *tokens.GatewayConfig, timeout int) (latest uint64, err error) {
-	blockHash, err := KsmGetFinalizedHead(url, timeout)
-	if err != nil {
-		return 0, err
-	}
-	header, err := KsmGetHeader(blockHash.String(), gateway, timeout)
-	if err != nil {
-		return 0, err
-	}
-	return header.Number.ToInt().Uint64(), nil
-}
-
-// KsmGetFinalizedHead call chain_getFinalizedHead
-func KsmGetFinalizedHead(url string, timeout int) (result common.Hash, err error) {
-	err = client.RPCPostWithTimeout(timeout, &result, url, "chain_getFinalizedHead")
-	if err == nil {
-		return result, nil
-	}
-	return result, wrapRPCQueryError(err, "chain_getFinalizedHead")
-}
+// ------------------------ kusama override apis -----------------------------
 
 // KsmHeader struct
 type KsmHeader struct {
@@ -41,18 +19,38 @@ type KsmHeader struct {
 	Number     *hexutil.Big `json:"number"`
 }
 
-// KsmGetHeader call chain_getHeader
-func KsmGetHeader(blockHash string, gateway *tokens.GatewayConfig, timeout int) (result *KsmHeader, err error) {
-	result, err = ksmGetHeader(blockHash, gateway.APIAddress, timeout)
-	if err != nil && len(gateway.APIAddressExt) > 0 {
-		result, err = ksmGetHeader(blockHash, gateway.APIAddressExt, timeout)
+// KsmGetFinalizedBlockNumber call chain_getFinalizedHead and chain_getHeader
+func KsmGetFinalizedBlockNumber(b tokens.IBridge) (latest uint64, err error) {
+	gateway := b.GetGatewayConfig()
+	urls := append(gateway.APIAddress, gateway.APIAddressExt...)
+	blockHash, err := KsmGetFinalizedHead(urls)
+	if err != nil {
+		return 0, err
 	}
-	return result, err
+	header, err := KsmGetHeader(urls, blockHash.String())
+	if err != nil {
+		return 0, err
+	}
+	return header.Number.ToInt().Uint64(), nil
 }
 
-func ksmGetHeader(blockHash string, urls []string, timeout int) (result *KsmHeader, err error) {
+// ------------------------ kusama specific apis -----------------------------
+
+// KsmGetFinalizedHead call chain_getFinalizedHead
+func KsmGetFinalizedHead(urls []string) (result *common.Hash, err error) {
 	for _, url := range urls {
-		err = client.RPCPostWithTimeout(timeout, &result, url, "chain_getHeader", blockHash)
+		err = client.RPCPost(&result, url, "chain_getFinalizedHead")
+		if err == nil && result != nil {
+			return result, nil
+		}
+	}
+	return nil, wrapRPCQueryError(err, "chain_getFinalizedHead")
+}
+
+// KsmGetHeader call chain_getHeader
+func KsmGetHeader(urls []string, blockHash string) (result *KsmHeader, err error) {
+	for _, url := range urls {
+		err = client.RPCPost(&result, url, "chain_getHeader", blockHash)
 		if err == nil && result != nil {
 			return result, nil
 		}

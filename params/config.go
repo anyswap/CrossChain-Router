@@ -108,16 +108,20 @@ type RouterConfig struct {
 	Server *RouterServerConfig `toml:",omitempty" json:",omitempty"`
 	Oracle *RouterOracleConfig `toml:",omitempty" json:",omitempty"`
 
-	Identifier     string
-	SwapType       string
-	SwapSubType    string
-	Onchain        *OnchainConfig
-	Gateways       map[string][]string // key is chain ID
-	GatewaysExt    map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
-	EVMGatewaysExt map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
-	MPC            *MPCConfig
-	FastMPC        *MPCConfig   `toml:",omitempty" json:",omitempty"`
-	Extra          *ExtraConfig `toml:",omitempty" json:",omitempty"`
+	Identifier  string
+	SwapType    string
+	SwapSubType string
+
+	Onchain *OnchainConfig
+
+	Gateways         map[string][]string // key is chain ID
+	GatewaysExt      map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+	EVMGatewaysExt   map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+	FinalizeGateways map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+
+	MPC     *MPCConfig
+	FastMPC *MPCConfig   `toml:",omitempty" json:",omitempty"`
+	Extra   *ExtraConfig `toml:",omitempty" json:",omitempty"`
 
 	ChainIDBlackList        []string            `toml:",omitempty" json:",omitempty"`
 	TokenIDBlackList        []string            `toml:",omitempty" json:",omitempty"`

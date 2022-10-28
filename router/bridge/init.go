@@ -341,10 +341,12 @@ func InitGatewayConfig(b tokens.IBridge, chainID *big.Int) {
 	}
 	apiAddrsExt := cfg.GatewaysExt[chainID.String()]
 	evmapiext := cfg.EVMGatewaysExt[chainID.String()]
+	finalizeAPIs := cfg.FinalizeGateways[chainID.String()]
 	b.SetGatewayConfig(&tokens.GatewayConfig{
-		APIAddress:    apiAddrs,
-		APIAddressExt: apiAddrsExt,
-		EVMAPIAddress: evmapiext,
+		APIAddress:         apiAddrs,
+		APIAddressExt:      apiAddrsExt,
+		EVMAPIAddress:      evmapiext,
+		FinalizeAPIAddress: finalizeAPIs,
 	})
 	log.Info(fmt.Sprintf("[%5v] init gateway config success", chainID), "isReload", isReload)
 }
