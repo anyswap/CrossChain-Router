@@ -37,10 +37,10 @@ type TransactionInfo struct {
 }
 
 type Event struct {
-	Key            string            `json:"key,omitempty"`
-	SequenceNumber string            `json:"sequence_number,omitempty"`
-	Type           string            `json:"type,omitempty"`
-	Data           map[string]string `json:"data,omitempty"`
+	Key            string                 `json:"key,omitempty"`
+	SequenceNumber string                 `json:"sequence_number,omitempty"`
+	Type           string                 `json:"type,omitempty"`
+	Data           map[string]interface{} `json:"data,omitempty"`
 }
 
 type Transaction struct {
