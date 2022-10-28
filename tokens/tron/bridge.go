@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
-	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -95,19 +94,6 @@ func (b *Bridge) InitGatewayConfig(chainID *big.Int) {
 		APIAddress:    apiAddrs,
 		APIAddressExt: apiAddrsExt,
 	})
-	latestBlock, err := b.GetLatestBlockNumber()
-	if err != nil && router.IsIniting {
-		for i := 0; i < router.RetryRPCCountInInit; i++ {
-			if latestBlock, err = b.GetLatestBlockNumber(); err == nil {
-				break
-			}
-			time.Sleep(router.RetryRPCIntervalInInit)
-		}
-	}
-	if err != nil {
-		log.Fatal("get lastest block number failed", "chainID", chainID, "err", err)
-	}
-	log.Infof("[%5v] lastest block number is %v", chainID, latestBlock)
 	log.Infof("[%5v] init gateway config success", chainID)
 }
 
