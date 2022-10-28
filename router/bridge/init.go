@@ -201,9 +201,11 @@ func InitGatewayConfig(b tokens.IBridge, chainID *big.Int) {
 		return
 	}
 	apiAddrsExt := cfg.GatewaysExt[chainID.String()]
+	finalizeAPIs := cfg.FinalizeGateways[chainID.String()]
 	b.SetGatewayConfig(&tokens.GatewayConfig{
-		APIAddress:    apiAddrs,
-		APIAddressExt: apiAddrsExt,
+		APIAddress:         apiAddrs,
+		APIAddressExt:      apiAddrsExt,
+		FinalizeAPIAddress: finalizeAPIs,
 	})
 	if !isReload {
 		latestBlock, err := b.GetLatestBlockNumber()
@@ -216,10 +218,10 @@ func InitGatewayConfig(b tokens.IBridge, chainID *big.Int) {
 			}
 		}
 		if err != nil {
-			logErrFunc("get lastest block number failed", "chainID", chainID, "err", err)
-			return
+			log.Warn("get lastest block number failed", "chainID", chainID, "err", err)
+		} else {
+			log.Infof("[%5v] lastest block number is %v", chainID, latestBlock)
 		}
-		log.Infof("[%5v] lastest block number is %v", chainID, latestBlock)
 	}
 	log.Info(fmt.Sprintf("[%5v] init gateway config success", chainID), "isReload", isReload)
 }

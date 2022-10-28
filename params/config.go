@@ -110,11 +110,15 @@ type RouterConfig struct {
 	Identifier  string
 	SwapType    string
 	SwapSubType string
-	Onchain     *OnchainConfig
-	Gateways    map[string][]string // key is chain ID
-	GatewaysExt map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
-	MPC         *MPCConfig
-	Extra       *ExtraConfig `toml:",omitempty" json:",omitempty"`
+
+	Onchain *OnchainConfig
+
+	Gateways         map[string][]string // key is chain ID
+	GatewaysExt      map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+	FinalizeGateways map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+
+	MPC   *MPCConfig
+	Extra *ExtraConfig `toml:",omitempty" json:",omitempty"`
 
 	ChainIDBlackList        []string            `toml:",omitempty" json:",omitempty"`
 	TokenIDBlackList        []string            `toml:",omitempty" json:",omitempty"`

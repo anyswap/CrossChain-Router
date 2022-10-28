@@ -31,13 +31,33 @@ var (
 	wrapRPCQueryError = tokens.WrapRPCQueryError
 )
 
-// GetLatestBlockNumberOf call eth_blockNumber
-func (b *Bridge) GetLatestBlockNumberOf(url string) (latest uint64, err error) {
-	if b.ChainConfig != nil { // after init
-		if b.ChainConfig.ChainID == "1285" { // kusama ecosystem
-			return callapi.KsmGetLatestBlockNumberOf(url, b.GatewayConfig, b.RPCClientTimeout)
+// NeedsFinalizeAPIAddress need special finalize api
+func (b *Bridge) NeedsFinalizeAPIAddress() bool {
+	switch b.ChainConfig.ChainID {
+	case "1030", "71":
+		return true
+	default:
+		return false
+	}
+}
+
+// GetFinalizedBlockNumber some chain may override this method
+func (b *Bridge) GetFinalizedBlockNumber() (uint64, error) {
+	if b.ChainConfig != nil {
+		switch b.ChainConfig.ChainID {
+		case "1285", // kusama moonriver
+			"336": // kusama shiden
+			return callapi.KsmGetFinalizedBlockNumber(b)
+		case "1030", // conlux mainnet
+			"71": // conflux testnet
+			return callapi.CfxGetFinalizedBlockNumber(b)
 		}
 	}
+	return b.GetLatestBlockNumber()
+}
+
+// GetLatestBlockNumberOf call eth_blockNumber
+func (b *Bridge) GetLatestBlockNumberOf(url string) (latest uint64, err error) {
 	var result string
 	err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_blockNumber")
 	if err == nil {
@@ -127,47 +147,47 @@ func (b *Bridge) getTransactionByBlockNumberAndIndex(blockNumber *big.Int, txInd
 }
 
 // GetTransactionReceipt call eth_getTransactionReceipt
-func (b *Bridge) GetTransactionReceipt(txHash string) (receipt *types.RPCTxReceipt, url string, err error) {
+func (b *Bridge) GetTransactionReceipt(txHash string) (receipt *types.RPCTxReceipt, err error) {
 	gateway := b.GatewayConfig
-	receipt, url, err = b.getTransactionReceipt(txHash, gateway.APIAddress)
+	receipt, err = b.getTransactionReceipt(txHash, gateway.APIAddress)
 	if err != nil && tokens.IsRPCQueryOrNotFoundError(err) && len(gateway.APIAddressExt) > 0 {
 		return b.getTransactionReceipt(txHash, gateway.APIAddressExt)
 	}
-	return receipt, url, err
+	return receipt, err
 }
 
-func (b *Bridge) getTransactionReceipt(txHash string, urls []string) (result *types.RPCTxReceipt, rpcURL string, err error) {
+func (b *Bridge) getTransactionReceipt(txHash string, urls []string) (result *types.RPCTxReceipt, err error) {
 	if len(urls) == 0 {
-		return nil, "", errEmptyURLs
+		return nil, errEmptyURLs
 	}
 	for _, url := range urls {
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_getTransactionReceipt", txHash)
 		if err == nil && result != nil {
 			if result.BlockNumber == nil || result.BlockHash == nil || result.TxIndex == nil {
-				return nil, "", errTxReceiptMissBlockInfo
+				return nil, errTxReceiptMissBlockInfo
 			}
 			if !common.IsEqualIgnoreCase(result.TxHash.Hex(), txHash) {
-				return nil, "", errTxHashMismatch
+				return nil, errTxHashMismatch
 			}
 			if params.IsCheckTxBlockIndexEnabled(b.ChainConfig.ChainID) {
 				tx, errt := b.getTransactionByBlockNumberAndIndex(result.BlockNumber.ToInt(), uint(*result.TxIndex), url)
 				if errt != nil {
-					return nil, "", errt
+					return nil, errt
 				}
 				if !common.IsEqualIgnoreCase(tx.Hash.Hex(), txHash) {
 					log.Error("check tx with block and index failed", "txHash", txHash, "tx.Hash", tx.Hash.Hex(), "blockNumber", result.BlockNumber, "txIndex", result.TxIndex, "url", url)
-					return nil, "", errTxInOrphanBlock
+					return nil, errTxInOrphanBlock
 				}
 			}
 			if params.IsCheckTxBlockHashEnabled(b.ChainConfig.ChainID) {
 				if errt := b.checkTxBlockHash(result.BlockNumber.ToInt(), *result.BlockHash); errt != nil {
-					return nil, "", errt
+					return nil, errt
 				}
 			}
-			return result, url, nil
+			return result, nil
 		}
 	}
-	return nil, "", wrapRPCQueryError(err, "eth_getTransactionReceipt", txHash)
+	return nil, wrapRPCQueryError(err, "eth_getTransactionReceipt", txHash)
 }
 
 func (b *Bridge) checkTxBlockHash(blockNumber *big.Int, blockHash common.Hash) error {

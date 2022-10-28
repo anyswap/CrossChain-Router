@@ -45,8 +45,9 @@ type SwapConfig struct {
 
 // GatewayConfig struct
 type GatewayConfig struct {
-	APIAddress    []string
-	APIAddressExt []string
+	APIAddress         []string
+	APIAddressExt      []string `json:",omitempty"`
+	FinalizeAPIAddress []string `json:",omitempty"`
 }
 
 // CheckConfig check chain config
