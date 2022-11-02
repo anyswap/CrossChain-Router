@@ -101,7 +101,8 @@ func (b *Bridge) initSigner(chainID *big.Int) (err error) {
 			if signerChainID, err = b.GetSignerChainID(); err == nil {
 				break
 			}
-			if strings.Contains(err.Error(), "revert") {
+			if strings.Contains(err.Error(), "revert") ||
+				strings.Contains(err.Error(), "VM execution error") {
 				break LOOP
 			}
 			log.Warn("retry get online chainID failed", "chainID", chainID, "times", i, "err", err)

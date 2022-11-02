@@ -88,7 +88,8 @@ LOOP:
 				if result, err = cli.CallContract(routerConfigCtx, msg, nil); err == nil {
 					return result, nil
 				}
-				if strings.Contains(err.Error(), "revert") {
+				if strings.Contains(err.Error(), "revert") ||
+					strings.Contains(err.Error(), "VM execution error") {
 					break LOOP
 				}
 				log.Warn("retry call onchain router config contract failed", "contract", routerConfigContract, "times", i+1, "err", err)
