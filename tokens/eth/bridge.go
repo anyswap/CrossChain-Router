@@ -232,7 +232,7 @@ func (b *Bridge) checkTokenConfig(tokenCfg *tokens.TokenConfig) error {
 	if tokenCfg.ContractVersion >= MintBurnWrapperTokenVersion {
 		err = b.checkTokenWrapper(tokenAddr, tokenCfg)
 		if err != nil {
-			log.Warn("check wrapper token failed", "chainID", chainID, "tokenID", tokenID, "tokenAddr", "version", tokenCfg.ContractVersion, "err", err)
+			log.Warn("check wrapper token failed", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "version", tokenCfg.ContractVersion, "err", err)
 			return err
 		}
 
@@ -242,23 +242,23 @@ func (b *Bridge) checkTokenConfig(tokenCfg *tokens.TokenConfig) error {
 
 	err = b.checkTokenDecimals(tokenAddr, tokenCfg)
 	if err != nil {
-		log.Warn("check token decimals failed", "chainID", chainID, "tokenID", tokenID, "tokenAddr", "version", tokenCfg.ContractVersion, "err", err)
+		log.Warn("check token decimals failed", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "version", tokenCfg.ContractVersion, "err", err)
 		return err
 	}
 
 	err = b.checkTokenMinter(tokenAddr, tokenCfg)
 	if err != nil {
-		log.Warn("check token minter failed", "chainID", chainID, "tokenID", tokenID, "tokenAddr", "version", tokenCfg.ContractVersion, "err", err)
+		log.Warn("check token minter failed", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "version", tokenCfg.ContractVersion, "err", err)
 		return err
 	}
 
 	err = b.initUnderlying(tokenAddr, tokenCfg)
 	if err != nil {
-		log.Warn("init token underlying failed", "chainID", chainID, "tokenID", tokenID, "tokenAddr", "version", tokenCfg.ContractVersion, "err", err)
+		log.Warn("init token underlying failed", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "version", tokenCfg.ContractVersion, "err", err)
 		return err
 	}
 
-	log.Info("check token config success", "chainID", chainID, "tokenID", tokenID, "tokenAddr", "version", tokenCfg.ContractVersion)
+	log.Info("check token config success", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "version", tokenCfg.ContractVersion)
 
 	tokenCfg.Checked = true
 	return nil
