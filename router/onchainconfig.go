@@ -83,12 +83,11 @@ func CallOnchainContract(data hexutil.Bytes, blockNumber string) (result []byte,
 	for _, cli := range routerConfigClients {
 		result, err = cli.CallContract(routerConfigCtx, msg, nil)
 		if err != nil && IsIniting {
-			log.Warn("call onchain contract failed", "contract", routerConfigContract, "data", data, "err", err)
 			for i := 0; i < RetryRPCCountInInit; i++ {
 				if result, err = cli.CallContract(routerConfigCtx, msg, nil); err == nil {
 					return result, nil
 				}
-				log.Warn("call onchain contract failed", "err", err)
+				log.Warn("retry call onchain router config contract failed", "contract", routerConfigContract, "times", i+1, "err", err)
 				time.Sleep(RetryRPCIntervalInInit)
 			}
 		}
@@ -96,7 +95,7 @@ func CallOnchainContract(data hexutil.Bytes, blockNumber string) (result []byte,
 			return result, nil
 		}
 	}
-	log.Debug("call onchain contract error", "contract", routerConfigContract.String(), "data", data, "err", err)
+	log.Warn("call onchain router config contract error", "contract", routerConfigContract.String(), "data", data, "err", err)
 	return nil, err
 }
 
