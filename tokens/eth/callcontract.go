@@ -176,3 +176,13 @@ func (b *Bridge) IsMinter(contractAddr, minterAddr string) (bool, error) {
 	}
 	return common.GetBigInt(common.FromHex(res), 0, 32).Sign() != 0, nil
 }
+
+// GetWrapperTokenAddress call "token()"
+func (b *Bridge) GetWrapperTokenAddress(contractAddr string) (string, error) {
+	data := common.FromHex("0xfc0c546a")
+	res, err := b.CallContract(contractAddr, data, "latest")
+	if err != nil {
+		return "", err
+	}
+	return common.BytesToAddress(common.GetData(common.FromHex(res), 0, 32)).LowerHex(), nil
+}

@@ -197,41 +197,40 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 		return
 	}
 
+	if tokenCfg.ContractVersion >= MintBurnWrapperTokenVersion {
+		b.checkTokenWrapper(tokenAddr, tokenCfg)
+		return
+	}
+
+	b.checkTokenDecimals(tokenAddr, tokenCfg)
+	b.checkTokenMinter(tokenAddr, tokenCfg)
+	b.initUnderlying(tokenAddr, tokenCfg)
+}
+
+func (b *Bridge) checkTokenWrapper(tokenAddr string, tokenCfg *tokens.TokenConfig) {
 	tokenID := tokenCfg.TokenID
 	chainID := b.ChainConfig.ChainID
 
-	if tokenCfg.ContractVersion >= MintBurnWrapperTokenVersion {
-		log.Info("ignore wrapper token config checking",
-			"chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr,
-			"decimals", tokenCfg.Decimals, "ContractVersion", tokenCfg.ContractVersion)
+	wrapToken, err := b.GetWrapperTokenAddress(tokenAddr)
+	if err != nil {
+		log.Warn("get wrap token failed", "chainID", chainID, "tokenID", tokenID, "tokenAddr", "err", err)
 		return
 	}
 
+	b.checkTokenDecimals(wrapToken, tokenCfg)
+}
+
+func (b *Bridge) initUnderlying(tokenAddr string, tokenCfg *tokens.TokenConfig) {
 	logErrFunc := log.GetLogFuncOr(router.DontPanicInLoading(), log.Error, log.Fatal)
+	tokenID := tokenCfg.TokenID
+	chainID := b.ChainConfig.ChainID
 
-	decimals, errt := b.GetErc20Decimals(tokenAddr)
-	if errt != nil {
-		logErrFunc("get token decimals failed", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "err", errt)
-		return
-	}
-	if decimals != tokenCfg.Decimals {
-		logErrFunc("token decimals mismatch", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract", decimals)
-		return
-	}
-	routerContract := tokenCfg.RouterContract
-	if routerContract == "" {
-		routerContract = b.GetChainConfig().RouterContract
-	}
-	err := b.checkTokenMinter(routerContract, tokenCfg)
-	if err != nil && tokenCfg.IsStandardTokenVersion() {
-		logErrFunc("check token minter failed", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "err", err)
-		return
-	}
 	underlying, err := b.GetUnderlyingAddress(tokenAddr)
 	if err != nil && tokenCfg.IsStandardTokenVersion() {
 		logErrFunc("get underlying address failed", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "err", err)
 		return
 	}
+
 	var underlyingIsMinted bool
 	if common.HexToAddress(underlying) != (common.Address{}) {
 		for i := 0; i < 2; i++ {
@@ -244,35 +243,70 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 	tokenCfg.SetUnderlying(underlying, underlyingIsMinted) // init underlying address
 }
 
-func (b *Bridge) checkTokenMinter(routerContract string, tokenCfg *tokens.TokenConfig) (err error) {
-	if !tokenCfg.IsStandardTokenVersion() {
-		return nil
+func (b *Bridge) checkTokenDecimals(tokenAddr string, tokenCfg *tokens.TokenConfig) {
+	logErrFunc := log.GetLogFuncOr(router.DontPanicInLoading(), log.Error, log.Fatal)
+	tokenID := tokenCfg.TokenID
+	chainID := b.ChainConfig.ChainID
+
+	decimals, err := b.GetErc20Decimals(tokenAddr)
+	if err != nil {
+		logErrFunc("get token decimals failed", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "err", err)
+		return
 	}
-	tokenAddr := tokenCfg.ContractAddress
+
+	if decimals != tokenCfg.Decimals {
+		logErrFunc("token decimals mismatch", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "version", tokenCfg.ContractVersion, "have", decimals, "want", tokenCfg.Decimals)
+		return
+	}
+
+	log.Info("check token decimals success", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals)
+}
+
+func (b *Bridge) checkTokenMinter(tokenAddr string, tokenCfg *tokens.TokenConfig) {
+	if !tokenCfg.IsStandardTokenVersion() {
+		return
+	}
+
+	logErrFunc := log.GetLogFuncOr(router.DontPanicInLoading(), log.Error, log.Fatal)
+	tokenID := tokenCfg.TokenID
+	chainID := b.ChainConfig.ChainID
+
+	routerContract := tokenCfg.RouterContract
+	if routerContract == "" {
+		routerContract = b.GetChainConfig().RouterContract
+	}
+
 	var minterAddr string
 	var isMinter bool
+	var err error
+
 	switch tokenCfg.ContractVersion {
 	default:
 		isMinter, err = b.IsMinter(tokenAddr, routerContract)
 		if err != nil {
-			return err
+			logErrFunc("call isMinter funciton failed", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "routerContract", routerContract, "version", tokenCfg.ContractVersion, "err", err)
+			return
 		}
 		if !isMinter {
-			return fmt.Errorf("%v is not minter", routerContract)
+			logErrFunc("router contract is not the token minter", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "routerContract", routerContract, "version", tokenCfg.ContractVersion)
+			return
 		}
-		return nil
+		return
 	case 3:
 		minterAddr, err = b.GetVaultAddress(tokenAddr)
 	case 2, 1:
 		minterAddr, err = b.GetOwnerAddress(tokenAddr)
 	}
+
 	if err != nil {
-		return err
+		logErrFunc("get token minter failed", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "routerContract", routerContract, "version", tokenCfg.ContractVersion, "err", err)
+		return
 	}
+
 	if common.HexToAddress(minterAddr) != common.HexToAddress(routerContract) {
-		return fmt.Errorf("minter mismatch, have '%v' config '%v'", minterAddr, routerContract)
+		logErrFunc("router contract is not the token minter", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "routerContract", routerContract, "minterAddr", minterAddr, "version", tokenCfg.ContractVersion)
+		return
 	}
-	return nil
 }
 
 // GetSignerChainID default way to get signer chain id
