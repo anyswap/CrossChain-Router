@@ -437,7 +437,8 @@ LOOP:
 				if err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_call", reqArgs, blockNumber); err == nil {
 					return result, nil
 				}
-				if strings.Contains(err.Error(), "execution reverted") {
+				if strings.Contains(err.Error(), "revert") ||
+					strings.Contains(err.Error(), "wrong response status") {
 					break LOOP
 				}
 				log.Warn("retry call contract failed", "chainID", b.ChainConfig.ChainID, "contract", contract, "times", i+1, "err", err)
