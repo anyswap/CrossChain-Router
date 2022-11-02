@@ -30,8 +30,8 @@ var (
 
 	IsIniting              bool
 	IsReloading            bool
-	RetryRPCCountInInit    = 10
-	RetryRPCIntervalInInit = 5 * time.Second
+	RetryRPCCountInInit    = 3
+	RetryRPCIntervalInInit = 3 * time.Second
 )
 
 // DontPanicInLoading don't panic in loading
