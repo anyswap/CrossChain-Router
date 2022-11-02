@@ -440,6 +440,7 @@ LOOP:
 				if strings.Contains(err.Error(), "execution reverted") {
 					break LOOP
 				}
+				log.Warn("retry call contract failed", "chainID", b.ChainConfig.ChainID, "contract", contract, "times", i+1, "err", err)
 				time.Sleep(router.RetryRPCIntervalInInit)
 			}
 		}
@@ -449,7 +450,7 @@ LOOP:
 	}
 	if err != nil {
 		logFunc := log.GetPrintFuncOr(params.IsDebugMode, log.Info, log.Trace)
-		logFunc("call CallContract failed", "contract", contract, "data", data, "err", err)
+		logFunc("call contract failed", "chainID", b.ChainConfig.ChainID, "contract", contract, "data", data, "err", err)
 	}
 	return "", wrapRPCQueryError(err, "eth_call", contract)
 }

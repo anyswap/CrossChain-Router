@@ -6,7 +6,6 @@ import (
 	"math/big"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -110,6 +109,13 @@ func InitRouterBridges(isServer bool) {
 			bridge.InitAfterConfig()
 			router.SetBridge(chainID.String(), bridge)
 
+			latestBlock, err := bridge.GetLatestBlockNumber()
+			if err != nil {
+				log.Warn("get lastest block number failed", "chainID", chainID, "err", err)
+			} else {
+				log.Infof("[%5v] lastest block number is %v", chainID, latestBlock)
+			}
+
 			wg2 := new(sync.WaitGroup)
 			wg2.Add(len(tokenIDs))
 			for _, tokenID := range tokenIDs {
@@ -207,22 +213,6 @@ func InitGatewayConfig(b tokens.IBridge, chainID *big.Int) {
 		APIAddressExt:      apiAddrsExt,
 		FinalizeAPIAddress: finalizeAPIs,
 	})
-	if !isReload {
-		latestBlock, err := b.GetLatestBlockNumber()
-		if err != nil && router.IsIniting {
-			for i := 0; i < router.RetryRPCCountInInit; i++ {
-				if latestBlock, err = b.GetLatestBlockNumber(); err == nil {
-					break
-				}
-				time.Sleep(router.RetryRPCIntervalInInit)
-			}
-		}
-		if err != nil {
-			log.Warn("get lastest block number failed", "chainID", chainID, "err", err)
-		} else {
-			log.Infof("[%5v] lastest block number is %v", chainID, latestBlock)
-		}
-	}
 	log.Info(fmt.Sprintf("[%5v] init gateway config success", chainID), "isReload", isReload)
 }
 

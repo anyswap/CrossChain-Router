@@ -31,6 +31,8 @@ type TokenConfig struct {
 	// calced value
 	underlying         string
 	underlyingIsMinted bool
+
+	Checked bool `json:"-"`
 }
 
 // SwapConfig struct
