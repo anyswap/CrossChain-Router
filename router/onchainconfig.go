@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"math/big"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -79,12 +80,17 @@ func CallOnchainContract(data hexutil.Bytes, blockNumber string) (result []byte,
 		To:   &routerConfigContract,
 		Data: data,
 	}
+LOOP:
 	for _, cli := range routerConfigClients {
 		result, err = cli.CallContract(routerConfigCtx, msg, nil)
 		if err != nil && IsIniting {
 			for i := 0; i < RetryRPCCountInInit; i++ {
 				if result, err = cli.CallContract(routerConfigCtx, msg, nil); err == nil {
 					return result, nil
+				}
+				if strings.Contains(err.Error(), "revert") ||
+					strings.Contains(err.Error(), "wrong response status") {
+					break LOOP
 				}
 				log.Warn("retry call onchain router config contract failed", "contract", routerConfigContract, "times", i+1, "err", err)
 				time.Sleep(RetryRPCIntervalInInit)

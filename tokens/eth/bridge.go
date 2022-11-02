@@ -96,9 +96,14 @@ func (b *Bridge) InitAfterConfig() {
 func (b *Bridge) initSigner(chainID *big.Int) (err error) {
 	signerChainID, err := b.GetSignerChainID()
 	if err != nil && router.IsIniting {
+	LOOP:
 		for i := 0; i < router.RetryRPCCountInInit; i++ {
 			if signerChainID, err = b.GetSignerChainID(); err == nil {
 				break
+			}
+			if strings.Contains(err.Error(), "revert") ||
+				strings.Contains(err.Error(), "wrong response status") {
+				break LOOP
 			}
 			log.Warn("retry get online chainID failed", "chainID", chainID, "times", i, "err", err)
 			time.Sleep(router.RetryRPCIntervalInInit)
