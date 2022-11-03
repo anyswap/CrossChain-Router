@@ -103,6 +103,11 @@ func InitRouterBridges(isServer bool) {
 			bridge := NewCrossChainBridge(chainID)
 
 			InitGatewayConfig(bridge, chainID)
+			if len(bridge.GetGatewayConfig().APIAddress) == 0 {
+				logErrFunc("bridge has no gateway config", "chainID", chainID)
+				return
+			}
+
 			AdjustGatewayOrder(bridge, chainID.String())
 			InitChainConfig(bridge, chainID)
 
