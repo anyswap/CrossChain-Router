@@ -170,8 +170,9 @@ func (s *TxStatus) IsSwapTxOnChainAndFailed() bool {
 }
 
 type CurrencyInfo struct {
-	Price   *big.Int `json:"price,omitempty"`
-	Decimal *big.Int `json:"decimal,omitempty"`
+	Price          *big.Int `json:"price,omitempty"`
+	Decimal        *big.Int `json:"decimal,omitempty"`
+	LastUpdateTime *big.Int `json:"lastUpdateTime,omitempty"`
 }
 
 // VerifyArgs struct

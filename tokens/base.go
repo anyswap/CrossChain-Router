@@ -392,12 +392,14 @@ func GetCurrencyInfo(chainID *big.Int) (*CurrencyInfo, error) {
 	}
 	price := common.GetBigInt(res, 0, 32)
 	decimal := common.GetBigInt(res, 32, 32)
+	lastUpdateTime := common.GetBigInt(res, 64, 32)
 	if price.Cmp(big.NewInt(0)) == 0 || decimal.Cmp(big.NewInt(0)) == 0 {
 		return nil, ErrOraclePrice
 	}
 	return &CurrencyInfo{
-		Price:   price,
-		Decimal: decimal,
+		Price:          price,
+		Decimal:        decimal,
+		LastUpdateTime: lastUpdateTime,
 	}, nil
 }
 
@@ -413,6 +415,7 @@ func GetSwapThreshold(chainID *big.Int) (*big.Int, error) {
 }
 
 func CheckGasSwapValue(fromChainID *big.Int, gasSwapInfo *GasSwapInfo, receiveValue *big.Int) (*big.Int, error) {
+	transactionSlippage := params.GetRouterConfig().PriceOracle.TransactionSlippage
 	srcCurrencyPrice := new(big.Int).Set(gasSwapInfo.SrcCurrencyPrice)
 	destCurrencyPrice := gasSwapInfo.DestCurrencyPrice
 	srcDecimal := uint8(gasSwapInfo.SrcCurrencyDecimal.Uint64())
@@ -426,6 +429,7 @@ func CheckGasSwapValue(fromChainID *big.Int, gasSwapInfo *GasSwapInfo, receiveVa
 	if err != nil {
 		return nil, err
 	}
+
 	if swapThreshold.Cmp(swapInTotalPrice) < 0 {
 		log.Error("CheckGasSwapValue", "swapThreshold", swapThreshold, "swapInTotalPrice", swapInTotalPrice)
 		return nil, ErrOutOfSwapThreshold
@@ -435,15 +439,13 @@ func CheckGasSwapValue(fromChainID *big.Int, gasSwapInfo *GasSwapInfo, receiveVa
 	amount := receiveTotalValue.Div(receiveTotalValue, destCurrencyPrice)
 
 	realReceiveValue := ConvertTokenValue(amount, srcDecimal, destDecimal)
-	if realReceiveValue.Cmp(minReceiveValue) < 0 {
-		log.Error("CheckGasSwapValue", "minReceiveValue", minReceiveValue, "realReceiveValue", realReceiveValue)
-		return nil, ErrLessThanMinValue
-	}
 
-	upperThreshold := new(big.Int).Mul(minReceiveValue, big.NewInt(120))
-	upperThreshold = upperThreshold.Div(upperThreshold, big.NewInt(100))
+	upperThreshold := new(big.Int).Mul(realReceiveValue, big.NewInt(100))
+	upperThreshold = upperThreshold.Div(upperThreshold, big.NewInt(100+int64(transactionSlippage)))
 
-	if upperThreshold.Cmp(realReceiveValue) < 0 && upperThreshold.Cmp(big.NewInt(0)) != 0 {
+	if upperThreshold.Cmp(minReceiveValue) > 0 {
+		realReceiveValue = minReceiveValue
+	} else {
 		realReceiveValue = upperThreshold
 	}
 
