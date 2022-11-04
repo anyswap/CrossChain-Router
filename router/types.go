@@ -42,7 +42,6 @@ func DontPanicInLoading() bool {
 // SwapRouterInfo swap router info
 type SwapRouterInfo struct {
 	RouterMPC      string
-	RouterFactory  string
 	RouterWNative  string
 	RouterSecurity string
 }

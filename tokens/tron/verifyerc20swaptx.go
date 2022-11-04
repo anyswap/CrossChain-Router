@@ -112,9 +112,6 @@ func (b *Bridge) checkERC20SwapInfo(swapInfo *tokens.SwapTxInfo) error {
 		log.Warn("get token config failed", "chainID", swapInfo.ToChainID, "token", multichainToken)
 		return tokens.ErrMissTokenConfig
 	}
-	if erc20SwapInfo.ForUnderlying && toTokenCfg.GetUnderlying() == "" {
-		return tokens.ErrNoUnderlyingToken
-	}
 	if !tokens.CheckTokenSwapValue(swapInfo, fromTokenCfg.Decimals, toTokenCfg.Decimals) {
 		return tokens.ErrTxWithWrongValue
 	}

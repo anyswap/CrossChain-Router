@@ -66,11 +66,6 @@ type ERC20SwapInfo struct {
 	TokenID   string `json:"tokenID"`
 	SwapoutID string `json:"swapoutID,omitempty"`
 
-	ForNative     bool     `json:"forNative,omitempty"`
-	ForUnderlying bool     `json:"forUnderlying,omitempty"`
-	Path          []string `json:"path,omitempty"`
-	AmountOutMin  *big.Int `json:"amountOutMin,omitempty"`
-
 	CallProxy string        `json:"callProxy,omitempty"`
 	CallData  hexutil.Bytes `json:"callData,omitempty"`
 }
@@ -230,7 +225,6 @@ type EthExtraArgs struct {
 	GasTipCap *big.Int `json:"gasTipCap,omitempty"`
 	GasFeeCap *big.Int `json:"gasFeeCap,omitempty"`
 	Nonce     *uint64  `json:"nonce,omitempty"`
-	Deadline  int64    `json:"deadline,omitempty"`
 }
 
 // GetReplaceNum get rplace swap count

@@ -135,12 +135,8 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 
 	chainID := b.ChainConfig.ChainID
 	log.Info(fmt.Sprintf("[%5v] start init router info", chainID), "routerContract", routerContract)
-	var routerFactory, routerWNative, routerSecurity string
+	var routerWNative, routerSecurity string
 	if tokens.IsERC20Router() {
-		routerFactory, err = b.GetFactoryAddress(routerContract)
-		if err != nil {
-			log.Warn("get router factory address failed", "chainID", chainID, "routerContract", routerContract, "err", err)
-		}
 		routerWNative, err = b.GetWNativeAddress(routerContract)
 		if err != nil {
 			log.Warn("get router wNative address failed", "chainID", chainID, "routerContract", routerContract, "err", err)
@@ -181,7 +177,6 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 		chainID,
 		&router.SwapRouterInfo{
 			RouterMPC:      routerMPC,
-			RouterFactory:  routerFactory,
 			RouterWNative:  routerWNative,
 			RouterSecurity: routerSecurity,
 		},
@@ -190,8 +185,7 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 
 	log.Info(fmt.Sprintf("[%5v] init router info success", chainID),
 		"routerContract", routerContract, "routerMPC", routerMPC,
-		"routerFactory", routerFactory, "routerWNative", routerWNative,
-		"routerSecurity", routerSecurity)
+		"routerWNative", routerWNative, "routerSecurity", routerSecurity)
 
 	return nil
 }

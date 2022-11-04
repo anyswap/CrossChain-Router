@@ -81,7 +81,6 @@ type RouterServerConfig struct {
 	PlusGasPricePercentage     uint64            `toml:",omitempty" json:",omitempty"`
 	MaxPlusGasPricePercentage  uint64            `toml:",omitempty" json:",omitempty"`
 	MaxGasPriceFluctPercent    uint64            `toml:",omitempty" json:",omitempty"`
-	SwapDeadlineOffset         int64             `toml:",omitempty" json:",omitempty"` // seconds
 	FixedGasPrice              map[string]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	MaxGasPrice                map[string]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	NoncePassedConfirmInterval map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID
@@ -132,7 +131,6 @@ type RouterConfig struct {
 // ExtraConfig extra config
 type ExtraConfig struct {
 	IsDebugMode           bool `toml:",omitempty" json:",omitempty"`
-	EnableSwapTrade       bool `toml:",omitempty" json:",omitempty"`
 	EnableSwapWithPermit  bool `toml:",omitempty" json:",omitempty"`
 	ForceAnySwapInAuto    bool `toml:",omitempty" json:",omitempty"`
 	IsNFTSwapWithData     bool `toml:",omitempty" json:",omitempty"`
@@ -271,11 +269,6 @@ func GetSwapType() string {
 // GetSwapSubType get router swap sub type
 func GetSwapSubType() string {
 	return GetRouterConfig().SwapSubType
-}
-
-// IsSwapTradeEnabled is swap trade enabled
-func IsSwapTradeEnabled() bool {
-	return GetExtraConfig() != nil && GetExtraConfig().EnableSwapTrade
 }
 
 // IsSwapWithPermitEnabled is swap with permit enabled
