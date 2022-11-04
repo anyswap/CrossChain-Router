@@ -31,8 +31,7 @@ type TokenConfig struct {
 	Extra           string
 
 	// calced value
-	underlying         string
-	underlyingIsMinted bool
+	underlying string
 
 	Checked bool `json:"-"`
 }
@@ -105,19 +104,13 @@ func (c *TokenConfig) IsStandardTokenVersion() bool {
 }
 
 // SetUnderlying set underlying
-func (c *TokenConfig) SetUnderlying(underlying string, underlyingIsMinted bool) {
+func (c *TokenConfig) SetUnderlying(underlying string) {
 	c.underlying = underlying
-	c.underlyingIsMinted = underlyingIsMinted
 }
 
 // GetUnderlying get underlying
 func (c *TokenConfig) GetUnderlying() string {
 	return c.underlying
-}
-
-// IsUnderlyingMinted is underlying minted
-func (c *TokenConfig) IsUnderlyingMinted() bool {
-	return c.underlyingIsMinted
 }
 
 // CheckConfig check swap config
