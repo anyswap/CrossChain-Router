@@ -214,6 +214,7 @@ func (b *Bridge) GetTokenConfig(tokenAddr string) *tokens.TokenConfig {
 			log.Warn("check token config on usage failed", "chainID", b.ChainConfig.ChainID, "tokenID", tokenCfg.TokenID, "tokenAddr", tokenAddr, "err", err)
 			return nil
 		}
+		log.Info("check token config on usage success", "chainID", b.ChainConfig.ChainID, "tokenID", tokenCfg.TokenID, "tokenAddr", tokenAddr)
 	}
 	return tokenCfg
 }
@@ -235,6 +236,8 @@ func (b *Bridge) checkTokenConfig(tokenCfg *tokens.TokenConfig) error {
 			log.Warn("check wrapper token failed", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "version", tokenCfg.ContractVersion, "err", err)
 			return err
 		}
+
+		log.Info("check token config success", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "version", tokenCfg.ContractVersion)
 
 		tokenCfg.Checked = true
 		return nil
