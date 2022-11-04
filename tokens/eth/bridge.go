@@ -278,16 +278,10 @@ func (b *Bridge) initUnderlying(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 		return err
 	}
 
-	var underlyingIsMinted bool
-	if err == nil && common.HexToAddress(underlying) != (common.Address{}) {
-		// not force this query must succeed
-		underlyingIsMinted, _ = b.IsUnderlyingMinted(tokenAddr)
-	}
-
 	// init underlying address
-	tokenCfg.SetUnderlying(underlying, underlyingIsMinted)
+	tokenCfg.SetUnderlying(underlying)
 
-	log.Info("init underlying success", "chainID", b.ChainConfig.ChainID, "tokenID", tokenCfg.TokenID, "tokenAddr", tokenAddr, "version", tokenCfg.ContractVersion, "underlying", underlying, "underlyingIsMinted", underlyingIsMinted)
+	log.Info("init underlying success", "chainID", b.ChainConfig.ChainID, "tokenID", tokenCfg.TokenID, "tokenAddr", tokenAddr, "version", tokenCfg.ContractVersion, "underlying", underlying)
 	return nil
 }
 

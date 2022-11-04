@@ -642,69 +642,144 @@ func (b *Bridge) checkTokenReceived(swapInfo *tokens.SwapTxInfo, receipt *types.
 
 // check token balance updations
 func (b *Bridge) checkTokenBalance(swapInfo *tokens.SwapTxInfo, receipt *types.RPCTxReceipt) error {
-	if !params.IsCheckTokenBalanceEnabled(b.ChainConfig.ChainID) {
+	if !params.IsCheckTokenBalanceEnabled(b.ChainConfig.ChainID) ||
+		params.DontCheckTokenBalance(swapInfo.ERC20SwapInfo.TokenID) {
 		return nil
 	}
 	erc20SwapInfo := swapInfo.ERC20SwapInfo
 	token := erc20SwapInfo.Token
 	tokenID := erc20SwapInfo.TokenID
-	tokenCfg := b.GetTokenConfig(token)
-	if tokenCfg == nil || tokenID == "" {
-		return tokens.ErrMissTokenConfig
-	}
-	if params.DontCheckTokenBalance(tokenID) {
-		return nil
-	}
-	underlyingAddr := tokenCfg.GetUnderlying()
-	if common.HexToAddress(underlyingAddr) == (common.Address{}) {
-		return nil
-	}
+	routerContract := b.GetRouterContract(token)
+
 	blockHeight := receipt.BlockNumber.ToInt().Uint64()
 
-	minRecvAmount := new(big.Int).Mul(swapInfo.Value, big.NewInt(4))
-	minRecvAmount.Div(minRecvAmount, big.NewInt(5))
-
-	log.Info("start check token balance",
-		"token", token, "tokenID", tokenID, "logIndex", swapInfo.LogIndex,
-		"underlying", underlyingAddr, "blockHeight", blockHeight,
-		"swapFrom", swapInfo.From, "swapValue", swapInfo.Value, "swapID", swapInfo.Hash)
-
-	if !tokenCfg.IsUnderlyingMinted() {
-		prevBal, err := b.GetErc20BalanceAtHeight(underlyingAddr, token, fmt.Sprintf("0x%x", blockHeight-1))
-		if err != nil {
-			log.Info("get prev token balance failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight-1, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID, "err", err)
-			return nil
-		}
-
-		postBal, err := b.GetErc20BalanceAtHeight(underlyingAddr, token, fmt.Sprintf("0x%x", blockHeight))
-		if err != nil {
-			log.Info("get post token balance failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID, "err", err)
-			return nil
-		}
-
-		actRecvAmount := new(big.Int).Sub(postBal, prevBal)
-		if minRecvAmount.Cmp(actRecvAmount) > 0 {
-			log.Warn("check token balance failed", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "prevBal", prevBal, "postBal", postBal, "minRecvAmount", minRecvAmount, "actRecvAmount", actRecvAmount, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID)
-			return fmt.Errorf("%w %v", tokens.ErrVerifyTxUnsafe, "check token balance failed")
-		}
-	} else {
-		prevBal, err := b.GetErc20TotalSupplyAtHeight(underlyingAddr, fmt.Sprintf("0x%x", blockHeight-1))
-		if err != nil {
-			log.Info("get prev token total supply failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight-1, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID, "err", err)
-			return nil
-		}
-		postBal, err := b.GetErc20TotalSupplyAtHeight(underlyingAddr, fmt.Sprintf("0x%x", blockHeight))
-		if err != nil {
-			log.Info("get post token total supply failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID, "err", err)
-			return nil
-		}
-		actBurnAmount := new(big.Int).Sub(prevBal, postBal)
-		if minRecvAmount.Cmp(actBurnAmount) > 0 {
-			log.Warn("check token balance failed", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "prevBal", prevBal, "postBal", postBal, "minRecvAmount", minRecvAmount, "actBurnAmount", actBurnAmount, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID)
-			return fmt.Errorf("%w %v", tokens.ErrVerifyTxUnsafe, "check token balance failed")
-		}
+	if swapInfo.LogIndex == 0 {
+		return fmt.Errorf("evm erc20 swapout logIndex must be greater than 0")
 	}
 
-	log.Info("check token balance success", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID)
+	log.Info("start check token balance", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "token", token, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID)
+
+	transferTopic := erc20CodeParts["LogTransfer"]
+
+	var matched bool
+	var err error
+	for i := swapInfo.LogIndex - 1; i >= 0; i-- {
+		rlog := receipt.Logs[i]
+		logAddr := rlog.Address.LowerHex()
+		if common.IsEqualIgnoreCase(logAddr, routerContract) {
+			break
+		}
+		if len(rlog.Topics) == 0 || (rlog.Removed != nil && *rlog.Removed) {
+			continue
+		}
+		if !bytes.Equal(rlog.Topics[0][:], transferTopic) {
+			continue
+		}
+
+		fromAddr := common.BytesToAddress(rlog.Topics[1][:])
+		isMint := fromAddr == (common.Address{})
+		if isMint || !common.IsEqualIgnoreCase(fromAddr.LowerHex(), swapInfo.From) {
+			continue
+		}
+
+		toAddr := common.BytesToAddress(rlog.Topics[2][:])
+		isBurn := toAddr == (common.Address{})
+
+		if !(isBurn || common.IsEqualIgnoreCase(toAddr.LowerHex(), token)) {
+			continue
+		}
+
+		matched = true
+
+		if isBurn {
+			err = b.checkTokenBurn(swapInfo, logAddr, swapInfo.From, blockHeight)
+		} else {
+			err = b.checkTokenTransfer(swapInfo, logAddr, swapInfo.From, token, blockHeight)
+		}
+	}
+	if !matched {
+		log.Info("check token balance without swapout pattern matched", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID)
+		return fmt.Errorf("no swapout pattern matched")
+	}
+	if err != nil {
+		log.Info("check token balance failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID, "err", err)
+		return err
+	}
+
+	log.Info("check token balance success", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "token", token, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID)
 	return nil
+}
+
+func (b *Bridge) checkTotalSupply(swapInfo *tokens.SwapTxInfo, token string, blockHeight uint64, minChangeAmount *big.Int) error {
+	prevSupply, err := b.GetErc20TotalSupplyAtHeight(token, fmt.Sprintf("0x%x", blockHeight-1))
+	if err != nil {
+		log.Info("get prev token total supply failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight-1, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID, "err", err)
+		return nil
+	}
+
+	postSupply, err := b.GetErc20TotalSupplyAtHeight(token, fmt.Sprintf("0x%x", blockHeight))
+	if err != nil {
+		log.Info("get post token total supply failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID, "err", err)
+		return nil
+	}
+
+	actChangeAmount := new(big.Int).Sub(prevSupply, postSupply)
+	if actChangeAmount.Cmp(minChangeAmount) < 0 {
+		log.Warn("check token balance failed", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "prevSupply", prevSupply, "postSupply", postSupply, "minChangeAmount", minChangeAmount, "actChangeAmount", actChangeAmount, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID)
+		return fmt.Errorf("%w %v", tokens.ErrVerifyTxUnsafe, "check total supply failed")
+	}
+	return nil
+}
+
+func (b *Bridge) checkAccountBalance(swapInfo *tokens.SwapTxInfo, token, account string, blockHeight uint64, minChangeAmount *big.Int, isDecrease bool) error {
+	prevBal, err := b.GetErc20BalanceAtHeight(token, account, fmt.Sprintf("0x%x", blockHeight-1))
+	if err != nil {
+		log.Info("get prev token balance failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight-1, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID, "err", err)
+		return nil
+	}
+
+	postBal, err := b.GetErc20BalanceAtHeight(token, account, fmt.Sprintf("0x%x", blockHeight))
+	if err != nil {
+		log.Info("get post token balance failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID, "err", err)
+		return nil
+	}
+
+	var actChangeAmount *big.Int
+	if isDecrease {
+		actChangeAmount = new(big.Int).Sub(prevBal, postBal)
+	} else {
+		actChangeAmount = new(big.Int).Sub(postBal, prevBal)
+	}
+
+	if actChangeAmount.Cmp(minChangeAmount) < 0 {
+		log.Warn("check token balance failed", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "prevBal", prevBal, "postBal", postBal, "minChangeAmount", minChangeAmount, "actChangeAmount", actChangeAmount, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID)
+		return fmt.Errorf("%w %v", tokens.ErrVerifyTxUnsafe, "check token balance failed")
+	}
+	return nil
+}
+
+// 1. check from's token balance decreased
+// 2. check token's total supply decreased
+func (b *Bridge) checkTokenBurn(swapInfo *tokens.SwapTxInfo, token, from string, blockHeight uint64) error {
+	// at least receive 80% (consider fees and deflation burning)
+	minChangeAmount := new(big.Int).Mul(swapInfo.Value, big.NewInt(4))
+	minChangeAmount.Div(minChangeAmount, big.NewInt(5))
+	err := b.checkAccountBalance(swapInfo, token, from, blockHeight, minChangeAmount, true)
+	if err != nil {
+		return err
+	}
+	return b.checkTotalSupply(swapInfo, token, blockHeight, minChangeAmount)
+}
+
+// 1. check from's token balance decreased
+// 2. check to's token balance increased
+func (b *Bridge) checkTokenTransfer(swapInfo *tokens.SwapTxInfo, token, from, to string, blockHeight uint64) error {
+	// at least receive 80% (consider fees and deflation burning)
+	minChangeAmount := new(big.Int).Mul(swapInfo.Value, big.NewInt(4))
+	minChangeAmount.Div(minChangeAmount, big.NewInt(5))
+	err := b.checkAccountBalance(swapInfo, token, from, blockHeight, minChangeAmount, true)
+	if err != nil {
+		return err
+	}
+	return b.checkAccountBalance(swapInfo, token, to, blockHeight, minChangeAmount, false)
 }
