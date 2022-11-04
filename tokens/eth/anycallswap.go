@@ -25,6 +25,8 @@ var (
 	// v6 LogAnyCall(address,address,bytes,address,uint256,uint256,string,uint256)
 	LogAnyCallV6Topic = common.FromHex("0xa17aef042e1a5dd2b8e68f0d0d92f9a6a0b35dc25be1d12c0cb3135bfd8951c9")
 	AnyExecV6FuncHash = common.FromHex("0x4a578150")
+	// anyFallback(address,bytes)
+	AnyExecV6FallbackFuncHash = common.FromHex("0xa35fe8bf")
 
 	// v7 LogAnyCall(address,address,bytes,uint256,uint256,string,uint256,bytes)
 	LogAnyCallV7Topic = common.FromHex("0x17dac14bf31c4070ebb2dc182fc25ae5df58f14162a7f24a65b103e22385af0d")
@@ -293,6 +295,16 @@ func (b *Bridge) parseAnyCallV6Log(swapInfo *tokens.SwapTxInfo, rlog *types.RPCL
 		return err
 	}
 	anycallSwapInfo.Nonce = common.GetBigInt(logData, 128, 32).String()
+
+	// ignore configed anycall v6 apps which do not support fallback
+	if params.IsAnycallFallbackIgnored(anycallSwapInfo.AppID) &&
+		len(anycallSwapInfo.CallData) >= 100 &&
+		bytes.Equal(anycallSwapInfo.CallData[:4], AnyExecV6FallbackFuncHash) &&
+		strings.EqualFold(anycallSwapInfo.CallFrom, anycallSwapInfo.CallTo) &&
+		common.HexToAddress(anycallSwapInfo.Fallback) == (common.Address{}) &&
+		anycallSwapInfo.Flags == "0" {
+		return tokens.ErrFallbackNotSupport
+	}
 
 	return nil
 }

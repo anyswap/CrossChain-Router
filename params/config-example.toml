@@ -145,6 +145,8 @@ CheckTokenBalanceEnabledChains = ["1"]
 UseFastMPCChains = ["1001313161554"]
 DontCheckReceivedTokenIDs = ["USDC", "MIM"]
 DontCheckBalanceTokenIDs = ["USDC", "MIM"]
+# ignore apps that does not support anaycall fallback
+IgnoreAnycallFallbackAppIDs = ["xxxxxxxxxxx"]
 # allow call into router from contract's constructor
 AllowCallByConstructor = false
 # allow call into router from contract
