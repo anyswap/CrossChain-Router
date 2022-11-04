@@ -56,7 +56,8 @@ const (
 // IsResultStatus is swap result status
 func (status SwapStatus) IsResultStatus() bool {
 	switch status {
-	case MatchTxEmpty, MatchTxNotStable, MatchTxStable, MatchTxFailed, Reswapping:
+	case MatchTxEmpty, MatchTxNotStable, MatchTxStable,
+		MatchTxFailed, Reswapping, ManualMakeFail:
 		return true
 	default:
 		return false
