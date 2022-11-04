@@ -418,6 +418,7 @@ func (c *ExtraConfig) CheckConfig() (err error) {
 	initDontCheckReceivedTokenIDs()
 	initDontCheckBalanceTokenIDs()
 	initCheckTokenBalanceEnabledChains()
+	initIgnoreAnycallFallbackAppIDs()
 
 	if c.UsePendingBalance {
 		GetBalanceBlockNumberOpt = "pending"

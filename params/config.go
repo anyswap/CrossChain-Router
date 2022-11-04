@@ -50,6 +50,7 @@ var (
 	dontCheckReceivedTokenIDs            map[string]struct{}
 	dontCheckBalanceTokenIDs             map[string]struct{}
 	checkTokenBalanceEnabledChains       map[string]struct{}
+	ignoreAnycallFallbackAppIDs          map[string]struct{}
 
 	isDebugMode           *bool
 	isNFTSwapWithData     *bool
@@ -158,6 +159,7 @@ type ExtraConfig struct {
 	DontCheckReceivedTokenIDs            []string `toml:",omitempty" json:",omitempty"`
 	DontCheckBalanceTokenIDs             []string `toml:",omitempty" json:",omitempty"`
 	CheckTokenBalanceEnabledChains       []string `toml:",omitempty" json:",omitempty"`
+	IgnoreAnycallFallbackAppIDs          []string `toml:",omitempty" json:",omitempty"`
 
 	RPCClientTimeout map[string]int `toml:",omitempty" json:",omitempty"` // key is chainID
 	// chainID,customKey => customValue
@@ -1017,6 +1019,23 @@ func initCheckTokenBalanceEnabledChains() {
 // IsCheckTokenBalanceEnabled is check token balance enabled
 func IsCheckTokenBalanceEnabled(chainID string) bool {
 	_, exist := checkTokenBalanceEnabledChains[chainID]
+	return exist
+}
+
+func initIgnoreAnycallFallbackAppIDs() {
+	ignoreAnycallFallbackAppIDs = make(map[string]struct{})
+	if GetExtraConfig() == nil || len(GetExtraConfig().IgnoreAnycallFallbackAppIDs) == 0 {
+		return
+	}
+	for _, appid := range GetExtraConfig().IgnoreAnycallFallbackAppIDs {
+		ignoreAnycallFallbackAppIDs[appid] = struct{}{}
+	}
+	log.Info("initIgnoreAnycallFallbackAppIDs success", "appids", GetExtraConfig().IgnoreAnycallFallbackAppIDs)
+}
+
+// IsCheckTokenBalanceEnabled is check token balance enabled
+func IsAnycallFallbackIgnored(appid string) bool {
+	_, exist := ignoreAnycallFallbackAppIDs[appid]
 	return exist
 }
 
