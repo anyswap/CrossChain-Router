@@ -575,25 +575,44 @@ func (b *Bridge) checkTokenBalance(swapInfo *tokens.SwapTxInfo, receipt *types.R
 	tokenID := erc20SwapInfo.TokenID
 	routerContract := b.GetRouterContract(token)
 
+	tokenCfg := b.GetTokenConfig(token)
+	if tokenCfg == nil || tokenID == "" {
+		return tokens.ErrMissTokenConfig
+	}
+	underlying := tokenCfg.GetUnderlying()
+
 	blockHeight := receipt.BlockNumber.ToInt().Uint64()
 
 	if swapInfo.LogIndex == 0 {
 		return fmt.Errorf("evm erc20 swapout logIndex must be greater than 0")
 	}
 
+	// at least receive 80% (consider fees and deflation burning)
+	minChangeAmount := new(big.Int).Mul(swapInfo.Value, big.NewInt(4))
+	minChangeAmount.Div(minChangeAmount, big.NewInt(5))
+
 	log.Info("start check token balance", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "token", token, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID)
 
 	transferTopic := erc20CodeParts["LogTransfer"]
 
-	var matched bool
-	var err error
+	var matchedTransfers []*types.RPCLog
+	var matchedBurns []*types.RPCLog
+
 	for i := swapInfo.LogIndex - 1; i >= 0; i-- {
 		rlog := receipt.Logs[i]
 		logAddr := rlog.Address.LowerHex()
 		if common.IsEqualIgnoreCase(logAddr, routerContract) {
 			break
 		}
-		if len(rlog.Topics) == 0 || (rlog.Removed != nil && *rlog.Removed) {
+		if !(common.IsEqualIgnoreCase(logAddr, token) ||
+			common.IsEqualIgnoreCase(logAddr, underlying)) {
+			continue
+		}
+
+		if rlog.Removed != nil && *rlog.Removed {
+			continue
+		}
+		if len(rlog.Topics) != 3 || rlog.Data == nil {
 			continue
 		}
 		if !bytes.Equal(rlog.Topics[0][:], transferTopic) {
@@ -613,21 +632,40 @@ func (b *Bridge) checkTokenBalance(swapInfo *tokens.SwapTxInfo, receipt *types.R
 			continue
 		}
 
-		matched = true
+		amount := common.GetBigInt(*rlog.Data, 0, 32)
+		if amount.Cmp(minChangeAmount) < 0 {
+			continue
+		}
 
 		if isBurn {
-			err = b.checkTokenBurn(swapInfo, logAddr, swapInfo.From, blockHeight)
+			matchedBurns = append(matchedBurns, rlog)
 		} else {
-			err = b.checkTokenTransfer(swapInfo, logAddr, swapInfo.From, token, blockHeight)
+			matchedTransfers = append(matchedTransfers, rlog)
 		}
 	}
-	if !matched {
+
+	if len(matchedTransfers) == 0 && len(matchedBurns) == 0 {
 		log.Info("check token balance without swapout pattern matched", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID)
 		return fmt.Errorf("no swapout pattern matched")
 	}
-	if err != nil {
-		log.Info("check token balance failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID, "err", err)
-		return err
+
+	// transfer has priority, and can ignore burn checking when has transfer pattern
+	if len(matchedTransfers) > 0 {
+		for _, rlog := range matchedTransfers {
+			err := b.checkTokenTransfer(swapInfo, rlog.Address.LowerHex(), swapInfo.From, token, blockHeight)
+			if err != nil {
+				log.Info("check token transfer balance failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID, "tokenAddr", rlog.Address.LowerHex(), "err", err)
+				return err
+			}
+		}
+	} else {
+		for _, rlog := range matchedBurns {
+			err := b.checkTokenBurn(swapInfo, rlog.Address.LowerHex(), swapInfo.From, blockHeight)
+			if err != nil {
+				log.Info("check token burn balance failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID, "tokenAddr", rlog.Address.LowerHex(), "err", err)
+				return err
+			}
+		}
 	}
 
 	log.Info("check token balance success", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "token", token, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID)
