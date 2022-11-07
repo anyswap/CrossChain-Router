@@ -29,7 +29,7 @@ func PublicKeyToAddress(prefix, pubKeyHex string) (string, error) {
 	if pk, err := PubKeyFromStr(pubKeyHex); err != nil {
 		return "", err
 	} else {
-		if accAddress, err := types.AccAddressFromHex(pk.Address().String()); err != nil {
+		if accAddress, err := types.AccAddressFromHexUnsafe(pk.Address().String()); err != nil {
 			return "", err
 		} else {
 			if bech32Addr, err := bech32.ConvertAndEncode(prefix, accAddress); err == nil {

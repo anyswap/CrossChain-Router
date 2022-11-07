@@ -22,6 +22,12 @@ Port = 11556
 APIAddress = [""]
 Contract = ""
 
+# BaseChain config
+[BaseChain]
+ChainId = ""
+APIAddress = [""]
+Denom = ""
+
 # Gateways config. key is chainID
 [Gateways]
 1660545256757 = [""]

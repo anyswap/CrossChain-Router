@@ -14,7 +14,6 @@ import (
 	authTx "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	// bankTypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	// ibcTypes "github.com/cosmos/ibc-go/v6/modules/apps/transfer/types"
-	// tokenfactoryTypes "github.com/sei-protocol/sei-chain/x/tokenfactory/types"
 )
 
 var (

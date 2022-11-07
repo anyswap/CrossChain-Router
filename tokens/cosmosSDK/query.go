@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
@@ -83,9 +84,9 @@ func (c *CosmosRestClient) GetBaseAccount(address string) (*QueryAccountResponse
 	return nil, tokens.ErrRPCQueryError
 }
 
-func (c *CosmosRestClient) GetDenomBalance(address, denom string) (uint64, error) {
+func GetDenomBalance(address, denom string) (uint64, error) {
 	var result *QueryAllBalancesResponse
-	for _, url := range c.BaseUrls {
+	for _, url := range params.GetRouterConfig().BaseChain.APIAddress {
 		restApi := url + Balances + address
 		if err := client.RPCGet(&result, restApi); err == nil {
 			for _, coin := range result.Balances {
@@ -97,4 +98,21 @@ func (c *CosmosRestClient) GetDenomBalance(address, denom string) (uint64, error
 		}
 	}
 	return 0, tokens.ErrRPCQueryError
+}
+
+func GetBaseAccount(address string) (*QueryAccountResponse, error) {
+	var result *QueryAccountResponse
+	for _, url := range params.GetRouterConfig().BaseChain.APIAddress {
+		restApi := url + AccountInfo + address
+		if err := client.RPCGet(&result, restApi); err == nil {
+			if result.Status == "ERROR" {
+				return nil, fmt.Errorf(
+					"GetBaseAccount error, address: %v, msg: %v",
+					address, result.Msg)
+			} else {
+				return result, nil
+			}
+		}
+	}
+	return nil, tokens.ErrRPCQueryError
 }

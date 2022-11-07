@@ -49,6 +49,7 @@ var (
 	ErrBroadcastTx           = errors.New("broadcast tx error")
 	ErrSimulateTx            = errors.New("simulate tx error")
 	ErrTxWithWrongMemo       = errors.New("tx with wrong memo")
+	ErrChannelConfig         = errors.New("channel config error")
 	// errors should register in router swap
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")
 	ErrBalanceNotEnough  = errors.New("balance not enough")

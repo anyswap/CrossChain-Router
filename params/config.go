@@ -112,6 +112,7 @@ type RouterConfig struct {
 	SwapType    string
 	SwapSubType string
 	Onchain     *OnchainConfig
+	BaseChain   *BaseChainConfig
 	Gateways    map[string][]string // key is chain ID
 	GatewaysExt map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	MPC         *MPCConfig
@@ -175,6 +176,13 @@ type OnchainConfig struct {
 	WSServers   []string
 	ReloadCycle uint64 // seconds
 	IgnoreCheck bool
+}
+
+// BaseChainConfig struct
+type BaseChainConfig struct {
+	ChainId    string
+	APIAddress []string
+	Denom      string
 }
 
 // MPCConfig mpc related config
@@ -523,6 +531,7 @@ func IsInCallByContractWhitelist(chainID, caller string) bool {
 }
 
 // AddOrRemoveCallByContractWhitelist add or remove call by contract whitelist
+//
 //nolint:dupl // allow duplicate
 func AddOrRemoveCallByContractWhitelist(chainID string, callers []string, isAdd bool) {
 	whitelist, exist := callByContractWhitelist[chainID]
@@ -651,6 +660,7 @@ func IsInBigValueWhitelist(tokenID, caller string) bool {
 }
 
 // AddOrRemoveBigValueWhitelist add or remove big value whitelist
+//
 //nolint:dupl // allow duplicate
 func AddOrRemoveBigValueWhitelist(tokenID string, callers []string, isAdd bool) {
 	whitelist, exist := bigValueWhitelist[tokenID]

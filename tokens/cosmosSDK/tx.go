@@ -18,12 +18,14 @@ import (
 	signingTypes "github.com/cosmos/cosmos-sdk/types/tx/signing"
 	"github.com/cosmos/cosmos-sdk/x/auth/signing"
 	bankTypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	tokenfactoryTypes "github.com/sei-protocol/sei-chain/x/tokenfactory/types"
+	ibcTypes "github.com/cosmos/ibc-go/v6/modules/apps/transfer/types"
+	clienttypes "github.com/cosmos/ibc-go/v6/modules/core/02-client/types"
 )
 
-const (
-	BroadTx    = "/cosmos/tx/v1beta1/txs"
-	SimulateTx = "/cosmos/tx/v1beta1/simulate"
+var (
+	BroadTx       = "/cosmos/tx/v1beta1/txs"
+	SimulateTx    = "/cosmos/tx/v1beta1/simulate"
+	TimeoutHeight = clienttypes.NewHeight(1, 999999999)
 )
 
 func (c *CosmosRestClient) SendTransaction(signedTx interface{}) (string, error) {
@@ -77,14 +79,6 @@ func BuildSignerData(chainID string, accountNumber, sequence uint64) signing.Sig
 	}
 }
 
-func BuildMintMsg(sender string, amount types.Coin) *tokenfactoryTypes.MsgMint {
-	return tokenfactoryTypes.NewMsgMint(sender, amount)
-}
-
-func BuildBurnMsg(sender string, amount types.Coin) *tokenfactoryTypes.MsgBurn {
-	return tokenfactoryTypes.NewMsgBurn(sender, amount)
-}
-
 func BuildSendMsg(from, to, unit string, amount *big.Int) *bankTypes.MsgSend {
 	return &bankTypes.MsgSend{
 		FromAddress: from,
@@ -93,6 +87,10 @@ func BuildSendMsg(from, to, unit string, amount *big.Int) *bankTypes.MsgSend {
 			types.NewCoin(unit, types.NewIntFromBigInt(amount)),
 		},
 	}
+}
+
+func BuildIbcTransferMsg(sourcePort, sourceChannel, sender, receiver string, coin types.Coin) *ibcTypes.MsgTransfer {
+	return ibcTypes.NewMsgTransfer(sourcePort, sourceChannel, coin, sender, receiver, TimeoutHeight, 0)
 }
 
 func BuildSignatures(publicKey cryptoTypes.PubKey, sequence uint64, signature []byte) signingTypes.SignatureV2 {
@@ -110,39 +108,28 @@ func (c *CosmosRestClient) BuildTx(
 	from, to, denom, memo, publicKey string,
 	amount *big.Int,
 	extra *tokens.AllExtras,
+	ibcFlag bool,
+	tokenCfg *tokens.TokenConfig,
 ) (cosmosClient.TxBuilder, error) {
-	if balance, err := c.GetDenomBalance(from, denom); err != nil {
+	if balance, err := GetDenomBalance(from, denom); err != nil {
 		return nil, err
 	} else {
 		var msgs []types.Msg
 		if balance >= amount.Uint64() {
-			sendMsg := BuildSendMsg(from, to, denom, amount)
-			msgs = append(msgs, sendMsg)
-
-			if strings.Contains(denom, "/") && balance != amount.Uint64() {
-				creater := strings.Split(denom, "/")[1]
-				if creater == from {
-					coin := types.NewCoin(denom, types.NewIntFromUint64(balance-amount.Uint64()))
-					burnMsg := BuildBurnMsg(from, coin)
-					msgs = append(msgs, burnMsg)
+			if ibcFlag {
+				coin := types.NewCoin(denom, types.NewInt(amount.Int64()))
+				channelInfo := strings.Split(tokenCfg.Extra, ":")
+				if len(channelInfo) != 2 {
+					return nil, tokens.ErrChannelConfig
 				}
+				ibcTransferMsg := BuildIbcTransferMsg(channelInfo[1], channelInfo[0], from, to, coin)
+				msgs = append(msgs, ibcTransferMsg)
+			} else {
+				sendMsg := BuildSendMsg(from, to, denom, amount)
+				msgs = append(msgs, sendMsg)
 			}
 		} else {
-			if strings.Contains(denom, "/") {
-				creater := strings.Split(denom, "/")[1]
-				if creater == from {
-					coin := types.NewCoin(denom, types.NewIntFromUint64(amount.Uint64()-balance))
-					mintMsg := BuildMintMsg(from, coin)
-					msgs = append(msgs, mintMsg)
-
-					sendMsg := BuildSendMsg(from, to, denom, amount)
-					msgs = append(msgs, sendMsg)
-				} else {
-					return nil, tokens.ErrBalanceNotEnough
-				}
-			} else {
-				return nil, tokens.ErrBalanceNotEnough
-			}
+			return nil, tokens.ErrBalanceNotEnough
 		}
 
 		txBuilder := c.TxConfig.NewTxBuilder()

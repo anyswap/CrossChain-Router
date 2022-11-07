@@ -15,7 +15,11 @@ import (
 )
 
 const (
-	TransferType = "transfer"
+	TransferType    = "transfer"
+	IbcTransferType = "ibc_transfer"
+	SenderKey       = "sender"
+	RecipientKey    = "recipient"
+	AmountKey       = "amount"
 )
 
 // VerifyMsgHash verify msg hash
@@ -76,7 +80,7 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 		if txHeight, err := b.checkTxStatus(txr, allowUnstable); err != nil {
 			return swapInfo, err
 		} else {
-			swapInfo.Height = txHeight // Height
+			swapInfo.Height = txHeight
 		}
 
 		if err := ParseMemo(swapInfo, txr.Tx.Body.Memo); err != nil {
@@ -189,14 +193,16 @@ func ParseMemo(swapInfo *tokens.SwapTxInfo, memo string) error {
 func (b *Bridge) ParseAmountTotal(messageLog types.ABCIMessageLog, swapInfo *tokens.SwapTxInfo) error {
 	value := big.NewInt(0)
 	unit := ""
-	for index, event := range messageLog.Events {
-		if event.Type == TransferType {
-			if len(event.Attributes) == 2 {
-				b.ParseCoinAmount(value, swapInfo, messageLog.Events[index-1].Attributes[1], event.Attributes[0], event.Attributes[1], &unit)
-			} else if len(event.Attributes) == 3 {
-				b.ParseCoinAmount(value, swapInfo, event.Attributes[1], event.Attributes[0], event.Attributes[2], &unit)
-			}
-		}
+	events := messageLog.Events
+	if len(events) == 4 && events[3].Type == TransferType && len(events[3].Attributes) == 3 {
+		transferEventDetails := events[3].Attributes
+		b.ParseCoinAmount(value, swapInfo, transferEventDetails[1], transferEventDetails[0], transferEventDetails[2], &unit)
+	} else if len(messageLog.Events) == 6 && events[2].Type == IbcTransferType && len(events[2].Attributes) == 2 && len(events[5].Attributes) == 3 {
+		//to do
+		//check ibc receipt
+		ibcEventDetails := events[2].Attributes
+		transferEventDetails := events[5].Attributes
+		b.ParseCoinAmount(value, swapInfo, ibcEventDetails[0], ibcEventDetails[1], transferEventDetails[2], &unit)
 	}
 	if value.Cmp(big.NewInt(0)) > 0 {
 		swapInfo.Value = value
@@ -213,9 +219,9 @@ func (b *Bridge) ParseAmountTotal(messageLog types.ABCIMessageLog, swapInfo *tok
 
 func (b *Bridge) ParseCoinAmount(value *big.Int, swapInfo *tokens.SwapTxInfo, sender, recipient, amount types.Attribute, unit *string) {
 	mpc := b.GetRouterContract("")
-	if sender.Key == "sender" &&
-		recipient.Key == "recipient" &&
-		amount.Key == "amount" {
+	if sender.Key == SenderKey &&
+		recipient.Key == RecipientKey &&
+		amount.Key == AmountKey {
 		// receiver mismatch
 		if common.IsEqualIgnoreCase(recipient.Value, mpc) {
 			if recvCoins, err := cosmosSDK.ParseCoinsNormalized(amount.Value); err == nil {

@@ -68,7 +68,13 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		} else {
 			memo := fmt.Sprintf("Multichain_swapIn_%s_%d", args.SwapID, args.LogIndex)
 			mpcPubkey := router.GetMPCPublicKey(args.From)
-			if txBuilder, err := b.CosmosRestClient.BuildTx(args.From, receiver, multichainToken, memo, mpcPubkey, amount, extra); err != nil {
+			var ibcFlag bool
+			if b.GetChainConfig().ChainID != params.GetRouterConfig().BaseChain.ChainId {
+				ibcFlag = true
+			} else {
+				ibcFlag = false
+			}
+			if txBuilder, err := b.CosmosRestClient.BuildTx(args.From, receiver, multichainToken, memo, mpcPubkey, amount, extra, ibcFlag, tokenCfg); err != nil {
 				return nil, err
 			} else {
 				return &cosmosSDK.BuildRawTx{
@@ -81,7 +87,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 }
 
 func (b *Bridge) initExtra(args *tokens.BuildTxArgs) (extra *tokens.AllExtras, err error) {
-	denom := b.CosmosRestClient.Denom
+	denom := params.GetRouterConfig().BaseChain.Denom
 	extra = args.Extra
 	if extra == nil {
 		extra = &tokens.AllExtras{}
@@ -111,7 +117,7 @@ func (b *Bridge) initExtra(args *tokens.BuildTxArgs) (extra *tokens.AllExtras, e
 
 // GetPoolNonce impl NonceSetter interface
 func (b *Bridge) GetPoolNonce(address, _height string) (uint64, error) {
-	if acc, err := b.CosmosRestClient.GetBaseAccount(address); err != nil {
+	if acc, err := cosmosSDK.GetBaseAccount(address); err != nil {
 		return 0, err
 	} else {
 		if acc != nil {
@@ -155,7 +161,7 @@ func (b *Bridge) GetSeq(args *tokens.BuildTxArgs) (nonceptr *uint64, err error) 
 
 // GetSeq returns account tx sequence
 func (b *Bridge) GetAccountNum(args *tokens.BuildTxArgs) (uint64, error) {
-	if acc, err := b.CosmosRestClient.GetBaseAccount(args.From); err != nil {
+	if acc, err := cosmosSDK.GetBaseAccount(args.From); err != nil {
 		return 0, err
 	} else {
 		if acc != nil {
