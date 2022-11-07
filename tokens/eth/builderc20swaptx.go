@@ -24,7 +24,6 @@ var (
 	ForceAnySwapInNativeTokenVersion           = uint64(10004)
 	ForceAnySwapInAndCallTokenVersion          = uint64(10005)
 	ForceAnySwapInUnerlyingAndCallTokenVersion = uint64(10006)
-	MintBurnWrapperTokenVersion                = uint64(20000)
 
 	// anySwapIn(bytes32 txs, address token, address to, uint amount, uint fromChainID)
 	AnySwapInFuncHash = common.FromHex("0x825bb13c")
@@ -45,15 +44,14 @@ var (
 )
 
 // GetSwapInFuncHash get swapin func hash
-func GetSwapInFuncHash(tokenCfg *tokens.TokenConfig, forUnderlying bool) []byte {
-	if forUnderlying {
-		return AnySwapInUnderlyingFuncHash
+func GetSwapInFuncHash(tokenCfg *tokens.TokenConfig) []byte {
+	if tokenCfg.IsWrapperTokenVersion() {
+		return AnySwapInFuncHash
 	}
-
 	switch tokenCfg.ContractVersion {
 	case ForceAnySwapInAutoTokenVersion:
 		return AnySwapInAutoFuncHash
-	case ForceAnySwapInTokenVersion, ForceAnySwapInAndCallTokenVersion, MintBurnWrapperTokenVersion:
+	case ForceAnySwapInTokenVersion, ForceAnySwapInAndCallTokenVersion:
 		return AnySwapInFuncHash
 	case ForceAnySwapInUnderlyingTokenVersion, ForceAnySwapInUnerlyingAndCallTokenVersion:
 		return AnySwapInUnderlyingFuncHash
@@ -76,8 +74,11 @@ func GetSwapInFuncHash(tokenCfg *tokens.TokenConfig, forUnderlying bool) []byte 
 
 // GetSwapInAndExecFuncHash get swapin and call func hash
 func GetSwapInAndExecFuncHash(tokenCfg *tokens.TokenConfig) []byte {
+	if tokenCfg.IsWrapperTokenVersion() {
+		return AnySwapInAndExecFuncHash
+	}
 	switch tokenCfg.ContractVersion {
-	case ForceAnySwapInAndCallTokenVersion, MintBurnWrapperTokenVersion:
+	case ForceAnySwapInAndCallTokenVersion:
 		return AnySwapInAndExecFuncHash
 	case ForceAnySwapInUnerlyingAndCallTokenVersion:
 		return AnySwapInUnderlyingAndExecFuncHash
@@ -151,7 +152,7 @@ func (b *Bridge) buildERC20SwapoutTxInput(args *tokens.BuildTxArgs, multichainTo
 		return tokens.ErrMissTokenConfig
 	}
 
-	funcHash := GetSwapInFuncHash(toTokenCfg, args.ERC20SwapInfo.ForUnderlying)
+	funcHash := GetSwapInFuncHash(toTokenCfg)
 
 	input := abicoder.PackDataWithFuncHash(funcHash,
 		common.HexToHash(args.SwapID),
