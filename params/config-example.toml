@@ -148,9 +148,10 @@ EnableCheckTxBlockHashChains = ["1285"]
 EnableCheckTxBlockIndexChains = ["1", "56"]
 # chains don't use fromChainID from receipt log
 DisableUseFromChainIDInReceiptChains = ["1666600000"]
+# check token balance
 CheckTokenBalanceEnabledChains = ["1"]
-DontCheckReceivedTokenIDs = ["USDC", "MIM"]
 DontCheckBalanceTokenIDs = ["USDC", "MIM"]
+DontCheckReceivedTokenIDs = ["USDC", "MIM"]
 # ignore apps that does not support anaycall fallback
 IgnoreAnycallFallbackAppIDs = ["xxxxxxxxxxx"]
 # allow call into router from contract's constructor

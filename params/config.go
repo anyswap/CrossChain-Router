@@ -1033,7 +1033,7 @@ func initIgnoreAnycallFallbackAppIDs() {
 	log.Info("initIgnoreAnycallFallbackAppIDs success", "appids", GetExtraConfig().IgnoreAnycallFallbackAppIDs)
 }
 
-// IsCheckTokenBalanceEnabled is check token balance enabled
+// IsAnycallFallbackIgnored is anycall fallback ignored
 func IsAnycallFallbackIgnored(appid string) bool {
 	_, exist := ignoreAnycallFallbackAppIDs[appid]
 	return exist
