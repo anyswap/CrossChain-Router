@@ -744,7 +744,7 @@ func (b *Bridge) checkTokenBalance(swapInfo *tokens.SwapTxInfo, receipt *types.R
 		}
 	}
 
-	log.Info("check token balance success", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "token", token, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID)
+	log.Info("check token balance success", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "token", token, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID, "matchedTransfers", len(matchedTransfers))
 	return nil
 }
 
