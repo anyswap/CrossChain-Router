@@ -8,6 +8,11 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/common"
 )
 
+const (
+	MaxStandardTokenVersion = uint64(10000)
+	MinWrapperTokenVersion  = uint64(20000)
+)
+
 // ChainConfig struct
 type ChainConfig struct {
 	ChainID        string
@@ -100,7 +105,12 @@ func (c *TokenConfig) CheckConfig() error {
 
 // IsStandardTokenVersion is standard token version
 func (c *TokenConfig) IsStandardTokenVersion() bool {
-	return c.ContractVersion > 0 && c.ContractVersion <= 10000
+	return c.ContractVersion > 0 && c.ContractVersion <= MaxStandardTokenVersion
+}
+
+// IsWrapperTokenVersion is wrapper token version
+func (c *TokenConfig) IsWrapperTokenVersion() bool {
+	return c.ContractVersion >= MinWrapperTokenVersion
 }
 
 // SetUnderlying set underlying

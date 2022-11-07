@@ -21,7 +21,6 @@ var (
 	ForceAnySwapInNativeTokenVersion           = uint64(10004)
 	ForceAnySwapInAndCallTokenVersion          = uint64(10005)
 	ForceAnySwapInUnerlyingAndCallTokenVersion = uint64(10006)
-	MintBurnWrapperTokenVersion                = uint64(20000)
 
 	// anySwapIn(bytes32 txs, address token, address to, uint amount, uint fromChainID)
 	AnySwapInFuncHash = common.FromHex("0x825bb13c")
@@ -55,10 +54,13 @@ var (
 
 // GetSwapInFuncHash1 get swapin func hash
 func GetSwapInFuncHash1(tokenCfg *tokens.TokenConfig) []byte {
+	if tokenCfg.IsWrapperTokenVersion() {
+		return AnySwapInFuncHash
+	}
 	switch tokenCfg.ContractVersion {
 	case ForceAnySwapInAutoTokenVersion:
 		return AnySwapInAutoFuncHash
-	case ForceAnySwapInTokenVersion, ForceAnySwapInAndCallTokenVersion, MintBurnWrapperTokenVersion:
+	case ForceAnySwapInTokenVersion, ForceAnySwapInAndCallTokenVersion:
 		return AnySwapInFuncHash
 	case ForceAnySwapInUnderlyingTokenVersion, ForceAnySwapInUnerlyingAndCallTokenVersion:
 		return AnySwapInUnderlyingFuncHash
@@ -81,10 +83,13 @@ func GetSwapInFuncHash1(tokenCfg *tokens.TokenConfig) []byte {
 
 // GetSwapInFuncHashV7 get swapin func hash
 func GetSwapInFuncHashV7(tokenCfg *tokens.TokenConfig) []byte {
+	if tokenCfg.IsWrapperTokenVersion() {
+		return AnySwapInFuncHashV7
+	}
 	switch tokenCfg.ContractVersion {
 	case ForceAnySwapInAutoTokenVersion:
 		return AnySwapInAutoFuncHashV7
-	case ForceAnySwapInTokenVersion, ForceAnySwapInAndCallTokenVersion, MintBurnWrapperTokenVersion:
+	case ForceAnySwapInTokenVersion, ForceAnySwapInAndCallTokenVersion:
 		return AnySwapInFuncHashV7
 	case ForceAnySwapInUnderlyingTokenVersion, ForceAnySwapInUnerlyingAndCallTokenVersion:
 		return AnySwapInUnderlyingFuncHashV7
@@ -107,8 +112,11 @@ func GetSwapInFuncHashV7(tokenCfg *tokens.TokenConfig) []byte {
 
 // GetSwapInAndExecFuncHashV7 get swapin and call func hash
 func GetSwapInAndExecFuncHashV7(tokenCfg *tokens.TokenConfig) []byte {
+	if tokenCfg.IsWrapperTokenVersion() {
+		return AnySwapInAndExecFuncHashV7
+	}
 	switch tokenCfg.ContractVersion {
-	case ForceAnySwapInAndCallTokenVersion, MintBurnWrapperTokenVersion:
+	case ForceAnySwapInAndCallTokenVersion:
 		return AnySwapInAndExecFuncHashV7
 	case ForceAnySwapInUnerlyingAndCallTokenVersion:
 		return AnySwapInUnderlyingAndExecFuncHashV7

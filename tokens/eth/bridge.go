@@ -224,7 +224,7 @@ func (b *Bridge) checkTokenConfig(tokenCfg *tokens.TokenConfig) error {
 
 	var err error
 
-	if tokenCfg.ContractVersion >= MintBurnWrapperTokenVersion {
+	if tokenCfg.IsWrapperTokenVersion() {
 		err = b.checkTokenWrapper(tokenAddr, tokenCfg)
 		if err != nil {
 			log.Warn("check wrapper token failed", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "version", tokenCfg.ContractVersion, "err", err)
@@ -266,8 +266,19 @@ func (b *Bridge) checkTokenWrapper(tokenAddr string, tokenCfg *tokens.TokenConfi
 	if err != nil {
 		return err
 	}
+	if common.HexToAddress(wrapToken) == (common.Address{}) {
+		return errors.New("zero wrapper token address")
+	}
 
-	return b.checkTokenDecimals(wrapToken, tokenCfg)
+	err = b.checkTokenDecimals(wrapToken, tokenCfg)
+	if err != nil {
+		return err
+	}
+
+	// init underlying address with the wrapped token
+	tokenCfg.SetUnderlying(wrapToken)
+
+	return nil
 }
 
 func (b *Bridge) initUnderlying(tokenAddr string, tokenCfg *tokens.TokenConfig) error {
