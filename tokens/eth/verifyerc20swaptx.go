@@ -734,7 +734,8 @@ func (b *Bridge) checkTokenBalance(swapInfo *tokens.SwapTxInfo, receipt *types.R
 	// transfer has priority, and can ignore burn checking when has transfer pattern
 	if len(matchedTransfers) > 0 {
 		for _, rlog := range matchedTransfers {
-			err := b.checkTokenTransfer(swapInfo, rlog.Address.LowerHex(), swapInfo.From, token, blockHeight)
+			fromAddr := common.BytesToAddress(rlog.Topics[1][:]).LowerHex()
+			err := b.checkTokenTransfer(swapInfo, rlog.Address.LowerHex(), fromAddr, token, blockHeight)
 			if err != nil {
 				log.Info("check token transfer balance failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID, "tokenAddr", rlog.Address.LowerHex(), "err", err)
 				return err
@@ -767,6 +768,11 @@ func (b *Bridge) checkTotalSupply(swapInfo *tokens.SwapTxInfo, token string, blo
 		return nil
 	}
 
+	if prevSupply.Sign() == 0 && postSupply.Sign() == 0 {
+		log.Info("get token total supply returns both zero", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID)
+		return nil
+	}
+
 	actChangeAmount := new(big.Int).Sub(prevSupply, postSupply)
 	if actChangeAmount.Cmp(minChangeAmount) < 0 {
 		log.Warn("check token balance failed", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "prevSupply", prevSupply, "postSupply", postSupply, "minChangeAmount", minChangeAmount, "actChangeAmount", actChangeAmount, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID)
@@ -785,6 +791,11 @@ func (b *Bridge) checkAccountBalance(swapInfo *tokens.SwapTxInfo, token, account
 	postBal, err := b.GetErc20BalanceAtHeight(token, account, fmt.Sprintf("0x%x", blockHeight))
 	if err != nil {
 		log.Info("get post token balance failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID, "err", err)
+		return nil
+	}
+
+	if prevBal.Sign() == 0 && postBal.Sign() == 0 {
+		log.Info("get token balance returns both zero", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID)
 		return nil
 	}
 
@@ -821,9 +832,12 @@ func (b *Bridge) checkTokenTransfer(swapInfo *tokens.SwapTxInfo, token, from, to
 	// at least receive 80% (consider fees and deflation burning)
 	minChangeAmount := new(big.Int).Mul(swapInfo.Value, big.NewInt(4))
 	minChangeAmount.Div(minChangeAmount, big.NewInt(5))
-	err := b.checkAccountBalance(swapInfo, token, from, blockHeight, minChangeAmount, true)
-	if err != nil {
-		return err
+	routerContract := b.GetRouterContract(token)
+	if !common.IsEqualIgnoreCase(from, routerContract) {
+		err := b.checkAccountBalance(swapInfo, token, from, blockHeight, minChangeAmount, true)
+		if err != nil {
+			return err
+		}
 	}
 	return b.checkAccountBalance(swapInfo, token, to, blockHeight, minChangeAmount, false)
 }
