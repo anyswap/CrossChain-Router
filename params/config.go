@@ -20,6 +20,7 @@ var CustomizeConfigFunc func(*RouterConfig)
 
 // IsTestMode used for testing
 var IsTestMode bool
+var IsReload bool
 
 var (
 	routerConfig = &RouterConfig{Extra: &ExtraConfig{}}
@@ -1100,6 +1101,11 @@ func LoadRouterConfig(configFile string, isServer, check bool) *RouterConfig {
 
 // ReloadRouterConfig reload config
 func ReloadRouterConfig() {
+	defer func() {
+		IsReload = false
+	}()
+	IsReload = true
+
 	configFile := routerConfigFile
 	isServer := IsSwapServer
 
