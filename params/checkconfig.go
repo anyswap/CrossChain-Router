@@ -102,8 +102,10 @@ func (config *RouterConfig) CheckBlacklistConfig() (err error) {
 			return fmt.Errorf("wrong chain id '%v' in black list", chainID)
 		}
 		key := biChainID.String()
-		if _, exist := chainIDBlacklistMap[key]; exist {
-			return fmt.Errorf("duplicate chain id '%v' in black list", key)
+		if !IsReload {
+			if _, exist := chainIDBlacklistMap[key]; exist {
+				return fmt.Errorf("duplicate chain id '%v' in black list", key)
+			}
 		}
 		chainIDBlacklistMap[key] = struct{}{}
 	}
@@ -118,8 +120,10 @@ func (config *RouterConfig) CheckBlacklistConfig() (err error) {
 				return fmt.Errorf("empty token id in black list on chain %v", cid)
 			}
 			key := strings.ToLower(tokenID)
-			if _, exist := tokenIDBlacklistOnChainMap[key]; exist {
-				return fmt.Errorf("duplicate token id '%v' in black list on chain %v", key, cid)
+			if !IsReload {
+				if _, exist := m[key]; exist {
+					return fmt.Errorf("duplicate token id '%v' in black list on chain %v", key, cid)
+				}
 			}
 			m[key] = struct{}{}
 		}
@@ -129,8 +133,10 @@ func (config *RouterConfig) CheckBlacklistConfig() (err error) {
 			return errors.New("empty token id in black list")
 		}
 		key := strings.ToLower(tokenID)
-		if _, exist := tokenIDBlacklistMap[key]; exist {
-			return fmt.Errorf("duplicate token id '%v' in black list", key)
+		if !IsReload {
+			if _, exist := tokenIDBlacklistMap[key]; exist {
+				return fmt.Errorf("duplicate token id '%v' in black list", key)
+			}
 		}
 		tokenIDBlacklistMap[key] = struct{}{}
 	}
@@ -142,8 +148,10 @@ func (config *RouterConfig) CheckBlacklistConfig() (err error) {
 			return errors.New("empty account in black list")
 		}
 		key := strings.ToLower(account)
-		if _, exist := accountBlacklistMap[key]; exist {
-			return fmt.Errorf("duplicate account '%v' in black list", key)
+		if !IsReload {
+			if _, exist := accountBlacklistMap[key]; exist {
+				return fmt.Errorf("duplicate account '%v' in black list", key)
+			}
 		}
 		accountBlacklistMap[key] = struct{}{}
 	}
@@ -160,6 +168,9 @@ func (c *RouterOracleConfig) CheckConfig() (err error) {
 	}
 	if c.ServerAPIAddress == "" {
 		return errors.New("oracle must config 'ServerAPIAddress'")
+	}
+	if IsReload {
+		return nil
 	}
 	if c.NoCheckServerConnection {
 		log.Info("oracle ignore check server connection")
@@ -343,6 +354,9 @@ func (c *OnchainConfig) CheckConfig() error {
 	}
 	if c.ReloadCycle > 0 && c.ReloadCycle < 600 {
 		return errors.New("onchain config wrong 'ReloadCycle' value (must be 0 or >= 600)")
+	}
+	if IsReload {
+		return nil
 	}
 	callGetAllChainIDs := common.FromHex("0xe27112d5")
 	for _, apiAddress := range c.APIAddress {
