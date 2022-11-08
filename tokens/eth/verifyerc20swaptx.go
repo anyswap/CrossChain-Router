@@ -39,9 +39,6 @@ var (
 	PauseSwapIntoTokenVersion = uint64(90000)
 )
 
-// Deposit(address,uint256)
-var depositwNativeTopic = common.FromHex("0xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c")
-
 func (b *Bridge) verifyERC20SwapTx(txHash string, logIndex int, allowUnstable bool) (*tokens.SwapTxInfo, error) {
 	swapInfo := &tokens.SwapTxInfo{SwapInfo: tokens.SwapInfo{ERC20SwapInfo: &tokens.ERC20SwapInfo{}}}
 	swapInfo.SwapType = tokens.ERC20SwapType // SwapType
@@ -624,27 +621,12 @@ func (b *Bridge) checkTokenBalance(swapInfo *tokens.SwapTxInfo, receipt *types.R
 
 		fromAddr := common.BytesToAddress(rlog.Topics[1][:])
 		isMint := fromAddr == (common.Address{})
-		if isMint || !common.IsEqualIgnoreCase(fromAddr.LowerHex(), swapInfo.From) {
-			var isSwapoutNative bool
-			if i > 0 &&
-				common.IsEqualIgnoreCase(fromAddr.LowerHex(), routerContract) &&
-				common.IsEqualIgnoreCase(logAddr, underlying) {
-				// the previous log is a deposit to router
-				prevlog := receipt.Logs[i-1]
-				if len(prevlog.Topics) != 2 ||
-					!bytes.Equal(prevlog.Topics[0][:], depositwNativeTopic) ||
-					!common.IsEqualIgnoreCase(prevlog.Address.LowerHex(), underlying) ||
-					!bytes.Equal(*prevlog.Data, *rlog.Data) {
-					continue
-				}
-				dst := common.BytesToAddress(prevlog.Topics[1][:]).LowerHex()
-				if common.IsEqualIgnoreCase(dst, routerContract) {
-					isSwapoutNative = true
-				}
-			}
-			if !isSwapoutNative {
-				continue
-			}
+		if isMint {
+			continue
+		}
+		if !common.IsEqualIgnoreCase(fromAddr.LowerHex(), swapInfo.From) &&
+			!common.IsEqualIgnoreCase(fromAddr.LowerHex(), routerContract) {
+			continue
 		}
 
 		toAddr := common.BytesToAddress(rlog.Topics[2][:])
@@ -670,6 +652,8 @@ func (b *Bridge) checkTokenBalance(swapInfo *tokens.SwapTxInfo, receipt *types.R
 		log.Info("check token balance without swapout pattern matched", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID)
 		return fmt.Errorf("no swapout pattern matched")
 	}
+
+	log.Info("check token balance with swapout matched", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID, "matchedTransfers", len(matchedTransfers), "matchedBurns", len(matchedBurns))
 
 	// transfer has priority, and can ignore burn checking when has transfer pattern
 	if len(matchedTransfers) > 0 {
