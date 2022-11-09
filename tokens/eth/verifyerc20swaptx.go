@@ -886,7 +886,7 @@ func getTokenTransferAmount(trasferLogs []*types.RPCLog, account string) (sendAm
 		}
 		amount := common.GetBigInt(*rlog.Data, 0, 32)
 		sender := common.BytesToAddress(rlog.Topics[1][:]).LowerHex()
-		receiver := common.BytesToAddress(rlog.Topics[3][:]).LowerHex()
+		receiver := common.BytesToAddress(rlog.Topics[2][:]).LowerHex()
 		if common.IsEqualIgnoreCase(sender, account) {
 			sendAmount.Add(sendAmount, amount)
 		}
