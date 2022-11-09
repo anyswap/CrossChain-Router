@@ -465,7 +465,8 @@ func (b *Bridge) checkTokenReceived(swapInfo *tokens.SwapTxInfo, receipt *types.
 	}
 	tokenAddr := common.HexToAddress(token)
 	underlyingAddr := tokenCfg.GetUnderlying()
-	if common.HexToAddress(underlyingAddr) == (common.Address{}) {
+	if common.HexToAddress(underlyingAddr) == (common.Address{}) ||
+		tokenCfg.IsWrapperTokenVersion() {
 		return nil
 	}
 	routerContract := b.GetRouterContract(token)
