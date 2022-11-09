@@ -37,6 +37,18 @@ var (
 	// then we can replace temply to the old token and with this special version,
 	// after old token swapouts are processed, we should replace back to the new token config.
 	PauseSwapIntoTokenVersion = uint64(90000)
+
+	// LogAnySwapinTopics anyswapin topics
+	LogAnySwapinTopics = []common.Hash{
+		// LogAnySwapIn(bytes32,address,address,uint256,uint256,uint256)
+		common.HexToHash("0xaac9ce45fe3adf5143598c4f18a369591a20a3384aedaf1b525d29127e1fcd55"),
+		// LogAnySwapIn(string,bytes32,address,address,uint256,uint256)
+		common.HexToHash("0x164f647883b52834be7a5219336e455a23a358be27519d0442fc0ee5e1b1ce2e"),
+	}
+	LogTokenTransferTopics = []common.Hash{
+		// Transfer(address,address,uint256)
+		common.HexToHash("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"),
+	}
 )
 
 func (b *Bridge) verifyERC20SwapTx(txHash string, logIndex int, allowUnstable bool) (*tokens.SwapTxInfo, error) {
@@ -700,6 +712,16 @@ func (b *Bridge) checkTotalSupply(swapInfo *tokens.SwapTxInfo, token string, blo
 
 	actChangeAmount := new(big.Int).Sub(prevSupply, postSupply)
 	if actChangeAmount.Cmp(minChangeAmount) < 0 {
+		trasferLogs, errf := b.GetContractLogs(common.HexToAddress(token), LogTokenTransferTopics, blockHeight)
+		if errf != nil {
+			log.Warn("check token balance get mint logs failed", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID)
+		} else if len(trasferLogs) > 0 {
+			totalAmount := getTokenMintAmount(trasferLogs)
+			if new(big.Int).Add(actChangeAmount, totalAmount).Cmp(minChangeAmount) >= 0 {
+				return nil
+			}
+		}
+
 		log.Warn("check token balance failed", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "prevSupply", prevSupply, "postSupply", postSupply, "minChangeAmount", minChangeAmount, "actChangeAmount", actChangeAmount, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID)
 		return fmt.Errorf("%w %v", tokens.ErrVerifyTxUnsafe, "check total supply failed")
 	}
@@ -715,12 +737,12 @@ func (b *Bridge) checkAccountBalance(swapInfo *tokens.SwapTxInfo, token, account
 
 	postBal, err := b.GetErc20BalanceAtHeight(token, account, fmt.Sprintf("0x%x", blockHeight))
 	if err != nil {
-		log.Info("get post token balance failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID, "err", err)
+		log.Info("get post token balance failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID, "account", account, "err", err)
 		return nil
 	}
 
 	if prevBal.Sign() == 0 && postBal.Sign() == 0 {
-		log.Info("get token balance returns both zero", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID)
+		log.Info("get token balance returns both zero", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID, "account", account)
 		return nil
 	}
 
@@ -732,7 +754,23 @@ func (b *Bridge) checkAccountBalance(swapInfo *tokens.SwapTxInfo, token, account
 	}
 
 	if actChangeAmount.Cmp(minChangeAmount) < 0 {
-		log.Warn("check token balance failed", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "prevBal", prevBal, "postBal", postBal, "minChangeAmount", minChangeAmount, "actChangeAmount", actChangeAmount, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID)
+		swapinLogs, errf := b.GetContractLogs(common.HexToAddress(token), LogAnySwapinTopics, blockHeight)
+		if errf != nil {
+			log.Warn("check token balance get swapin logs failed", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID, "account", account)
+		} else if len(swapinLogs) > 0 {
+			totalAmount, accountAmount := getAllSwapinAmount(swapinLogs, account)
+			if isDecrease {
+				if new(big.Int).Add(actChangeAmount, accountAmount).Cmp(minChangeAmount) >= 0 {
+					return nil
+				}
+			} else {
+				if new(big.Int).Add(actChangeAmount, totalAmount).Cmp(minChangeAmount) >= 0 {
+					return nil
+				}
+			}
+		}
+
+		log.Warn("check token balance failed", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "prevBal", prevBal, "postBal", postBal, "minChangeAmount", minChangeAmount, "actChangeAmount", actChangeAmount, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID, "swapinLogs", len(swapinLogs), "account", account)
 		return fmt.Errorf("%w %v", tokens.ErrVerifyTxUnsafe, "check token balance failed")
 	}
 	return nil
@@ -765,4 +803,51 @@ func (b *Bridge) checkTokenTransfer(swapInfo *tokens.SwapTxInfo, token, from, to
 		}
 	}
 	return b.checkAccountBalance(swapInfo, token, to, blockHeight, minChangeAmount, false)
+}
+
+func getAllSwapinAmount(swapinLogs []*types.RPCLog, account string) (totalAmount, accountAmount *big.Int) {
+	totalAmount = big.NewInt(0)
+	accountAmount = big.NewInt(0)
+	for _, rlog := range swapinLogs {
+		if len(rlog.Topics) != 4 || rlog.Data == nil || len(*rlog.Data) < 96 {
+			log.Error("get logs return wrong result", "topics", rlog.Topics, "data", rlog.Data)
+			continue
+		}
+		logTopic := rlog.Topics[0]
+		logData := *rlog.Data
+		var amount *big.Int
+		switch {
+		case logTopic == LogAnySwapinTopics[0]:
+			amount = common.GetBigInt(logData, 0, 32)
+		case logTopic == LogAnySwapinTopics[1]:
+			amount = common.GetBigInt(logData, 32, 32)
+		default:
+			continue
+		}
+		receiver := common.BytesToAddress(rlog.Topics[3][:]).LowerHex()
+		if common.IsEqualIgnoreCase(receiver, account) {
+			accountAmount.Add(accountAmount, amount)
+		}
+		totalAmount.Add(totalAmount, amount)
+	}
+	return totalAmount, accountAmount
+}
+
+func getTokenMintAmount(trasferLogs []*types.RPCLog) *big.Int {
+	totalAmount := big.NewInt(0)
+	for _, rlog := range trasferLogs {
+		if len(rlog.Topics) != 3 || rlog.Data == nil || len(*rlog.Data) < 32 {
+			log.Error("get logs return wrong result", "topics", rlog.Topics, "data", rlog.Data)
+			continue
+		}
+		fromAddr := common.BytesToAddress(rlog.Topics[1][:])
+		isMint := fromAddr == (common.Address{})
+		if !isMint {
+			continue
+		}
+		logData := *rlog.Data
+		amount := common.GetBigInt(logData, 0, 32)
+		totalAmount.Add(totalAmount, amount)
+	}
+	return totalAmount
 }

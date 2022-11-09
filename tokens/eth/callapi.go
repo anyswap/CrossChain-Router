@@ -553,3 +553,32 @@ func (b *Bridge) EstimateGas(from, to string, value *big.Int, data []byte) (uint
 	log.Warn("[rpc] estimate gas failed", "from", from, "to", to, "value", value, "data", hexutil.Bytes(data), "err", err)
 	return 0, wrapRPCQueryError(err, "eth_estimateGas")
 }
+
+// GetContractLogs get contract logs
+func (b *Bridge) GetContractLogs(contractAddresses common.Address, logTopics []common.Hash, blockHeight uint64) ([]*types.RPCLog, error) {
+	height := new(big.Int).SetUint64(blockHeight)
+
+	filter := &types.FilterQuery{
+		FromBlock: height,
+		ToBlock:   height,
+		Addresses: []common.Address{contractAddresses},
+		Topics:    [][]common.Hash{logTopics},
+	}
+	return b.GetLogs(filter)
+}
+
+// GetLogs call eth_getLogs
+func (b *Bridge) GetLogs(filterQuery *types.FilterQuery) (result []*types.RPCLog, err error) {
+	args, err := types.ToFilterArg(filterQuery)
+	if err != nil {
+		return nil, err
+	}
+	for _, apiAddress := range b.AllGatewayURLs {
+		url := apiAddress
+		err = client.RPCPost(&result, url, "eth_getLogs", args)
+		if err == nil {
+			return result, nil
+		}
+	}
+	return nil, wrapRPCQueryError(err, "eth_getLogs")
+}
