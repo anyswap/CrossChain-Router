@@ -1,6 +1,7 @@
 package cardano
 
 import (
+	"errors"
 	"math/big"
 	"sync"
 
@@ -101,6 +102,9 @@ func (b *Bridge) GetTransactionByHash(txHash string) (*Transaction, error) {
 
 // GetTransactionByHash call eth_getTransactionByHash
 func (b *Bridge) GetUtxosByAddress(address string) (*[]Output, error) {
+	if !b.IsValidAddress(address) {
+		return nil, errors.New("GetUtxosByAddress address is empty")
+	}
 	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
 	for _, url := range urls {
 		result, err := GetUtxosByAddress(url, address)
