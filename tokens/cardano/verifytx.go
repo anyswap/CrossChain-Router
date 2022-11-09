@@ -49,7 +49,7 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 	swapInfo := &tokens.SwapTxInfo{SwapInfo: tokens.SwapInfo{ERC20SwapInfo: &tokens.ERC20SwapInfo{}}}
 	swapInfo.SwapType = tokens.ERC20SwapType          // SwapType
 	swapInfo.Hash = txHash                            // Hash
-	swapInfo.LogIndex = logIndex                      // LogIndex always 0 (do not support multiple in one tx)
+	swapInfo.LogIndex = logIndex                      // LogIndex
 	swapInfo.FromChainID = b.ChainConfig.GetChainID() // FromChainID
 
 	if outputs, metadata, err := b.getTxOutputs(swapInfo, allowUnstable); err != nil {

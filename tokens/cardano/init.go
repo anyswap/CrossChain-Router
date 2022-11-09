@@ -38,11 +38,11 @@ func (b *Bridge) VerifyTokenConfig(tokenCfg *tokens.TokenConfig) error {
 	return nil
 }
 
-// InitRouterInfo init router info (in ripple routerContract is routerMPC)
+// InitRouterInfo init router info
 func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 	chainID := b.ChainConfig.ChainID
 	log.Info(fmt.Sprintf("[%5v] start init router info", chainID), "routerContract", routerContract)
-	routerMPC := routerContract // in ripple routerMPC is routerContract
+	routerMPC := routerContract
 	if !b.IsValidAddress(routerMPC) {
 		log.Warn("wrong router mpc address (in cardano routerMPC is routerContract)", "routerMPC", routerMPC)
 		return fmt.Errorf("wrong router mpc address: %v", routerMPC)

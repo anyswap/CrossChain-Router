@@ -78,13 +78,8 @@ func (b *Bridge) GetLatestBlockNumber() (num uint64, err error) {
 }
 
 // GetLatestBlockNumberOf gets latest block number from single api
-// For ripple, GetLatestBlockNumberOf returns current ledger version
 func (b *Bridge) GetLatestBlockNumberOf(url string) (num uint64, err error) {
-	if blockNumber, err := GetLatestBlockNumber(); err == nil {
-		return blockNumber, nil
-	} else {
-		return 0, err
-	}
+	return GetLatestBlockNumber()
 }
 
 // GetTransaction impl
