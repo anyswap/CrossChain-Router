@@ -431,6 +431,7 @@ func (c *ExtraConfig) CheckConfig() (err error) {
 	initDisableUseFromChainIDInReceiptChains()
 	initDontCheckReceivedTokenIDs()
 	initDontCheckBalanceTokenIDs()
+	initDontCheckTotalSupplyTokenIDs()
 	initCheckTokenBalanceEnabledChains()
 	initIgnoreAnycallFallbackAppIDs()
 

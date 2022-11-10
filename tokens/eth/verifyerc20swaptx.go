@@ -857,7 +857,10 @@ func (b *Bridge) checkTokenBurn(swapInfo *tokens.SwapTxInfo, token, from string,
 	if err != nil {
 		return err
 	}
-	return b.checkTotalSupply(swapInfo, token, blockHeight, minChangeAmount)
+	if !params.DontCheckTokenTotalSupply(swapInfo.ERC20SwapInfo.TokenID) {
+		return b.checkTotalSupply(swapInfo, token, blockHeight, minChangeAmount)
+	}
+	return nil
 }
 
 // 1. check from's token balance decreased

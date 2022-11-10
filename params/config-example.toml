@@ -151,6 +151,7 @@ DisableUseFromChainIDInReceiptChains = ["1666600000"]
 # check token balance
 CheckTokenBalanceEnabledChains = ["1"]
 DontCheckBalanceTokenIDs = ["USDC", "MIM"]
+DontCheckTotalSupplyTokenIDs = ["USDC", "MIM"]
 DontCheckReceivedTokenIDs = ["USDC", "MIM"]
 # ignore apps that does not support anaycall fallback
 IgnoreAnycallFallbackAppIDs = ["xxxxxxxxxxx"]

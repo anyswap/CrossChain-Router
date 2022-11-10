@@ -50,6 +50,7 @@ var (
 	disableUseFromChainIDInReceiptChains map[string]struct{}
 	dontCheckReceivedTokenIDs            map[string]struct{}
 	dontCheckBalanceTokenIDs             map[string]struct{}
+	dontCheckTotalSupplyTokenIDs         map[string]struct{}
 	checkTokenBalanceEnabledChains       map[string]struct{}
 	ignoreAnycallFallbackAppIDs          map[string]struct{}
 
@@ -159,6 +160,7 @@ type ExtraConfig struct {
 	DisableUseFromChainIDInReceiptChains []string `toml:",omitempty" json:",omitempty"`
 	DontCheckReceivedTokenIDs            []string `toml:",omitempty" json:",omitempty"`
 	DontCheckBalanceTokenIDs             []string `toml:",omitempty" json:",omitempty"`
+	DontCheckTotalSupplyTokenIDs         []string `toml:",omitempty" json:",omitempty"`
 	CheckTokenBalanceEnabledChains       []string `toml:",omitempty" json:",omitempty"`
 	IgnoreAnycallFallbackAppIDs          []string `toml:",omitempty" json:",omitempty"`
 
@@ -1000,6 +1002,23 @@ func initDontCheckBalanceTokenIDs() {
 // DontCheckTokenBalance do not check token balance (a security enhance checking)
 func DontCheckTokenBalance(tokenID string) bool {
 	_, exist := dontCheckBalanceTokenIDs[strings.ToLower(tokenID)]
+	return exist
+}
+
+func initDontCheckTotalSupplyTokenIDs() {
+	dontCheckTotalSupplyTokenIDs = make(map[string]struct{})
+	if GetExtraConfig() == nil || len(GetExtraConfig().DontCheckTotalSupplyTokenIDs) == 0 {
+		return
+	}
+	for _, tid := range GetExtraConfig().DontCheckTotalSupplyTokenIDs {
+		dontCheckTotalSupplyTokenIDs[strings.ToLower(tid)] = struct{}{}
+	}
+	log.Info("initDontCheckTotalSupplyTokenIDs success")
+}
+
+// DontCheckTokenTotalSupply do not check token total supply (a security enhance checking)
+func DontCheckTokenTotalSupply(tokenID string) bool {
+	_, exist := dontCheckTotalSupplyTokenIDs[strings.ToLower(tokenID)]
 	return exist
 }
 
