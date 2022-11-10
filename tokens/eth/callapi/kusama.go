@@ -4,11 +4,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
-	"github.com/anyswap/CrossChain-Router/v3/tokens"
-)
-
-var (
-	wrapRPCQueryError = tokens.WrapRPCQueryError
+	"github.com/anyswap/CrossChain-Router/v3/types"
 )
 
 // ------------------------ kusama override apis -----------------------------
@@ -19,8 +15,21 @@ type KsmHeader struct {
 	Number     *hexutil.Big `json:"number"`
 }
 
+// KsmGetBlockConfirmations get block confirmations
+func KsmGetBlockConfirmations(b EvmBridge, receipt *types.RPCTxReceipt) (uint64, error) {
+	latest, err := KsmGetFinalizedBlockNumber(b)
+	if err != nil {
+		return 0, err
+	}
+	blockNumber := receipt.BlockNumber.ToInt().Uint64()
+	if latest > blockNumber {
+		return latest - blockNumber, nil
+	}
+	return 0, nil
+}
+
 // KsmGetFinalizedBlockNumber call chain_getFinalizedHead and chain_getHeader
-func KsmGetFinalizedBlockNumber(b tokens.IBridge) (latest uint64, err error) {
+func KsmGetFinalizedBlockNumber(b EvmBridge) (latest uint64, err error) {
 	gateway := b.GetGatewayConfig()
 	urls := append(gateway.APIAddress, gateway.APIAddressExt...)
 	blockHash, err := KsmGetFinalizedHead(urls)
