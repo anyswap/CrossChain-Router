@@ -8,6 +8,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/common"
 )
 
+// token version boundaries
 const (
 	MaxStandardTokenVersion = uint64(10000)
 	MinWrapperTokenVersion  = uint64(20000)
