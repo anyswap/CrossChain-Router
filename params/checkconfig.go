@@ -439,6 +439,7 @@ func (c *ExtraConfig) CheckConfig() (err error) {
 	initUseFastMPCChains()
 	initDontCheckReceivedTokenIDs()
 	initDontCheckBalanceTokenIDs()
+	initDontCheckTotalSupplyTokenIDs()
 	initCheckTokenBalanceEnabledChains()
 	initIgnoreAnycallFallbackAppIDs()
 

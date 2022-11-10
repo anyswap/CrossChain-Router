@@ -576,7 +576,7 @@ func (b *Bridge) GetLogs(filterQuery *types.FilterQuery) (result []*types.RPCLog
 	for _, apiAddress := range b.AllGatewayURLs {
 		url := apiAddress
 		err = client.RPCPost(&result, url, "eth_getLogs", args)
-		if err == nil {
+		if err == nil && result != nil {
 			return result, nil
 		}
 	}
