@@ -743,21 +743,21 @@ func (b *Bridge) checkTokenBalance(swapInfo *tokens.SwapTxInfo, receipt *types.R
 			fromAddr := common.BytesToAddress(rlog.Topics[1][:]).LowerHex()
 			err := b.checkTokenTransfer(swapInfo, rlog.Address.LowerHex(), fromAddr, token, blockHeight)
 			if err != nil {
-				log.Info("check token transfer balance failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID, "tokenAddr", rlog.Address.LowerHex(), "err", err)
+				log.Warn("check token balance transfer failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID, "tokenAddr", rlog.Address.LowerHex(), "err", err)
 				return err
 			}
 		}
+		log.Info("check token balance transfer success", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID, "token", token)
 	} else {
 		for _, rlog := range matchedBurns {
 			err := b.checkTokenBurn(swapInfo, rlog.Address.LowerHex(), swapInfo.From, blockHeight)
 			if err != nil {
-				log.Info("check token burn balance failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID, "tokenAddr", rlog.Address.LowerHex(), "err", err)
+				log.Warn("check token balance burn failed", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID, "tokenAddr", rlog.Address.LowerHex(), "err", err)
 				return err
 			}
 		}
+		log.Info("check token balance burn success", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID, "token", token)
 	}
-
-	log.Info("check token balance success", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "token", token, "tokenID", tokenID, "chainID", b.ChainConfig.ChainID, "matchedTransfers", len(matchedTransfers))
 	return nil
 }
 
@@ -774,8 +774,8 @@ func (b *Bridge) checkTotalSupply(swapInfo *tokens.SwapTxInfo, token string, blo
 		return nil
 	}
 
-	if prevSupply.Sign() == 0 && postSupply.Sign() == 0 {
-		log.Info("get token total supply returns both zero", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID)
+	if prevSupply.Sign() == 0 || postSupply.Sign() == 0 {
+		log.Info("get token total supply returns zero", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID)
 		return nil
 	}
 
@@ -792,9 +792,11 @@ func (b *Bridge) checkTotalSupply(swapInfo *tokens.SwapTxInfo, token string, blo
 			}
 		}
 
-		log.Warn("check token balance failed", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "prevSupply", prevSupply, "postSupply", postSupply, "minChangeAmount", minChangeAmount, "actChangeAmount", actChangeAmount, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID, "trasferLogs", len(trasferLogs))
+		log.Warn("check token total supply failed", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "prevSupply", prevSupply, "postSupply", postSupply, "minChangeAmount", minChangeAmount, "actChangeAmount", actChangeAmount, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID, "trasferLogs", len(trasferLogs))
 		return fmt.Errorf("%w %v", tokens.ErrVerifyTxUnsafe, "check total supply failed")
 	}
+
+	log.Warn("check token total supply success", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "prevSupply", prevSupply, "postSupply", postSupply, "minChangeAmount", minChangeAmount, "actChangeAmount", actChangeAmount, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID)
 	return nil
 }
 
@@ -811,8 +813,8 @@ func (b *Bridge) checkAccountBalance(swapInfo *tokens.SwapTxInfo, token, account
 		return nil
 	}
 
-	if prevBal.Sign() == 0 && postBal.Sign() == 0 {
-		log.Info("get token balance returns both zero", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID, "account", account)
+	if prevBal.Sign() == 0 || postBal.Sign() == 0 {
+		log.Info("get token balance returns zero", "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID, "account", account)
 		return nil
 	}
 
@@ -844,6 +846,8 @@ func (b *Bridge) checkAccountBalance(swapInfo *tokens.SwapTxInfo, token, account
 		log.Warn("check token balance failed", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "prevBal", prevBal, "postBal", postBal, "minChangeAmount", minChangeAmount, "actChangeAmount", actChangeAmount, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID, "trasferLogs", len(trasferLogs), "account", account)
 		return fmt.Errorf("%w %v", tokens.ErrVerifyTxUnsafe, "check token balance failed")
 	}
+
+	log.Info("check token balance success", "swapValue", swapInfo.Value, "swapID", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "blockHeight", blockHeight, "prevBal", prevBal, "postBal", postBal, "minChangeAmount", minChangeAmount, "actChangeAmount", actChangeAmount, "token", token, "tokenID", swapInfo.ERC20SwapInfo.TokenID, "chainID", b.ChainConfig.ChainID, "account", account)
 	return nil
 }
 
