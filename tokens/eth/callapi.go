@@ -41,19 +41,30 @@ func (b *Bridge) NeedsFinalizeAPIAddress() bool {
 	}
 }
 
-// GetFinalizedBlockNumber some chain may override this method
-func (b *Bridge) GetFinalizedBlockNumber() (uint64, error) {
+// GetBlockConfirmations some chain may override this method
+func (b *Bridge) GetBlockConfirmations(receipt *types.RPCTxReceipt) (uint64, error) {
 	if b.ChainConfig != nil {
 		switch b.ChainConfig.ChainID {
 		case "1285", // kusama moonriver
 			"336": // kusama shiden
-			return callapi.KsmGetFinalizedBlockNumber(b)
+			return callapi.KsmGetBlockConfirmations(b, receipt)
 		case "1030", // conlux mainnet
 			"71": // conflux testnet
-			return callapi.CfxGetFinalizedBlockNumber(b)
+			return callapi.CfxGetBlockConfirmations(b, receipt)
+		case "42161": // arbitrum L2
+			return callapi.ArbGetBlockConfirmations(b, receipt)
 		}
 	}
-	return b.GetLatestBlockNumber()
+	// common implementation
+	latest, err := b.GetLatestBlockNumber()
+	if err != nil {
+		return 0, err
+	}
+	blockNumber := receipt.BlockNumber.ToInt().Uint64()
+	if latest > blockNumber {
+		return latest - blockNumber, nil
+	}
+	return 0, nil
 }
 
 // GetLatestBlockNumberOf call eth_blockNumber

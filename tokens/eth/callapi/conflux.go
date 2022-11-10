@@ -4,7 +4,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
-	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/anyswap/CrossChain-Router/v3/types"
 )
 
 // ------------------------ conflux override apis -----------------------------
@@ -17,8 +17,21 @@ type CfxBlock struct {
 	BlockNumber *hexutil.Big `json:"blockNumber"`
 }
 
+// CfxGetBlockConfirmations get block confirmations
+func CfxGetBlockConfirmations(b EvmBridge, receipt *types.RPCTxReceipt) (uint64, error) {
+	latest, err := CfxGetFinalizedBlockNumber(b)
+	if err != nil {
+		return 0, err
+	}
+	blockNumber := receipt.BlockNumber.ToInt().Uint64()
+	if latest > blockNumber {
+		return latest - blockNumber, nil
+	}
+	return 0, nil
+}
+
 // CfxGetFinalizedBlockNumber call cfx_getBlockByEpochNumber
-func CfxGetFinalizedBlockNumber(b tokens.IBridge) (latest uint64, err error) {
+func CfxGetFinalizedBlockNumber(b EvmBridge) (latest uint64, err error) {
 	urls := b.GetGatewayConfig().FinalizeAPIAddress
 	var maxHeight uint64
 	for _, url := range urls {
