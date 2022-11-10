@@ -20,6 +20,8 @@ var CustomizeConfigFunc func(*RouterConfig)
 
 // IsTestMode used for testing
 var IsTestMode bool
+
+// IsReload is reloading config
 var IsReload bool
 
 var (
