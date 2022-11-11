@@ -67,14 +67,9 @@ var SwapinFeeLimit int64 = 300000000 // 300 TRX
 
 func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error) {
 	extra := args.Extra
-	if extra.RawTx != "" {
-		var bz []byte
-		bz, err = hex.DecodeString(extra.RawTx)
-		if err != nil {
-			return nil, err
-		}
+	if extra.RawTx != nil {
 		var tx core.Transaction
-		err = proto.Unmarshal(bz, &tx)
+		err = proto.Unmarshal(extra.RawTx, &tx)
 		if err != nil {
 			return nil, err
 		}
@@ -124,7 +119,7 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 	if err != nil {
 		return nil, err
 	}
-	extra.RawTx = fmt.Sprintf("%X", txmsg)
+	extra.RawTx = txmsg
 
 	return rawTx, nil
 }

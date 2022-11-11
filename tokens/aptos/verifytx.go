@@ -70,16 +70,16 @@ func (b *Bridge) GetTransactionInfo(txHash string, allowUnstable bool) (*Transac
 			return nil, errf
 		}
 
-		ledger, errf := strconv.ParseUint(txres.Version, 10, 64)
+		txHeight, errf := strconv.ParseUint(txres.Version, 10, 64)
 		if errf != nil {
 			return nil, errf
 		}
 
-		if h < ledger+b.GetChainConfig().Confirmations {
+		if h < txHeight+b.GetChainConfig().Confirmations {
 			return nil, tokens.ErrTxNotStable
 		}
 
-		if h < b.ChainConfig.InitialHeight {
+		if txHeight < b.ChainConfig.InitialHeight {
 			return nil, tokens.ErrTxBeforeInitialHeight
 		}
 	}
