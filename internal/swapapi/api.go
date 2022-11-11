@@ -242,6 +242,16 @@ func GetRouterSwap(fromChainID, txid, logindexStr string) (*SwapInfo, error) {
 	return nil, mongodb.ErrSwapNotFound
 }
 
+// GetRouterSwaps impl
+func GetRouterSwaps(fromChainID, txid string) ([]*SwapInfo, error) {
+	result, _ := mongodb.FindRouterSwapResultsOfTx(fromChainID, txid)
+	res := make([]*SwapInfo, len(result))
+	for i, item := range result {
+		res[i] = ConvertMgoSwapResultToSwapInfo(item)
+	}
+	return res, nil
+}
+
 // GetRouterSwapHistory impl
 func GetRouterSwapHistory(fromChainID, address string, offset, limit int, status string) ([]*SwapInfo, error) {
 	switch {

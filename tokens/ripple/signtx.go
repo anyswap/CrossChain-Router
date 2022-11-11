@@ -98,6 +98,7 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 	}
 
 	if err != nil {
+		log.Info(b.ChainConfig.BlockChain+" MPCSignTransaction failed", "keyID", keyID, "txid", args.SwapID, "err", err)
 		return nil, "", err
 	}
 	log.Info(b.ChainConfig.BlockChain+" MPCSignTransaction finished", "keyID", keyID, "txid", args.SwapID)

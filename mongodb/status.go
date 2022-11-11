@@ -47,6 +47,7 @@ const (
 	TxWithWrongPath   SwapStatus = 19
 	MissTokenConfig   SwapStatus = 20
 	NoUnderlyingToken SwapStatus = 21
+	TxMaybeUnsafe     SwapStatus = 22
 
 	KeepStatus SwapStatus = 255
 	Reswapping SwapStatus = 256
@@ -55,7 +56,8 @@ const (
 // IsResultStatus is swap result status
 func (status SwapStatus) IsResultStatus() bool {
 	switch status {
-	case MatchTxEmpty, MatchTxNotStable, MatchTxStable, MatchTxFailed, Reswapping:
+	case MatchTxEmpty, MatchTxNotStable, MatchTxStable,
+		MatchTxFailed, Reswapping, ManualMakeFail:
 		return true
 	default:
 		return false
@@ -105,6 +107,8 @@ func (status SwapStatus) String() string {
 		return "MissTokenConfig"
 	case NoUnderlyingToken:
 		return "NoUnderlyingToken"
+	case TxMaybeUnsafe:
+		return "TxMaybeUnsafe"
 
 	case KeepStatus:
 		return "KeepStatus"

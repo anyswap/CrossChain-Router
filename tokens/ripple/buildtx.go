@@ -105,7 +105,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	}
 
 	ripplePubKey := ImportPublicKey(common.FromHex(mpcPubkey))
-	memo := fmt.Sprintf("%v:%v:%v", args.FromChainID, args.SwapID, args.LogIndex)
+	memo := args.GetUniqueSwapIdentifier()
 
 	flags := uint32(0)
 	if token.ContractVersion == uint64(tfPartialPayment) {

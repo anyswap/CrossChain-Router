@@ -30,8 +30,8 @@ var (
 
 	IsIniting              bool
 	IsReloading            bool
-	RetryRPCCountInInit    = 10
-	RetryRPCIntervalInInit = 1 * time.Second
+	RetryRPCCountInInit    = 3
+	RetryRPCIntervalInInit = 3 * time.Second
 )
 
 // DontPanicInLoading don't panic in loading
@@ -41,9 +41,9 @@ func DontPanicInLoading() bool {
 
 // SwapRouterInfo swap router info
 type SwapRouterInfo struct {
-	RouterMPC     string
-	RouterFactory string
-	RouterWNative string
+	RouterMPC      string
+	RouterWNative  string
+	RouterSecurity string
 }
 
 // SetBridge set bridge
@@ -280,4 +280,13 @@ func GetPausedChainIDs() []*big.Int {
 // IsChainIDPaused is chainID paused
 func IsChainIDPaused(chainID string) bool {
 	return pausedChainIDs.Contains(chainID)
+}
+
+// IsNonceSupported is nonce supported
+func IsNonceSupported(chainID string) bool {
+	if bridge := GetBridgeByChainID(chainID); bridge != nil {
+		_, ok := bridge.(tokens.NonceSetter)
+		return ok
+	}
+	return false
 }

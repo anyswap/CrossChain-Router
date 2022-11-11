@@ -52,6 +52,10 @@ func StartReplaceJob() {
 
 	// start comsumers
 	for _, toChainID := range allChainIDs {
+		if !router.IsNonceSupported(toChainID.String()) {
+			logWorker("replace", "ignore chain does not support nonce", "chainID", toChainID)
+			continue
+		}
 		mongodb.MgoWaitGroup.Add(1)
 		go startReplaceConsumer(toChainID.String())
 	}
@@ -74,6 +78,10 @@ func startReplaceProducer() {
 			if utils.IsCleanuping() {
 				logWorker("replace", "stop router swap replace job")
 				return
+			}
+
+			if !router.IsNonceSupported(swap.ToChainID) {
+				continue
 			}
 
 			if replaceTasksInQueue.Contains(swap.Key) {
@@ -203,6 +211,9 @@ func startReplaceConsumer(chainID string) {
 
 // ReplaceRouterSwap api
 func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int, isManual bool) error {
+	if !router.IsNonceSupported(res.ToChainID) {
+		return tokens.ErrNonceNotSupport
+	}
 	swap, err := verifyReplaceSwap(res, isManual)
 	if err != nil {
 		return err
@@ -283,6 +294,9 @@ func signAndSendReplaceTx(resBridge tokens.IBridge, rawTx interface{}, args *tok
 	fromChainID := res.FromChainID
 	txid := res.TxID
 	logIndex := res.LogIndex
+
+	cacheKey := mongodb.GetRouterSwapKey(fromChainID, txid, logIndex)
+	disagreeRecords.Delete(cacheKey)
 
 	err = mongodb.UpdateRouterOldSwapTxs(fromChainID, txid, logIndex, txHash)
 	if err != nil {

@@ -13,18 +13,18 @@ TokenIDBlackList = []
 AccountBlackList = []
 # token id black list on chain
 [TokenIDBlackListOnChain]
-25 = []
 43114 = []
+25    = []
 
 # router sever config (server only)
 [Server]
 # administrators who can do admin work
 Admins = [
-  "0x1111111111111111111111111111111111111111",
-  "0x2222222222222222222222222222222222222222",
+	"0x1111111111111111111111111111111111111111",
+	"0x2222222222222222222222222222222222222222"
 ]
 Assistants = [
-  "0x6666666666666666666666666666666666666666",
+	"0x6666666666666666666666666666666666666666"
 ]
 
 # enable replace swap job
@@ -43,55 +43,53 @@ PlusGasPricePercentage = 10
 MaxPlusGasPricePercentage = 100
 # maximum gas price flunct percentage
 MaxGasPriceFluctPercent = 10
-# swap deadline offset for trading
-SwapDeadlineOffset = 36000
 # apecify auto swap nonce enabled chainids
 AutoSwapNonceEnabledChains = ["25"]
 
 # retry send tx loop count, key is chainID. (in main thread)
 [Server.RetrySendTxLoopCount]
-25 = 10
 43114 = 2
+25    = 10
 # send tx loop count until success in child routines (after retry loop)
 # key is chainID. use negative to disable loop
 [Server.SendTxLoopCount]
-25 = -1
 43114 = 30
+25    = -1
 # send tx until success in child routines loop interval of seconds, key is chainID.
 [Server.SendTxLoopInterval]
-25 = 10
 43114 = 10
+25    = 10
 # default gas limit. key is chainID. if not set, use 90000 as default.
 [Server.DefaultGasLimit]
-4 = 90000
+4     = 90000
 46688 = 90000
 # config maximum gas limit. key is chainID.
 [Server.MaxGasLimit]
-4 = 200000
+4     = 200000
 46688 = 90000
 # config maximum token gas limit. key is chainID. the last part (USDC here) is tokenID.
 [Server.MaxTokenGasLimit.USDC]
-4 = 2000000
+4     = 2000000
 46688 = 900000
 # use fixed gas price (no adjust). key is chainID.
 [Server.FixedGasPrice]
-4 = "1000000001"
+4     = "1000000001"
 46688 = "1000000001"
 # config maximum gas price. key is chainID.
 [Server.MaxGasPrice]
-4 = "3000000000"
+4     = "3000000000"
 46688 = "3000000000"
 # swap nonce passed confirmed interval (seconds). key is chainID.
 [Server.NoncePassedConfirmInterval]
-4 = 600
+4     = 600
 46688 = 600
 # dynamic fee tx config, the last part (3 here) is chainID
 [Server.DynamicFeeTx.3]
-BlockCountFeeHistory = 3
-MaxGasFeeCap = "10000000000"
-MaxGasTipCap = "5000000000"
-PlusGasFeeCapPercent = 10
 PlusGasTipCapPercent = 10
+PlusGasFeeCapPercent = 10
+BlockCountFeeHistory = 3
+MaxGasTipCap         = "5000000000"
+MaxGasFeeCap         = "10000000000"
 # how to calc gas price, eg. median (default), first, max, etc.
 [Server.CalcGasPriceMethod]
 43114 = "first"
@@ -100,10 +98,10 @@ PlusGasTipCapPercent = 10
 [Server.MongoDB]
 # DBURLs is prefered if exists. forbids set both DBURL and DBURLs.
 #DBURL = "localhost:27017,localhost:12345"
-DBName = "databasename"
 DBURLs = ["localhost:27017", "localhost:12345"]
-Password = "password"
+DBName = "databasename"
 UserName = "username"
+Password = "password"
 
 # bridge API service
 [Server.APIServer]
@@ -122,8 +120,6 @@ ServerAPIAddress = "http://127.0.0.1:11556/rpc"
 NoCheckServerConnection = false
 
 [Extra]
-# is swap trade enabled
-EnableSwapTrade = false
 # is swap with permit enabled
 EnableSwapWithPermit = false
 # force call anySwapInAuto
@@ -143,12 +139,16 @@ EnableCheckTxBlockHashChains = ["1285"]
 # enable check tx block index for security reason
 EnableCheckTxBlockIndexChains = ["1", "56"]
 # chains don't use fromChainID from receipt log
-CheckTokenBalanceEnabledChains = ["1"]
 DisableUseFromChainIDInReceiptChains = ["1666600000"]
 # chains use fast mpc
-DontCheckBalanceTokenIDs = ["USDC", "MIM"]
-DontCheckReceivedTokenIDs = ["USDC", "MIM"]
 UseFastMPCChains = ["1001313161554"]
+# check token balance
+CheckTokenBalanceEnabledChains = ["1"]
+DontCheckBalanceTokenIDs = ["USDC", "MIM"]
+DontCheckTotalSupplyTokenIDs = ["USDC", "MIM"]
+DontCheckReceivedTokenIDs = ["USDC", "MIM"]
+# ignore apps that does not support anaycall fallback
+IgnoreAnycallFallbackAppIDs = ["xxxxxxxxxxx"]
 # allow call into router from contract's constructor
 AllowCallByConstructor = false
 # allow call into router from contract
@@ -157,15 +157,15 @@ AllowCallByContract = false
 CheckEIP1167Master = false
 # min reserve fee. key is chainID. defaults to 1e17 wei
 [Extra.MinReserveFee]
-4 = 100000000000000000
+4     = 100000000000000000
 46688 = 100000000000000000
 # min reserve budget. key is chainID. defaults to 1e16 wei
 [Extra.MinReserveBudget]
-4 = 10000000000000000
+4     = 10000000000000000
 46688 = 10000000000000000
 # base fee percent, must be in range [-90, 500]. key is dest chainID
 [Extra.BaseFeePercent]
-4 = 100
+4     = 100
 46688 = 50
 # RPC timeout, key is chainID, value is of seconds (deafults to 5)
 [Extra.RPCClientTimeout]
@@ -178,18 +178,18 @@ sendtxTimeout = "60"
 dontCheckAddressMixedCase = "true"
 # big value whitelist, key is tokenID
 [Extra.BigValueWhitelist]
-MIM = ["0x2222222222222222222222222222222222222222"]
 USDC = ["0x1111111111111111111111111111111111111111"]
+MIM  = ["0x2222222222222222222222222222222222222222"]
 # call by contract whitelist, key is chainID
 [Extra.CallByContractWhitelist]
 4 = [
-  "0x1111111111111111111111111111111111111111",
-  "0x2222222222222222222222222222222222222222",
+	"0x1111111111111111111111111111111111111111",
+	"0x2222222222222222222222222222222222222222"
 ]
 # call by contract whitelist of code hash, key is chainID
 [Extra.CallByContractCodeHashWhitelist]
 4 = [
-  "0x1111111111111111111111111111111111111111111111111111111111111111",
+	"0x1111111111111111111111111111111111111111111111111111111111111111"
 ]
 # the last key is chainID
 [Extra.LocalChainConfig.2025]
@@ -198,22 +198,25 @@ EstimatedGasMustBePositive = true
 [Extra.LocalChainConfig.86]
 SmallestGasPriceUnit = 1000000000
 
+
 # OnChain config
 [OnChain]
 # 0: disable, min:600, unit is seconds
-APIAddress = ["http://127.0.0.1:8711", "http://127.0.0.1:8722"]
-Contract = "0x3333333333333333333333333333333333333333"
 ReloadCycle = 0
+Contract = "0x3333333333333333333333333333333333333333"
+APIAddress = ["http://127.0.0.1:8711", "http://127.0.0.1:8722"]
 #WSServers = ["ws://127.0.0.1:7711"]
+
 
 # Gateways config. key is chainID
 [Gateways]
-4 = ["http://127.0.0.1:6711", "http://127.0.0.1:6722"]
+4     = ["http://127.0.0.1:6711", "http://127.0.0.1:6722"]
 46688 = ["http://127.0.0.1:8711", "http://127.0.0.1:8722"]
+
 
 # GatewaysExt config. key is chainID. used for broadcasting tx
 [GatewaysExt]
-4 = ["http://127.0.0.1:6000"]
+4     = ["http://127.0.0.1:6000"]
 46688 = ["http://127.0.0.1:8000"]
 
 # FastMPC config
@@ -262,15 +265,15 @@ Mode = 0
 
 # initiators of mpc sign
 Initiators = [
-  "0x1111111111111111111111111111111111111111",
+	"0x1111111111111111111111111111111111111111"
 ]
 
 # mpc default node config
 [MPC.DefaultNode]
 # mpc sub groups for signing (server only)
 SignGroups = [
-  "22222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222",
-  "33333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333",
+	"22222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222",
+	"33333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333"
 ]
 
 # mpc user keystore and password file (suggest using absolute path)
