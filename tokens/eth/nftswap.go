@@ -170,6 +170,10 @@ func (b *Bridge) verifyNFTSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPC
 		return tokens.ErrTxWithRemovedLog
 	}
 
+	if params.IsSwapoutForbidden(b.ChainConfig.ChainID, swapInfo.NFTSwapInfo.TokenID) {
+		return tokens.ErrSwapoutForbidden
+	}
+
 	routerContract := b.GetRouterContract(swapInfo.NFTSwapInfo.Token)
 	if routerContract == "" {
 		return tokens.ErrMissRouterInfo

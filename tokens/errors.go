@@ -49,6 +49,7 @@ var (
 	ErrBuildTxErrorAndDelay  = errors.New("[build tx error]")
 	ErrSwapoutIDNotExist     = errors.New("swapoutID not exist")
 	ErrFallbackNotSupport    = errors.New("app does not support fallback")
+	ErrSwapoutForbidden      = errors.New("swapout forbidden")
 
 	// errors should register in router swap
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")
