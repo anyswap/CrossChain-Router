@@ -223,8 +223,10 @@ func (s *RouterServerConfig) CheckConfig() error {
 			return fmt.Errorf("wrong gas price '%v' in 'FixedGasPrice'", fixedGasPriceStr)
 		}
 		key := biChainID.String()
-		if _, exist := fixedGasPriceMap[key]; exist {
-			return fmt.Errorf("duplicate chain id '%v' in 'FixedGasPrice'", key)
+		if !IsReload {
+			if _, exist := fixedGasPriceMap[key]; exist {
+				return fmt.Errorf("duplicate chain id '%v' in 'FixedGasPrice'", key)
+			}
 		}
 		fixedGasPriceMap[key] = fixedGasPrice
 	}
@@ -238,8 +240,10 @@ func (s *RouterServerConfig) CheckConfig() error {
 			return fmt.Errorf("wrong gas price '%v' in 'MaxGasPrice'", maxGasPriceStr)
 		}
 		key := biChainID.String()
-		if _, exist := maxGasPriceMap[key]; exist {
-			return fmt.Errorf("duplicate chain id '%v' in 'MaxGasPrice'", key)
+		if !IsReload {
+			if _, exist := maxGasPriceMap[key]; exist {
+				return fmt.Errorf("duplicate chain id '%v' in 'MaxGasPrice'", key)
+			}
 		}
 		maxGasPriceMap[key] = maxGasPrice
 	}
