@@ -124,14 +124,14 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 		if !res.ValidContract {
 			return nil, tokens.ErrTxIsNotValidated
 		} else {
+			status.BlockHeight = res.Block.Number
+			status.Receipt = nil
 			if lastHeight, err := b.GetLatestBlockNumber(); err != nil {
 				return nil, err
-			} else {
-				status.Confirmations = lastHeight - res.Block.SlotNo
-				status.BlockHeight = res.Block.SlotNo
-				status.Receipt = nil
-				return status, nil
+			} else if lastHeight > res.Block.Number {
+				status.Confirmations = lastHeight - res.Block.Number
 			}
 		}
 	}
+	return status, nil
 }

@@ -47,7 +47,7 @@ func GetLatestBlockNumber() (uint64, error) {
 	if res, err := queryTipCmd(); err != nil {
 		return 0, err
 	} else {
-		return res.Slot, nil
+		return res.Block, nil
 	}
 }
 
