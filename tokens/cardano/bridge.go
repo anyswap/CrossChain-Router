@@ -122,6 +122,7 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 		return nil, err
 	} else {
 		if !res.ValidContract {
+			ClearTransactionChainingKeyCache(txHash)
 			return nil, tokens.ErrTxIsNotValidated
 		} else {
 			status.BlockHeight = res.Block.Number
@@ -130,6 +131,9 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 				return nil, err
 			} else if lastHeight > res.Block.Number {
 				status.Confirmations = lastHeight - res.Block.Number
+				if status.Confirmations > b.GetChainConfig().Confirmations {
+					ClearTransactionChainingKeyCache(txHash)
+				}
 			}
 		}
 	}

@@ -14,19 +14,7 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (string, error) {
 		TransactionChaining.InputKey.TxHash = signedTransaction.TxHash
 		TransactionChaining.InputKey.TxIndex = signedTransaction.TxIndex
 		TransactionChaining.AssetsMap = signedTransaction.AssetsMap
-		txIns := signedTransaction.TxIns
-		for _, inputKey := range txIns {
-			TransactionChainingKeyCache.SpentUtxoList = append(TransactionChainingKeyCache.SpentUtxoList, inputKey)
-			TransactionChainingKeyCache.SpentUtxoMap[inputKey] = true
-		}
-		cacheListLength := len(TransactionChainingKeyCache.SpentUtxoList)
-		if cacheListLength > 100 {
-			deleteKey := TransactionChainingKeyCache.SpentUtxoList[:cacheListLength-100]
-			for _, key := range deleteKey {
-				delete(TransactionChainingKeyCache.SpentUtxoMap, key)
-			}
-			TransactionChainingKeyCache.SpentUtxoList = TransactionChainingKeyCache.SpentUtxoList[cacheListLength-100:]
-		}
+		AddTransactionChainingKeyCache(signedTransaction.TxHash, &signedTransaction.TxIns)
 		return signedTransaction.TxHash, nil
 	}
 }

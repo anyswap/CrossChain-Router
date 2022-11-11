@@ -6,8 +6,8 @@ type TransactionChainingMap struct {
 }
 
 type TransactionChainingKey struct {
-	SpentUtxoMap  map[UtxoKey]bool `json:"SpentUtxoMap"`
-	SpentUtxoList []UtxoKey        `json:"SpentUtxoList"`
+	SpentUtxoMap              map[UtxoKey]bool      `json:"SpentUtxoMap"`
+	SpentUtxoListGropByTxHash map[string]*[]UtxoKey `json:"SpentUtxoListGropByTxHash"`
 }
 
 type Tip struct {

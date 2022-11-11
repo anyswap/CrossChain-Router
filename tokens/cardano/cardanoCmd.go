@@ -36,8 +36,25 @@ var (
 	QueryTransaction            = "{transactions(where: { hash: { _eq: \"%s\"}}) {block {number epochNo slotNo}hash metadata{key value} outputs(order_by:{index:asc}){address index tokens{ asset{policyId assetName}quantity}value}validContract}}"
 	QueryOutputs                = "{utxos(where: { address: { _eq: \"%s\"}}) {txHash index tokens {asset {policyId assetName} quantity} value}}"
 	TransactionChaining         = &TransactionChainingMap{InputKey: UtxoKey{}, AssetsMap: make(map[string]string)}
-	TransactionChainingKeyCache = &TransactionChainingKey{SpentUtxoMap: make(map[UtxoKey]bool), SpentUtxoList: []UtxoKey{}}
+	TransactionChainingKeyCache = &TransactionChainingKey{SpentUtxoMap: make(map[UtxoKey]bool), SpentUtxoListGropByTxHash: make(map[string]*[]UtxoKey)}
 )
+
+func AddTransactionChainingKeyCache(txhash string, txIns *[]UtxoKey) {
+	for _, inputKey := range *txIns {
+		TransactionChainingKeyCache.SpentUtxoMap[inputKey] = true
+	}
+	TransactionChainingKeyCache.SpentUtxoListGropByTxHash[txhash] = txIns
+}
+
+func ClearTransactionChainingKeyCache(txhash string) {
+	if TransactionChainingKeyCache.SpentUtxoListGropByTxHash[txhash] != nil {
+		list := TransactionChainingKeyCache.SpentUtxoListGropByTxHash[txhash]
+		for _, key := range *list {
+			delete(TransactionChainingKeyCache.SpentUtxoMap, key)
+		}
+		delete(TransactionChainingKeyCache.SpentUtxoListGropByTxHash, txhash)
+	}
+}
 
 func ExecCmd(cmdStr, space string) (string, error) {
 	if err := checkIllegal(cmdStr); err != nil {
