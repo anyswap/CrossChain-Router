@@ -11,7 +11,10 @@ type TransactionChainingKey struct {
 }
 
 type Tip struct {
-	Slot uint64 `json:"slot"`
+	Slot  uint64 `json:"slot"`
+	Block uint64 `json:"block"`
+	Epoch uint64 `json:"epoch"`
+	Hash  string `json:"hash"`
 }
 
 type UtxoKey struct {

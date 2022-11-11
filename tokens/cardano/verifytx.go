@@ -119,18 +119,16 @@ func (b *Bridge) checkTxStatus(txres *Transaction, allowUnstable bool) error {
 	if !txres.ValidContract {
 		return tokens.ErrTxIsNotValidated
 	}
-
-	if !allowUnstable {
-		if lastHeight, err := b.GetLatestBlockNumber(); err != nil {
-			return err
-		} else {
-			if lastHeight < txres.Block.SlotNo+b.GetChainConfig().Confirmations {
-				return tokens.ErrTxNotStable
-			}
-
-			if lastHeight < b.ChainConfig.InitialHeight {
-				return tokens.ErrTxBeforeInitialHeight
-			}
+	// cardano will rollback by blocks, so do not use allowUnstable!
+	if lastHeight, err := b.GetLatestBlockNumber(); err != nil {
+		return err
+	} else {
+		//According to the IOHK, rollbacks of 20 blocks or higher are categorized as very deep and are the most unlikely to occur.
+		if lastHeight < txres.Block.Number+b.GetChainConfig().Confirmations {
+			return tokens.ErrTxNotStable
+		}
+		if lastHeight < b.ChainConfig.InitialHeight {
+			return tokens.ErrTxBeforeInitialHeight
 		}
 	}
 	return nil
