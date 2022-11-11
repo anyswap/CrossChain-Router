@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"math/big"
 	"strings"
+	"sync"
 
 	"github.com/BurntSushi/toml"
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -170,13 +171,18 @@ type ExtraConfig struct {
 	// chainID,customKey => customValue
 	Customs map[string]map[string]string `toml:",omitempty" json:",omitempty"`
 
-	LocalChainConfig map[string]LocalChainConfig `toml:",omitempty" json:",omitempty"` // key is chain ID
+	LocalChainConfig map[string]*LocalChainConfig `toml:",omitempty" json:",omitempty"` // key is chain ID
 }
 
 // LocalChainConfig local chain config
 type LocalChainConfig struct {
-	EstimatedGasMustBePositive bool   `toml:",omitempty" json:",omitempty"`
-	SmallestGasPriceUnit       uint64 `toml:",omitempty" json:",omitempty"`
+	EstimatedGasMustBePositive bool     `toml:",omitempty" json:",omitempty"`
+	SmallestGasPriceUnit       uint64   `toml:",omitempty" json:",omitempty"`
+	ForbidSwapoutTokenIDs      []string `toml:",omitempty" json:",omitempty"`
+
+	forbidSwapoutTokenIDMap map[string]struct{}
+
+	lock *sync.Mutex
 }
 
 // OnchainConfig struct
@@ -743,11 +749,15 @@ func GetMPCConfig() *MPCConfig {
 }
 
 // GetLocalChainConfig get local chain config
-func GetLocalChainConfig(chainID string) LocalChainConfig {
+func GetLocalChainConfig(chainID string) *LocalChainConfig {
 	if GetExtraConfig() != nil {
-		return GetExtraConfig().LocalChainConfig[chainID]
+		c := GetExtraConfig().LocalChainConfig[chainID]
+		if c != nil {
+			c.lock = new(sync.Mutex)
+			return c
+		}
 	}
-	return LocalChainConfig{}
+	return &LocalChainConfig{}
 }
 
 // GetOnchainContract get onchain config contract address
@@ -1180,4 +1190,25 @@ func SetDataDir(dir string, isServer bool) {
 // GetDataDir get data dir
 func GetDataDir() string {
 	return locDataDir
+}
+
+// IsSwapoutForbidden forbid swapout judge
+func IsSwapoutForbidden(chainID, tokenID string) bool {
+	c := GetLocalChainConfig(chainID)
+	if len(c.ForbidSwapoutTokenIDs) == 0 {
+		return false
+	}
+	if c.forbidSwapoutTokenIDMap == nil {
+		c.lock.Lock()
+		if c.forbidSwapoutTokenIDMap == nil {
+			m := make(map[string]struct{})
+			for _, tid := range c.ForbidSwapoutTokenIDs {
+				m[strings.ToLower(tid)] = struct{}{}
+			}
+			c.forbidSwapoutTokenIDMap = m
+		}
+		c.lock.Unlock()
+	}
+	_, exist := c.forbidSwapoutTokenIDMap[tokenID]
+	return exist
 }

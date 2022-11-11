@@ -204,6 +204,9 @@ EstimatedGasMustBePositive = true
 [Extra.LocalChainConfig.86]
 SmallestGasPriceUnit = 1000000000
 
+[Extra.LocalChainConfig.25]
+ForbidSwapoutTokenIDs = ["USDC", "USDT"]
+
 
 # OnChain config
 [OnChain]
