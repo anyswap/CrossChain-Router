@@ -1209,6 +1209,6 @@ func IsSwapoutForbidden(chainID, tokenID string) bool {
 		}
 		c.lock.Unlock()
 	}
-	_, exist := c.forbidSwapoutTokenIDMap[tokenID]
+	_, exist := c.forbidSwapoutTokenIDMap[strings.ToLower(tokenID)]
 	return exist
 }
