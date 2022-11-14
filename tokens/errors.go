@@ -68,6 +68,17 @@ var (
 	ErrTokenDecimals         = errors.New("get token decimals error")
 	ErrGetLatestBlockHash    = errors.New("get latest block hash error")
 	ErrTxResultType          = errors.New("tx type is not TransactionResult")
+
+	ErrTxWithWrongAssetLength = errors.New("tx with wrong asset length")
+	ErrOutputLength           = errors.New("output lenght is zero")
+	ErrMpcAddrMissMatch       = errors.New("receiver addr not match mpc addr")
+	ErrMetadataKeyMissMatch   = errors.New("metadata key not match 123")
+	ErrAdaSwapOutAmount       = errors.New("swap ada amount too small")
+	ErrTokenBalancesNotEnough = errors.New("token balance not enough")
+	ErrAdaBalancesNotEnough   = errors.New("ada balance not enough")
+	ErrOutputIndexSort        = errors.New("output not order by index asc")
+	ErrCmdArgVerify           = errors.New("cmd args verify fails")
+	ErrAggregateTx            = errors.New("aggregate tx fails")
 )
 
 // ShouldRegisterRouterSwapForError return true if this error should record in database

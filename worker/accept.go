@@ -161,7 +161,6 @@ func startAcceptConsumer(mpcConfig *mpc.Config) {
 				}
 
 				info := front.(*mpc.SignInfoData)
-
 				logWorker("accept", "process accept sign info start", "keyID", info.Key)
 				err := processAcceptInfo(mpcConfig, info)
 				if err == nil {
@@ -285,6 +284,7 @@ func filterSignInfo(signInfo *mpc.SignInfoData) (*tokens.BuildTxArgs, error) {
 	}
 	switch args.Identifier {
 	case params.GetIdentifier():
+	case tokens.AggregateIdentifier:
 	default:
 		return nil, errIdentifierMismatch
 	}
@@ -304,6 +304,9 @@ func verifySignInfo(mpcConfig *mpc.Config, signInfo *mpc.SignInfoData) (*tokens.
 		if err != nil {
 			return args, err
 		}
+	}
+	if args.Identifier == tokens.AggregateIdentifier {
+		return args, nil
 	}
 	err = rebuildAndVerifyMsgHash(signInfo.Key, signInfo.MsgHash, args)
 	return args, err

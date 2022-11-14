@@ -19,6 +19,8 @@ var (
 	feeConfigMap     = new(sync.Map) // key is tokenID,fromChainID,toChainID
 	onchainCustomCfg = new(sync.Map) // key is fromChainID,tokenID
 
+	AggregateIdentifier = "aggregate"
+
 	// StubChainIDBase stub chainID base value
 	StubChainIDBase = big.NewInt(1000000000000)
 )
