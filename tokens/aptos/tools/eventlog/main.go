@@ -6,12 +6,10 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/aptos"
 )
 
 func main() {
-	client.InitHTTPClient()
 	restClient := aptos.RestClient{
 		Url:     "https://testnet.aptoslabs.com",
 		Timeout: 10000,

@@ -14,14 +14,9 @@ import (
 )
 
 var (
-	httpClient *http.Client
+	httpClient = createHTTPClient()
 	httpCtx    = context.Background()
 )
-
-// InitHTTPClient init http client
-func InitHTTPClient() {
-	httpClient = createHTTPClient()
-}
 
 const (
 	maxIdleConns        int = 100
@@ -156,12 +151,6 @@ func addRawPostBody(req *http.Request, body string) (err error) {
 
 func doRequest(req *http.Request, timeoutSeconds int) (*http.Response, error) {
 	timeout := time.Duration(timeoutSeconds) * time.Second
-	if httpClient == nil {
-		client := http.Client{
-			Timeout: timeout,
-		}
-		return client.Do(req)
-	}
 	httpClient.Timeout = timeout
 	return httpClient.Do(req)
 }
