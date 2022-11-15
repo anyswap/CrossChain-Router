@@ -121,16 +121,23 @@ func InitRouterBridges(isServer bool) {
 				log.Infof("[%5v] lastest block number is %v", chainID, latestBlock)
 			}
 
-			wg2 := new(sync.WaitGroup)
-			wg2.Add(len(tokenIDs))
-			for _, tokenID := range tokenIDs {
-				go func(wg2 *sync.WaitGroup, tokenID string, chainID *big.Int) {
-					defer wg2.Done()
+			if params.GetLocalChainConfig(chainID.String()).ForbidParallelLoading {
+				for _, tokenID := range tokenIDs {
 					log.Info("start load token config", "tokenID", tokenID, "chainID", chainID)
 					InitTokenConfig(bridge, tokenID, chainID)
-				}(wg2, tokenID, chainID)
+				}
+			} else {
+				wg2 := new(sync.WaitGroup)
+				wg2.Add(len(tokenIDs))
+				for _, tokenID := range tokenIDs {
+					go func(wg2 *sync.WaitGroup, tokenID string, chainID *big.Int) {
+						defer wg2.Done()
+						log.Info("start load token config", "tokenID", tokenID, "chainID", chainID)
+						InitTokenConfig(bridge, tokenID, chainID)
+					}(wg2, tokenID, chainID)
+				}
+				wg2.Wait()
 			}
-			wg2.Wait()
 		}(wg, chainID)
 	}
 	wg.Wait()
