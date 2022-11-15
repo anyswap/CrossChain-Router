@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/admin"
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -21,6 +22,7 @@ const (
 	passbigvalueCmd = "passbigvalue"
 	reswapCmd       = "reswap"
 	replaceswapCmd  = "replaceswap"
+	forbidSwapCmd   = "forbidswap"
 
 	// maintain actions
 	actPause       = "pause"
@@ -57,7 +59,7 @@ func (s *RouterSwapAPI) AdminCall(r *http.Request, rawTx, result *string) (err e
 			case actPause, actUnpause:
 				return fmt.Errorf("sender %v is not admin", senderAddress)
 			}
-		case passbigvalueCmd, replaceswapCmd:
+		case passbigvalueCmd, replaceswapCmd, forbidSwapCmd:
 		default:
 			return fmt.Errorf("unknown admin method '%v'", args.Method)
 		}
@@ -79,6 +81,8 @@ func doRouterAdminCall(args *admin.CallArgs, result *string) error {
 		return routerReswap(args, result)
 	case replaceswapCmd:
 		return routerReplaceSwap(args, result)
+	case forbidSwapCmd:
+		return routerForbidSwap(args, result)
 	default:
 		return fmt.Errorf("unknown admin method '%v'", args.Method)
 	}
@@ -237,6 +241,32 @@ func routerReplaceSwap(args *admin.CallArgs, result *string) (err error) {
 	err = worker.ReplaceRouterSwap(res, gasPrice, true)
 	if err != nil {
 		return err
+	}
+	*result = successReuslt
+	return nil
+}
+
+func routerForbidSwap(args *admin.CallArgs, result *string) (err error) {
+	chainID, txid, logIndex, err := getKeys(args, 0)
+	if err != nil {
+		return err
+	}
+	var memo string
+	if len(args.Params) > 3 {
+		memo = args.Params[3]
+	}
+	err1 := mongodb.UpdateRouterSwapResultStatus(
+		chainID, txid, logIndex,
+		mongodb.ManualMakeFail,
+		time.Now().Unix(), memo,
+	)
+	err2 := mongodb.UpdateRouterSwapStatus(
+		chainID, txid, logIndex,
+		mongodb.ManualMakeFail,
+		time.Now().Unix(), memo,
+	)
+	if err1 != nil && err2 != nil {
+		return err1
 	}
 	*result = successReuslt
 	return nil
