@@ -439,6 +439,13 @@ func (c *ExtraConfig) CheckConfig() (err error) {
 	initCheckTokenBalanceEnabledChains()
 	initIgnoreAnycallFallbackAppIDs()
 
+	for cid, cfg := range c.LocalChainConfig {
+		if err = cfg.CheckConfig(); err != nil {
+			log.Warn("check local chain config failed", "chainID", cid, "err", err)
+			return err
+		}
+	}
+
 	if c.UsePendingBalance {
 		GetBalanceBlockNumberOpt = "pending"
 	}
@@ -458,5 +465,13 @@ func (c *ExtraConfig) CheckConfig() (err error) {
 		"baseFeePercent", c.BaseFeePercent,
 		"usePendingBalance", c.UsePendingBalance,
 	)
+	return nil
+}
+
+// CheckConfig check local chain config
+func (c *LocalChainConfig) CheckConfig() (err error) {
+	if c.BigValueDiscount > 100 {
+		return errors.New("'BigValueDiscount' is larger than 100")
+	}
 	return nil
 }

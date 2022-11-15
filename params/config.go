@@ -180,6 +180,7 @@ type LocalChainConfig struct {
 	EstimatedGasMustBePositive bool     `toml:",omitempty" json:",omitempty"`
 	SmallestGasPriceUnit       uint64   `toml:",omitempty" json:",omitempty"`
 	ForbidSwapoutTokenIDs      []string `toml:",omitempty" json:",omitempty"`
+	BigValueDiscount           uint64   `toml:",omitempty" json:",omitempty"`
 
 	forbidSwapoutTokenIDMap map[string]struct{}
 
