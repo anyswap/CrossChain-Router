@@ -40,12 +40,9 @@ func ConvertMgoSwapsToSwapInfos(msSlice []*mongodb.MgoSwap) []*SwapInfo {
 func ConvertMgoSwapResultToSwapInfo(mr *mongodb.MgoSwapResult) *SwapInfo {
 	var confirmations uint64
 	if mr.SwapHeight != 0 {
-		resBridge := router.GetBridgeByChainID(mr.ToChainID)
-		if resBridge != nil {
-			latest, _ := resBridge.GetLatestBlockNumber()
-			if latest > mr.SwapHeight {
-				confirmations = latest - mr.SwapHeight
-			}
+		latest := router.GetCachedLatestBlockNumber(mr.ToChainID)
+		if latest > mr.SwapHeight {
+			confirmations = latest - mr.SwapHeight
 		}
 	}
 	return &SwapInfo{
