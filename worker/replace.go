@@ -318,6 +318,13 @@ func verifyReplaceSwap(res *mongodb.MgoSwapResult, isManual bool) (*mongodb.MgoS
 	if err != nil {
 		return nil, err
 	}
+	if isBlacked(swap) {
+		logWorkerWarn("replace", "swap is in black list", "txid", res.TxID, "logIndex", res.LogIndex, "fromChainID", res.FromChainID, "toChainID", res.ToChainID, "token", res.GetToken(), "tokenID", res.GetTokenID())
+		err = tokens.ErrSwapInBlacklist
+		_ = mongodb.UpdateRouterSwapStatus(res.FromChainID, res.TxID, res.LogIndex, mongodb.SwapInBlacklist, now(), err.Error())
+		return nil, err
+	}
+
 	if res.SwapTx == "" && !params.IsParallelSwapEnabled() {
 		return nil, errors.New("swap without swaptx")
 	}
