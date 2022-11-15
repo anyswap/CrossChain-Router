@@ -28,11 +28,21 @@ var (
 	MPCPublicKeys = new(sync.Map) // key is mpc address
 	RouterInfos   = new(sync.Map) // key is router contract address
 
+	CachedLatestBlockNumber = new(sync.Map) // key is chainID
+
 	IsIniting              bool
 	IsReloading            bool
 	RetryRPCCountInInit    = 3
 	RetryRPCIntervalInInit = 3 * time.Second
 )
+
+// GetCachedLatestBlockNumber get cached latest block number
+func GetCachedLatestBlockNumber(chainID string) uint64 {
+	if value, exist := CachedLatestBlockNumber.Load(chainID); exist {
+		return value.(uint64)
+	}
+	return 0
+}
 
 // DontPanicInLoading don't panic in loading
 func DontPanicInLoading() bool {

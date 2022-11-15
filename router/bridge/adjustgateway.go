@@ -56,11 +56,18 @@ func AdjustGatewayOrder(bridge tokens.IBridge, chainID string) {
 	if gateway == nil {
 		return
 	}
+	var maxHeight uint64
 	length := len(gateway.APIAddress)
 	for i := length; i > 0; i-- { // query in reverse order
 		apiAddress := gateway.APIAddress[i-1]
 		height, _ := bridge.GetLatestBlockNumberOf(apiAddress)
 		weightedAPIs = weightedAPIs.Add(apiAddress, height)
+		if height > maxHeight {
+			maxHeight = height
+		}
+	}
+	if maxHeight > 0 {
+		router.CachedLatestBlockNumber.Store(chainID, maxHeight)
 	}
 	weightedAPIs.Reverse() // reverse as iter in reverse order in the above
 	weightedAPIs = weightedAPIs.Sort()
