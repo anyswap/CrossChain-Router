@@ -234,7 +234,13 @@ func GetBigValueThreshold(tokenID, fromChainID, toChainID string, fromDecimals u
 	if swapCfg == nil {
 		return big.NewInt(0)
 	}
-	return ConvertTokenValue(swapCfg.BigValueThreshold, 18, fromDecimals)
+	value := ConvertTokenValue(swapCfg.BigValueThreshold, 18, fromDecimals)
+	discount := params.GetLocalChainConfig(fromChainID).BigValueDiscount
+	if discount > 0 && discount < 100 {
+		value.Mul(value, new(big.Int).SetUint64(discount))
+		value.Div(value, big.NewInt(100))
+	}
+	return value
 }
 
 // CheckTokenSwapValue check swap value is in right range
