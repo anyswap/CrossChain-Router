@@ -12,7 +12,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/mpc"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
-	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
@@ -49,7 +48,6 @@ func InitRouterBridges(isServer bool) {
 
 	logErrFunc := log.GetLogFuncOr(router.DontPanicInLoading(), log.Error, log.Fatal)
 
-	client.InitHTTPClient()
 	router.InitRouterConfigClients()
 
 	log.Info("start get all chain ids")
