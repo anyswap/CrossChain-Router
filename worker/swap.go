@@ -137,6 +137,7 @@ func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
 		logWorkerWarn("swap", "swap is in black list", "txid", txid, "logIndex", logIndex, "fromChainID", fromChainID, "toChainID", toChainID, "token", swap.GetToken(), "tokenID", swap.GetTokenID())
 		err = tokens.ErrSwapInBlacklist
 		_ = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.SwapInBlacklist, now(), err.Error())
+		_ = mongodb.UpdateRouterSwapResultStatus(fromChainID, txid, logIndex, mongodb.SwapInBlacklist, now(), err.Error())
 		return nil
 	}
 
