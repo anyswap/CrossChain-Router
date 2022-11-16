@@ -96,12 +96,12 @@ func startAcceptProducer(mpcConfig *mpc.Config) {
 		start := time.Now()
 		signInfo, err := mpcConfig.GetCurNodeSignInfo(maxAcceptSignTimeInterval)
 		if err != nil {
-			logWorkerError("accept", "getCurNodeSignInfo failed", err, "timespent", time.Since(start))
+			logWorkerError("accept", "getCurNodeSignInfo failed", err, "timespent", time.Since(start).String())
 			time.Sleep(retryInterval)
 			continue
 		}
 		if i%7 == 0 {
-			logWorker("accept", "getCurNodeSignInfo", "count", len(signInfo), "queue", acceptInfoQueue.Len(), "timespent", time.Since(start))
+			logWorker("accept", "getCurNodeSignInfo", "count", len(signInfo), "queue", acceptInfoQueue.Len(), "timespent", time.Since(start).String())
 		}
 		i++
 
@@ -266,7 +266,7 @@ func processAcceptInfo(mpcConfig *mpc.Config, info *mpc.SignInfoData) error {
 
 	start := time.Now()
 	res, err := mpcConfig.DoAcceptSign(keyID, agreeResult, info.MsgHash, aggreeMsgContext)
-	logWorker("accept", "call acceptSign finished", "keyID", keyID, "result", agreeResult, "timespent", time.Since(start))
+	logWorker("accept", "call acceptSign finished", "keyID", keyID, "result", agreeResult, "timespent", time.Since(start).String())
 	if err != nil {
 		ctx = append(ctx, "rpcResult", res)
 		logWorkerError("accept", "accept sign failed", err, ctx...)
@@ -357,7 +357,7 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 		logWorkerError("accept", "verifySignInfo failed", err, ctx...)
 		return err
 	}
-	logWorker("accept", fmt.Sprintf("verifySignInfo success (timespent %v)", time.Since(start)), ctx...)
+	logWorker("accept", fmt.Sprintf("verifySignInfo success (timespent %v)", time.Since(start).String()), ctx...)
 	if !strings.EqualFold(args.Bind, swapInfo.Bind) {
 		return fmt.Errorf("bind mismatch: '%v' != '%v'", args.Bind, swapInfo.Bind)
 	}
@@ -386,15 +386,15 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 	}
 	rawTx, err := dstBridge.BuildRawTransaction(buildTxArgs)
 	if err != nil {
-		logWorkerError("accept", fmt.Sprintf("build raw tx failed (timespent %v)", time.Since(start)), err, ctx...)
+		logWorkerError("accept", fmt.Sprintf("build raw tx failed (timespent %v)", time.Since(start).String()), err, ctx...)
 		return err
 	}
 	err = dstBridge.VerifyMsgHash(rawTx, msgHash)
 	if err != nil {
-		logWorkerError("accept", fmt.Sprintf("verify message hash failed (timespent %v)", time.Since(start)), err, ctx...)
+		logWorkerError("accept", fmt.Sprintf("verify message hash failed (timespent %v)", time.Since(start).String()), err, ctx...)
 		return err
 	}
-	logWorker("accept", fmt.Sprintf("build raw tx and verify message hash success (timespent %v)", time.Since(start)), ctx...)
+	logWorker("accept", fmt.Sprintf("build raw tx and verify message hash success (timespent %v)", time.Since(start).String()), ctx...)
 	if lvldbHandle != nil && args.GetTxNonce() > 0 { // only for eth like chain
 		go saveAcceptRecord(dstBridge, keyID, buildTxArgs, rawTx, ctx)
 	}
