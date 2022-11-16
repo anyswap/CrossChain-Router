@@ -105,7 +105,8 @@ type RouterServerConfig struct {
 // RouterOracleConfig only for oracle
 type RouterOracleConfig struct {
 	ServerAPIAddress        string
-	NoCheckServerConnection bool
+	NoCheckServerConnection bool `toml:",omitempty" json:",omitempty"`
+	CheckGasTokenBalance    bool `toml:",omitempty" json:",omitempty"`
 }
 
 // RouterConfig config

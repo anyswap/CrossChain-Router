@@ -118,6 +118,8 @@ MaxRequestsLimit = 10
 ServerAPIAddress = "http://127.0.0.1:11556/rpc"
 # don't check server connection
 NoCheckServerConnection = false
+# check gas token balance
+CheckGasTokenBalance = false
 
 [Extra]
 # is swap with permit enabled
