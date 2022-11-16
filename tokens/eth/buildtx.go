@@ -78,26 +78,30 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 		isDynamicFeeTx = params.IsDynamicFeeTxEnabled(b.ChainConfig.ChainID)
 	)
 
-	minReserveFee := b.getMinReserveFee()
-	// if min reserve fee is zero, then do not check balance
-	if minReserveFee.Sign() > 0 {
-		// swap need value = tx value + min reserve + 5 * gas fee
-		needValue := big.NewInt(0)
-		if value != nil && value.Sign() > 0 {
-			needValue.Add(needValue, value)
-		}
-		needValue.Add(needValue, minReserveFee)
-		var gasFee *big.Int
-		if isDynamicFeeTx {
-			gasFee = new(big.Int).Mul(gasFeeCap, new(big.Int).SetUint64(gasLimit))
-		} else {
-			gasFee = new(big.Int).Mul(gasPrice, new(big.Int).SetUint64(gasLimit))
-		}
-		needValue.Add(needValue, new(big.Int).Mul(big.NewInt(5), gasFee))
+	if params.IsSwapServer ||
+		(params.GetRouterOracleConfig() != nil &&
+			params.GetRouterOracleConfig().CheckGasTokenBalance) {
+		minReserveFee := b.getMinReserveFee()
+		// if min reserve fee is zero, then do not check balance
+		if minReserveFee.Sign() > 0 {
+			// swap need value = tx value + min reserve + 5 * gas fee
+			needValue := big.NewInt(0)
+			if value != nil && value.Sign() > 0 {
+				needValue.Add(needValue, value)
+			}
+			needValue.Add(needValue, minReserveFee)
+			var gasFee *big.Int
+			if isDynamicFeeTx {
+				gasFee = new(big.Int).Mul(gasFeeCap, new(big.Int).SetUint64(gasLimit))
+			} else {
+				gasFee = new(big.Int).Mul(gasPrice, new(big.Int).SetUint64(gasLimit))
+			}
+			needValue.Add(needValue, new(big.Int).Mul(big.NewInt(5), gasFee))
 
-		err = b.checkCoinBalance(args.From, needValue)
-		if err != nil {
-			return nil, err
+			err = b.checkCoinBalance(args.From, needValue)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
