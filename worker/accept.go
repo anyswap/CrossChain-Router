@@ -93,14 +93,15 @@ func startAcceptProducer(mpcConfig *mpc.Config) {
 		if utils.IsCleanuping() {
 			return
 		}
+		start := time.Now()
 		signInfo, err := mpcConfig.GetCurNodeSignInfo(maxAcceptSignTimeInterval)
 		if err != nil {
-			logWorkerError("accept", "getCurNodeSignInfo failed", err)
+			logWorkerError("accept", "getCurNodeSignInfo failed", err, "timespent", time.Since(start))
 			time.Sleep(retryInterval)
 			continue
 		}
 		if i%7 == 0 {
-			logWorker("accept", "getCurNodeSignInfo", "count", len(signInfo), "queue", acceptInfoQueue.Len())
+			logWorker("accept", "getCurNodeSignInfo", "count", len(signInfo), "queue", acceptInfoQueue.Len(), "timespent", time.Since(start))
 		}
 		i++
 
@@ -156,7 +157,7 @@ func startAcceptConsumer(mpcConfig *mpc.Config) {
 
 				front := acceptInfoQueue.Next()
 				if front == nil {
-					time.Sleep(3 * time.Second)
+					time.Sleep(1 * time.Second)
 					continue
 				}
 
@@ -233,7 +234,7 @@ func processAcceptInfo(mpcConfig *mpc.Config, info *mpc.SignInfoData) error {
 		tokens.IsRPCQueryOrNotFoundError(err):
 		if isPendingInvalidAccept {
 			ctx = append(ctx, "err", err)
-			logWorkerTrace("accept", "ignore sign", ctx...)
+			logWorker("accept", "ignore sign", ctx...)
 			return err
 		}
 	case // these we are sure are config problem, discard them or disagree immediately
@@ -263,8 +264,9 @@ func processAcceptInfo(mpcConfig *mpc.Config, info *mpc.SignInfoData) error {
 	}
 	ctx = append(ctx, "result", agreeResult)
 
-	logWorker("accept", "accept sign start", "keyID", keyID, "result", agreeResult)
+	start := time.Now()
 	res, err := mpcConfig.DoAcceptSign(keyID, agreeResult, info.MsgHash, aggreeMsgContext)
+	logWorker("accept", "call acceptSign finished", "keyID", keyID, "result", agreeResult, "timespent", time.Since(start))
 	if err != nil {
 		ctx = append(ctx, "rpcResult", res)
 		logWorkerError("accept", "accept sign failed", err, ctx...)
@@ -330,6 +332,8 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 		return err
 	}
 
+	start := time.Now()
+
 	ctx := []interface{}{
 		"keyID", keyID,
 		"identifier", args.Identifier,
@@ -353,6 +357,7 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 		logWorkerError("accept", "verifySignInfo failed", err, ctx...)
 		return err
 	}
+	logWorker("accept", fmt.Sprintf("verifySignInfo success (timespent %v)", time.Since(start)), ctx...)
 	if !strings.EqualFold(args.Bind, swapInfo.Bind) {
 		return fmt.Errorf("bind mismatch: '%v' != '%v'", args.Bind, swapInfo.Bind)
 	}
@@ -360,6 +365,7 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 		return fmt.Errorf("toChainID mismatch: '%v' != '%v'", args.ToChainID, swapInfo.ToChainID)
 	}
 
+	start = time.Now()
 	buildTxArgs := &tokens.BuildTxArgs{
 		SwapArgs: tokens.SwapArgs{
 			SwapInfo:    swapInfo.SwapInfo,
@@ -380,15 +386,15 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 	}
 	rawTx, err := dstBridge.BuildRawTransaction(buildTxArgs)
 	if err != nil {
-		logWorkerError("accept", "build raw tx failed", err, ctx...)
+		logWorkerError("accept", fmt.Sprintf("build raw tx failed (timespent %v)", time.Since(start)), err, ctx...)
 		return err
 	}
 	err = dstBridge.VerifyMsgHash(rawTx, msgHash)
 	if err != nil {
-		logWorkerError("accept", "verify message hash failed", err, ctx...)
+		logWorkerError("accept", fmt.Sprintf("verify message hash failed (timespent %v)", time.Since(start)), err, ctx...)
 		return err
 	}
-	logWorker("accept", "verify message hash success", ctx...)
+	logWorker("accept", fmt.Sprintf("build raw tx and verify message hash success (timespent %v)", time.Since(start)), ctx...)
 	if lvldbHandle != nil && args.GetTxNonce() > 0 { // only for eth like chain
 		go saveAcceptRecord(dstBridge, keyID, buildTxArgs, rawTx, ctx)
 	}
