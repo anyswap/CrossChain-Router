@@ -3,6 +3,7 @@ package eth
 import (
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -16,6 +17,8 @@ import (
 var (
 	retryRPCCount    = 3
 	retryRPCInterval = 1 * time.Second
+
+	cachedNonce = make(map[string]uint64)
 )
 
 // BuildRawTransaction build raw tx
@@ -105,17 +108,17 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 		if err != nil {
 			return nil, err
 		}
-	} else { // oracle logic
-		cmpNonce, err := b.getPoolNonce(args)
-		if err != nil {
-			return nil, err
-		}
-		if *extra.Nonce > *cmpNonce+1000 {
-			return nil, fmt.Errorf("nonce is too big. mine %v, your %v", *cmpNonce, *extra.Nonce)
-		}
 	}
 
 	nonce := *extra.Nonce
+
+	key := strings.ToLower(fmt.Sprintf("%v:%v", b.ChainConfig.ChainID, args.From))
+	cached := cachedNonce[key]
+	if (cached > 0 && (nonce > cached+1000 || nonce+1000 < cached)) ||
+		(cached == 0 && nonce > 10000000) {
+		return nil, fmt.Errorf("nonce is out of range. cached %v, your %v", cached, nonce)
+	}
+	cachedNonce[key] = nonce
 
 	if isDynamicFeeTx {
 		rawTx = types.NewDynamicFeeTx(b.SignerChainID, nonce, &to, value, gasLimit, gasTipCap, gasFeeCap, input, nil)
