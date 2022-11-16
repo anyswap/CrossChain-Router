@@ -174,7 +174,7 @@ func (b *Bridge) getTransactionReceipt(txHash string, urls []string) (result *ty
 	for _, url := range urls {
 		start := time.Now()
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_getTransactionReceipt", txHash)
-		log.Info("call getTransactionReceipt finished", "txhash", txHash, "url", url, "timespent", time.Since(start))
+		log.Info("call getTransactionReceipt finished", "txhash", txHash, "url", url, "timespent", time.Since(start).String())
 		if err == nil && result != nil {
 			if result.BlockNumber == nil || result.BlockHash == nil || result.TxIndex == nil {
 				return nil, errTxReceiptMissBlockInfo
@@ -185,7 +185,7 @@ func (b *Bridge) getTransactionReceipt(txHash string, urls []string) (result *ty
 			if params.IsCheckTxBlockIndexEnabled(b.ChainConfig.ChainID) {
 				start = time.Now()
 				tx, errt := b.getTransactionByBlockNumberAndIndex(result.BlockNumber.ToInt(), uint(*result.TxIndex), url)
-				log.Info("call getTransactionByBlockNumberAndIndex finished", "txhash", txHash, "block", result.BlockNumber, "index", result.TxIndex, "url", url, "timespent", time.Since(start))
+				log.Info("call getTransactionByBlockNumberAndIndex finished", "txhash", txHash, "block", result.BlockNumber, "index", result.TxIndex, "url", url, "timespent", time.Since(start).String())
 				if errt != nil {
 					return nil, errt
 				}
@@ -197,7 +197,7 @@ func (b *Bridge) getTransactionReceipt(txHash string, urls []string) (result *ty
 			if params.IsCheckTxBlockHashEnabled(b.ChainConfig.ChainID) {
 				start = time.Now()
 				errt := b.checkTxBlockHash(result.BlockNumber.ToInt(), *result.BlockHash)
-				log.Info("call checkTxBlockHash finished", "txhash", txHash, "block", result.BlockNumber, "url", url, "timespent", time.Since(start))
+				log.Info("call checkTxBlockHash finished", "txhash", txHash, "block", result.BlockNumber, "url", url, "timespent", time.Since(start).String())
 				if errt != nil {
 					return nil, errt
 				}
@@ -235,7 +235,7 @@ func (b *Bridge) GetPoolNonce(address, height string) (mdPoolNonce uint64, err e
 		}
 	}
 	if len(allPoolNonces) == 0 {
-		log.Warn("GetPoolNonce failed", "chainID", b.ChainConfig.ChainID, "account", account, "height", height, "timespent", time.Since(start), "err", err)
+		log.Warn("GetPoolNonce failed", "chainID", b.ChainConfig.ChainID, "account", account, "height", height, "timespent", time.Since(start).String(), "err", err)
 		return 0, wrapRPCQueryError(err, "eth_getTransactionCount", account, height)
 	}
 	sort.Slice(allPoolNonces, func(i, j int) bool {
@@ -248,7 +248,7 @@ func (b *Bridge) GetPoolNonce(address, height string) (mdPoolNonce uint64, err e
 	} else {
 		mdPoolNonce = (allPoolNonces[mdInd] + allPoolNonces[mdInd+1]) / 2
 	}
-	log.Info("GetPoolNonce success", "chainID", b.ChainConfig.ChainID, "account", account, "urls", len(b.AllGatewayURLs), "validCount", count, "median", mdPoolNonce, "timespent", time.Since(start))
+	log.Info("GetPoolNonce success", "chainID", b.ChainConfig.ChainID, "account", account, "urls", len(b.AllGatewayURLs), "validCount", count, "median", mdPoolNonce, "timespent", time.Since(start).String())
 	return mdPoolNonce, nil
 }
 
@@ -256,7 +256,7 @@ func (b *Bridge) GetPoolNonce(address, height string) (mdPoolNonce uint64, err e
 func (b *Bridge) SuggestPrice() (*big.Int, error) {
 	start := time.Now()
 	defer func() {
-		log.Infof("call getGasPrice timespent %v", time.Since(start))
+		log.Infof("call getGasPrice timespent %v", time.Since(start).String())
 	}()
 	gateway := b.GatewayConfig
 	calcMethod := params.GetCalcGasPriceMethod(b.ChainConfig.ChainID)
@@ -369,7 +369,7 @@ func (b *Bridge) SendSignedTransaction(tx *types.Transaction) (txHash string, er
 		}()
 		wg.Wait()
 		close(ch)
-		log.Info("call eth_sendRawTransaction finished", "txHash", hash, "count", count, "timespent", time.Since(start))
+		log.Info("call eth_sendRawTransaction finished", "txHash", hash, "count", count, "timespent", time.Since(start).String())
 	}(tx.Hash().String(), urlCount, time.Now())
 	for _, url := range b.AllGatewayURLs {
 		go b.sendRawTransaction(wg, hexData, url, ch)

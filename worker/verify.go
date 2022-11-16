@@ -221,7 +221,11 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 		LogIndex:      logIndex,
 		AllowUnstable: false,
 	}
+
+	start := time.Now()
 	swapInfo, err := bridge.VerifyTransaction(txid, verifyArgs)
+	logWorker("verify", "verify tx finished job", "fromChainID", fromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex, "timespent", time.Since(start).String())
+
 	switch {
 	case err == nil:
 		if router.IsBigValueSwap(swapInfo) {

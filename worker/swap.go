@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -384,26 +385,28 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 		return tokens.ErrNoBridgeForChainID
 	}
 
+	start := time.Now()
 	rawTx, err := resBridge.BuildRawTransaction(args)
 	if err != nil {
-		logWorkerError("doSwap", "build tx failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex)
+		logWorkerError("doSwap", "build tx failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "timespent", time.Since(start).String())
 		if errors.Is(err, tokens.ErrBuildTxErrorAndDelay) {
 			_ = updateSwapMemo(fromChainID, txid, logIndex, err.Error())
 		}
 		return err
 	}
 	swapTxNonce := args.GetTxNonce() // assign after build tx
-	logWorker("doSwap", "build tx success", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "swapNonce", swapTxNonce)
+	logWorker("doSwap", "build tx success", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "swapNonce", swapTxNonce, "timespent", time.Since(start).String())
 
+	start = time.Now()
 	signedTx, txHash, err := resBridge.MPCSignTransaction(rawTx, args)
 	if err != nil {
-		logWorkerError("doSwap", "sign tx failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex)
+		logWorkerError("doSwap", "sign tx failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "timespent", time.Since(start).String())
 		if errors.Is(err, mpc.ErrGetSignStatusHasDisagree) {
 			reverifySwap(args)
 		}
 		return err
 	}
-	logWorker("doSwap", "sign tx success", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "txHash", txHash, "swapNonce", swapTxNonce)
+	logWorker("doSwap", "sign tx success", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "txHash", txHash, "swapNonce", swapTxNonce, "timespent", time.Since(start).String())
 
 	disagreeRecords.Delete(cacheKey)
 
@@ -440,16 +443,18 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 		return err
 	}
 
+	start = time.Now()
 	sentTxHash, err := sendSignedTransaction(resBridge, signedTx, args)
 	if err == nil && txHash != sentTxHash {
 		logWorkerError("doSwap", "send tx success but with different hash", errSendTxWithDiffHash,
 			"fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex,
-			"txHash", txHash, "sentTxHash", sentTxHash, "swapNonce", swapTxNonce)
+			"txHash", txHash, "sentTxHash", sentTxHash, "swapNonce", swapTxNonce,
+			"timespent", time.Since(start).String())
 		_ = mongodb.UpdateRouterOldSwapTxs(fromChainID, txid, logIndex, sentTxHash)
 	} else if err == nil {
 		logWorker("doSwap", "send tx success",
 			"fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex,
-			"txHash", txHash, "swapNonce", swapTxNonce)
+			"txHash", txHash, "swapNonce", swapTxNonce, "timespent", time.Since(start).String())
 	}
 	logWorker("doSwap", "finish to process", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "value", originValue)
 	return err
@@ -507,14 +512,16 @@ func signAndSendTx(rawTx interface{}, args *tokens.BuildTxArgs) error {
 	swapTxNonce := args.GetTxNonce()
 	resBridge := router.GetBridgeByChainID(toChainID)
 
+	start := time.Now()
 	signedTx, txHash, err := resBridge.MPCSignTransaction(rawTx, args)
 	if err != nil {
-		logWorkerError("doSwap", "sign tx failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "swapNonce", swapTxNonce)
+		logWorkerError("doSwap", "sign tx failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "swapNonce", swapTxNonce, "timespent", time.Since(start).String())
 		if errors.Is(err, mpc.ErrGetSignStatusHasDisagree) {
 			reverifySwap(args)
 		}
 		return err
 	}
+	logWorker("doSwap", "sign tx success", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "swapNonce", swapTxNonce, "timespent", time.Since(start).String())
 
 	cacheKey := mongodb.GetRouterSwapKey(fromChainID, txid, logIndex)
 	disagreeRecords.Delete(cacheKey)
@@ -523,12 +530,18 @@ func signAndSendTx(rawTx interface{}, args *tokens.BuildTxArgs) error {
 	addSwapHistory(fromChainID, txid, logIndex, txHash)
 	_ = updateSwapTx(fromChainID, txid, logIndex, txHash)
 
+	start = time.Now()
 	sentTxHash, err := sendSignedTransaction(resBridge, signedTx, args)
 	if err == nil && txHash != sentTxHash {
 		logWorkerError("doSwap", "send tx success but with different hash", errSendTxWithDiffHash,
 			"fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex,
-			"txHash", txHash, "sentTxHash", sentTxHash, "swapNonce", swapTxNonce)
+			"txHash", txHash, "sentTxHash", sentTxHash, "swapNonce", swapTxNonce,
+			"timespent", time.Since(start).String())
 		_ = mongodb.UpdateRouterOldSwapTxs(fromChainID, txid, logIndex, sentTxHash)
+	} else if err == nil {
+		logWorker("doSwap", "send tx success",
+			"fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex,
+			"txHash", txHash, "swapNonce", swapTxNonce, "timespent", time.Since(start).String())
 	}
 	return err
 }
@@ -547,6 +560,7 @@ func reverifySwap(args *tokens.BuildTxArgs) {
 	if srcBridge == nil {
 		return
 	}
+	start := time.Now()
 	_, err := srcBridge.VerifyTransaction(txid, verifyArgs)
 	switch {
 	case err == nil,
@@ -558,6 +572,7 @@ func reverifySwap(args *tokens.BuildTxArgs) {
 		_ = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxNotStable, now(), "")
 		_ = mongodb.UpdateRouterSwapResultStatus(fromChainID, txid, logIndex, mongodb.TxNotStable, now(), err.Error())
 	}
+	logWorker("verify", "reverify tx finished job", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "timespent", time.Since(start).String())
 
 	var disagreeCount uint64
 	cacheKey := mongodb.GetRouterSwapKey(fromChainID, txid, logIndex)
