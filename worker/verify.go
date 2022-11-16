@@ -79,6 +79,17 @@ func startVerifyProducer() {
 				continue
 			}
 
+			// minus rpc call to get tx
+			if swap, err := mongodb.FindRouterSwap(swap.FromChainID, swap.TxID, swap.LogIndex); err == nil {
+				bridge := router.GetBridgeByChainID(swap.FromChainID)
+				if bridge != nil && swap.TxHeight > 0 &&
+					swap.TxHeight+bridge.GetChainConfig().Confirmations >
+						router.GetCachedLatestBlockNumber(swap.FromChainID) {
+					logWorkerTrace("verify", "ignore swap not stable", "key", swap.Key)
+					continue
+				}
+			}
+
 			err := dispatchVerifyTask(swap) // produce
 			ctx := []interface{}{"fromChainID", swap.FromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex}
 			if err == nil {
@@ -225,6 +236,9 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 		errors.Is(err, tokens.ErrRPCQueryError),
 		errors.Is(err, tokens.ErrTxNotFound),
 		errors.Is(err, tokens.ErrNotFound):
+		if swapInfo != nil && swapInfo.Height > 0 {
+			_ = mongodb.UpdateRouterSwapHeight(fromChainID, txid, logIndex, swapInfo.Height)
+		}
 		nowMilli := common.NowMilli()
 		if swap.InitTime+1000*maxTxNotFoundTime < nowMilli {
 			duration := time.Duration((nowMilli - swap.InitTime) / 1000 * int64(time.Second))

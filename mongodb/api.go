@@ -85,6 +85,19 @@ func PassRouterSwapVerify(fromChainID, txid string, logindex int, timestamp int6
 	return mgoError(err)
 }
 
+// UpdateRouterSwapHeight update router swap height on source chain
+func UpdateRouterSwapHeight(fromChainID, txid string, logindex int, height uint64) error {
+	key := GetRouterSwapKey(fromChainID, txid, logindex)
+	updates := bson.M{"txheight": height}
+	_, err := collRouterSwap.UpdateByID(clientCtx, key, bson.M{"$set": updates})
+	if err == nil {
+		log.Info("mongodb update router swap height success", "chainid", fromChainID, "txid", txid, "logindex", logindex, "txheight", height)
+	} else {
+		log.Error("mongodb update router swap height failed", "chainid", fromChainID, "txid", txid, "logindex", logindex, "txheight", height, "err", err)
+	}
+	return mgoError(err)
+}
+
 // UpdateRouterSwapStatus update router swap status
 func UpdateRouterSwapStatus(fromChainID, txid string, logindex int, status SwapStatus, timestamp int64, memo string) error {
 	if status == TxNotStable {
