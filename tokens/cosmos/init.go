@@ -1,4 +1,4 @@
-package cosmosSDK
+package cosmos
 
 import (
 	"math/big"
@@ -25,24 +25,6 @@ const (
 	mainnetNetWork = "mainnet"
 	testnetNetWork = "testnet"
 )
-
-func NewCosmosRestClient(urls []string, prefix, denom string) *CosmosRestClient {
-	return &CosmosRestClient{
-		BaseUrls: urls,
-		TxConfig: BuildNewTxConfig(),
-		Prefix:   prefix,
-		Denom:    denom,
-	}
-}
-
-func (c *CosmosRestClient) SetBaseUrls(urls []string) {
-	c.BaseUrls = urls
-}
-
-func (c *CosmosRestClient) SetPrefixAndDenom(prefix, denom string) {
-	c.Prefix = prefix
-	c.Denom = denom
-}
 
 func BuildNewTxConfig() cosmosClient.TxConfig {
 	interfaceRegistry := codecTypes.NewInterfaceRegistry()

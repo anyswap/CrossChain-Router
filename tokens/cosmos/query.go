@@ -1,4 +1,4 @@
-package cosmosSDK
+package cosmos
 
 import (
 	"fmt"
@@ -15,9 +15,9 @@ const (
 	Balances    = "/cosmos/bank/v1beta1/balances/"
 )
 
-func (c *CosmosRestClient) GetLatestBlockNumber() (uint64, error) {
+func (b *Bridge) GetLatestBlockNumber() (uint64, error) {
 	var result *GetLatestBlockResponse
-	for _, url := range c.BaseUrls {
+	for _, url := range b.AllGatewayURLs {
 		restApi := url + LatestBlock
 		if err := client.RPCGet(&result, restApi); err == nil {
 			if height, err := strconv.ParseUint(result.Block.Header.Height, 10, 64); err == nil {
@@ -28,9 +28,9 @@ func (c *CosmosRestClient) GetLatestBlockNumber() (uint64, error) {
 	return 0, tokens.ErrRPCQueryError
 }
 
-func (c *CosmosRestClient) GetChainID() (string, error) {
+func (b *Bridge) GetChainID() (string, error) {
 	var result *GetLatestBlockResponse
-	for _, url := range c.BaseUrls {
+	for _, url := range b.AllGatewayURLs {
 		restApi := url + LatestBlock
 		if err := client.RPCGet(&result, restApi); err == nil {
 			return result.Block.Header.ChainID, nil
@@ -39,7 +39,7 @@ func (c *CosmosRestClient) GetChainID() (string, error) {
 	return "", tokens.ErrRPCQueryError
 }
 
-func (c *CosmosRestClient) GetLatestBlockNumberOf(apiAddress string) (uint64, error) {
+func (b *Bridge) GetLatestBlockNumberOf(apiAddress string) (uint64, error) {
 	var result *GetLatestBlockResponse
 	restApi := apiAddress + LatestBlock
 	if err := client.RPCGet(&result, restApi); err == nil {
@@ -49,9 +49,9 @@ func (c *CosmosRestClient) GetLatestBlockNumberOf(apiAddress string) (uint64, er
 	}
 }
 
-func (c *CosmosRestClient) GetTransactionByHash(txHash string) (*GetTxResponse, error) {
+func (b *Bridge) GetTransactionByHash(txHash string) (*GetTxResponse, error) {
 	var result *GetTxResponse
-	for _, url := range c.BaseUrls {
+	for _, url := range b.AllGatewayURLs {
 		restApi := url + TxByHash + txHash
 		if err := client.RPCGet(&result, restApi); err == nil {
 			if result.Status == "ERROR" {
@@ -66,9 +66,9 @@ func (c *CosmosRestClient) GetTransactionByHash(txHash string) (*GetTxResponse, 
 	return nil, tokens.ErrTxNotFound
 }
 
-func (c *CosmosRestClient) GetBaseAccount(address string) (*QueryAccountResponse, error) {
+func (b *Bridge) GetBaseAccount(address string) (*QueryAccountResponse, error) {
 	var result *QueryAccountResponse
-	for _, url := range c.BaseUrls {
+	for _, url := range b.AllGatewayURLs {
 		restApi := url + AccountInfo + address
 		if err := client.RPCGet(&result, restApi); err == nil {
 			if result.Status == "ERROR" {
@@ -83,9 +83,9 @@ func (c *CosmosRestClient) GetBaseAccount(address string) (*QueryAccountResponse
 	return nil, tokens.ErrRPCQueryError
 }
 
-func (c *CosmosRestClient) GetDenomBalance(address, denom string) (uint64, error) {
+func (b *Bridge) GetDenomBalance(address, denom string) (uint64, error) {
 	var result *QueryAllBalancesResponse
-	for _, url := range c.BaseUrls {
+	for _, url := range b.AllGatewayURLs {
 		restApi := url + Balances + address
 		if err := client.RPCGet(&result, restApi); err == nil {
 			for _, coin := range result.Balances {

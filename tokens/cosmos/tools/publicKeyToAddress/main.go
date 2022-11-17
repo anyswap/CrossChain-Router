@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
-	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmosSDK"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmos"
 )
 
 var (
@@ -23,7 +23,7 @@ func initFlags() {
 func main() {
 	initFlags()
 
-	if addr, err := cosmosSDK.PublicKeyToAddress(paramPrefix, paramPublicKey); err != nil {
+	if addr, err := cosmos.PublicKeyToAddress(paramPrefix, paramPublicKey); err != nil {
 		log.Fatalf("err: %v\n", err)
 	} else {
 		fmt.Printf("addr: %v\n", addr)

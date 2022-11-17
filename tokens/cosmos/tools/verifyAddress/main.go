@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmosSDK"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmos"
 )
 
 var (
@@ -22,6 +22,6 @@ func initFlags() {
 func main() {
 	initFlags()
 
-	res := cosmosSDK.IsValidAddress(paramPrefix, paramAddress)
+	res := cosmos.IsValidAddress(paramPrefix, paramAddress)
 	fmt.Printf("address:%s is valid address:%v\n", paramAddress, res)
 }

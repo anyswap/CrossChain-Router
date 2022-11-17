@@ -8,7 +8,7 @@ import (
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
-	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmosSDK"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmos"
 	"github.com/anyswap/CrossChain-Router/v3/tools/crypto"
 	cosmosClient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
@@ -23,18 +23,21 @@ var (
 	DefaultGasLimit uint64 = 200000
 	publicKey              = ""
 	privateKey             = ""
-	url                    = []string{"https://sei-testnet-rpc.allthatnode.com:1317"}
+	urls                   = []string{"https://sei-testnet-rpc.allthatnode.com:1317"}
+
+	bridge = cosmos.NewCrossChainBridge()
 )
 
 func main() {
-	client := cosmosSDK.NewCosmosRestClient(url, "", "")
-	if rawTx, err := BuildTx(client); err != nil {
+	bridge.SetGatewayConfig(&tokens.GatewayConfig{APIAddress: urls})
+
+	if rawTx, err := BuildTx(); err != nil {
 		log.Fatalf("BuildTx err:%+v", err)
 	} else {
-		if signedTx, txHash, err := SignTransactionWithPrivateKey(client, *rawTx.TxBuilder, privateKey, rawTx.Extra); err != nil {
+		if signedTx, txHash, err := SignTransactionWithPrivateKey(*rawTx.TxBuilder, privateKey, rawTx.Extra); err != nil {
 			log.Fatalf("SignTransactionWithPrivateKey err:%+v", err)
 		} else {
-			if txHashFromSend, err := client.SendTransaction(signedTx); err != nil {
+			if txHashFromSend, err := bridge.SendTransaction(signedTx); err != nil {
 				log.Fatalf("SendTransaction err:%+v", err)
 			} else {
 				fmt.Printf("txhash: %+s txHashFromSend: %+s", txHash, txHashFromSend)
@@ -43,9 +46,9 @@ func main() {
 	}
 }
 
-func initExtra(client *cosmosSDK.CosmosRestClient) (*tokens.AllExtras, error) {
+func initExtra() (*tokens.AllExtras, error) {
 	extra := &tokens.AllExtras{}
-	if account, err := client.GetBaseAccount(Sender); err != nil {
+	if account, err := bridge.GetBaseAccount(Sender); err != nil {
 		return nil, err
 	} else {
 		if extra.Sequence == nil {
@@ -75,35 +78,35 @@ func initExtra(client *cosmosSDK.CosmosRestClient) (*tokens.AllExtras, error) {
 	}
 }
 
-func BuildTx(client *cosmosSDK.CosmosRestClient) (*cosmosSDK.BuildRawTx, error) {
-	if extra, err := initExtra(client); err != nil {
+func BuildTx() (*cosmos.BuildRawTx, error) {
+	if extra, err := initExtra(); err != nil {
 		return nil, err
 	} else {
-		txBuilder := client.TxConfig.NewTxBuilder()
-		mintMsg := cosmosSDK.BuildMintMsg(Sender, Amount)
+		txBuilder := bridge.TxConfig.NewTxBuilder()
+		mintMsg := cosmos.BuildMintMsg(Sender, Amount)
 		if err := txBuilder.SetMsgs(mintMsg); err != nil {
 			log.Fatalf("SetMsgs error:%+v", err)
 		}
 
 		txBuilder.SetMemo(Memo)
-		if fee, err := cosmosSDK.ParseCoinsFee(*extra.Fee); err != nil {
+		if fee, err := cosmos.ParseCoinsFee(*extra.Fee); err != nil {
 			log.Fatalf("ParseCoinsFee error:%+v", err)
 		} else {
 			txBuilder.SetFeeAmount(fee)
 		}
 		txBuilder.SetGasLimit(DefaultGasLimit)
-		pubKey, err := cosmosSDK.PubKeyFromStr(publicKey)
+		pubKey, err := cosmos.PubKeyFromStr(publicKey)
 		if err != nil {
 			log.Fatalf("PubKeyFromStr error:%+v", err)
 		}
-		sig := cosmosSDK.BuildSignatures(pubKey, *extra.Sequence, nil)
+		sig := cosmos.BuildSignatures(pubKey, *extra.Sequence, nil)
 		if err := txBuilder.SetSignatures(sig); err != nil {
 			log.Fatalf("SetSignatures error:%+v", err)
 		}
 		if err := txBuilder.GetTx().ValidateBasic(); err != nil {
 			log.Fatalf("ValidateBasic error:%+v", err)
 		}
-		return &cosmosSDK.BuildRawTx{
+		return &cosmos.BuildRawTx{
 			TxBuilder: &txBuilder,
 			Extra:     extra,
 		}, nil
@@ -111,13 +114,13 @@ func BuildTx(client *cosmosSDK.CosmosRestClient) (*cosmosSDK.BuildRawTx, error) 
 }
 
 // SignTransactionWithPrivateKey sign tx with ECDSA private key
-func SignTransactionWithPrivateKey(client *cosmosSDK.CosmosRestClient, txBuilder cosmosClient.TxBuilder, privKey string, extras *tokens.AllExtras) (signedTx interface{}, txHash string, err error) {
+func SignTransactionWithPrivateKey(txBuilder cosmosClient.TxBuilder, privKey string, extras *tokens.AllExtras) (signedTx interface{}, txHash string, err error) {
 	if ecPrikey, err := crypto.HexToECDSA(privKey); err != nil {
 		return nil, "", err
 	} else {
 		ecPriv := &secp256k1.PrivKey{Key: ecPrikey.D.Bytes()}
 
-		if signBytes, err := client.GetSignBytes(txBuilder, *extras.AccountNum, *extras.Sequence); err != nil {
+		if signBytes, err := bridge.GetSignBytes(txBuilder, *extras.AccountNum, *extras.Sequence); err != nil {
 			return nil, "", err
 		} else {
 			if signature, err := ecPriv.Sign(signBytes); err != nil {
@@ -137,7 +140,7 @@ func SignTransactionWithPrivateKey(client *cosmosSDK.CosmosRestClient, txBuilder
 					log.Fatal("verify signature failed", "signBytes", common.ToHex(signBytes), "signature", signature)
 					return nil, "", errors.New("wrong signature")
 				}
-				sig := cosmosSDK.BuildSignatures(pubKey, *extras.Sequence, signature)
+				sig := cosmos.BuildSignatures(pubKey, *extras.Sequence, signature)
 				if err := txBuilder.SetSignatures(sig); err != nil {
 					return nil, "", err
 				}
@@ -145,7 +148,7 @@ func SignTransactionWithPrivateKey(client *cosmosSDK.CosmosRestClient, txBuilder
 					return nil, "", err
 				}
 
-				return client.GetSignTx(txBuilder.GetTx())
+				return bridge.GetSignTx(txBuilder.GetTx())
 			}
 		}
 	}

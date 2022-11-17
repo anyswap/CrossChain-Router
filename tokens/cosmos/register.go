@@ -1,4 +1,4 @@
-package cosmosRouter
+package cosmos
 
 import (
 	"errors"

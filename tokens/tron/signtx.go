@@ -9,6 +9,7 @@ import (
 
 	tronaddress "github.com/fbsobreira/gotron-sdk/pkg/address"
 	"github.com/fbsobreira/gotron-sdk/pkg/proto/core"
+
 	//nolint:staticcheck // ignore SA1019
 	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/protobuf/proto"

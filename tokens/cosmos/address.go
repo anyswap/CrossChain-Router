@@ -1,4 +1,4 @@
-package cosmosSDK
+package cosmos
 
 import (
 	"encoding/hex"
@@ -14,17 +14,17 @@ import (
 )
 
 // IsValidAddress check address
-func (c *CosmosRestClient) IsValidAddress(address string) bool {
-	return IsValidAddress(c.Prefix, address)
+func (b *Bridge) IsValidAddress(address string) bool {
+	return IsValidAddress(b.Prefix, address)
 }
 
 // PublicKeyToAddress public key hex string (may be uncompressed) to address
-func (c *CosmosRestClient) PublicKeyToAddress(pubKeyHex string) (string, error) {
-	return PublicKeyToAddress(c.Prefix, pubKeyHex)
+func (b *Bridge) PublicKeyToAddress(pubKeyHex string) (string, error) {
+	return PublicKeyToAddress(b.Prefix, pubKeyHex)
 }
 
-func (c *CosmosRestClient) VerifyPubKey(address, pubkey string) error {
-	return VerifyPubKey(address, c.Prefix, pubkey)
+func (b *Bridge) VerifyPubKey(address, pubkey string) error {
+	return VerifyPubKey(address, b.Prefix, pubkey)
 }
 
 func IsValidAddress(prefix, address string) bool {

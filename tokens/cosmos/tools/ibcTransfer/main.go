@@ -10,7 +10,7 @@ func main() {}
 
 // 	"github.com/anyswap/CrossChain-Router/v3/common"
 // 	"github.com/anyswap/CrossChain-Router/v3/tokens"
-// 	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmosSDK"
+// 	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmos"
 // 	"github.com/anyswap/CrossChain-Router/v3/tools/crypto"
 // 	cosmosClient "github.com/cosmos/cosmos-sdk/client"
 // 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
@@ -35,7 +35,7 @@ func main() {}
 // )
 
 // func main() {
-// 	client := cosmosSDK.NewCosmosRestClient(url)
+// 	client := cosmos.NewCosmosRestClient(url)
 // 	if rawTx, err := BuildTx(client); err != nil {
 // 		log.Fatalf("BuildTx err:%+v", err)
 // 	} else {
@@ -55,7 +55,7 @@ func main() {}
 // 	return ibcTypes.NewMsgTransfer(SourcePort, SourceChannel, coin, Sender, Receiver, timeoutHeight, 0)
 // }
 
-// func initExtra(client *cosmosSDK.CosmosRestClient) (*tokens.AllExtras, error) {
+// func initExtra(client *cosmos.CosmosRestClient) (*tokens.AllExtras, error) {
 // 	extra := &tokens.AllExtras{}
 
 // 	if account, err := client.GetBaseAccount(Sender); err != nil {
@@ -88,7 +88,7 @@ func main() {}
 // 	}
 // }
 
-// func BuildTx(client *cosmosSDK.CosmosRestClient) (*cosmosSDK.BuildRawTx, error) {
+// func BuildTx(client *cosmos.CosmosRestClient) (*cosmos.BuildRawTx, error) {
 // 	if extra, err := initExtra(client); err != nil {
 // 		return nil, err
 // 	} else {
@@ -98,24 +98,24 @@ func main() {}
 // 			log.Fatalf("SetMsgs error:%+v", err)
 // 		}
 // 		txBuilder.SetMemo(Memo)
-// 		if fee, err := cosmosSDK.ParseCoinsFee(*extra.Fee); err != nil {
+// 		if fee, err := cosmos.ParseCoinsFee(*extra.Fee); err != nil {
 // 			log.Fatalf("ParseCoinsFee error:%+v", err)
 // 		} else {
 // 			txBuilder.SetFeeAmount(fee)
 // 		}
 // 		txBuilder.SetGasLimit(DefaultGasLimit)
-// 		pubKey, err := cosmosSDK.PubKeyFromStr(publicKey)
+// 		pubKey, err := cosmos.PubKeyFromStr(publicKey)
 // 		if err != nil {
 // 			log.Fatalf("PubKeyFromStr error:%+v", err)
 // 		}
-// 		sig := cosmosSDK.BuildSignatures(pubKey, *extra.Sequence, nil)
+// 		sig := cosmos.BuildSignatures(pubKey, *extra.Sequence, nil)
 // 		if err := txBuilder.SetSignatures(sig); err != nil {
 // 			log.Fatalf("SetSignatures error:%+v", err)
 // 		}
 // 		if err := txBuilder.GetTx().ValidateBasic(); err != nil {
 // 			log.Fatalf("ValidateBasic error:%+v", err)
 // 		}
-// 		return &cosmosSDK.BuildRawTx{
+// 		return &cosmos.BuildRawTx{
 // 			TxBuilder: &txBuilder,
 // 			Extra:     extra,
 // 		}, nil
@@ -123,7 +123,7 @@ func main() {}
 // }
 
 // // SignTransactionWithPrivateKey sign tx with ECDSA private key
-// func SignTransactionWithPrivateKey(client *cosmosSDK.CosmosRestClient, txBuilder cosmosClient.TxBuilder, privKey string, extras *tokens.AllExtras) (signedTx interface{}, txHash string, err error) {
+// func SignTransactionWithPrivateKey(client *cosmos.CosmosRestClient, txBuilder cosmosClient.TxBuilder, privKey string, extras *tokens.AllExtras) (signedTx interface{}, txHash string, err error) {
 // 	if ecPrikey, err := crypto.HexToECDSA(privKey); err != nil {
 // 		return nil, "", err
 // 	} else {
@@ -150,7 +150,7 @@ func main() {}
 // 					log.Fatal("verify signature failed", "signBytes", common.ToHex(signBytes), "signature", signature)
 // 					return nil, "", errors.New("wrong signature")
 // 				}
-// 				sig := cosmosSDK.BuildSignatures(pubKey, *extras.Sequence, signature)
+// 				sig := cosmos.BuildSignatures(pubKey, *extras.Sequence, signature)
 // 				if err := txBuilder.SetSignatures(sig); err != nil {
 // 					return nil, "", err
 // 				}

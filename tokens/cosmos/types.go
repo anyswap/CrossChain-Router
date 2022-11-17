@@ -1,17 +1,10 @@
-package cosmosSDK
+package cosmos
 
 import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	cosmosClient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/types"
 )
-
-type CosmosRestClient struct {
-	BaseUrls []string
-	TxConfig cosmosClient.TxConfig
-	Prefix   string
-	Denom    string
-}
 
 type BuildRawTx struct {
 	TxBuilder *cosmosClient.TxBuilder `protobuf:"bytes,2,opt,name=tx_builder,proto3" json:"tx_builder,omitempty"`

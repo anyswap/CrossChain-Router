@@ -1,4 +1,4 @@
-package cosmosSDK
+package cosmos
 
 import (
 	"github.com/cosmos/cosmos-sdk/types"

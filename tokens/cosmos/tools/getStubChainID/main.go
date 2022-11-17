@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
-	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmosSDK"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmos"
 )
 
 var (
@@ -24,7 +24,7 @@ func initFlags() {
 func main() {
 	initFlags()
 
-	if !cosmosSDK.IsSupportedCosmosSubChain(paramChainName) {
+	if !cosmos.IsSupportedCosmosSubChain(paramChainName) {
 		log.Fatalf("unknown chain name %v", paramChainName)
 	}
 
@@ -36,6 +36,6 @@ func main() {
 		log.Fatal("miss network argument")
 	}
 
-	chainID := cosmosSDK.GetStubChainID(paramChainName, network)
+	chainID := cosmos.GetStubChainID(paramChainName, network)
 	fmt.Printf("%v %v: %v\n", paramChainName, network, chainID)
 }

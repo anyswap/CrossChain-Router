@@ -1,4 +1,4 @@
-package cosmosRouter
+package cosmos
 
 import (
 	"errors"
@@ -12,7 +12,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
-	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmosSDK"
 )
 
 var (
@@ -68,10 +67,10 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		} else {
 			memo := fmt.Sprintf("Multichain_swapIn_%s_%d", args.SwapID, args.LogIndex)
 			mpcPubkey := router.GetMPCPublicKey(args.From)
-			if txBuilder, err := b.CosmosRestClient.BuildTx(args.From, receiver, multichainToken, memo, mpcPubkey, amount, extra); err != nil {
+			if txBuilder, err := b.BuildTx(args.From, receiver, multichainToken, memo, mpcPubkey, amount, extra); err != nil {
 				return nil, err
 			} else {
-				return &cosmosSDK.BuildRawTx{
+				return &BuildRawTx{
 					TxBuilder: &txBuilder,
 					Extra:     extra,
 				}, nil
@@ -81,7 +80,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 }
 
 func (b *Bridge) initExtra(args *tokens.BuildTxArgs) (extra *tokens.AllExtras, err error) {
-	denom := b.CosmosRestClient.Denom
+	denom := b.Denom
 	extra = args.Extra
 	if extra == nil {
 		extra = &tokens.AllExtras{}
@@ -111,7 +110,7 @@ func (b *Bridge) initExtra(args *tokens.BuildTxArgs) (extra *tokens.AllExtras, e
 
 // GetPoolNonce impl NonceSetter interface
 func (b *Bridge) GetPoolNonce(address, _height string) (uint64, error) {
-	if acc, err := b.CosmosRestClient.GetBaseAccount(address); err != nil {
+	if acc, err := b.GetBaseAccount(address); err != nil {
 		return 0, err
 	} else {
 		if acc != nil {
@@ -155,7 +154,7 @@ func (b *Bridge) GetSeq(args *tokens.BuildTxArgs) (nonceptr *uint64, err error) 
 
 // GetSeq returns account tx sequence
 func (b *Bridge) GetAccountNum(args *tokens.BuildTxArgs) (uint64, error) {
-	if acc, err := b.CosmosRestClient.GetBaseAccount(args.From); err != nil {
+	if acc, err := b.GetBaseAccount(args.From); err != nil {
 		return 0, err
 	} else {
 		if acc != nil {

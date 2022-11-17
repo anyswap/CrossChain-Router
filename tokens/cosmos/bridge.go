@@ -1,14 +1,47 @@
-package cosmosRouter
+package cosmos
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/base"
+	cosmosClient "github.com/cosmos/cosmos-sdk/client"
 )
+
+var (
+	// ensure Bridge impl tokens.CrossChainBridge
+	_ tokens.IBridge = &Bridge{}
+	// ensure Bridge impl tokens.NonceSetter
+	_ tokens.NonceSetter = &Bridge{}
+)
+
+// Bridge base bridge
+type Bridge struct {
+	*base.NonceSetterBase
+
+	TxConfig cosmosClient.TxConfig
+
+	Prefix string
+	Denom  string
+}
+
+// NewCrossChainBridge new bridge
+func NewCrossChainBridge() *Bridge {
+	return &Bridge{
+		NonceSetterBase: base.NewNonceSetterBase(),
+		TxConfig:        BuildNewTxConfig(),
+	}
+}
+
+func (b *Bridge) SetPrefixAndDenom(prefix, denom string) {
+	b.Prefix = prefix
+	b.Denom = denom
+}
 
 // InitAfterConfig init variables (ie. extra members) after loading config
 func (b *Bridge) InitAfterConfig() {
@@ -26,9 +59,9 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 
 	extra := strings.Split(b.ChainConfig.Extra, ":")
 	if len(extra) != 2 {
-		return ErrChainConfigExtra
+		return fmt.Errorf("chainConfig extra error")
 	} else {
-		b.CosmosRestClient.SetPrefixAndDenom(extra[0], extra[1])
+		b.SetPrefixAndDenom(extra[0], extra[1])
 	}
 
 	routerMPC := b.GetRouterContract("")
@@ -67,12 +100,6 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 	return nil
 }
 
-// SetGatewayConfig set gateway config
-func (b *Bridge) SetGatewayConfig(gatewayCfg *tokens.GatewayConfig) {
-	urls := append(gatewayCfg.APIAddress, gatewayCfg.APIAddressExt...)
-	b.CosmosRestClient.SetBaseUrls(urls)
-}
-
 // SetTokenConfig set and verify token config
 func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) {
 	b.CrossChainBridgeBase.SetTokenConfig(tokenAddr, tokenCfg)
@@ -104,4 +131,33 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 // GetTokenDecimals query token decimals
 func (b *Bridge) GetTokenDecimals(tokenAddr string) (uint8, error) {
 	return 6, nil
+}
+
+// GetTransaction impl
+func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
+	return b.GetTransactionByHash(txHash)
+}
+
+// GetTransactionStatus impl
+func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, err error) {
+	status = new(tokens.TxStatus)
+	if res, err := b.GetTransactionByHash(txHash); err != nil {
+		log.Trace(b.ChainConfig.BlockChain+" GetTransactionStatus fail", "tx", txHash, "err", err)
+		return status, err
+	} else {
+		if res.TxResponse.Code != 0 {
+			return status, tokens.ErrTxWithWrongStatus
+		}
+		if txHeight, err := strconv.ParseUint(res.TxResponse.Height, 10, 64); err != nil {
+			return status, err
+		} else {
+			status.BlockHeight = txHeight
+		}
+		if blockNumber, err := b.GetLatestBlockNumber(); err == nil {
+			if blockNumber > status.BlockHeight {
+				status.Confirmations = blockNumber - status.BlockHeight
+			}
+		}
+	}
+	return status, nil
 }

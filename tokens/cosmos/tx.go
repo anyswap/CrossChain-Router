@@ -1,10 +1,9 @@
-package cosmosSDK
+package cosmos
 
 import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -22,51 +21,11 @@ import (
 )
 
 const (
-	BroadTx    = "/cosmos/tx/v1beta1/txs"
 	SimulateTx = "/cosmos/tx/v1beta1/simulate"
 )
 
-func (c *CosmosRestClient) SendTransaction(signedTx interface{}) (string, error) {
-	if txBytes, ok := signedTx.([]byte); !ok {
-		return "", errors.New("wrong signed transaction type")
-	} else {
-		req := &BroadcastTxRequest{
-			TxBytes: string(txBytes),
-			Mode:    "BROADCAST_MODE_SYNC",
-		}
-		if txRes, err := c.BroadcastTx(req); err != nil {
-			return "", err
-		} else {
-			var txResponse *BroadcastTxResponse
-			if err := json.Unmarshal([]byte(txRes), &txResponse); err != nil {
-				return "", err
-			}
-			if txResponse.TxResponse.Code != 0 && txResponse.TxResponse.Code != 19 {
-				return "", fmt.Errorf(
-					"SendTransaction error, code: %v, log:%v",
-					txResponse.TxResponse.Code, txResponse.TxResponse.RawLog)
-			}
-			return txResponse.TxResponse.TxHash, nil
-		}
-	}
-}
-
-func (c *CosmosRestClient) BroadcastTx(req *BroadcastTxRequest) (string, error) {
-	if data, err := json.Marshal(req); err != nil {
-		return "", err
-	} else {
-		for _, url := range c.BaseUrls {
-			restApi := url + BroadTx
-			if res, err := client.RPCJsonPostWithTimeout(restApi, string(data), 120); err == nil {
-				return res, nil
-			}
-		}
-		return "", tokens.ErrBroadcastTx
-	}
-}
-
-func (c *CosmosRestClient) NewSignModeHandler() signing.SignModeHandler {
-	return c.TxConfig.SignModeHandler()
+func (b *Bridge) NewSignModeHandler() signing.SignModeHandler {
+	return b.TxConfig.SignModeHandler()
 }
 
 func BuildSignerData(chainID string, accountNumber, sequence uint64) signing.SignerData {
@@ -106,12 +65,12 @@ func BuildSignatures(publicKey cryptoTypes.PubKey, sequence uint64, signature []
 	}
 }
 
-func (c *CosmosRestClient) BuildTx(
+func (b *Bridge) BuildTx(
 	from, to, denom, memo, publicKey string,
 	amount *big.Int,
 	extra *tokens.AllExtras,
 ) (cosmosClient.TxBuilder, error) {
-	if balance, err := c.GetDenomBalance(from, denom); err != nil {
+	if balance, err := b.GetDenomBalance(from, denom); err != nil {
 		return nil, err
 	} else {
 		var msgs []types.Msg
@@ -145,7 +104,7 @@ func (c *CosmosRestClient) BuildTx(
 			}
 		}
 
-		txBuilder := c.TxConfig.NewTxBuilder()
+		txBuilder := b.TxConfig.NewTxBuilder()
 		if err := txBuilder.SetMsgs(msgs...); err != nil {
 			return nil, err
 		}
@@ -172,11 +131,11 @@ func (c *CosmosRestClient) BuildTx(
 	}
 }
 
-func (c *CosmosRestClient) SimulateTx(simulateReq *SimulateRequest) (string, error) {
+func (b *Bridge) SimulateTx(simulateReq *SimulateRequest) (string, error) {
 	if data, err := json.Marshal(simulateReq); err != nil {
 		return "", err
 	} else {
-		for _, url := range c.BaseUrls {
+		for _, url := range b.AllGatewayURLs {
 			restApi := url + SimulateTx
 			if res, err := client.RPCRawPostWithTimeout(restApi, string(data), 120); err == nil && res != "" && res != "\n" {
 				return res, nil
@@ -186,9 +145,9 @@ func (c *CosmosRestClient) SimulateTx(simulateReq *SimulateRequest) (string, err
 	}
 }
 
-func (c *CosmosRestClient) GetSignBytes(txBuilder cosmosClient.TxBuilder, accountNumber, sequence uint64) ([]byte, error) {
-	handler := c.TxConfig.SignModeHandler()
-	if chainName, err := c.GetChainID(); err != nil {
+func (b *Bridge) GetSignBytes(txBuilder cosmosClient.TxBuilder, accountNumber, sequence uint64) ([]byte, error) {
+	handler := b.TxConfig.SignModeHandler()
+	if chainName, err := b.GetChainID(); err != nil {
 		return nil, err
 	} else {
 		signerData := BuildSignerData(chainName, accountNumber, sequence)
@@ -196,8 +155,8 @@ func (c *CosmosRestClient) GetSignBytes(txBuilder cosmosClient.TxBuilder, accoun
 	}
 }
 
-func (c *CosmosRestClient) GetSignTx(tx signing.Tx) (signedTx []byte, txHash string, err error) {
-	if txBytes, err := c.TxConfig.TxEncoder()(tx); err != nil {
+func (b *Bridge) GetSignTx(tx signing.Tx) (signedTx []byte, txHash string, err error) {
+	if txBytes, err := b.TxConfig.TxEncoder()(tx); err != nil {
 		return nil, "", err
 	} else {
 		signedTx = []byte(base64.StdEncoding.EncodeToString(txBytes))

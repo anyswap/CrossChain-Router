@@ -1,4 +1,4 @@
-package cosmosRouter
+package cosmos
 
 import (
 	"fmt"
@@ -10,7 +10,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
-	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmosSDK"
 	"github.com/cosmos/cosmos-sdk/types"
 )
 
@@ -23,7 +22,7 @@ func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) (err error
 	if len(msgHashes) < 1 {
 		return tokens.ErrWrongCountOfMsgHashes
 	}
-	if multichainTx, ok := rawTx.(*cosmosSDK.BuildRawTx); !ok {
+	if multichainTx, ok := rawTx.(*BuildRawTx); !ok {
 		return tokens.ErrWrongRawTx
 	} else {
 		txBuilder := multichainTx.TxBuilder
@@ -34,10 +33,10 @@ func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) (err error
 			return tokens.ErrMissMPCPublicKey
 		}
 
-		if signBytes, err := b.CosmosRestClient.GetSignBytes(*txBuilder, *extra.AccountNum, *extra.Sequence); err != nil {
+		if signBytes, err := b.GetSignBytes(*txBuilder, *extra.AccountNum, *extra.Sequence); err != nil {
 			return err
 		} else {
-			msgHash := fmt.Sprintf("%X", cosmosSDK.Sha256Sum(signBytes))
+			msgHash := fmt.Sprintf("%X", Sha256Sum(signBytes))
 			if !strings.EqualFold(msgHash, msgHashes[0]) {
 				log.Warn("message hash mismatch",
 					"want", msgHashes[0], "have", string(signBytes))
@@ -143,7 +142,7 @@ func (b *Bridge) checkSwapoutInfo(swapInfo *tokens.SwapTxInfo) error {
 	return nil
 }
 
-func (b *Bridge) checkTxStatus(txres *cosmosSDK.GetTxResponse, allowUnstable bool) (txHeight uint64, err error) {
+func (b *Bridge) checkTxStatus(txres *GetTxResponse, allowUnstable bool) (txHeight uint64, err error) {
 	if txHeight, err := strconv.ParseUint(txres.TxResponse.Height, 10, 64); err != nil {
 		return 0, nil
 	} else {
@@ -218,7 +217,7 @@ func (b *Bridge) ParseCoinAmount(value *big.Int, swapInfo *tokens.SwapTxInfo, se
 		amount.Key == "amount" {
 		// receiver mismatch
 		if common.IsEqualIgnoreCase(recipient.Value, mpc) {
-			if recvCoins, err := cosmosSDK.ParseCoinsNormalized(amount.Value); err == nil {
+			if recvCoins, err := ParseCoinsNormalized(amount.Value); err == nil {
 				for _, coin := range recvCoins {
 					if *unit == "" || *unit == coin.Denom {
 						if swapInfo.From == "" {
