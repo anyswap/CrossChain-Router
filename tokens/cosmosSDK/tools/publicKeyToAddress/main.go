@@ -21,13 +21,11 @@ func initFlags() {
 }
 
 func main() {
-	log.SetLogger(6, false, true)
-
 	initFlags()
 
 	if addr, err := cosmosSDK.PublicKeyToAddress(paramPrefix, paramPublicKey); err != nil {
-		log.Fatal("err:%v \n", err)
+		log.Fatalf("err: %v\n", err)
 	} else {
-		fmt.Printf("addr:%v \n", addr)
+		fmt.Printf("addr: %v\n", addr)
 	}
 }

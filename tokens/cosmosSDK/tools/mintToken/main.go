@@ -13,13 +13,11 @@ import (
 	cosmosClient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/cosmos-sdk/types"
-	bankTypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	tokenfactoryTypes "github.com/sei-protocol/sei-chain/x/tokenfactory/types"
 )
 
 var (
 	Sender                 = ""
-	Receiver               = ""
 	Amount                 = types.NewCoin("", types.NewIntFromUint64(100000))
 	Memo                   = "test mintToken"
 	Fee                    = "1usei"
@@ -43,14 +41,6 @@ func main() {
 				fmt.Printf("txhash: %+s txHashFromSend: %+s", txHash, txHashFromSend)
 			}
 		}
-	}
-}
-
-func BuildSendMsg() *bankTypes.MsgSend {
-	return &bankTypes.MsgSend{
-		FromAddress: Sender,
-		ToAddress:   Receiver,
-		Amount:      types.NewCoins(Amount),
 	}
 }
 
@@ -96,10 +86,6 @@ func BuildTx(client *cosmosSDK.CosmosRestClient) (*cosmosSDK.BuildRawTx, error) 
 	} else {
 		txBuilder := client.TxConfig.NewTxBuilder()
 		mintMsg := BuildMintMsg()
-		// sendMsg := BuildSendMsg()
-		// if err := txBuilder.SetMsgs(mintMsg, sendMsg); err != nil {
-		// 	log.Fatalf("SetMsgs error:%+v", err)
-		// }
 		if err := txBuilder.SetMsgs(mintMsg); err != nil {
 			log.Fatalf("SetMsgs error:%+v", err)
 		}
