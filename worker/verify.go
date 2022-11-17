@@ -79,6 +79,17 @@ func startVerifyProducer() {
 				continue
 			}
 
+			// minus rpc call to get tx
+			if swap, err := mongodb.FindRouterSwap(swap.FromChainID, swap.TxID, swap.LogIndex); err == nil {
+				bridge := router.GetBridgeByChainID(swap.FromChainID)
+				if bridge != nil && swap.TxHeight > 0 &&
+					swap.TxHeight+bridge.GetChainConfig().Confirmations >
+						router.GetCachedLatestBlockNumber(swap.FromChainID) {
+					logWorkerTrace("verify", "ignore swap not stable", "key", swap.Key)
+					continue
+				}
+			}
+
 			err := dispatchVerifyTask(swap) // produce
 			ctx := []interface{}{"fromChainID", swap.FromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex}
 			if err == nil {
@@ -140,15 +151,17 @@ func startVerifyConsumer(chainID string) {
 			continue
 		}
 
-		ctx := []interface{}{"fromChainID", swap.FromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex}
-		err := processRouterSwapVerify(swap)
-		if err == nil {
-			logWorker("doVerify", "verify router swap success", ctx...)
-		} else {
-			logWorkerError("doVerify", "verify router swap failed", err, ctx...)
-		}
+		go func() {
+			ctx := []interface{}{"fromChainID", swap.FromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex}
+			err := processRouterSwapVerify(swap)
+			if err == nil {
+				logWorker("doVerify", "verify router swap success", ctx...)
+			} else {
+				logWorkerError("doVerify", "verify router swap failed", err, ctx...)
+			}
 
-		verifyTasksInQueue.Remove(swap.Key)
+			verifyTasksInQueue.Remove(swap.Key)
+		}()
 	}
 }
 
@@ -210,7 +223,11 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 		LogIndex:      logIndex,
 		AllowUnstable: false,
 	}
+
+	start := time.Now()
 	swapInfo, err := bridge.VerifyTransaction(txid, verifyArgs)
+	logWorker("verify", "verify tx finished job", "fromChainID", fromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex, "timespent", time.Since(start).String())
+
 	switch {
 	case err == nil:
 		if router.IsBigValueSwap(swapInfo) {
@@ -225,6 +242,9 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 		errors.Is(err, tokens.ErrRPCQueryError),
 		errors.Is(err, tokens.ErrTxNotFound),
 		errors.Is(err, tokens.ErrNotFound):
+		if swapInfo != nil && swapInfo.Height > 0 {
+			_ = mongodb.UpdateRouterSwapHeight(fromChainID, txid, logIndex, swapInfo.Height)
+		}
 		nowMilli := common.NowMilli()
 		if swap.InitTime+1000*maxTxNotFoundTime < nowMilli {
 			duration := time.Duration((nowMilli - swap.InitTime) / 1000 * int64(time.Second))

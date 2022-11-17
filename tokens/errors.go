@@ -8,8 +8,10 @@ import (
 var (
 	ErrNotImplemented        = errors.New("not implemented")
 	ErrSwapTypeNotSupported  = errors.New("swap type not supported")
+	ErrUnknownSwapSubType    = errors.New("unknown swap sub type")
 	ErrNoBridgeForChainID    = errors.New("no bridge for chain id")
 	ErrSwapTradeNotSupport   = errors.New("swap trade not support")
+	ErrNonceNotSupport       = errors.New("nonce not support")
 	ErrNotFound              = errors.New("not found")
 	ErrTxNotFound            = errors.New("tx not found")
 	ErrTxNotStable           = errors.New("tx not stable")
@@ -31,6 +33,7 @@ var (
 	ErrRPCQueryError         = errors.New("rpc query error")
 	ErrMissDynamicFeeConfig  = errors.New("miss dynamic fee config")
 	ErrFromChainIDMismatch   = errors.New("from chainID mismatch")
+	ErrSameFromAndToChainID  = errors.New("from and to chainID are same")
 	ErrMissMPCPublicKey      = errors.New("miss mpc public key config")
 	ErrMissRouterInfo        = errors.New("miss router info")
 	ErrSenderMismatch        = errors.New("sender mismatch")
@@ -49,6 +52,9 @@ var (
 	ErrBroadcastTx           = errors.New("broadcast tx error")
 	ErrSimulateTx            = errors.New("simulate tx error")
 	ErrTxWithWrongMemo       = errors.New("tx with wrong memo")
+	ErrFallbackNotSupport    = errors.New("app does not support fallback")
+	ErrSwapoutForbidden      = errors.New("swapout forbidden")
+
 	// errors should register in router swap
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")
 	ErrBalanceNotEnough  = errors.New("balance not enough")
@@ -56,6 +62,27 @@ var (
 	ErrMissTokenConfig   = errors.New("miss token config")
 	ErrNoUnderlyingToken = errors.New("no underlying token")
 	ErrVerifyTxUnsafe    = errors.New("[tx maybe unsafe]")
+
+	ErrQueryTokenBalance     = errors.New("query token balance error")
+	ErrTokenBalanceNotEnough = errors.New("token balance not enough")
+	ErrGetLatestBlockNumber  = errors.New("get latest block number error")
+	ErrGetAccountNonce       = errors.New("get account nonce error")
+	ErrGetUnderlying         = errors.New("get underlying address error")
+	ErrGetMPC                = errors.New("get mpc address error")
+	ErrTokenDecimals         = errors.New("get token decimals error")
+	ErrGetLatestBlockHash    = errors.New("get latest block hash error")
+	ErrTxResultType          = errors.New("tx type is not TransactionResult")
+
+	ErrTxWithWrongAssetLength = errors.New("tx with wrong asset length")
+	ErrOutputLength           = errors.New("output lenght is zero")
+	ErrMpcAddrMissMatch       = errors.New("receiver addr not match mpc addr")
+	ErrMetadataKeyMissMatch   = errors.New("metadata key not match 123")
+	ErrAdaSwapOutAmount       = errors.New("swap ada amount too small")
+	ErrTokenBalancesNotEnough = errors.New("token balance not enough")
+	ErrAdaBalancesNotEnough   = errors.New("ada balance not enough")
+	ErrOutputIndexSort        = errors.New("output not order by index asc")
+	ErrCmdArgVerify           = errors.New("cmd args verify fails")
+	ErrAggregateTx            = errors.New("aggregate tx fails")
 )
 
 // ShouldRegisterRouterSwapForError return true if this error should record in database
@@ -65,7 +92,8 @@ func ShouldRegisterRouterSwapForError(err error) bool {
 		errors.Is(err, ErrTxWithWrongValue),
 		errors.Is(err, ErrTxWithWrongPath),
 		errors.Is(err, ErrMissTokenConfig),
-		errors.Is(err, ErrNoUnderlyingToken):
+		errors.Is(err, ErrNoUnderlyingToken),
+		errors.Is(err, ErrVerifyTxUnsafe):
 		return true
 	}
 	return false

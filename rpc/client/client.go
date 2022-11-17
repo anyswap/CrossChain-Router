@@ -14,19 +14,14 @@ import (
 )
 
 var (
-	httpClient *http.Client
+	httpClient = createHTTPClient()
 	httpCtx    = context.Background()
 )
 
-// InitHTTPClient init http client
-func InitHTTPClient() {
-	httpClient = createHTTPClient()
-}
-
 const (
 	maxIdleConns        int = 100
-	maxIdleConnsPerHost int = 10
-	maxConnsPerHost     int = 50
+	maxIdleConnsPerHost int = 100
+	maxConnsPerHost     int = 100
 	idleConnTimeout     int = 90
 )
 
@@ -38,6 +33,7 @@ func createHTTPClient() *http.Client {
 			DialContext: (&net.Dialer{
 				Timeout:   30 * time.Second,
 				KeepAlive: 30 * time.Second,
+				DualStack: true,
 			}).DialContext,
 			MaxConnsPerHost:     maxConnsPerHost,
 			MaxIdleConns:        maxIdleConns,
@@ -155,12 +151,6 @@ func addRawPostBody(req *http.Request, body string) (err error) {
 
 func doRequest(req *http.Request, timeoutSeconds int) (*http.Response, error) {
 	timeout := time.Duration(timeoutSeconds) * time.Second
-	if httpClient == nil {
-		client := http.Client{
-			Timeout: timeout,
-		}
-		return client.Do(req)
-	}
 	httpClient.Timeout = timeout
 	return httpClient.Do(req)
 }

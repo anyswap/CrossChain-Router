@@ -17,6 +17,10 @@ var (
 		Flags: append(admin.CommonFlags, utils.CommonLogFlags...),
 		Description: `
 admin router swap
+
+usage:
+
+swaprouter admin --swapserver XXX --keystore XXX --password XXX <subcommand> [command options] [arguments...]
 `,
 		Subcommands: []*cli.Command{
 			{
@@ -65,6 +69,15 @@ reswap failed swap
 				Flags:  append(swapKeyFlags, utils.GasPriceFlag),
 				Description: `
 replace pending swap with same nonce and new gas price
+`,
+			},
+			{
+				Name:   "forbidswap",
+				Usage:  "forbid specified swap",
+				Action: forbidswap,
+				Flags:  append(swapKeyFlags, utils.MemoFlag),
+				Description: `
+forbid specified swap
 `,
 			},
 		},
@@ -188,6 +201,29 @@ func replaceswap(ctx *cli.Context) error {
 	log.Printf("%v: %v %v %v %v", method, chainID, txid, logIndex, gasPrice)
 
 	params := []string{chainID, txid, logIndex, gasPrice}
+	result, err := admin.SwapAdmin(method, params)
+
+	log.Printf("result is '%v'", result)
+	return err
+}
+
+func forbidswap(ctx *cli.Context) error {
+	utils.SetLogger(ctx)
+	method := "forbidswap"
+	err := admin.Prepare(ctx)
+	if err != nil {
+		return err
+	}
+	chainID, txid, logIndex, err := getKeys(ctx)
+	if err != nil {
+		return err
+	}
+
+	memo := ctx.String(utils.MemoFlag.Name)
+
+	log.Printf("%v: %v %v %v (memo: %v)", method, chainID, txid, logIndex, memo)
+
+	params := []string{chainID, txid, logIndex, memo}
 	result, err := admin.SwapAdmin(method, params)
 
 	log.Printf("result is '%v'", result)

@@ -46,7 +46,7 @@ type IBridge interface {
 	PublicKeyToAddress(pubKeyHex string) (string, error)
 
 	// GetBalance get balance is used for checking budgets
-	// to prevent DOS attacking (used in anycall)
+	// to prevent DOS attacking (used in any`call)
 	GetBalance(account string) (*big.Int, error)
 }
 
@@ -57,6 +57,14 @@ type ISwapTrade interface {
 
 // NonceSetter interface (for eth-like)
 type NonceSetter interface {
+	InitSwapNonce(br NonceSetter, address string, nonce uint64)
+
+	// sequential
 	GetPoolNonce(address, height string) (uint64, error)
+	SetNonce(address string, value uint64)
+	AdjustNonce(address string, value uint64) (nonce uint64)
+
+	// parallel
+	AllocateNonce(args *BuildTxArgs) (nonce uint64, err error)
 	RecycleSwapNonce(sender string, nonce uint64)
 }

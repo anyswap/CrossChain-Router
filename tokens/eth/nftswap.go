@@ -134,6 +134,10 @@ func (b *Bridge) verifyNFTSwapTx(txHash string, logIndex int, allowUnstable bool
 }
 
 func (b *Bridge) verifyNFTSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
+	if rlog == nil || len(rlog.Topics) == 0 {
+		return tokens.ErrSwapoutLogNotFound
+	}
+
 	swapInfo.To = rlog.Address.LowerHex() // To
 
 	logTopic := rlog.Topics[0].Bytes()
@@ -164,6 +168,10 @@ func (b *Bridge) verifyNFTSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPC
 
 	if rlog.Removed != nil && *rlog.Removed {
 		return tokens.ErrTxWithRemovedLog
+	}
+
+	if params.IsSwapoutForbidden(b.ChainConfig.ChainID, swapInfo.NFTSwapInfo.TokenID) {
+		return tokens.ErrSwapoutForbidden
 	}
 
 	routerContract := b.GetRouterContract(swapInfo.NFTSwapInfo.Token)
@@ -323,6 +331,9 @@ func (b *Bridge) checkNFTSwapInfo(swapInfo *tokens.SwapTxInfo) error {
 	if swapInfo.FromChainID.String() != b.ChainConfig.ChainID {
 		log.Error("nft swap tx with mismatched fromChainID in receipt", "txid", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "fromChainID", swapInfo.FromChainID, "toChainID", swapInfo.ToChainID, "chainID", b.ChainConfig.ChainID)
 		return tokens.ErrFromChainIDMismatch
+	}
+	if swapInfo.FromChainID.Cmp(swapInfo.ToChainID) == 0 {
+		return tokens.ErrSameFromAndToChainID
 	}
 	nftSwapInfo := swapInfo.NFTSwapInfo
 	dstBridge := router.GetBridgeByChainID(swapInfo.ToChainID.String())

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"math/big"
 	"strings"
+	"sync"
 
 	"github.com/BurntSushi/toml"
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -20,6 +21,9 @@ var CustomizeConfigFunc func(*RouterConfig)
 
 // IsTestMode used for testing
 var IsTestMode bool
+
+// IsReload is reloading config
+var IsReload bool
 
 var (
 	routerConfig = &RouterConfig{Extra: &ExtraConfig{}, MPC: &MPCConfig{}}
@@ -50,7 +54,9 @@ var (
 	useFastMPCChains                     map[string]struct{}
 	dontCheckReceivedTokenIDs            map[string]struct{}
 	dontCheckBalanceTokenIDs             map[string]struct{}
+	dontCheckTotalSupplyTokenIDs         map[string]struct{}
 	checkTokenBalanceEnabledChains       map[string]struct{}
+	ignoreAnycallFallbackAppIDs          map[string]struct{}
 
 	isDebugMode           *bool
 	isNFTSwapWithData     *bool
@@ -81,7 +87,6 @@ type RouterServerConfig struct {
 	PlusGasPricePercentage     uint64            `toml:",omitempty" json:",omitempty"`
 	MaxPlusGasPricePercentage  uint64            `toml:",omitempty" json:",omitempty"`
 	MaxGasPriceFluctPercent    uint64            `toml:",omitempty" json:",omitempty"`
-	SwapDeadlineOffset         int64             `toml:",omitempty" json:",omitempty"` // seconds
 	FixedGasPrice              map[string]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	MaxGasPrice                map[string]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	NoncePassedConfirmInterval map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID
@@ -100,7 +105,8 @@ type RouterServerConfig struct {
 // RouterOracleConfig only for oracle
 type RouterOracleConfig struct {
 	ServerAPIAddress        string
-	NoCheckServerConnection bool
+	NoCheckServerConnection bool `toml:",omitempty" json:",omitempty"`
+	CheckGasTokenBalance    bool `toml:",omitempty" json:",omitempty"`
 }
 
 // RouterConfig config
@@ -111,12 +117,17 @@ type RouterConfig struct {
 	Identifier  string
 	SwapType    string
 	SwapSubType string
-	Onchain     *OnchainConfig
-	Gateways    map[string][]string // key is chain ID
-	GatewaysExt map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
-	MPC         *MPCConfig
-	FastMPC     *MPCConfig   `toml:",omitempty" json:",omitempty"`
-	Extra       *ExtraConfig `toml:",omitempty" json:",omitempty"`
+
+	Onchain *OnchainConfig
+
+	Gateways         map[string][]string // key is chain ID
+	GatewaysExt      map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+	EVMGatewaysExt   map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+	FinalizeGateways map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+
+	MPC     *MPCConfig
+	FastMPC *MPCConfig   `toml:",omitempty" json:",omitempty"`
+	Extra   *ExtraConfig `toml:",omitempty" json:",omitempty"`
 
 	ChainIDBlackList        []string            `toml:",omitempty" json:",omitempty"`
 	TokenIDBlackList        []string            `toml:",omitempty" json:",omitempty"`
@@ -127,7 +138,6 @@ type RouterConfig struct {
 // ExtraConfig extra config
 type ExtraConfig struct {
 	IsDebugMode           bool `toml:",omitempty" json:",omitempty"`
-	EnableSwapTrade       bool `toml:",omitempty" json:",omitempty"`
 	EnableSwapWithPermit  bool `toml:",omitempty" json:",omitempty"`
 	ForceAnySwapInAuto    bool `toml:",omitempty" json:",omitempty"`
 	IsNFTSwapWithData     bool `toml:",omitempty" json:",omitempty"`
@@ -153,19 +163,28 @@ type ExtraConfig struct {
 	UseFastMPCChains                     []string `toml:",omitempty" json:",omitempty"`
 	DontCheckReceivedTokenIDs            []string `toml:",omitempty" json:",omitempty"`
 	DontCheckBalanceTokenIDs             []string `toml:",omitempty" json:",omitempty"`
+	DontCheckTotalSupplyTokenIDs         []string `toml:",omitempty" json:",omitempty"`
 	CheckTokenBalanceEnabledChains       []string `toml:",omitempty" json:",omitempty"`
+	IgnoreAnycallFallbackAppIDs          []string `toml:",omitempty" json:",omitempty"`
 
 	RPCClientTimeout map[string]int `toml:",omitempty" json:",omitempty"` // key is chainID
 	// chainID,customKey => customValue
 	Customs map[string]map[string]string `toml:",omitempty" json:",omitempty"`
 
-	LocalChainConfig map[string]LocalChainConfig `toml:",omitempty" json:",omitempty"` // key is chain ID
+	LocalChainConfig map[string]*LocalChainConfig `toml:",omitempty" json:",omitempty"` // key is chain ID
 }
 
 // LocalChainConfig local chain config
 type LocalChainConfig struct {
-	EstimatedGasMustBePositive bool   `toml:",omitempty" json:",omitempty"`
-	SmallestGasPriceUnit       uint64 `toml:",omitempty" json:",omitempty"`
+	ForbidParallelLoading      bool     `toml:",omitempty" json:",omitempty"`
+	EstimatedGasMustBePositive bool     `toml:",omitempty" json:",omitempty"`
+	SmallestGasPriceUnit       uint64   `toml:",omitempty" json:",omitempty"`
+	ForbidSwapoutTokenIDs      []string `toml:",omitempty" json:",omitempty"`
+	BigValueDiscount           uint64   `toml:",omitempty" json:",omitempty"`
+
+	forbidSwapoutTokenIDMap map[string]struct{}
+
+	lock *sync.Mutex
 }
 
 // OnchainConfig struct
@@ -266,11 +285,6 @@ func GetSwapType() string {
 // GetSwapSubType get router swap sub type
 func GetSwapSubType() string {
 	return GetRouterConfig().SwapSubType
-}
-
-// IsSwapTradeEnabled is swap trade enabled
-func IsSwapTradeEnabled() bool {
-	return GetExtraConfig() != nil && GetExtraConfig().EnableSwapTrade
 }
 
 // IsSwapWithPermitEnabled is swap with permit enabled
@@ -706,11 +720,15 @@ func GetMPCConfig(isFastMPC bool) *MPCConfig {
 }
 
 // GetLocalChainConfig get local chain config
-func GetLocalChainConfig(chainID string) LocalChainConfig {
+func GetLocalChainConfig(chainID string) *LocalChainConfig {
 	if GetExtraConfig() != nil {
-		return GetExtraConfig().LocalChainConfig[chainID]
+		c := GetExtraConfig().LocalChainConfig[chainID]
+		if c != nil {
+			c.lock = new(sync.Mutex)
+			return c
+		}
 	}
-	return LocalChainConfig{}
+	return &LocalChainConfig{}
 }
 
 // GetOnchainContract get onchain config contract address
@@ -987,6 +1005,23 @@ func DontCheckTokenBalance(tokenID string) bool {
 	return exist
 }
 
+func initDontCheckTotalSupplyTokenIDs() {
+	dontCheckTotalSupplyTokenIDs = make(map[string]struct{})
+	if GetExtraConfig() == nil || len(GetExtraConfig().DontCheckTotalSupplyTokenIDs) == 0 {
+		return
+	}
+	for _, tid := range GetExtraConfig().DontCheckTotalSupplyTokenIDs {
+		dontCheckTotalSupplyTokenIDs[strings.ToLower(tid)] = struct{}{}
+	}
+	log.Info("initDontCheckTotalSupplyTokenIDs success")
+}
+
+// DontCheckTokenTotalSupply do not check token total supply (a security enhance checking)
+func DontCheckTokenTotalSupply(tokenID string) bool {
+	_, exist := dontCheckTotalSupplyTokenIDs[strings.ToLower(tokenID)]
+	return exist
+}
+
 func initCheckTokenBalanceEnabledChains() {
 	checkTokenBalanceEnabledChains = make(map[string]struct{})
 	if GetExtraConfig() == nil || len(GetExtraConfig().CheckTokenBalanceEnabledChains) == 0 {
@@ -1004,6 +1039,23 @@ func initCheckTokenBalanceEnabledChains() {
 // IsCheckTokenBalanceEnabled is check token balance enabled
 func IsCheckTokenBalanceEnabled(chainID string) bool {
 	_, exist := checkTokenBalanceEnabledChains[chainID]
+	return exist
+}
+
+func initIgnoreAnycallFallbackAppIDs() {
+	ignoreAnycallFallbackAppIDs = make(map[string]struct{})
+	if GetExtraConfig() == nil || len(GetExtraConfig().IgnoreAnycallFallbackAppIDs) == 0 {
+		return
+	}
+	for _, appid := range GetExtraConfig().IgnoreAnycallFallbackAppIDs {
+		ignoreAnycallFallbackAppIDs[appid] = struct{}{}
+	}
+	log.Info("initIgnoreAnycallFallbackAppIDs success", "appids", GetExtraConfig().IgnoreAnycallFallbackAppIDs)
+}
+
+// IsCheckTokenBalanceEnabled is check token balance enabled
+func IsAnycallFallbackIgnored(appid string) bool {
+	_, exist := ignoreAnycallFallbackAppIDs[appid]
 	return exist
 }
 
@@ -1069,6 +1121,11 @@ func LoadRouterConfig(configFile string, isServer, check bool) *RouterConfig {
 
 // ReloadRouterConfig reload config
 func ReloadRouterConfig() {
+	defer func() {
+		IsReload = false
+	}()
+	IsReload = true
+
 	configFile := routerConfigFile
 	isServer := IsSwapServer
 
@@ -1122,4 +1179,25 @@ func SetDataDir(dir string, isServer bool) {
 // GetDataDir get data dir
 func GetDataDir() string {
 	return locDataDir
+}
+
+// IsSwapoutForbidden forbid swapout judge
+func IsSwapoutForbidden(chainID, tokenID string) bool {
+	c := GetLocalChainConfig(chainID)
+	if len(c.ForbidSwapoutTokenIDs) == 0 {
+		return false
+	}
+	if c.forbidSwapoutTokenIDMap == nil {
+		c.lock.Lock()
+		if c.forbidSwapoutTokenIDMap == nil {
+			m := make(map[string]struct{})
+			for _, tid := range c.ForbidSwapoutTokenIDs {
+				m[strings.ToLower(tid)] = struct{}{}
+			}
+			c.forbidSwapoutTokenIDMap = m
+		}
+		c.lock.Unlock()
+	}
+	_, exist := c.forbidSwapoutTokenIDMap[strings.ToLower(tokenID)]
+	return exist
 }

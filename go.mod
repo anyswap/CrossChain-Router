@@ -8,7 +8,6 @@ require (
 	github.com/cosmos/cosmos-sdk v0.46.1
 	github.com/deckarep/golang-set v1.8.0
 	github.com/didip/tollbooth/v6 v6.1.2
-	github.com/gogo/protobuf v1.3.3
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/rpc v1.2.0
@@ -27,14 +26,21 @@ require (
 )
 
 require (
-	github.com/cosmos/iavl v0.19.3 // indirect
-	github.com/cosmos/ibc-go/v6 v6.0.0-alpha1
-	github.com/gtank/merlin v0.1.1 // indirect
+	github.com/99designs/keyring v1.2.1 // indirect
+	github.com/armon/go-metrics v0.4.0 // indirect
+	github.com/coinbase/rosetta-sdk-go v0.7.9 // indirect
+	github.com/fbsobreira/gotron-sdk v0.0.0-20221101181131-c4daceb828f0
+	github.com/fxamacker/cbor/v2 v2.4.0
+	github.com/golang/protobuf v1.5.2
+	github.com/hdevalence/ed25519consensus v0.0.0-20220222234857-c00d1f31bab3 // indirect
+	github.com/improbable-eng/grpc-web v0.15.0 // indirect
 	github.com/jonboulle/clockwork v0.3.0 // indirect
 	github.com/lestrrat-go/strftime v1.0.6 // indirect
+	github.com/near/borsh-go v0.3.1
 	github.com/sei-protocol/sei-chain v0.0.0-20221020231357-7705edb69a11
 	github.com/tendermint/tendermint v0.34.22 // indirect
-	google.golang.org/grpc v1.50.1
+	github.com/zondax/hid v0.9.1-0.20220302062450-5552068d2266 // indirect
+	google.golang.org/protobuf v1.28.1
 )
 
 replace google.golang.org/grpc => google.golang.org/grpc v1.49.0

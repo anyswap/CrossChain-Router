@@ -174,6 +174,11 @@ func processRouterSwapStable(swap *mongodb.MgoSwapResult) (err error) {
 	if resBridge == nil {
 		return tokens.ErrNoBridgeForChainID
 	}
+	if swap.SwapHeight != 0 &&
+		swap.SwapHeight+resBridge.GetChainConfig().Confirmations >
+			router.GetCachedLatestBlockNumber(swap.ToChainID) {
+		return nil
+	}
 	txStatus := getSwapTxStatus(resBridge, swap)
 	if txStatus == nil || txStatus.BlockHeight == 0 {
 		if swap.SwapHeight != 0 {
