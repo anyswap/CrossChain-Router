@@ -67,7 +67,8 @@ func (status SwapStatus) IsResultStatus() bool {
 // IsRegisteredOk is successfully registered
 func (status SwapStatus) IsRegisteredOk() bool {
 	switch status {
-	case TxNotStable, TxNotSwapped, TxProcessed, ManualMakeFail:
+	case TxNotStable, TxNotSwapped, TxProcessed,
+		TxMaybeUnsafe, ManualMakeFail:
 		return true
 	default:
 		return false
@@ -135,6 +136,8 @@ func GetRouterSwapStatusByVerifyError(err error) SwapStatus {
 		return MissTokenConfig
 	case errors.Is(err, tokens.ErrNoUnderlyingToken):
 		return NoUnderlyingToken
+	case errors.Is(err, tokens.ErrVerifyTxUnsafe):
+		return TxMaybeUnsafe
 	default:
 		return TxVerifyFailed
 	}

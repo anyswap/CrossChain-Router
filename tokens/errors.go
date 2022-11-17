@@ -64,7 +64,8 @@ func ShouldRegisterRouterSwapForError(err error) bool {
 		errors.Is(err, ErrTxWithWrongValue),
 		errors.Is(err, ErrTxWithWrongPath),
 		errors.Is(err, ErrMissTokenConfig),
-		errors.Is(err, ErrNoUnderlyingToken):
+		errors.Is(err, ErrNoUnderlyingToken),
+		errors.Is(err, ErrVerifyTxUnsafe):
 		return true
 	}
 	return false
