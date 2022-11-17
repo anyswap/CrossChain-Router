@@ -2,6 +2,7 @@ package cosmosSDK
 
 import (
 	"math/big"
+	"strings"
 	"sync"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -12,9 +13,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	cryptoTypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	authTx "github.com/cosmos/cosmos-sdk/x/auth/tx"
-	// bankTypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	// ibcTypes "github.com/cosmos/ibc-go/v6/modules/apps/transfer/types"
-	// tokenfactoryTypes "github.com/sei-protocol/sei-chain/x/tokenfactory/types"
 )
 
 var (
@@ -48,9 +46,6 @@ func (c *CosmosRestClient) SetPrefixAndDenom(prefix, denom string) {
 
 func BuildNewTxConfig() cosmosClient.TxConfig {
 	interfaceRegistry := codecTypes.NewInterfaceRegistry()
-	// bankTypes.RegisterInterfaces(interfaceRegistry)
-	// ibcTypes.RegisterInterfaces(interfaceRegistry)
-	// tokenfactoryTypes.RegisterInterfaces(interfaceRegistry)
 	PublicKeyRegisterInterfaces(interfaceRegistry)
 	protoCodec := codec.NewProtoCodec(interfaceRegistry)
 	return authTx.NewTxConfig(protoCodec, authTx.DefaultSignModes)
@@ -71,8 +66,22 @@ func SupportsChainID(chainID *big.Int) bool {
 	return supportedChainIDs[chainID.String()]
 }
 
+// IsSupportedCosmosSubChain is supported
+func IsSupportedCosmosSubChain(chainName string) bool {
+	var match bool
+	chainName = strings.ToUpper(chainName)
+	for _, chain := range ChainsList {
+		if chain == chainName {
+			match = true
+			break
+		}
+	}
+	return match
+}
+
 // GetStubChainID get stub chainID
 func GetStubChainID(chainName, network string) *big.Int {
+	chainName = strings.ToUpper(chainName)
 	stubChainID := new(big.Int).SetBytes([]byte(chainName))
 	switch network {
 	case mainnetNetWork:

@@ -15,16 +15,18 @@ var (
 )
 
 func initFlags() {
-	flag.StringVar(&paramChainName, "n", "", "chainName, eg. cosmoshub-4, kava, etc.")
+	flag.StringVar(&paramChainName, "n", "", "chainName, eg. cosmoshub, sei, etc.")
 	flag.StringVar(&paramNetwork, "p", "", "network, eg. mainnet, testnet, etc.")
 
 	flag.Parse()
 }
 
 func main() {
-	log.SetLogger(6, false, true)
-
 	initFlags()
+
+	if !cosmosSDK.IsSupportedCosmosSubChain(paramChainName) {
+		log.Fatalf("unknown chain name %v", paramChainName)
+	}
 
 	network := paramNetwork
 	if network == "" && len(os.Args) > 1 {
@@ -35,5 +37,5 @@ func main() {
 	}
 
 	chainID := cosmosSDK.GetStubChainID(paramChainName, network)
-	fmt.Printf("%v: %v\n", network, chainID)
+	fmt.Printf("%v %v: %v\n", paramChainName, network, chainID)
 }

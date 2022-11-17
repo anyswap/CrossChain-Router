@@ -13,7 +13,6 @@ import (
 	cosmosClient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/cosmos-sdk/types"
-	tokenfactoryTypes "github.com/sei-protocol/sei-chain/x/tokenfactory/types"
 )
 
 var (
@@ -42,10 +41,6 @@ func main() {
 			}
 		}
 	}
-}
-
-func BuildMintMsg() *tokenfactoryTypes.MsgMint {
-	return tokenfactoryTypes.NewMsgMint(Sender, Amount)
 }
 
 func initExtra(client *cosmosSDK.CosmosRestClient) (*tokens.AllExtras, error) {
@@ -85,7 +80,7 @@ func BuildTx(client *cosmosSDK.CosmosRestClient) (*cosmosSDK.BuildRawTx, error) 
 		return nil, err
 	} else {
 		txBuilder := client.TxConfig.NewTxBuilder()
-		mintMsg := BuildMintMsg()
+		mintMsg := cosmosSDK.BuildMintMsg(Sender, Amount)
 		if err := txBuilder.SetMsgs(mintMsg); err != nil {
 			log.Fatalf("SetMsgs error:%+v", err)
 		}

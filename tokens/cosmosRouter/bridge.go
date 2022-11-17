@@ -35,11 +35,6 @@ func (b *Bridge) GetLatestBlockNumber() (uint64, error) {
 	return b.CosmosRestClient.GetLatestBlockNumber()
 }
 
-// GetLatestBlockNumberOf gets latest block number from single api
-func (b *Bridge) GetLatestBlockNumberOf(apiAddress string) (uint64, error) {
-	return cosmosSDK.GetLatestBlockNumberByApiUrl(apiAddress)
-}
-
 // GetTransaction impl
 func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
 	return b.GetTransactionByHash(txHash)

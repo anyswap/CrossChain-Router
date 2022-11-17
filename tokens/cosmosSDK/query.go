@@ -39,7 +39,7 @@ func (c *CosmosRestClient) GetChainID() (string, error) {
 	return "", tokens.ErrRPCQueryError
 }
 
-func GetLatestBlockNumberByApiUrl(apiAddress string) (uint64, error) {
+func (c *CosmosRestClient) GetLatestBlockNumberOf(apiAddress string) (uint64, error) {
 	var result *GetLatestBlockResponse
 	restApi := apiAddress + LatestBlock
 	if err := client.RPCGet(&result, restApi); err == nil {

@@ -13,6 +13,20 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/bech32"
 )
 
+// IsValidAddress check address
+func (c *CosmosRestClient) IsValidAddress(address string) bool {
+	return IsValidAddress(c.Prefix, address)
+}
+
+// PublicKeyToAddress public key hex string (may be uncompressed) to address
+func (c *CosmosRestClient) PublicKeyToAddress(pubKeyHex string) (string, error) {
+	return PublicKeyToAddress(c.Prefix, pubKeyHex)
+}
+
+func (c *CosmosRestClient) VerifyPubKey(address, pubkey string) error {
+	return VerifyPubKey(address, c.Prefix, pubkey)
+}
+
 func IsValidAddress(prefix, address string) bool {
 	if bz, err := types.GetFromBech32(address, prefix); err == nil {
 		if err = types.VerifyAddressFormat(bz); err == nil {
@@ -64,8 +78,8 @@ func PubKeyFromBytes(pubKeyBytes []byte) (cryptoTypes.PubKey, error) {
 }
 
 func VerifyPubKey(address, prefix, pubkey string) error {
-	log.Warnf("prefix:%+v pubkey:%+v", prefix, pubkey)
 	if addr, err := PublicKeyToAddress(prefix, pubkey); err != nil {
+		log.Warn("public key to address error", "pubkey", pubkey, "prefix", prefix, "err", err)
 		return err
 	} else {
 		if address != addr {

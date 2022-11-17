@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmosSDK"
 )
 
@@ -21,8 +20,6 @@ func initFlags() {
 }
 
 func main() {
-	log.SetLogger(6, false, true)
-
 	initFlags()
 
 	res := cosmosSDK.IsValidAddress(paramPrefix, paramAddress)
