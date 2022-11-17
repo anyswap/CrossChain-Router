@@ -151,15 +151,17 @@ func startVerifyConsumer(chainID string) {
 			continue
 		}
 
-		ctx := []interface{}{"fromChainID", swap.FromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex}
-		err := processRouterSwapVerify(swap)
-		if err == nil {
-			logWorker("doVerify", "verify router swap success", ctx...)
-		} else {
-			logWorkerError("doVerify", "verify router swap failed", err, ctx...)
-		}
+		go func() {
+			ctx := []interface{}{"fromChainID", swap.FromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex}
+			err := processRouterSwapVerify(swap)
+			if err == nil {
+				logWorker("doVerify", "verify router swap success", ctx...)
+			} else {
+				logWorkerError("doVerify", "verify router swap failed", err, ctx...)
+			}
 
-		verifyTasksInQueue.Remove(swap.Key)
+			verifyTasksInQueue.Remove(swap.Key)
+		}()
 	}
 }
 
