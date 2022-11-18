@@ -48,6 +48,7 @@ const (
 	MissTokenConfig   SwapStatus = 20
 	NoUnderlyingToken SwapStatus = 21
 	TxMaybeUnsafe     SwapStatus = 22
+	SwapoutForbidden  SwapStatus = 23
 
 	KeepStatus SwapStatus = 255
 	Reswapping SwapStatus = 256
@@ -68,7 +69,7 @@ func (status SwapStatus) IsResultStatus() bool {
 func (status SwapStatus) IsRegisteredOk() bool {
 	switch status {
 	case TxNotStable, TxNotSwapped, TxProcessed,
-		TxMaybeUnsafe, ManualMakeFail:
+		TxMaybeUnsafe, SwapoutForbidden, ManualMakeFail:
 		return true
 	default:
 		return false
@@ -110,6 +111,8 @@ func (status SwapStatus) String() string {
 		return "NoUnderlyingToken"
 	case TxMaybeUnsafe:
 		return "TxMaybeUnsafe"
+	case SwapoutForbidden:
+		return "SwapoutForbidden"
 
 	case KeepStatus:
 		return "KeepStatus"
@@ -138,6 +141,8 @@ func GetRouterSwapStatusByVerifyError(err error) SwapStatus {
 		return NoUnderlyingToken
 	case errors.Is(err, tokens.ErrVerifyTxUnsafe):
 		return TxMaybeUnsafe
+	case errors.Is(err, tokens.ErrSwapoutForbidden):
+		return SwapoutForbidden
 	default:
 		return TxVerifyFailed
 	}
