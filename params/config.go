@@ -1076,6 +1076,7 @@ func GetDynamicFeeTxConfig(chainID string) *DynamicFeeTxConfig {
 
 // LoadRouterConfig load router swap config
 func LoadRouterConfig(configFile string, isServer, check bool) *RouterConfig {
+	IsSwapServer = isServer
 	if configFile == "" {
 		log.Fatal("must specify config file")
 	}
