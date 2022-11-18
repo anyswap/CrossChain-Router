@@ -58,7 +58,8 @@ const (
 func (status SwapStatus) IsResultStatus() bool {
 	switch status {
 	case MatchTxEmpty, MatchTxNotStable, MatchTxStable,
-		MatchTxFailed, Reswapping, ManualMakeFail:
+		MatchTxFailed, Reswapping, ManualMakeFail,
+		SwapoutForbidden:
 		return true
 	default:
 		return false
@@ -69,7 +70,7 @@ func (status SwapStatus) IsResultStatus() bool {
 func (status SwapStatus) IsRegisteredOk() bool {
 	switch status {
 	case TxNotStable, TxNotSwapped, TxProcessed,
-		TxMaybeUnsafe, SwapoutForbidden, ManualMakeFail:
+		TxMaybeUnsafe, ManualMakeFail:
 		return true
 	default:
 		return false
