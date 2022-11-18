@@ -150,9 +150,14 @@ type StatusInterface interface {
 	IsStatusOk() bool
 }
 
+// IsSwapTxOnChain is tx onchain
+func (s *TxStatus) IsSwapTxOnChain() bool {
+	return s != nil && s.BlockHeight > 0
+}
+
 // IsSwapTxOnChainAndFailed to make failed of swaptx
 func (s *TxStatus) IsSwapTxOnChainAndFailed() bool {
-	if s == nil || s.BlockHeight == 0 {
+	if !s.IsSwapTxOnChain() {
 		return false // not on chain
 	}
 	if status, ok := s.Receipt.(StatusInterface); ok {
