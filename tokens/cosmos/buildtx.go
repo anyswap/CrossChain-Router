@@ -19,6 +19,8 @@ var (
 	retryRPCInterval        = 1 * time.Second
 	DefaultGasLimit  uint64 = 150000
 	DefaultFee              = "500"
+
+	cachedAccountNumberMap = make(map[string]uint64)
 )
 
 // BuildRawTransaction build raw tx
@@ -35,7 +37,10 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, fmt.Errorf("forbid empty sender")
 	}
 
-	routerMPC := b.GetRouterContract("")
+	routerMPC, err := router.GetRouterMPC(args.GetTokenID(), b.ChainConfig.ChainID)
+	if err != nil {
+		return nil, err
+	}
 	if !common.IsEqualIgnoreCase(args.From, routerMPC) {
 		log.Error("build tx mpc mismatch", "have", args.From, "want", routerMPC)
 		return nil, tokens.ErrSenderMismatch
@@ -152,13 +157,17 @@ func (b *Bridge) GetSeq(args *tokens.BuildTxArgs) (nonceptr *uint64, err error) 
 	return &nonce, nil
 }
 
-// GetSeq returns account tx sequence
+// GetAccountNum get account number
 func (b *Bridge) GetAccountNum(args *tokens.BuildTxArgs) (uint64, error) {
+	if accNo := cachedAccountNumberMap[args.From]; accNo > 0 {
+		return accNo, nil
+	}
 	if acc, err := b.GetBaseAccount(args.From); err != nil {
 		return 0, err
 	} else {
 		if acc != nil {
 			if accountNumber, err := strconv.ParseUint(acc.Account.AccountNumber, 10, 64); err == nil {
+				cachedAccountNumberMap[args.From] = accountNumber
 				return accountNumber, nil
 			} else {
 				return 0, err

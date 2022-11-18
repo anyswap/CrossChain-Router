@@ -27,11 +27,6 @@ func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) (err error
 	} else {
 		txBuilder := multichainTx.TxBuilder
 		extra := multichainTx.Extra
-		mpc := b.GetRouterContract("")
-		mpcPubkey := router.GetMPCPublicKey(mpc)
-		if mpcPubkey == "" {
-			return tokens.ErrMissMPCPublicKey
-		}
 
 		if signBytes, err := b.GetSignBytes(*txBuilder, *extra.AccountNum, *extra.Sequence); err != nil {
 			return err
@@ -136,7 +131,7 @@ func (b *Bridge) checkSwapoutInfo(swapInfo *tokens.SwapTxInfo) error {
 
 	bindAddr := swapInfo.Bind
 	if !toBridge.IsValidAddress(bindAddr) {
-		log.Warn("wrong bind address in swapin", "bind", bindAddr)
+		log.Warn("wrong bind address in dest chain", "bind", bindAddr)
 		return tokens.ErrWrongBindAddress
 	}
 	return nil
@@ -157,7 +152,7 @@ func (b *Bridge) checkTxStatus(txres *GetTxResponse, allowUnstable bool) (txHeig
 				if h < txHeight+b.GetChainConfig().Confirmations {
 					return txHeight, tokens.ErrTxNotStable
 				}
-				if h < b.ChainConfig.InitialHeight {
+				if txHeight < b.ChainConfig.InitialHeight {
 					return txHeight, tokens.ErrTxBeforeInitialHeight
 				}
 			}
@@ -184,7 +179,6 @@ func ParseMemo(swapInfo *tokens.SwapTxInfo, memo string) error {
 	return tokens.ErrTxWithWrongMemo
 }
 
-//nolint:goconst // allow big check logic
 func (b *Bridge) ParseAmountTotal(messageLog types.ABCIMessageLog, swapInfo *tokens.SwapTxInfo) error {
 	value := big.NewInt(0)
 	unit := ""
@@ -207,30 +201,47 @@ func (b *Bridge) ParseAmountTotal(messageLog types.ABCIMessageLog, swapInfo *tok
 			return nil
 		}
 	}
-	return tokens.ErrTxWithWrongValue
+	return tokens.ErrDepositNotFound
 }
 
 func (b *Bridge) ParseCoinAmount(value *big.Int, swapInfo *tokens.SwapTxInfo, sender, recipient, amount types.Attribute, unit *string) {
-	mpc := b.GetRouterContract("")
-	if sender.Key == "sender" &&
+	if !(sender.Key == "sender" &&
 		recipient.Key == "recipient" &&
-		amount.Key == "amount" {
-		// receiver mismatch
-		if common.IsEqualIgnoreCase(recipient.Value, mpc) {
-			if recvCoins, err := ParseCoinsNormalized(amount.Value); err == nil {
-				for _, coin := range recvCoins {
-					if *unit == "" || *unit == coin.Denom {
-						if swapInfo.From == "" {
-							swapInfo.From = sender.Value
-						}
-						*unit = coin.Denom
-						recvAmount := recvCoins.AmountOfNoDenomValidation(*unit)
-						if !recvAmount.IsNil() && !recvAmount.IsZero() {
-							value.Add(value, recvAmount.BigInt())
-						}
-					}
-				}
-			}
+		amount.Key == "amount") {
+		// key mismatch
+		return
+	}
+
+	if swapInfo.From == "" {
+		swapInfo.From = sender.Value
+	} else if sender.Value != swapInfo.From {
+		// sender mismatch
+		return
+	}
+
+	recvCoins, err := ParseCoinsNormalized(amount.Value)
+	if err != nil || len(recvCoins) == 0 {
+		return
+	}
+
+	for _, coin := range recvCoins {
+		denom := coin.Denom
+		if tokenCfg := b.GetTokenConfig(denom); tokenCfg == nil {
+			// token mismatch
+			continue
 		}
+		mpc := b.GetRouterContract(denom)
+		if !common.IsEqualIgnoreCase(recipient.Value, mpc) {
+			// receiver mismatch
+			continue
+		}
+		recvAmount := recvCoins.AmountOfNoDenomValidation(denom)
+		if recvAmount.IsNil() || recvAmount.IsZero() {
+			// zero value
+			continue
+		}
+		*unit = denom
+		value.Add(value, recvAmount.BigInt())
+		break
 	}
 }

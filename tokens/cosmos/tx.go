@@ -161,7 +161,7 @@ func (b *Bridge) GetSignTx(tx signing.Tx) (signedTx []byte, txHash string, err e
 	} else {
 		signedTx = []byte(base64.StdEncoding.EncodeToString(txBytes))
 		txHash = fmt.Sprintf("%X", Sha256Sum(txBytes))
-		log.Warn("GetSignTx", "signedTx", string(signedTx), "txHash", txHash)
+		log.Info("GetSignTx", "signedTx", string(signedTx), "txHash", txHash)
 		return signedTx, txHash, nil
 	}
 }

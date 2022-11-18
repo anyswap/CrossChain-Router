@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
-	"github.com/anyswap/CrossChain-Router/v3/mongodb"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/base"
@@ -24,7 +23,7 @@ var (
 type Bridge struct {
 	*base.NonceSetterBase
 
-	TxConfig cosmosClient.TxConfig
+	cosmosClient.TxConfig
 
 	Prefix string
 	Denom  string
@@ -49,7 +48,6 @@ func (b *Bridge) InitAfterConfig() {
 
 // InitRouterInfo init router info
 func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
-
 	if routerContract == "" {
 		return nil
 	}
@@ -64,12 +62,13 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 		b.SetPrefixAndDenom(extra[0], extra[1])
 	}
 
-	routerMPC := b.GetRouterContract("")
-	if routerMPC == "" {
-		log.Warn("get router mpc address return an empty address", "routerContract", routerContract)
-		return fmt.Errorf("empty router mpc address")
+	routerMPC := routerContract
+	if !b.IsValidAddress(routerMPC) {
+		log.Warn("wrong router mpc address (in cosmos routerMPC is routerContract)", "routerMPC", routerMPC)
+		return fmt.Errorf("wrong router mpc address: %v", routerMPC)
 	}
 	log.Info("get router mpc address success", "chainID", chainID, "routerContract", routerContract, "routerMPC", routerMPC)
+
 	routerMPCPubkey, err := router.GetMPCPubkey(routerMPC)
 	if err != nil {
 		log.Warn("get mpc public key failed", "mpc", routerMPC, "err", err)
@@ -88,14 +87,8 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 	)
 	router.SetMPCPublicKey(routerMPC, routerMPCPubkey)
 
-	log.Info(fmt.Sprintf("[%5v] init router info success", chainID), "routerContract", routerContract, "routerMPC", routerMPC)
-	if mongodb.HasClient() {
-		nextSwapNonce, err := mongodb.FindNextSwapNonce(chainID, strings.ToLower(routerMPC))
-		if err == nil {
-			log.Info("init next swap nonce from db", "chainID", chainID, "mpc", routerMPC, "nonce", nextSwapNonce)
-			b.InitSwapNonce(b, routerMPC, nextSwapNonce)
-		}
-	}
+	log.Info(fmt.Sprintf("[%5v] init router info success", chainID),
+		"routerContract", routerContract, "routerMPC", routerMPC)
 
 	return nil
 }
