@@ -233,10 +233,7 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 		if router.IsBigValueSwap(swapInfo) {
 			dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxWithBigValue, now(), "big swap value")
 		} else {
-			dbErr = mongodb.PassRouterSwapVerify(fromChainID, txid, logIndex, now())
-			if dbErr == nil {
-				dbErr = AddInitialSwapResult(swapInfo, mongodb.MatchTxEmpty)
-			}
+			dbErr = addInitialSwapResult(fromChainID, txid, logIndex, swapInfo, mongodb.MatchTxEmpty)
 		}
 	case errors.Is(err, tokens.ErrTxNotStable),
 		errors.Is(err, tokens.ErrRPCQueryError),
@@ -266,7 +263,7 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 	case errors.Is(err, tokens.ErrVerifyTxUnsafe):
 		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxMaybeUnsafe, now(), err.Error())
 	case errors.Is(err, tokens.ErrSwapoutForbidden):
-		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.SwapoutForbidden, now(), err.Error())
+		dbErr = addInitialSwapResult(fromChainID, txid, logIndex, swapInfo, mongodb.SwapoutForbidden)
 	default:
 		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxVerifyFailed, now(), err.Error())
 	}
@@ -280,6 +277,18 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 	}
 
 	return err
+}
+
+func addInitialSwapResult(
+	fromChainID, txid string, logIndex int,
+	swapInfo *tokens.SwapTxInfo,
+	resStatus mongodb.SwapStatus,
+) error {
+	err := mongodb.PassRouterSwapVerify(fromChainID, txid, logIndex, now())
+	if err != nil {
+		return err
+	}
+	return AddInitialSwapResult(swapInfo, resStatus)
 }
 
 // DeleteCachedVerifyingSwap delete cached verifying swap
