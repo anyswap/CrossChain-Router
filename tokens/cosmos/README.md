@@ -1,5 +1,7 @@
 # Cosmos ecosystem
 
+This document use cosmos-hub as an example.
+
 ## cosmosHub
 
 ```text
@@ -65,22 +67,21 @@ https://rinkeby.etherscan.io/address/0x4342F2b5224a43541BE7C8F39B92D7fEaA74d038
 
 ## router mechanism
 
-1. Swapout from ripple to other chain
+1. Swapout from cosmos to other chain
 
-user send asset to `mpc` address with memo of the following format
+    user send asset to `mpc` address with memo of the following format
 
-```
-bindAddress:toChainID
-```
+    ```text
+    bindAddress:toChainID
+    ```
 
-to specify route asset to which address (`bindAddress`)
-and to which destination blockchain (`toChainID`)
+    to specify route asset to which address (`bindAddress`)
+    and to which destination blockchain (`toChainID`)
 
+2. Swapin from other chain to cosmos
 
-2. Swapin from other chain to ripple
+    ```solidity
+    function anySwapOut(address token, string memory to, uint amount, uint toChainID)
+    ```
 
-```solidity
-function anySwapOut(address token, string memory to, uint amount, uint toChainID)
-```
-
-`to` is the receiver address on cosmos.
+    `to` is the receiver address on cosmos.
