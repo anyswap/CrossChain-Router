@@ -212,18 +212,26 @@ func (b *Bridge) ParseCoinAmount(value *big.Int, swapInfo *tokens.SwapTxInfo, se
 		return
 	}
 
-	if swapInfo.From == "" {
-		swapInfo.From = sender.Value
-	} else if sender.Value != swapInfo.From {
-		// sender mismatch
-		return
-	}
-
 	recvCoins, err := ParseCoinsNormalized(amount.Value)
 	if err != nil || len(recvCoins) == 0 {
 		return
 	}
 
+	if *unit != "" {
+		denom := *unit
+		mpc := b.GetRouterContract(denom)
+		if !common.IsEqualIgnoreCase(recipient.Value, mpc) {
+			// receiver mismatch
+			return
+		}
+		recvAmount := recvCoins.AmountOfNoDenomValidation(denom)
+		if !recvAmount.IsNil() && !recvAmount.IsZero() {
+			value.Add(value, recvAmount.BigInt())
+		}
+		return
+	}
+
+	// choose the first matching denom
 	for _, coin := range recvCoins {
 		denom := coin.Denom
 		if tokenCfg := b.GetTokenConfig(denom); tokenCfg == nil {
@@ -242,6 +250,9 @@ func (b *Bridge) ParseCoinAmount(value *big.Int, swapInfo *tokens.SwapTxInfo, se
 		}
 		*unit = denom
 		value.Add(value, recvAmount.BigInt())
+		if swapInfo.From == "" {
+			swapInfo.From = sender.Value
+		}
 		break
 	}
 }
