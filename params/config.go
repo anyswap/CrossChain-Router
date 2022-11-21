@@ -173,6 +173,8 @@ type ExtraConfig struct {
 	Customs map[string]map[string]string `toml:",omitempty" json:",omitempty"`
 
 	LocalChainConfig map[string]*LocalChainConfig `toml:",omitempty" json:",omitempty"` // key is chain ID
+
+	SpecialFlags map[string]string `toml:",omitempty" json:",omitempty"`
 }
 
 // LocalChainConfig local chain config
@@ -761,6 +763,15 @@ func GetLocalChainConfig(chainID string) *LocalChainConfig {
 		}
 	}
 	return &LocalChainConfig{}
+}
+
+// GetSpecialFlag get special flag
+func GetSpecialFlag(key string) string {
+	if GetExtraConfig() != nil {
+		key = strings.ToLower(key)
+		return GetExtraConfig().SpecialFlags[key]
+	}
+	return ""
 }
 
 // GetOnchainContract get onchain config contract address

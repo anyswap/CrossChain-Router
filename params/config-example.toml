@@ -211,6 +211,9 @@ ForbidParallelLoading = true
 ForbidSwapoutTokenIDs = ["USDC", "USDT"]
 BigValueDiscount = 50
 
+[Extra.SpecialFlags]
+key = value
+
 
 # OnChain config
 [OnChain]
