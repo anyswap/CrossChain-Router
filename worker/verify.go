@@ -265,6 +265,8 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.NoUnderlyingToken, now(), err.Error())
 	case errors.Is(err, tokens.ErrVerifyTxUnsafe):
 		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxMaybeUnsafe, now(), err.Error())
+	case errors.Is(err, tokens.ErrSwapoutForbidden):
+		dbErr = saveSpecialSwapResult(fromChainID, txid, logIndex, swapInfo, mongodb.SwapoutForbidden)
 	default:
 		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxVerifyFailed, now(), err.Error())
 	}
@@ -278,6 +280,15 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 	}
 
 	return err
+}
+
+func saveSpecialSwapResult(
+	fromChainID, txid string, logIndex int,
+	swapInfo *tokens.SwapTxInfo,
+	status mongodb.SwapStatus,
+) error {
+	_ = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, status, now(), "")
+	return AddInitialSwapResult(swapInfo, status)
 }
 
 // DeleteCachedVerifyingSwap delete cached verifying swap

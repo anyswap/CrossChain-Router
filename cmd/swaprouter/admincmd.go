@@ -80,6 +80,15 @@ replace pending swap with same nonce and new gas price
 forbid specified swap
 `,
 			},
+			{
+				Name:   "passforbiddenswapout",
+				Usage:  "pass forbidden swapout",
+				Action: passforbiddenswapout,
+				Flags:  swapKeyFlags,
+				Description: `
+pass forbidden swapout
+`,
+			},
 		},
 	}
 
@@ -224,6 +233,27 @@ func forbidswap(ctx *cli.Context) error {
 	log.Printf("%v: %v %v %v (memo: %v)", method, chainID, txid, logIndex, memo)
 
 	params := []string{chainID, txid, logIndex, memo}
+	result, err := admin.SwapAdmin(method, params)
+
+	log.Printf("result is '%v'", result)
+	return err
+}
+
+func passforbiddenswapout(ctx *cli.Context) error {
+	utils.SetLogger(ctx)
+	method := "passforbiddenswapout"
+	err := admin.Prepare(ctx)
+	if err != nil {
+		return err
+	}
+	chainID, txid, logIndex, err := getKeys(ctx)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("%v: %v %v %v", method, chainID, txid, logIndex)
+
+	params := []string{chainID, txid, logIndex}
 	result, err := admin.SwapAdmin(method, params)
 
 	log.Printf("result is '%v'", result)

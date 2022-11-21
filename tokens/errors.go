@@ -54,7 +54,6 @@ var (
 	ErrSimulateTx             = errors.New("simulate tx error")
 	ErrTxWithWrongMemo        = errors.New("tx with wrong memo")
 	ErrFallbackNotSupport     = errors.New("app does not support fallback")
-	ErrSwapoutForbidden       = errors.New("swapout forbidden")
 	ErrQueryTokenBalance      = errors.New("query token balance error")
 	ErrTokenBalanceNotEnough  = errors.New("token balance not enough")
 	ErrGetLatestBlockNumber   = errors.New("get latest block number error")
@@ -70,6 +69,7 @@ var (
 	ErrMetadataKeyMissMatch   = errors.New("metadata key not match 123")
 	ErrAdaSwapOutAmount       = errors.New("swap ada amount too small")
 	ErrTokenBalancesNotEnough = errors.New("token balance not enough")
+	ErrBalanceNotEnough       = errors.New("balance not enough")
 	ErrAdaBalancesNotEnough   = errors.New("ada balance not enough")
 	ErrOutputIndexSort        = errors.New("output not order by index asc")
 	ErrCmdArgVerify           = errors.New("cmd args verify fails")
@@ -79,11 +79,11 @@ var (
 // errors should register in router swap
 var (
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")
-	ErrBalanceNotEnough  = errors.New("balance not enough")
 	ErrTxWithWrongPath   = errors.New("swap trade tx with wrong path")
 	ErrMissTokenConfig   = errors.New("miss token config")
 	ErrNoUnderlyingToken = errors.New("no underlying token")
 	ErrVerifyTxUnsafe    = errors.New("[tx maybe unsafe]")
+	ErrSwapoutForbidden  = errors.New("swapout forbidden")
 )
 
 // ShouldRegisterRouterSwapForError return true if this error should record in database
@@ -94,7 +94,8 @@ func ShouldRegisterRouterSwapForError(err error) bool {
 		errors.Is(err, ErrTxWithWrongPath),
 		errors.Is(err, ErrMissTokenConfig),
 		errors.Is(err, ErrNoUnderlyingToken),
-		errors.Is(err, ErrVerifyTxUnsafe):
+		errors.Is(err, ErrVerifyTxUnsafe),
+		errors.Is(err, ErrSwapoutForbidden):
 		return true
 	}
 	return false

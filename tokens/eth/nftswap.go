@@ -120,6 +120,10 @@ func (b *Bridge) verifyNFTSwapTx(txHash string, logIndex int, allowUnstable bool
 		return swapInfo, err
 	}
 
+	if params.IsSwapoutForbidden(b.ChainConfig.ChainID, swapInfo.NFTSwapInfo.TokenID) {
+		return swapInfo, tokens.ErrSwapoutForbidden
+	}
+
 	if !allowUnstable {
 		log.Info("verify nft swap tx stable pass", "identifier", params.GetIdentifier(),
 			"from", swapInfo.From, "to", swapInfo.To, "txid", txHash, "logIndex", logIndex,
@@ -168,10 +172,6 @@ func (b *Bridge) verifyNFTSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPC
 
 	if rlog.Removed != nil && *rlog.Removed {
 		return tokens.ErrTxWithRemovedLog
-	}
-
-	if params.IsSwapoutForbidden(b.ChainConfig.ChainID, swapInfo.NFTSwapInfo.TokenID) {
-		return tokens.ErrSwapoutForbidden
 	}
 
 	routerContract := b.GetRouterContract(swapInfo.NFTSwapInfo.Token)

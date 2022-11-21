@@ -241,9 +241,13 @@ func preventReswap(res *mongodb.MgoSwapResult) (err error) {
 	return processHistory(res)
 }
 
+func isPendingSwapStatus(status mongodb.SwapStatus) bool {
+	return status == mongodb.MatchTxEmpty || status == mongodb.Reswapping
+}
+
 func processNonEmptySwapResult(res *mongodb.MgoSwapResult) error {
 	if res.SwapNonce > 0 ||
-		!(res.Status == mongodb.MatchTxEmpty || res.Status == mongodb.Reswapping) ||
+		!isPendingSwapStatus(res.Status) ||
 		res.SwapTx != "" ||
 		res.SwapHeight != 0 ||
 		len(res.OldSwapTxs) > 0 {
@@ -254,7 +258,7 @@ func processNonEmptySwapResult(res *mongodb.MgoSwapResult) error {
 }
 
 func processHistory(res *mongodb.MgoSwapResult) error {
-	if (res.Status == mongodb.MatchTxEmpty || res.Status == mongodb.Reswapping) && res.SwapNonce == 0 {
+	if isPendingSwapStatus(res.Status) && res.SwapNonce == 0 {
 		return nil
 	}
 	chainID := res.FromChainID
@@ -551,6 +555,12 @@ func reverifySwap(args *tokens.BuildTxArgs) {
 	toChainID := args.ToChainID.String()
 	txid := args.SwapID
 	logIndex := args.LogIndex
+
+	res, err := mongodb.FindRouterSwapResult(fromChainID, txid, logIndex)
+	if err == nil && !isPendingSwapStatus(res.Status) {
+		return
+	}
+
 	verifyArgs := &tokens.VerifyArgs{
 		SwapType:      args.SwapType,
 		LogIndex:      logIndex,
@@ -561,7 +571,7 @@ func reverifySwap(args *tokens.BuildTxArgs) {
 		return
 	}
 	start := time.Now()
-	_, err := srcBridge.VerifyTransaction(txid, verifyArgs)
+	_, err = srcBridge.VerifyTransaction(txid, verifyArgs)
 	switch {
 	case err == nil,
 		errors.Is(err, tokens.ErrTxNotStable),

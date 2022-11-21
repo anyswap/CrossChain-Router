@@ -1,6 +1,7 @@
 package rpcapi
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -18,11 +19,12 @@ import (
 )
 
 const (
-	maintainCmd     = "maintain"
-	passbigvalueCmd = "passbigvalue"
-	reswapCmd       = "reswap"
-	replaceswapCmd  = "replaceswap"
-	forbidSwapCmd   = "forbidswap"
+	maintainCmd             = "maintain"
+	passbigvalueCmd         = "passbigvalue"
+	reswapCmd               = "reswap"
+	replaceswapCmd          = "replaceswap"
+	forbidSwapCmd           = "forbidswap"
+	passForbiddenSwapoutCmd = "passforbiddenswapout"
 
 	// maintain actions
 	actPause       = "pause"
@@ -51,7 +53,7 @@ func (s *RouterSwapAPI) AdminCall(r *http.Request, rawTx, result *string) (err e
 	senderAddress := sender.String()
 	if !params.IsRouterAdmin(senderAddress) {
 		switch args.Method {
-		case reswapCmd:
+		case reswapCmd, passForbiddenSwapoutCmd:
 			return fmt.Errorf("sender %v is not admin", senderAddress)
 		case maintainCmd:
 			action := args.Params[0]
@@ -83,6 +85,8 @@ func doRouterAdminCall(args *admin.CallArgs, result *string) error {
 		return routerReplaceSwap(args, result)
 	case forbidSwapCmd:
 		return routerForbidSwap(args, result)
+	case passForbiddenSwapoutCmd:
+		return routerPassForbiddenSwapout(args, result)
 	default:
 		return fmt.Errorf("unknown admin method '%v'", args.Method)
 	}
@@ -267,6 +271,32 @@ func routerForbidSwap(args *admin.CallArgs, result *string) (err error) {
 	)
 	if err1 != nil && err2 != nil {
 		return err1
+	}
+	*result = successReuslt
+	return nil
+}
+
+func routerPassForbiddenSwapout(args *admin.CallArgs, result *string) (err error) {
+	chainID, txid, logIndex, err := getKeys(args, 0)
+	if err != nil {
+		return err
+	}
+	bridge := router.GetBridgeByChainID(chainID)
+	if bridge == nil {
+		return tokens.ErrNoBridgeForChainID
+	}
+	verifyArgs := &tokens.VerifyArgs{
+		SwapType:      tokens.ERC20SwapType,
+		LogIndex:      logIndex,
+		AllowUnstable: false,
+	}
+	_, err = bridge.VerifyTransaction(txid, verifyArgs)
+	if !errors.Is(err, tokens.ErrSwapoutForbidden) {
+		return fmt.Errorf("verify error mismatch, %v", err)
+	}
+	err = mongodb.RouterAdminPassForbiddenSwapout(chainID, txid, logIndex)
+	if err != nil {
+		return err
 	}
 	*result = successReuslt
 	return nil
