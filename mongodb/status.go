@@ -130,8 +130,7 @@ func GetRouterSwapStatusByVerifyError(err error) SwapStatus {
 		return TxVerifyFailed
 	}
 	switch {
-	case err == nil,
-		errors.Is(err, tokens.ErrSwapoutForbidden):
+	case err == nil:
 		return TxNotStable
 	case errors.Is(err, tokens.ErrTxWithWrongValue):
 		return TxWithWrongValue
@@ -143,6 +142,8 @@ func GetRouterSwapStatusByVerifyError(err error) SwapStatus {
 		return NoUnderlyingToken
 	case errors.Is(err, tokens.ErrVerifyTxUnsafe):
 		return TxMaybeUnsafe
+	case errors.Is(err, tokens.ErrSwapoutForbidden):
+		return SwapoutForbidden
 	default:
 		return TxVerifyFailed
 	}

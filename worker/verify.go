@@ -285,10 +285,10 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 func saveSpecialSwapResult(
 	fromChainID, txid string, logIndex int,
 	swapInfo *tokens.SwapTxInfo,
-	resStatus mongodb.SwapStatus,
+	status mongodb.SwapStatus,
 ) error {
-	_ = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxProcessed, now(), "")
-	return AddInitialSwapResult(swapInfo, resStatus)
+	_ = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, status, now(), "")
+	return AddInitialSwapResult(swapInfo, status)
 }
 
 // DeleteCachedVerifyingSwap delete cached verifying swap

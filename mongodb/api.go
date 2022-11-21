@@ -821,6 +821,20 @@ func RouterAdminPassBigValue(fromChainID, txid string, logIndex int) error {
 	return UpdateRouterSwapStatus(fromChainID, txid, logIndex, TxNotSwapped, time.Now().Unix(), "")
 }
 
+// RouterAdminPassForbiddenSwapout pass forbidden swapout
+func RouterAdminPassForbiddenSwapout(fromChainID, txid string, logIndex int) error {
+	swap, err := FindRouterSwapResult(fromChainID, txid, logIndex)
+	if err != nil {
+		return err
+	}
+	if swap.Status != SwapoutForbidden {
+		return fmt.Errorf("swap status is %v, not %v", swap.Status.String(), SwapoutForbidden.String())
+	}
+
+	_ = UpdateRouterSwapResultStatus(fromChainID, txid, logIndex, MatchTxEmpty, time.Now().Unix(), "")
+	return UpdateRouterSwapStatus(fromChainID, txid, logIndex, TxNotSwapped, time.Now().Unix(), "")
+}
+
 // RouterAdminReswap reswap
 func RouterAdminReswap(fromChainID, txid string, logIndex int) error {
 	swap, err := FindRouterSwap(fromChainID, txid, logIndex)
