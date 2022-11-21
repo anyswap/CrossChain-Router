@@ -79,6 +79,10 @@ func (b *Bridge) verifyERC20SwapTx(txHash string, logIndex int, allowUnstable bo
 		return swapInfo, err
 	}
 
+	if params.IsSwapoutForbidden(b.ChainConfig.ChainID, swapInfo.ERC20SwapInfo.TokenID) {
+		return swapInfo, tokens.ErrSwapoutForbidden
+	}
+
 	if !allowUnstable {
 		ctx := []interface{}{
 			"identifier", params.GetIdentifier(),
@@ -266,10 +270,6 @@ func (b *Bridge) verifyERC20SwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.R
 
 	if rlog.Removed != nil && *rlog.Removed {
 		return tokens.ErrTxWithRemovedLog
-	}
-
-	if params.IsSwapoutForbidden(b.ChainConfig.ChainID, swapInfo.ERC20SwapInfo.TokenID) {
-		return tokens.ErrSwapoutForbidden
 	}
 
 	routerContract := b.GetRouterContract(swapInfo.ERC20SwapInfo.Token)
