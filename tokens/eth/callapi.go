@@ -127,7 +127,9 @@ func (b *Bridge) getTransactionByHash(txHash string, urls []string) (result *typ
 		return nil, errEmptyURLs
 	}
 	for _, url := range urls {
+		start := time.Now()
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_getTransactionByHash", txHash)
+		log.Info("call getTransactionByHash finished", "txhash", txHash, "url", url, "timespent", time.Since(start).String())
 		if err == nil && result != nil {
 			if !common.IsEqualIgnoreCase(result.Hash.Hex(), txHash) {
 				return nil, errTxHashMismatch
@@ -435,8 +437,10 @@ func (b *Bridge) NetworkID() (*big.Int, error) {
 // GetCode call eth_getCode
 func (b *Bridge) GetCode(contract string) (code []byte, err error) {
 	for _, url := range b.AllGatewayURLs {
+		start := time.Now()
 		var result hexutil.Bytes
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_getCode", contract, "latest")
+		log.Info("call getCode finished", "contract", contract, "url", url, "timespent", time.Since(start).String())
 		if err == nil {
 			return []byte(result), nil
 		}
@@ -453,10 +457,12 @@ func (b *Bridge) CallContract(contract string, data hexutil.Bytes, blockNumber s
 	var err error
 LOOP:
 	for _, url := range b.AllGatewayURLs {
+		start := time.Now()
 		var result string
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_call", reqArgs, blockNumber)
 		if err != nil && router.IsIniting {
 			for i := 0; i < router.RetryRPCCountInInit; i++ {
+				retryStart := time.Now()
 				if err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_call", reqArgs, blockNumber); err == nil {
 					return result, nil
 				}
@@ -464,17 +470,15 @@ LOOP:
 					strings.Contains(err.Error(), "VM execution error") {
 					break LOOP
 				}
-				log.Warn("retry call contract failed", "chainID", b.ChainConfig.ChainID, "contract", contract, "times", i+1, "err", err)
+				log.Warn("retry call contract failed", "chainID", b.ChainConfig.ChainID, "contract", contract, "times", i+1, "timespent", time.Since(retryStart).String(), "err", err)
 				time.Sleep(router.RetryRPCIntervalInInit)
 			}
 		}
 		if err == nil {
+			log.Info("call contract success", "chainID", b.ChainConfig.ChainID, "contract", contract, "data", data, "url", url, "timespent", time.Since(start).String())
 			return result, nil
 		}
-	}
-	if err != nil {
-		logFunc := log.GetPrintFuncOr(params.IsDebugMode, log.Info, log.Trace)
-		logFunc("call contract failed", "chainID", b.ChainConfig.ChainID, "contract", contract, "data", data, "err", err)
+		log.Info("call contract failed", "chainID", b.ChainConfig.ChainID, "contract", contract, "data", data, "timespent", time.Since(start).String(), "err", err)
 	}
 	return "", wrapRPCQueryError(err, "eth_call", contract)
 }
@@ -483,8 +487,10 @@ LOOP:
 func (b *Bridge) GetBalance(account string) (*big.Int, error) {
 	var err error
 	for _, url := range b.AllGatewayURLs {
+		start := time.Now()
 		var result hexutil.Big
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_getBalance", account, params.GetBalanceBlockNumberOpt)
+		log.Info("call getBalance finished", "account", account, "url", url, "timespent", time.Since(start).String())
 		if err == nil {
 			return result.ToInt(), nil
 		}
@@ -598,7 +604,9 @@ func (b *Bridge) GetLogs(filterQuery *types.FilterQuery) (result []*types.RPCLog
 	}
 	for _, apiAddress := range b.AllGatewayURLs {
 		url := apiAddress
+		start := time.Now()
 		err = client.RPCPost(&result, url, "eth_getLogs", args)
+		log.Info("call getLogs finished", "args", args, "url", url, "timespent", time.Since(start).String())
 		if err == nil && result != nil {
 			return result, nil
 		}
