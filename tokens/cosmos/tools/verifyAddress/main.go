@@ -23,5 +23,9 @@ func main() {
 	initFlags()
 
 	res := cosmos.IsValidAddress(paramPrefix, paramAddress)
-	fmt.Printf("address:%s is valid address:%v\n", paramAddress, res)
+	if res {
+		fmt.Printf("address %s is valid (prefix: %v)\n", paramAddress, paramPrefix)
+	} else {
+		fmt.Printf("address %s is invalid (prefix: %v)\n", paramAddress, paramPrefix)
+	}
 }
