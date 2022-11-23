@@ -145,11 +145,14 @@ func (b *Bridge) SimulateTx(simulateReq *SimulateRequest) (string, error) {
 	}
 }
 
-func (b *Bridge) GetSignBytes(txBuilder cosmosClient.TxBuilder, accountNumber, sequence uint64) ([]byte, error) {
+func (b *Bridge) GetSignBytes(tx *BuildRawTx) ([]byte, error) {
 	handler := b.TxConfig.SignModeHandler()
 	if chainName, err := b.GetChainID(); err != nil {
 		return nil, err
 	} else {
+		txBuilder := tx.TxBuilder
+		accountNumber := tx.AccountNumber
+		sequence := tx.Sequence
 		signerData := BuildSignerData(chainName, accountNumber, sequence)
 		return handler.GetSignBytes(signingTypes.SignMode_SIGN_MODE_DIRECT, signerData, txBuilder.GetTx())
 	}

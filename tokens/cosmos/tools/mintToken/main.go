@@ -1,46 +1,48 @@
 package main
 
 import (
-	"errors"
-	"fmt"
-	"log"
+	"flag"
+	"math/big"
 	"strconv"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmos"
-	"github.com/anyswap/CrossChain-Router/v3/tools/crypto"
-	cosmosClient "github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/cosmos-sdk/types"
 )
 
 var (
-	Sender                 = ""
-	Amount                 = types.NewCoin("", types.NewIntFromUint64(100000))
-	Memo                   = "test mintToken"
-	Fee                    = "1usei"
-	DefaultGasLimit uint64 = 200000
-	publicKey              = ""
-	privateKey             = ""
-	urls                   = []string{"https://sei-testnet-rpc.allthatnode.com:1317"}
+	paramChainID    string
+	paramSender     string
+	paramAmount     uint64
+	paramPublicKey  string
+	paramPrivateKey string
+	paramMemo       string
+	paramGasLimit   = uint64(200000)
+	paramFee        = "1usei"
+	paramSequence   uint64
 
-	bridge = cosmos.NewCrossChainBridge()
+	urls = []string{"https://sei-testnet-rpc.allthatnode.com:1317"}
+
+	chainID = big.NewInt(0)
+	bridge  = cosmos.NewCrossChainBridge()
 )
 
 func main() {
-	bridge.SetGatewayConfig(&tokens.GatewayConfig{APIAddress: urls})
+	initFlags()
+	initBridge()
 
 	if rawTx, err := BuildTx(); err != nil {
 		log.Fatalf("BuildTx err:%+v", err)
 	} else {
-		if signedTx, txHash, err := SignTransactionWithPrivateKey(*rawTx.TxBuilder, privateKey, rawTx.Extra); err != nil {
+		if signedTx, txHash, err := bridge.SignTransactionWithPrivateKey(rawTx, paramPrivateKey); err != nil {
 			log.Fatalf("SignTransactionWithPrivateKey err:%+v", err)
 		} else {
 			if txHashFromSend, err := bridge.SendTransaction(signedTx); err != nil {
 				log.Fatalf("SendTransaction err:%+v", err)
 			} else {
-				fmt.Printf("txhash: %+s txHashFromSend: %+s", txHash, txHashFromSend)
+				log.Printf("txhash: %+s txHashFromSend: %+s", txHash, txHashFromSend)
 			}
 		}
 	}
@@ -48,30 +50,24 @@ func main() {
 
 func initExtra() (*tokens.AllExtras, error) {
 	extra := &tokens.AllExtras{}
-	if account, err := bridge.GetBaseAccount(Sender); err != nil {
+	if account, err := bridge.GetBaseAccount(paramSender); err != nil {
 		return nil, err
 	} else {
 		if extra.Sequence == nil {
-			if sequence, err := strconv.ParseUint(account.Account.Sequence, 10, 64); err == nil {
+			if paramSequence > 0 {
+				extra.Sequence = &paramSequence
+			} else if sequence, err := strconv.ParseUint(account.Account.Sequence, 10, 64); err == nil {
 				extra.Sequence = &sequence
 			} else {
 				return nil, err
 			}
 		}
 
-		if extra.AccountNum == nil {
-			if accountNumber, err := strconv.ParseUint(account.Account.AccountNumber, 10, 64); err == nil {
-				extra.AccountNum = &accountNumber
-			} else {
-				return nil, err
-			}
-		}
-
 		if extra.Gas == nil {
-			extra.Gas = &DefaultGasLimit
+			extra.Gas = &paramGasLimit
 		}
 		if extra.Fee == nil {
-			extra.Fee = &Fee
+			extra.Fee = &paramFee
 		}
 
 		return extra, nil
@@ -83,19 +79,20 @@ func BuildTx() (*cosmos.BuildRawTx, error) {
 		return nil, err
 	} else {
 		txBuilder := bridge.TxConfig.NewTxBuilder()
-		mintMsg := cosmos.BuildMintMsg(Sender, Amount)
+		amount := types.NewCoin("", types.NewIntFromUint64(paramAmount))
+		mintMsg := cosmos.BuildMintMsg(paramSender, amount)
 		if err := txBuilder.SetMsgs(mintMsg); err != nil {
 			log.Fatalf("SetMsgs error:%+v", err)
 		}
 
-		txBuilder.SetMemo(Memo)
+		txBuilder.SetMemo(paramMemo)
 		if fee, err := cosmos.ParseCoinsFee(*extra.Fee); err != nil {
 			log.Fatalf("ParseCoinsFee error:%+v", err)
 		} else {
 			txBuilder.SetFeeAmount(fee)
 		}
-		txBuilder.SetGasLimit(DefaultGasLimit)
-		pubKey, err := cosmos.PubKeyFromStr(publicKey)
+		txBuilder.SetGasLimit(*extra.Gas)
+		pubKey, err := cosmos.PubKeyFromStr(paramPublicKey)
 		if err != nil {
 			log.Fatalf("PubKeyFromStr error:%+v", err)
 		}
@@ -106,50 +103,47 @@ func BuildTx() (*cosmos.BuildRawTx, error) {
 		if err := txBuilder.GetTx().ValidateBasic(); err != nil {
 			log.Fatalf("ValidateBasic error:%+v", err)
 		}
+		accountNumber, err := bridge.GetAccountNum(paramSender)
+		if err != nil {
+			return nil, err
+		}
 		return &cosmos.BuildRawTx{
-			TxBuilder: &txBuilder,
-			Extra:     extra,
+			TxBuilder:     txBuilder,
+			AccountNumber: accountNumber,
+			Sequence:      *extra.Sequence,
 		}, nil
 	}
 }
 
-// SignTransactionWithPrivateKey sign tx with ECDSA private key
-func SignTransactionWithPrivateKey(txBuilder cosmosClient.TxBuilder, privKey string, extras *tokens.AllExtras) (signedTx interface{}, txHash string, err error) {
-	if ecPrikey, err := crypto.HexToECDSA(privKey); err != nil {
-		return nil, "", err
-	} else {
-		ecPriv := &secp256k1.PrivKey{Key: ecPrikey.D.Bytes()}
+func initFlags() {
+	flag.StringVar(&paramChainID, "chainID", "", "chain id")
+	flag.StringVar(&paramSender, "sender", "", "tx sender")
+	flag.Uint64Var(&paramAmount, "amount", paramAmount, "mint amount")
+	flag.Uint64Var(&paramGasLimit, "gasLimit", paramGasLimit, "gas limit")
+	flag.Uint64Var(&paramSequence, "sequence", paramSequence, "sequence number")
+	flag.StringVar(&paramFee, "fee", paramFee, "tx fee")
+	flag.StringVar(&paramPublicKey, "publicKey", "", "public Key")
+	flag.StringVar(&paramPrivateKey, "privateKey", "", "(optional) private key")
+	flag.StringVar(&paramMemo, "memo", "", "tx memo")
 
-		if signBytes, err := bridge.GetSignBytes(txBuilder, *extras.AccountNum, *extras.Sequence); err != nil {
-			return nil, "", err
-		} else {
-			if signature, err := ecPriv.Sign(signBytes); err != nil {
-				return nil, "", err
-			} else {
-				if len(signature) == crypto.SignatureLength {
-					signature = signature[:crypto.SignatureLength-1]
-				}
+	flag.Parse()
 
-				if len(signature) != crypto.SignatureLength-1 {
-					log.Fatal("wrong length of signature", "length", len(signature))
-					return nil, "", errors.New("wrong signature length")
-				}
-
-				pubKey := ecPriv.PubKey()
-				if !pubKey.VerifySignature(signBytes, signature) {
-					log.Fatal("verify signature failed", "signBytes", common.ToHex(signBytes), "signature", signature)
-					return nil, "", errors.New("wrong signature")
-				}
-				sig := cosmos.BuildSignatures(pubKey, *extras.Sequence, signature)
-				if err := txBuilder.SetSignatures(sig); err != nil {
-					return nil, "", err
-				}
-				if err := txBuilder.GetTx().ValidateBasic(); err != nil {
-					return nil, "", err
-				}
-
-				return bridge.GetSignTx(txBuilder.GetTx())
-			}
+	if paramChainID != "" {
+		cid, err := common.GetBigIntFromStr(paramChainID)
+		if err != nil {
+			log.Fatal("wrong param chainID", "err", err)
 		}
+		chainID = cid
 	}
+
+	log.Info("init flags finished")
+}
+
+func initBridge() {
+	bridge.SetGatewayConfig(&tokens.GatewayConfig{
+		APIAddress: urls,
+	})
+	bridge.SetChainConfig(&tokens.ChainConfig{
+		ChainID: chainID.String(),
+	})
 }

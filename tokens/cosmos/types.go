@@ -1,14 +1,14 @@
 package cosmos
 
 import (
-	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	cosmosClient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/types"
 )
 
 type BuildRawTx struct {
-	TxBuilder *cosmosClient.TxBuilder `protobuf:"bytes,2,opt,name=tx_builder,proto3" json:"tx_builder,omitempty"`
-	Extra     *tokens.AllExtras       `protobuf:"bytes,2,opt,name=extra,proto3" json:"extra,omitempty"`
+	TxBuilder     cosmosClient.TxBuilder `json:"tx_builder,omitempty"`
+	AccountNumber uint64                 `json:"account_number,omitempty"`
+	Sequence      uint64                 `json:"sequence,omitempty"`
 }
 
 // GetLatestBlockResponse is the response type for the Query/GetLatestBlock RPC

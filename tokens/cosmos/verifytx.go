@@ -18,17 +18,14 @@ const (
 )
 
 // VerifyMsgHash verify msg hash
-func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) (err error) {
+func (b *Bridge) VerifyMsgHash(tx interface{}, msgHashes []string) (err error) {
 	if len(msgHashes) < 1 {
 		return tokens.ErrWrongCountOfMsgHashes
 	}
-	if multichainTx, ok := rawTx.(*BuildRawTx); !ok {
+	if rawTx, ok := tx.(*BuildRawTx); !ok {
 		return tokens.ErrWrongRawTx
 	} else {
-		txBuilder := multichainTx.TxBuilder
-		extra := multichainTx.Extra
-
-		if signBytes, err := b.GetSignBytes(*txBuilder, *extra.AccountNum, *extra.Sequence); err != nil {
+		if signBytes, err := b.GetSignBytes(rawTx); err != nil {
 			return err
 		} else {
 			msgHash := fmt.Sprintf("%X", Sha256Sum(signBytes))

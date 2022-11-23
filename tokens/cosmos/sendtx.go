@@ -25,6 +25,9 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (string, error) {
 		if txRes, err := b.BroadcastTx(req); err != nil {
 			return "", err
 		} else {
+			if txRes == "" {
+				return "", tokens.ErrBroadcastTx
+			}
 			var txResponse *BroadcastTxResponse
 			if err := json.Unmarshal([]byte(txRes), &txResponse); err != nil {
 				return "", err

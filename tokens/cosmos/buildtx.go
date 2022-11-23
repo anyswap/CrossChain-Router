@@ -70,14 +70,19 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		if extra, err := b.initExtra(args); err != nil {
 			return nil, err
 		} else {
-			memo := fmt.Sprintf("Multichain_swapIn_%s_%d", args.SwapID, args.LogIndex)
+			memo := args.GetUniqueSwapIdentifier()
 			mpcPubkey := router.GetMPCPublicKey(args.From)
 			if txBuilder, err := b.BuildTx(args.From, receiver, multichainToken, memo, mpcPubkey, amount, extra); err != nil {
 				return nil, err
 			} else {
+				accountNumber, err := b.GetAccountNum(args.From)
+				if err != nil {
+					return nil, err
+				}
 				return &BuildRawTx{
-					TxBuilder: &txBuilder,
-					Extra:     extra,
+					TxBuilder:     txBuilder,
+					AccountNumber: accountNumber,
+					Sequence:      *extra.Sequence,
 				}, nil
 			}
 		}
@@ -94,13 +99,6 @@ func (b *Bridge) initExtra(args *tokens.BuildTxArgs) (extra *tokens.AllExtras, e
 	if extra.Sequence == nil {
 		if extra.Sequence, err = b.GetSeq(args); err != nil {
 			return nil, err
-		}
-	}
-	if extra.AccountNum == nil {
-		if accountNum, err := b.GetAccountNum(args); err != nil {
-			return nil, err
-		} else {
-			extra.AccountNum = &accountNum
 		}
 	}
 	if extra.Gas == nil {
@@ -158,16 +156,16 @@ func (b *Bridge) GetSeq(args *tokens.BuildTxArgs) (nonceptr *uint64, err error) 
 }
 
 // GetAccountNum get account number
-func (b *Bridge) GetAccountNum(args *tokens.BuildTxArgs) (uint64, error) {
-	if accNo := cachedAccountNumberMap[args.From]; accNo > 0 {
+func (b *Bridge) GetAccountNum(account string) (uint64, error) {
+	if accNo := cachedAccountNumberMap[account]; accNo > 0 {
 		return accNo, nil
 	}
-	if acc, err := b.GetBaseAccount(args.From); err != nil {
+	if acc, err := b.GetBaseAccount(account); err != nil {
 		return 0, err
 	} else {
 		if acc != nil {
 			if accountNumber, err := strconv.ParseUint(acc.Account.AccountNumber, 10, 64); err == nil {
-				cachedAccountNumberMap[args.From] = accountNumber
+				cachedAccountNumberMap[account] = accountNumber
 				return accountNumber, nil
 			} else {
 				return 0, err
