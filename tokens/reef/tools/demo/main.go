@@ -3,32 +3,49 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/big"
+	"os"
+	"os/signal"
+	"strconv"
+	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/eth/abicoder"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/reef"
 	gsrpc "github.com/centrifuge/go-substrate-rpc-client/v4"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/client"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/config"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
+	"github.com/gorilla/websocket"
 	"github.com/mr-tron/base58"
 	"github.com/vedhavyas/go-subkey"
 )
 
+var socketUrl = "wss://testnet.reefscan.com/graphql"
+
 func main() {
 
-	api, err := NewReefAPI(config.Default().RPCURL)
+	// api, err := NewReefAPI(config.Default().RPCURL)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	// api, err := gsrpc.NewSubstrateAPI(config.Default().RPCURL)
-	if err != nil {
-		panic(err)
-	}
+	// meta, err := api.SubAPI.RPC.State.GetMetadataLatest()
+	// if err != nil {
+	// 	panic(err)
+	// }
+
 	// Example_simpleConnect(api.SubAPI)
 
 	// Example_makeASimpleTransfer(api)
 
-	Example_swapoutTransfer(api)
+	// Example_swapoutTransfer(api,meta)
+
+	// Example_query_tx()
+
+	Example_websocket()
 }
 
 func NewReefAPI(url string) (*ReefSubstrateAPI, error) {
@@ -159,26 +176,10 @@ func Example_listenToNewBlocks(api *gsrpc.SubstrateAPI) {
 	}
 }
 
-func Example_listenToBalanceChange(api *gsrpc.SubstrateAPI) {
-
-}
-
-func Example_makeASimpleTransfer(api *gsrpc.SubstrateAPI) {
+func Example_makeASimpleTransfer(reef *ReefSubstrateAPI, meta *types.Metadata) {
 	// This sample shows how to create a transaction to make a transfer from one an account to another.
 
-	// Instantiate the API
-	api, err := gsrpc.NewSubstrateAPI(config.Default().RPCURL)
-	if err != nil {
-		panic(err)
-	}
-
-	meta, err := api.RPC.State.GetMetadataLatest()
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Printf("meta Version %d /n", meta.Version)
-
+	api := reef.SubAPI
 	// Create a call, transferring 12345 units to Bob
 	bob := types.NewMultiAddressFromAccountID(AddressToPubkey("5FWXWnrt5uNSNuCWeuiDppuEvGT5CEPUHvzJSWDdzjJXLnbJ"))
 
@@ -271,7 +272,7 @@ func Example_makeASimpleTransfer(api *gsrpc.SubstrateAPI) {
 
 }
 
-func Example_swapoutTransfer(api *ReefSubstrateAPI) {
+func Example_swapoutTransfer(api *ReefSubstrateAPI, meta *types.Metadata) {
 
 	amount, _ := common.GetBigIntFromStr("10000000000000000000000000")
 	toChainID, _ := common.GetUint64FromStr("5777")
@@ -287,11 +288,6 @@ func Example_swapoutTransfer(api *ReefSubstrateAPI) {
 	fmt.Println(common.ToHex(input))
 
 	router := types.NewAddressFromAccountID(common.FromHex("0x6E0aa801AA5B971ECEB1daD8D7CB9237a18617FD"))
-
-	meta, err := api.SubAPI.RPC.State.GetMetadataLatest()
-	if err != nil {
-		panic(err)
-	}
 
 	// routerKey, _ := types.CreateStorageKey(meta, "EVM", "Accounts", router.AsAccountID[:])
 	// QueryContract(api, routerKey)
@@ -358,4 +354,159 @@ func Example_swapoutTransfer(api *ReefSubstrateAPI) {
 		panic(err)
 	}
 	fmt.Println(hash.Hex())
+}
+
+var done chan interface{}
+var interrupt chan os.Signal
+
+func receiveHandler(connection *websocket.Conn) {
+	defer close(done)
+	for {
+		_, msg, err := connection.ReadMessage()
+		if err != nil {
+			log.Println("Error in receive:", err)
+			return
+		}
+		log.Printf("Received: %s\n", msg)
+	}
+}
+
+type ReefGraphQLRequest struct {
+	ID      string             `json:"id,omitempty"`
+	Type    string             `json:"type"`
+	Payload ReefGraphQLPayLoad `json:"payload"`
+}
+
+type ReefGraphQLPayLoad struct {
+	Extensions    interface{}            `json:"extensions,omitempty"`
+	OperationName string                 `json:"operationName,omitempty"`
+	Query         string                 `json:"query,omitempty"`
+	Variables     map[string]interface{} `json:"variables,omitempty"`
+}
+
+func Example_query_tx() {
+	done = make(chan interface{})    // Channel to indicate that the receiverHandler is done
+	interrupt = make(chan os.Signal) // Channel to listen for interrupt signal to terminate gracefully
+
+	signal.Notify(interrupt, os.Interrupt) // Notify the interrupt channel for SIGINT
+
+	conn, _, err := websocket.DefaultDialer.Dial(socketUrl, nil)
+	if err != nil {
+		log.Fatal("Error connecting to Websocket Server:", err)
+	}
+	defer conn.Close()
+	go receiveHandler(conn)
+
+	i := 0
+	// Our main loop for the client
+	// We send our relevant packets here
+	for {
+		select {
+		case <-time.After(time.Duration(1) * time.Millisecond * 2000):
+			var msg []byte
+			switch i {
+			case 0:
+				msg, _ = json.Marshal(ReefGraphQLRequest{Type: "connection_init"})
+			case 1:
+				msg, _ = json.Marshal(ReefGraphQLRequest{
+					ID:   strconv.Itoa(i),
+					Type: "start",
+					Payload: ReefGraphQLPayLoad{
+						OperationName: "chain_info",
+						Query:         "subscription chain_info {\n  chain_info {\n    name\n    count\n    __typename\n  }\n}",
+					}})
+			case 2:
+				msg, _ = json.Marshal(ReefGraphQLRequest{
+					ID:   strconv.Itoa(i),
+					Type: "start",
+					Payload: ReefGraphQLPayLoad{
+						OperationName: "lastest_blocks",
+						Query:         "subscription lastest_blocks {\n  block(limit: 1, order_by: {id: desc}, where: {finalized: {_eq: true}}) {\n    id\n    __typename\n  }\n}\n",
+					}})
+			case 3:
+				msg, _ = json.Marshal(ReefGraphQLRequest{
+					ID:   strconv.Itoa(i),
+					Type: "start",
+					Payload: ReefGraphQLPayLoad{
+						OperationName: "query_tx_by_hash",
+						Query:         "query query_tx_by_hash($hash: String!) {\n  extrinsic(where: {hash: {_eq: $hash}}) {\n    id\n    block_id\n    index\n    type\n    signer\n    section\n    method\n    args\n    hash\n    status\n    timestamp\n    error_message\n    __typename\n  }\n}\n",
+						Variables: map[string]interface{}{
+							"hash": "0xfaba926e79f92c5dd62c40ae808342cb7beb8dd9e8ba15f848fdabbf0cd5af55",
+						},
+					}})
+			case 4:
+				msg, _ = json.Marshal(ReefGraphQLRequest{
+					ID:   strconv.Itoa(i),
+					Type: "start",
+					Payload: ReefGraphQLPayLoad{
+						OperationName: "query_eventlogs_by_extrinsic_id",
+						Query:         "subscription query_eventlogs_by_extrinsic_id($extrinsic_id: bigint!) {\n  event(order_by: {index: asc}, where: {extrinsic_id: {_eq: $extrinsic_id}}) {\n    extrinsic {\n      id\n      block_id\n      index\n      __typename\n    }\n    index\n    data\n    method\n    section\n    __typename\n  }\n}\n",
+						Variables: map[string]interface{}{
+							"extrinsic_id": 5057193,
+						},
+					}})
+
+			default:
+				// msg, _ = json.Marshal(ReefGraphQLRequest{Type: "ka"})
+			}
+			if len(msg) > 0 {
+
+				log.Println("send msg....", string(msg))
+				// Send an echo packet every second
+				err := conn.WriteMessage(websocket.TextMessage, msg)
+				if err != nil {
+					log.Println("Error during writing to websocket:", err)
+					return
+				}
+			}
+			i++
+		case <-interrupt:
+			// We received a SIGINT (Ctrl + C). Terminate gracefully...
+			log.Println("Received SIGINT interrupt signal. Closing all pending connections")
+
+			// Close our websocket connection
+			err := conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			if err != nil {
+				log.Println("Error during closing websocket:", err)
+				return
+			}
+
+			select {
+			case <-done:
+				log.Println("Receiver Channel Closed! Exiting....")
+			case <-time.After(time.Duration(1) * time.Second):
+				log.Println("Timeout in closing receiving channel. Exiting....")
+			}
+			return
+		}
+	}
+}
+
+func Example_websocket() {
+
+	ws, err := reef.NewWebSocket(socketUrl)
+	if err != nil {
+		log.Fatal("Error connecting to Websocket Server:", err)
+	}
+
+	go func() {
+		for {
+			select {
+			case <-time.After(time.Duration(1) * time.Millisecond * 2000):
+				go func() {
+					log.Println("QueryTx start...")
+					tx, err := ws.QueryTx("0xfaba926e79f92c5dd62c40ae808342cb7beb8dd9e8ba15f848fdabbf0cd5af55")
+					if err != nil {
+						log.Printf(err.Error())
+					} else {
+						log.Printf("QueryTx result %s %s", tx.Hash, tx.Status)
+					}
+				}()
+			}
+		}
+	}()
+
+	ws.Run()
+
+	time.Sleep(30000 * time.Second)
 }
