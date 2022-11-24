@@ -25,7 +25,7 @@ require (
 	github.com/stretchr/testify v1.7.5
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/urfave/cli/v2 v2.10.2
-	github.com/vedhavyas/go-subkey v1.0.2 // indirect
+	github.com/vedhavyas/go-subkey v1.0.2
 	go.mongodb.org/mongo-driver v1.9.1
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
 	golang.org/x/time v0.0.0-20210611083556-38a9dc6acbc6 // indirect
