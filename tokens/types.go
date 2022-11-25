@@ -66,11 +66,6 @@ type ERC20SwapInfo struct {
 	TokenID   string `json:"tokenID"`
 	SwapoutID string `json:"swapoutID,omitempty"`
 
-	ForNative     bool     `json:"forNative,omitempty"`
-	ForUnderlying bool     `json:"forUnderlying,omitempty"`
-	Path          []string `json:"path,omitempty"`
-	AmountOutMin  *big.Int `json:"amountOutMin,omitempty"`
-
 	CallProxy string        `json:"callProxy,omitempty"`
 	CallData  hexutil.Bytes `json:"callData,omitempty"`
 }
@@ -157,9 +152,14 @@ type StatusInterface interface {
 	IsStatusOk() bool
 }
 
+// IsSwapTxOnChain is tx onchain
+func (s *TxStatus) IsSwapTxOnChain() bool {
+	return s != nil && s.BlockHeight > 0
+}
+
 // IsSwapTxOnChainAndFailed to make failed of swaptx
 func (s *TxStatus) IsSwapTxOnChainAndFailed() bool {
-	if s == nil || s.BlockHeight == 0 {
+	if !s.IsSwapTxOnChain() {
 		return false // not on chain
 	}
 	if status, ok := s.Receipt.(StatusInterface); ok {
@@ -219,7 +219,7 @@ type AllExtras struct {
 	Sequence   *uint64       `json:"sequence,omitempty"`
 	Fee        *string       `json:"fee,omitempty"`
 	Gas        *uint64       `json:"gas,omitempty"`
-	RawTx      string        `json:"rawTx,omitempty"`
+	RawTx      hexutil.Bytes `json:"rawTx,omitempty"`
 	BlockHash  *string       `json:"blockHash,omitempty"`
 }
 
@@ -230,7 +230,6 @@ type EthExtraArgs struct {
 	GasTipCap *big.Int `json:"gasTipCap,omitempty"`
 	GasFeeCap *big.Int `json:"gasFeeCap,omitempty"`
 	Nonce     *uint64  `json:"nonce,omitempty"`
-	Deadline  int64    `json:"deadline,omitempty"`
 }
 
 // GetReplaceNum get rplace swap count

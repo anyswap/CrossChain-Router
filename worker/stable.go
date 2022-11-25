@@ -82,16 +82,9 @@ func findRouterSwapResultsToStable() ([]*mongodb.MgoSwapResult, error) {
 	return mongodb.FindRouterSwapResultsWithStatus(mongodb.MatchTxNotStable, septime)
 }
 
-func isTxOnChain(txStatus *tokens.TxStatus) bool {
-	if txStatus == nil || txStatus.BlockHeight == 0 {
-		return false
-	}
-	return txStatus.Receipt != nil
-}
-
 func getSwapTxStatus(resBridge tokens.IBridge, swap *mongodb.MgoSwapResult) *tokens.TxStatus {
 	txStatus, err := resBridge.GetTransactionStatus(swap.SwapTx)
-	if err == nil && isTxOnChain(txStatus) {
+	if err == nil && txStatus.IsSwapTxOnChain() {
 		return txStatus
 	}
 	for _, oldSwapTx := range swap.OldSwapTxs {
@@ -99,7 +92,7 @@ func getSwapTxStatus(resBridge tokens.IBridge, swap *mongodb.MgoSwapResult) *tok
 			continue
 		}
 		txStatus2, err2 := resBridge.GetTransactionStatus(oldSwapTx)
-		if err2 == nil && isTxOnChain(txStatus2) {
+		if err2 == nil && txStatus2.IsSwapTxOnChain() {
 			swap.SwapTx = oldSwapTx
 			return txStatus2
 		}
@@ -173,6 +166,11 @@ func processRouterSwapStable(swap *mongodb.MgoSwapResult) (err error) {
 	resBridge := router.GetBridgeByChainID(swap.ToChainID)
 	if resBridge == nil {
 		return tokens.ErrNoBridgeForChainID
+	}
+	if swap.SwapHeight != 0 &&
+		swap.SwapHeight+resBridge.GetChainConfig().Confirmations >
+			router.GetCachedLatestBlockNumber(swap.ToChainID) {
+		return nil
 	}
 	txStatus := getSwapTxStatus(resBridge, swap)
 	if txStatus == nil || txStatus.BlockHeight == 0 {

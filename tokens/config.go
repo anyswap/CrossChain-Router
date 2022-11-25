@@ -8,6 +8,12 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/common"
 )
 
+// token version boundaries
+const (
+	MaxStandardTokenVersion = uint64(10000)
+	MinWrapperTokenVersion  = uint64(20000)
+)
+
 // ChainConfig struct
 type ChainConfig struct {
 	ChainID        string
@@ -31,8 +37,9 @@ type TokenConfig struct {
 	Extra           string
 
 	// calced value
-	underlying         string
-	underlyingIsMinted bool
+	underlying string
+
+	Checked bool `json:"-"`
 }
 
 // SwapConfig struct
@@ -99,23 +106,22 @@ func (c *TokenConfig) CheckConfig() error {
 
 // IsStandardTokenVersion is standard token version
 func (c *TokenConfig) IsStandardTokenVersion() bool {
-	return c.ContractVersion > 0 && c.ContractVersion <= 10000
+	return c.ContractVersion > 0 && c.ContractVersion <= MaxStandardTokenVersion
+}
+
+// IsWrapperTokenVersion is wrapper token version
+func (c *TokenConfig) IsWrapperTokenVersion() bool {
+	return c.ContractVersion >= MinWrapperTokenVersion
 }
 
 // SetUnderlying set underlying
-func (c *TokenConfig) SetUnderlying(underlying string, underlyingIsMinted bool) {
+func (c *TokenConfig) SetUnderlying(underlying string) {
 	c.underlying = underlying
-	c.underlyingIsMinted = underlyingIsMinted
 }
 
 // GetUnderlying get underlying
 func (c *TokenConfig) GetUnderlying() string {
 	return c.underlying
-}
-
-// IsUnderlyingMinted is underlying minted
-func (c *TokenConfig) IsUnderlyingMinted() bool {
-	return c.underlyingIsMinted
 }
 
 // CheckConfig check swap config

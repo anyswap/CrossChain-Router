@@ -121,7 +121,7 @@ func (b *Bridge) checkTxStatus(txres *TransactionResult, allowUnstable bool) err
 			return tokens.ErrTxNotStable
 		}
 
-		if lastHeight < b.ChainConfig.InitialHeight {
+		if txHeight < b.ChainConfig.InitialHeight {
 			return tokens.ErrTxBeforeInitialHeight
 		}
 	}

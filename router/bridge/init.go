@@ -12,7 +12,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/mpc"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
-	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
@@ -49,7 +48,6 @@ func InitRouterBridges(isServer bool) {
 
 	logErrFunc := log.GetLogFuncOr(router.DontPanicInLoading(), log.Error, log.Fatal)
 
-	client.InitHTTPClient()
 	router.InitRouterConfigClients()
 
 	log.Info("start get all chain ids")
@@ -103,6 +101,11 @@ func InitRouterBridges(isServer bool) {
 			bridge := NewCrossChainBridge(chainID)
 
 			InitGatewayConfig(bridge, chainID)
+			if len(bridge.GetGatewayConfig().APIAddress) == 0 {
+				logErrFunc("bridge has no gateway config", "chainID", chainID)
+				return
+			}
+
 			AdjustGatewayOrder(bridge, chainID.String())
 			InitChainConfig(bridge, chainID)
 
@@ -116,16 +119,23 @@ func InitRouterBridges(isServer bool) {
 				log.Infof("[%5v] lastest block number is %v", chainID, latestBlock)
 			}
 
-			wg2 := new(sync.WaitGroup)
-			wg2.Add(len(tokenIDs))
-			for _, tokenID := range tokenIDs {
-				go func(wg2 *sync.WaitGroup, tokenID string, chainID *big.Int) {
-					defer wg2.Done()
+			if params.GetLocalChainConfig(chainID.String()).ForbidParallelLoading {
+				for _, tokenID := range tokenIDs {
 					log.Info("start load token config", "tokenID", tokenID, "chainID", chainID)
 					InitTokenConfig(bridge, tokenID, chainID)
-				}(wg2, tokenID, chainID)
+				}
+			} else {
+				wg2 := new(sync.WaitGroup)
+				wg2.Add(len(tokenIDs))
+				for _, tokenID := range tokenIDs {
+					go func(wg2 *sync.WaitGroup, tokenID string, chainID *big.Int) {
+						defer wg2.Done()
+						log.Info("start load token config", "tokenID", tokenID, "chainID", chainID)
+						InitTokenConfig(bridge, tokenID, chainID)
+					}(wg2, tokenID, chainID)
+				}
+				wg2.Wait()
 			}
-			wg2.Wait()
 		}(wg, chainID)
 	}
 	wg.Wait()
@@ -431,7 +441,7 @@ func InitTokenConfig(b tokens.IBridge, tokenID string, chainID *big.Int) {
 
 	router.SetMultichainToken(tokenID, chainID.String(), tokenAddr)
 
-	log.Info(fmt.Sprintf("[%5v] init '%v' token config success", chainID, tokenID), "tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "isReload", isReload, "underlying", tokenCfg.GetUnderlying(), "underlyingIsMinted", tokenCfg.IsUnderlyingMinted())
+	log.Info(fmt.Sprintf("[%5v] init '%v' token config success", chainID, tokenID), "tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "isReload", isReload, "underlying", tokenCfg.GetUnderlying())
 
 	routerContract := tokenCfg.RouterContract
 	if routerContract != "" && !isRouterInfoLoaded(chainID.String(), routerContract) {

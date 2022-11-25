@@ -37,11 +37,7 @@ var (
 )
 
 // GetSwapInFuncHash get swapin func hash
-func GetSwapInFuncHash(tokenCfg *tokens.TokenConfig, forUnderlying bool) string {
-	if forUnderlying {
-		return AnySwapInUnderlyingFuncHash
-	}
-
+func GetSwapInFuncHash(tokenCfg *tokens.TokenConfig) string {
 	switch tokenCfg.ContractVersion {
 	case ForceAnySwapInAutoTokenVersion:
 		return AnySwapInAutoFuncHash
@@ -141,7 +137,7 @@ func (b *Bridge) buildERC20SwapinTxInput(args *tokens.BuildTxArgs, multichainTok
 		return tokens.ErrMissTokenConfig
 	}
 
-	args.Selector = GetSwapInFuncHash(toTokenCfg, args.ERC20SwapInfo.ForUnderlying)
+	args.Selector = GetSwapInFuncHash(toTokenCfg)
 
 	input := abicoder.PackData(
 		common.HexToHash(args.SwapID),

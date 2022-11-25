@@ -131,6 +131,11 @@ var (
 		Name:  "gasPrice",
 		Usage: "gas price",
 	}
+	// MemoFlag --memo
+	MemoFlag = &cli.StringFlag{
+		Name:  "memo",
+		Usage: "memo text",
+	}
 
 	// CommonLogFlags common log flags
 	CommonLogFlags = []cli.Flag{
