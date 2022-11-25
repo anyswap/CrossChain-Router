@@ -96,6 +96,7 @@ func (config *RouterConfig) CheckConfig(isServer bool) (err error) {
 
 // CheckBlacklistConfig check black list config
 func (config *RouterConfig) CheckBlacklistConfig() (err error) {
+	tempCidMap := make(map[string]struct{})
 	for _, chainID := range config.ChainIDBlackList {
 		biChainID, ok := new(big.Int).SetString(chainID, 0)
 		if !ok {
@@ -103,18 +104,20 @@ func (config *RouterConfig) CheckBlacklistConfig() (err error) {
 		}
 		key := biChainID.String()
 		if !IsReload {
-			if _, exist := chainIDBlacklistMap[key]; exist {
+			if _, exist := tempCidMap[key]; exist {
 				return fmt.Errorf("duplicate chain id '%v' in black list", key)
 			}
 		}
-		chainIDBlacklistMap[key] = struct{}{}
+		tempCidMap[key] = struct{}{}
 	}
+	chainIDBlacklistMap = tempCidMap
 	if len(chainIDBlacklistMap) > 0 {
-		log.Infof("chainID blacklist is %v", config.ChainIDBlackList)
+		log.Infof("chainID blacklist is %v (isReload: %v)", config.ChainIDBlackList, IsReload)
 	}
+
+	tempTCidMap := make(map[string]map[string]struct{})
 	for cid, tokenIDs := range config.TokenIDBlackListOnChain {
 		m := make(map[string]struct{})
-		tokenIDBlacklistOnChainMap[cid] = m
 		for _, tokenID := range tokenIDs {
 			if tokenID == "" {
 				return fmt.Errorf("empty token id in black list on chain %v", cid)
@@ -127,36 +130,47 @@ func (config *RouterConfig) CheckBlacklistConfig() (err error) {
 			}
 			m[key] = struct{}{}
 		}
+		tempTCidMap[cid] = m
 	}
+	tokenIDBlacklistOnChainMap = tempTCidMap
+	if len(tokenIDBlacklistOnChainMap) > 0 {
+		log.Info("init tokenID blacklist on chains success", "isReload", IsReload)
+	}
+
+	tempTidMap := make(map[string]struct{})
 	for _, tokenID := range config.TokenIDBlackList {
 		if tokenID == "" {
 			return errors.New("empty token id in black list")
 		}
 		key := strings.ToLower(tokenID)
 		if !IsReload {
-			if _, exist := tokenIDBlacklistMap[key]; exist {
+			if _, exist := tempTidMap[key]; exist {
 				return fmt.Errorf("duplicate token id '%v' in black list", key)
 			}
 		}
-		tokenIDBlacklistMap[key] = struct{}{}
+		tempTidMap[key] = struct{}{}
 	}
+	tokenIDBlacklistMap = tempTidMap
 	if len(tokenIDBlacklistMap) > 0 {
-		log.Infof("tokenID blacklist is %v", config.TokenIDBlackList)
+		log.Info("init tokenID blacklist success", "isReload", IsReload)
 	}
+
+	tempAccMap := make(map[string]struct{})
 	for _, account := range config.AccountBlackList {
 		if account == "" {
 			return errors.New("empty account in black list")
 		}
 		key := strings.ToLower(account)
 		if !IsReload {
-			if _, exist := accountBlacklistMap[key]; exist {
+			if _, exist := tempAccMap[key]; exist {
 				return fmt.Errorf("duplicate account '%v' in black list", key)
 			}
 		}
-		accountBlacklistMap[key] = struct{}{}
+		tempAccMap[key] = struct{}{}
 	}
+	accountBlacklistMap = tempAccMap
 	if len(accountBlacklistMap) > 0 {
-		log.Infof("account blacklist is %v", config.AccountBlackList)
+		log.Info("init account blacklist success", "isReload", IsReload)
 	}
 	return nil
 }
@@ -212,7 +226,10 @@ func (s *RouterServerConfig) CheckConfig() error {
 			return fmt.Errorf("chain %v default gas limit %v is greater than its max gas limit %v", cid, defGasLimit, masGasLimit)
 		}
 	}
+
 	initAutoSwapNonceEnabledChains()
+
+	tempFixGasPriceMap := make(map[string]*big.Int)
 	for chainID, fixedGasPriceStr := range s.FixedGasPrice {
 		biChainID, ok := new(big.Int).SetString(chainID, 0)
 		if !ok {
@@ -224,12 +241,16 @@ func (s *RouterServerConfig) CheckConfig() error {
 		}
 		key := biChainID.String()
 		if !IsReload {
-			if _, exist := fixedGasPriceMap[key]; exist {
+			if _, exist := tempFixGasPriceMap[key]; exist {
 				return fmt.Errorf("duplicate chain id '%v' in 'FixedGasPrice'", key)
 			}
 		}
-		fixedGasPriceMap[key] = fixedGasPrice
+		tempFixGasPriceMap[key] = fixedGasPrice
 	}
+	fixedGasPriceMap = tempFixGasPriceMap
+	log.Info("init FixedGasPrice success", "isReload", IsReload)
+
+	tempMaxGasPriceMap := make(map[string]*big.Int)
 	for chainID, maxGasPriceStr := range s.MaxGasPrice {
 		biChainID, ok := new(big.Int).SetString(chainID, 0)
 		if !ok {
@@ -241,12 +262,15 @@ func (s *RouterServerConfig) CheckConfig() error {
 		}
 		key := biChainID.String()
 		if !IsReload {
-			if _, exist := maxGasPriceMap[key]; exist {
+			if _, exist := tempMaxGasPriceMap[key]; exist {
 				return fmt.Errorf("duplicate chain id '%v' in 'MaxGasPrice'", key)
 			}
 		}
-		maxGasPriceMap[key] = maxGasPrice
+		tempMaxGasPriceMap[key] = maxGasPrice
 	}
+	maxGasPriceMap = tempMaxGasPriceMap
+	log.Info("init MaxGasPrice success", "isReload", IsReload)
+
 	err := s.CheckDynamicFeeTxConfig()
 	if err != nil {
 		return err
