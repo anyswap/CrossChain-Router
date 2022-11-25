@@ -43,24 +43,7 @@ var (
 
 // StartSwapJob swap job
 func StartSwapJob() {
-	// init all swap task queue
-	router.RouterBridges.Range(func(k, v interface{}) bool {
-		chainID := k.(string)
-		if _, exist := swapTaskQueues[chainID]; !exist {
-			swapTaskQueues[chainID] = fifo.NewQueue()
-		}
-		return true
-	})
-
-	// start comsumers
-	router.RouterBridges.Range(func(k, v interface{}) bool {
-		chainID := k.(string)
-
-		mongodb.MgoWaitGroup.Add(1)
-		go startSwapConsumer(chainID)
-
-		return true
-	})
+	logWorker("swap", "start router swap job")
 
 	// start producer
 	go startSwapProducer()
@@ -68,7 +51,6 @@ func StartSwapJob() {
 }
 
 func startSwapProducer() {
-	logWorker("swap", "start router swap job")
 	for {
 		res, err := findRouterSwapToSwap()
 		if err != nil {
@@ -278,9 +260,18 @@ func dispatchSwapTask(args *tokens.BuildTxArgs) error {
 		return fmt.Errorf("unknown router swap type %d", args.SwapType)
 	}
 
-	taskQueue, exist := swapTaskQueues[args.ToChainID.String()]
+	chainID := args.ToChainID.String()
+	taskQueue, exist := swapTaskQueues[chainID]
 	if !exist {
-		return fmt.Errorf("no task queue for chainID '%v'", args.ToChainID)
+		bridge := router.GetBridgeByChainID(chainID)
+		if bridge == nil {
+			return tokens.ErrNoBridgeForChainID
+		}
+		// init swap task queue and start consumer routine
+		taskQueue = fifo.NewQueue()
+		swapTaskQueues[chainID] = taskQueue
+		mongodb.MgoWaitGroup.Add(1)
+		go startSwapConsumer(chainID)
 	}
 
 	logWorker("doSwap", "dispatch router swap task", "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "value", args.OriginValue, "swapNonce", args.GetTxNonce(), "queue", taskQueue.Len())
