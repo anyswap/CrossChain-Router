@@ -1,8 +1,6 @@
 package worker
 
 import (
-	"fmt"
-
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
@@ -20,25 +18,6 @@ var (
 // StartStableJob stable job
 func StartStableJob() {
 	logWorker("stable", "start router swap stable job")
-
-	// init all swap stable task queue
-	router.RouterBridges.Range(func(k, v interface{}) bool {
-		chainID := k.(string)
-		if _, exist := stableTaskQueues[chainID]; !exist {
-			stableTaskQueues[chainID] = fifo.NewQueue()
-		}
-		return true
-	})
-
-	// start comsumers
-	router.RouterBridges.Range(func(k, v interface{}) bool {
-		chainID := k.(string)
-
-		mongodb.MgoWaitGroup.Add(1)
-		go startStableConsumer(chainID)
-
-		return true
-	})
 
 	// start producer
 	go startStableProducer()
@@ -104,7 +83,15 @@ func dispatchSwapResultToStable(res *mongodb.MgoSwapResult) error {
 	chainID := res.ToChainID
 	taskQueue, exist := stableTaskQueues[chainID]
 	if !exist {
-		return fmt.Errorf("no stable task queue for chainID '%v'", chainID)
+		bridge := router.GetBridgeByChainID(chainID)
+		if bridge == nil {
+			return tokens.ErrNoBridgeForChainID
+		}
+		// init stable task queue and start consumer routine
+		taskQueue = fifo.NewQueue()
+		stableTaskQueues[chainID] = taskQueue
+		mongodb.MgoWaitGroup.Add(1)
+		go startStableConsumer(chainID)
 	}
 
 	logWorker("stable", "dispatch stable router swap task", "fromChainID", res.FromChainID, "toChainID", res.ToChainID, "txid", res.TxID, "logIndex", res.LogIndex, "value", res.SwapValue, "swapNonce", res.SwapNonce, "queue", taskQueue.Len())
