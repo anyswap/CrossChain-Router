@@ -387,7 +387,7 @@ func InitChainConfig(b tokens.IBridge, chainID *big.Int) {
 
 	routerContract := chainCfg.RouterContract
 	if routerContract != "" && !isRouterInfoLoaded(chainID.String(), routerContract) {
-		err = b.InitRouterInfo(routerContract)
+		err = b.InitRouterInfo(routerContract, chainCfg.RouterVersion)
 		if err == nil {
 			setRouterInfoLoaded(chainID.String(), routerContract)
 		} else {
@@ -445,7 +445,7 @@ func InitTokenConfig(b tokens.IBridge, tokenID string, chainID *big.Int) {
 
 	routerContract := tokenCfg.RouterContract
 	if routerContract != "" && !isRouterInfoLoaded(chainID.String(), routerContract) {
-		err = b.InitRouterInfo(routerContract)
+		err = b.InitRouterInfo(routerContract, tokenCfg.RouterVersion)
 		if err == nil {
 			setRouterInfoLoaded(chainID.String(), routerContract)
 		} else {

@@ -36,6 +36,7 @@ var (
 	ErrSameFromAndToChainID   = errors.New("from and to chainID are same")
 	ErrMissMPCPublicKey       = errors.New("miss mpc public key config")
 	ErrMissRouterInfo         = errors.New("miss router info")
+	ErrRouterVersionMismatch  = errors.New("router version mismatch")
 	ErrSenderMismatch         = errors.New("sender mismatch")
 	ErrTxWithWrongSender      = errors.New("tx with wrong sender")
 	ErrToChainIDMismatch      = errors.New("to chainID mismatch")

@@ -94,7 +94,7 @@ func NewCrossChainBridgeBase() *CrossChainBridgeBase {
 }
 
 // InitRouterInfo init router info
-func (b *CrossChainBridgeBase) InitRouterInfo(routerContract string) error {
+func (b *CrossChainBridgeBase) InitRouterInfo(routerContract, routerVersion string) (err error) {
 	return ErrNotImplemented
 }
 
@@ -164,6 +164,20 @@ func (b *CrossChainBridgeBase) GetRouterContract(token string) string {
 		}
 	}
 	return b.ChainConfig.RouterContract
+}
+
+// GetRouterVersion get router version
+func (b *CrossChainBridgeBase) GetRouterVersion(token string) string {
+	if token != "" {
+		tokenCfg := b.GetTokenConfig(token)
+		if tokenCfg == nil {
+			return ""
+		}
+		if tokenCfg.RouterContract != "" {
+			return tokenCfg.RouterVersion
+		}
+	}
+	return b.ChainConfig.RouterVersion
 }
 
 // SetSwapConfigs set swap configs

@@ -159,6 +159,10 @@ func (b *Bridge) buildSwapAndExecTxInput(args *tokens.BuildTxArgs, multichainTok
 		return tokens.ErrMissTokenConfig
 	}
 
+	if b.GetRouterVersion(multichainToken) != "v7" {
+		return tokens.ErrRouterVersionMismatch
+	}
+
 	erc20SwapInfo := args.ERC20SwapInfo
 
 	funcHash := GetSwapInAndExecFuncHashV7(toTokenCfg)
@@ -195,7 +199,7 @@ func (b *Bridge) buildERC20SwapinTxInput(args *tokens.BuildTxArgs, multichainTok
 
 	var funcHash, input []byte
 
-	switch params.GetSwapSubType() {
+	switch b.GetRouterVersion(multichainToken) {
 	case "v7":
 		funcHash = GetSwapInFuncHashV7(toTokenCfg)
 		input = abicoder.PackDataWithFuncHash(funcHash,
