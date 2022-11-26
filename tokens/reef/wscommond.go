@@ -1,5 +1,9 @@
 package reef
 
+const TxHash_GQL = "query query_tx_by_hash($hash: String!) {\n  extrinsic(where: {hash: {_eq: $hash}}) {\n    id\n    block_id\n    index\n    type\n    signer\n    section\n    method\n    args\n    hash\n    status\n    timestamp\n    error_message\n inherent_data\n signed_data\n  __typename\n  }\n}\n"
+const EvmAddress_GQL = "subscription query_evm_addr($address: String!) {\n  account(\n where: {address: {_eq: $address}}) {\n    evm_address\n    __typename\n  }\n}\n"
+const EventLog_GQL = "subscription query_eventlogs_by_extrinsic_id($extrinsic_id: bigint!) {\n  event(order_by: {index: asc}, where: {extrinsic_id: {_eq: $extrinsic_id}}) {\n    extrinsic {\n      id\n      block_id\n      index\n      __typename\n    }\n    index\n    data\n    method\n    section\n    __typename\n  }\n}\n"
+
 type ReefGraphQLRequest struct {
 	*Command
 	// ID      string             `json:"id,omitempty"`
@@ -43,16 +47,27 @@ type BaseData struct {
 }
 
 type Extrinsic struct {
-	Args         []string `json:"args,omitempty"`
-	BlockID      uint64   `json:"block_id,omitempty"`
-	ID           uint64   `json:"id,omitempty"`
-	Signer       string   `json:"signer,omitempty"`
-	ErrorMessage string   `json:"error_message,omitempty"`
-	Hash         string   `json:"hash,omitempty"`
-	Timestamp    string   `json:"timestamp,omitempty"`
-	Status       string   `json:"status,omitempty"`
-	Type         string   `json:"type,omitempty"`
+	Args         []string    `json:"args,omitempty"`
+	BlockID      *uint64     `json:"block_id,omitempty"`
+	ID           *uint64     `json:"id,omitempty"`
+	Signer       string      `json:"signer,omitempty"`
+	ErrorMessage string      `json:"error_message,omitempty"`
+	Hash         *string     `json:"hash,omitempty"`
+	Timestamp    string      `json:"timestamp,omitempty"`
+	Status       string      `json:"status,omitempty"`
+	Type         string      `json:"type,omitempty"`
+	SignedData   *SignedData `json:"signed_data,omitempty"`
 	BaseData
+}
+
+type SignedData struct {
+	Fee *Fee `json:"fee,omitempty"`
+}
+
+type Fee struct {
+	Class      string  `json:"class,omitempty"`
+	PartialFee string  `json:"partialFee,omitempty"`
+	Weight     *uint64 `json:"weight,omitempty"`
 }
 
 type ReefGraphQLEventLogsData struct {
@@ -70,9 +85,19 @@ type Log struct {
 	Address string   `json:"address,omitempty"`
 }
 
+type ReefGraphQLAccountData struct {
+	Accounts []Account `json:"account,omitempty"`
+}
+
+type Account struct {
+	EvmAddress string `json:"evm_address,omitempty"`
+	BaseData
+}
+
 // Map message types to the appropriate data structure
 var streamMessageFactory = map[string]func() interface{}{
 	"init":     func() interface{} { return struct{}{} },
+	"address":  func() interface{} { return &ReefGraphQLAccountData{} },
 	"tx":       func() interface{} { return &ReefGraphQLTxData{} },
 	"eventlog": func() interface{} { return &ReefGraphQLEventLogsData{} },
 }

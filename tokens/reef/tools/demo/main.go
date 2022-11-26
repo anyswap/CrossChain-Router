@@ -43,9 +43,9 @@ func main() {
 
 	// Example_swapoutTransfer(api,meta)
 
-	// Example_query_tx()
+	Example_query_tx()
 
-	Example_websocket()
+	// Example_websocket()
 }
 
 func NewReefAPI(url string) (*ReefSubstrateAPI, error) {
@@ -429,7 +429,7 @@ func Example_query_tx() {
 					Type: "start",
 					Payload: ReefGraphQLPayLoad{
 						OperationName: "query_tx_by_hash",
-						Query:         "query query_tx_by_hash($hash: String!) {\n  extrinsic(where: {hash: {_eq: $hash}}) {\n    id\n    block_id\n    index\n    type\n    signer\n    section\n    method\n    args\n    hash\n    status\n    timestamp\n    error_message\n    __typename\n  }\n}\n",
+						Query:         "query query_tx_by_hash($hash: String!) {\n  extrinsic(where: {hash: {_eq: $hash}}) {\n    id\n    block_id\n    index\n    type\n    signer\n    section\n    method\n    args\n    hash\n    status\n    timestamp\n    error_message\n inherent_data\n signed_data\n   __typename\n  }\n}\n",
 						Variables: map[string]interface{}{
 							"hash": "0xfaba926e79f92c5dd62c40ae808342cb7beb8dd9e8ba15f848fdabbf0cd5af55",
 						},

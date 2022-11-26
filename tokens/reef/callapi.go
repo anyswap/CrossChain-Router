@@ -1,6 +1,8 @@
 package reef
 
 import (
+	"errors"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,6 +16,12 @@ import (
 )
 
 var (
+	errEmptyURLs              = errors.New("empty URLs")
+	errTxInOrphanBlock        = errors.New("tx is in orphan block")
+	errTxHashMismatch         = errors.New("tx hash mismatch with rpc result")
+	errTxBlockHashMismatch    = errors.New("tx block hash mismatch with rpc result")
+	errTxReceiptMissBlockInfo = errors.New("tx receipt missing block info")
+
 	wrapRPCQueryError = tokens.WrapRPCQueryError
 )
 
@@ -40,6 +48,19 @@ func (b *Bridge) GetLatestBlockNumber() (maxHeight uint64, err error) {
 		return maxHeight, nil
 	}
 	return 0, wrapRPCQueryError(err, "chain_getHeader")
+}
+
+func (b *Bridge) GetGetBlockHash(blockNumber uint64) (blockHash string, err error) {
+	gateway := b.GatewayConfig
+	var result map[string]interface{}
+	param := strconv.FormatUint(blockNumber, 16)
+	for _, url := range gateway.APIAddress {
+		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "chain_getHeader", param)
+		if err == nil {
+			return result["result"].(string), nil
+		}
+	}
+	return "", wrapRPCQueryError(err, "chain_getHeader")
 }
 
 // CallContract call eth_call

@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/gorilla/websocket"
@@ -330,7 +331,7 @@ func (r *WebSocket) QueryTx(hash string) (*Extrinsic, error) {
 		Type:    "start",
 		Payload: ReefGraphQLPayLoad{
 			OperationName: "query_tx_by_hash",
-			Query:         "query query_tx_by_hash($hash: String!) {\n  extrinsic(where: {hash: {_eq: $hash}}) {\n    id\n    block_id\n    index\n    type\n    signer\n    section\n    method\n    args\n    hash\n    status\n    timestamp\n    error_message\n    __typename\n  }\n}\n",
+			Query:         TxHash_GQL,
 			Variables: map[string]interface{}{
 				"hash": hash,
 			},
@@ -345,10 +346,69 @@ func (r *WebSocket) QueryTx(hash string) (*Extrinsic, error) {
 	if cmd.Error != nil {
 		return nil, fmt.Errorf("reef query tx err: %s", *cmd.Error)
 	}
-	log.Infof("QueryTx cost:%d", time.Since(start).Milliseconds())
+	log.Infof("reef QueryTx cost:%d", time.Since(start).String())
 	if f, ok := cmd.Result.(*ReefGraphQLResponse).Payload.Data.(*ReefGraphQLTxData); ok {
 		if len(f.Extrinsic) > 0 {
 			return &f.Extrinsic[0], nil
+		}
+	}
+	return nil, nil
+}
+
+func (r *WebSocket) QueryEventLogs(extrinsicId uint64) (*[]EventLog, error) {
+	cmd := &ReefGraphQLRequest{
+		Command: newCommand("eventlog"),
+		Type:    "start",
+		Payload: ReefGraphQLPayLoad{
+			OperationName: "query_eventlogs_by_extrinsic_id",
+			Query:         EventLog_GQL,
+			Variables: map[string]interface{}{
+				"extrinsic_id": extrinsicId,
+			},
+		}}
+	start := time.Now()
+	err := r.SendCommond(cmd)
+	if err != nil {
+		return nil, err
+	}
+	<-cmd.Ready
+	if cmd.Error != nil {
+		return nil, fmt.Errorf("reef query tx err: %s", *cmd.Error)
+	}
+	log.Infof("reef QueryEventLogs cost:%d", time.Since(start).String())
+	if f, ok := cmd.Result.(*ReefGraphQLResponse).Payload.Data.(*ReefGraphQLEventLogsData); ok {
+		if len(f.Events) > 0 {
+			return &f.Events, nil
+		}
+	}
+	return nil, nil
+}
+
+func (r *WebSocket) QueryEvmAddress(ss58address string) (*common.Address, error) {
+	cmd := &ReefGraphQLRequest{
+		Command: newCommand("address"),
+		Type:    "start",
+		Payload: ReefGraphQLPayLoad{
+			OperationName: "query_evm_addr",
+			Query:         EvmAddress_GQL,
+			Variables: map[string]interface{}{
+				"address": ss58address,
+			},
+		}}
+	start := time.Now()
+	err := r.SendCommond(cmd)
+	if err != nil {
+		return nil, err
+	}
+	<-cmd.Ready
+	if cmd.Error != nil {
+		return nil, fmt.Errorf("reef query tx err: %s", *cmd.Error)
+	}
+	log.Infof("reef QueryEventLogs cost:%d", time.Since(start).String())
+	if f, ok := cmd.Result.(*ReefGraphQLResponse).Payload.Data.(*ReefGraphQLAccountData); ok {
+		if len(f.Accounts) > 0 {
+			evmAddr := common.HexToAddress(f.Accounts[0].EvmAddress)
+			return &evmAddr, nil
 		}
 	}
 	return nil, nil
