@@ -129,22 +129,30 @@ func (b *Bridge) initSigner(chainID *big.Int) (err error) {
 }
 
 // InitRouterInfo init router info
-func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
+func (b *Bridge) InitRouterInfo(routerContract, routerVersion string) (err error) {
 	if routerContract == "" {
 		return nil
 	}
 
 	chainID := b.ChainConfig.ChainID
 	log.Info(fmt.Sprintf("[%5v] start init router info", chainID), "routerContract", routerContract)
-	var routerFactory, routerWNative string
+	var routerFactory, routerWNative, routerSecurity string
 	if tokens.IsERC20Router() {
-		routerFactory, err = b.GetFactoryAddress(routerContract)
-		if err != nil {
-			log.Warn("get router factory address failed", "chainID", chainID, "routerContract", routerContract, "err", err)
-		}
 		routerWNative, err = b.GetWNativeAddress(routerContract)
 		if err != nil {
 			log.Warn("get router wNative address failed", "chainID", chainID, "routerContract", routerContract, "err", err)
+		}
+		if routerVersion == "v7" {
+			routerSecurity, err = b.GetRouterSecurity(routerContract)
+			if err != nil {
+				log.Warn("get router security address failed", "chainID", chainID, "routerContract", routerContract, "err", err)
+				return err
+			}
+		} else {
+			routerFactory, err = b.GetFactoryAddress(routerContract)
+			if err != nil {
+				log.Warn("get router factory address failed", "chainID", chainID, "routerContract", routerContract, "err", err)
+			}
 		}
 	}
 	routerMPC, err := b.GetMPCAddress(routerContract)
@@ -155,6 +163,10 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 	if common.HexToAddress(routerMPC) == (common.Address{}) {
 		log.Warn("get router mpc address return an empty address", "chainID", chainID, "routerContract", routerContract, "routerMPC", routerMPC)
 		return fmt.Errorf("empty router mpc address of router contract %v on chain %v", routerContract, chainID)
+	}
+	if !b.IsValidAddress(routerMPC) {
+		log.Warn("wrong router mpc address", "chainID", chainID, "routerContract", routerContract, "routerMPC", routerMPC)
+		return fmt.Errorf("wrong router mpc address '%v' of router contract %v on chain %v", routerMPC, routerContract, chainID)
 	}
 	log.Info("get router mpc address success", "chainID", chainID, "routerContract", routerContract, "routerMPC", routerMPC)
 	routerMPCPubkey, err := router.GetMPCPubkey(routerMPC)
@@ -170,16 +182,19 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 		routerContract,
 		chainID,
 		&router.SwapRouterInfo{
-			RouterMPC:     routerMPC,
-			RouterFactory: routerFactory,
-			RouterWNative: routerWNative,
+			RouterVersion:  routerVersion,
+			RouterMPC:      routerMPC,
+			RouterFactory:  routerFactory,
+			RouterWNative:  routerWNative,
+			RouterSecurity: routerSecurity,
 		},
 	)
 	router.SetMPCPublicKey(routerMPC, routerMPCPubkey)
 
 	log.Info(fmt.Sprintf("[%5v] init router info success", chainID),
 		"routerContract", routerContract, "routerMPC", routerMPC,
-		"routerFactory", routerFactory, "routerWNative", routerWNative)
+		"routerFactory", routerFactory, "routerWNative", routerWNative,
+		"routerSecurity", routerSecurity)
 
 	if mongodb.HasClient() {
 		var nextSwapNonce uint64
@@ -214,6 +229,7 @@ func (b *Bridge) GetTokenConfig(tokenAddr string) *tokens.TokenConfig {
 			log.Warn("check token config on usage failed", "chainID", b.ChainConfig.ChainID, "tokenID", tokenCfg.TokenID, "tokenAddr", tokenAddr, "err", err)
 			return nil
 		}
+		log.Info("check token config on usage success", "chainID", b.ChainConfig.ChainID, "tokenID", tokenCfg.TokenID, "tokenAddr", tokenAddr)
 	}
 	return tokenCfg
 }
@@ -235,6 +251,8 @@ func (b *Bridge) checkTokenConfig(tokenCfg *tokens.TokenConfig) error {
 			log.Warn("check wrapper token failed", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "version", tokenCfg.ContractVersion, "err", err)
 			return err
 		}
+
+		log.Info("check token config success", "chainID", chainID, "tokenID", tokenID, "tokenAddr", tokenAddr, "version", tokenCfg.ContractVersion)
 
 		tokenCfg.Checked = true
 		return nil

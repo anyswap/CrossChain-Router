@@ -39,6 +39,7 @@ func ConvertToSwapInfo(info *tokens.SwapInfo) SwapInfo {
 			swapinfo.ERC20SwapInfo = &ERC20SwapInfo{
 				Token:     erc20SwapInfo.Token,
 				TokenID:   erc20SwapInfo.TokenID,
+				SwapoutID: erc20SwapInfo.SwapoutID,
 				CallProxy: erc20SwapInfo.CallProxy,
 			}
 			if erc20SwapInfo.CallData != nil {
@@ -46,8 +47,9 @@ func ConvertToSwapInfo(info *tokens.SwapInfo) SwapInfo {
 			}
 		default:
 			swapinfo.ERC20SwapInfo = &ERC20SwapInfo{
-				Token:   erc20SwapInfo.Token,
-				TokenID: erc20SwapInfo.TokenID,
+				Token:     erc20SwapInfo.Token,
+				TokenID:   erc20SwapInfo.TokenID,
+				SwapoutID: erc20SwapInfo.SwapoutID,
 			}
 		}
 	case info.NFTSwapInfo != nil:
@@ -99,13 +101,15 @@ func ConvertFromSwapInfo(swapinfo *SwapInfo) (tokens.SwapInfo, error) {
 			info.ERC20SwapInfo = &tokens.ERC20SwapInfo{
 				Token:     erc20SwapInfo.Token,
 				TokenID:   erc20SwapInfo.TokenID,
+				SwapoutID: erc20SwapInfo.SwapoutID,
 				CallProxy: erc20SwapInfo.CallProxy,
 				CallData:  common.FromHex(erc20SwapInfo.CallData),
 			}
 		default:
 			info.ERC20SwapInfo = &tokens.ERC20SwapInfo{
-				Token:   erc20SwapInfo.Token,
-				TokenID: erc20SwapInfo.TokenID,
+				Token:     erc20SwapInfo.Token,
+				TokenID:   erc20SwapInfo.TokenID,
+				SwapoutID: erc20SwapInfo.SwapoutID,
 			}
 		}
 	case swapinfo.NFTSwapInfo != nil:

@@ -36,6 +36,7 @@ var (
 	ErrSameFromAndToChainID  = errors.New("from and to chainID are same")
 	ErrMissMPCPublicKey      = errors.New("miss mpc public key config")
 	ErrMissRouterInfo        = errors.New("miss router info")
+	ErrRouterVersionMismatch = errors.New("router version mismatch")
 	ErrSenderMismatch        = errors.New("sender mismatch")
 	ErrTxWithWrongSender     = errors.New("tx with wrong sender")
 	ErrToChainIDMismatch     = errors.New("to chainID mismatch")
@@ -47,9 +48,12 @@ var (
 	ErrTxIsNotValidated      = errors.New("tx is not validated")
 	ErrPauseSwapInto         = errors.New("maintain: pause swap into")
 	ErrBuildTxErrorAndDelay  = errors.New("[build tx error]")
+	ErrSwapoutIDNotExist     = errors.New("swapoutID not exist")
 	ErrFallbackNotSupport    = errors.New("app does not support fallback")
+)
 
-	// errors should register in router swap
+// errors should register in router swap
+var (
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")
 	ErrTxWithWrongPath   = errors.New("swap trade tx with wrong path")
 	ErrMissTokenConfig   = errors.New("miss token config")

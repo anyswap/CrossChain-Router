@@ -51,9 +51,11 @@ func DontPanicInLoading() bool {
 
 // SwapRouterInfo swap router info
 type SwapRouterInfo struct {
-	RouterMPC     string
-	RouterFactory string
-	RouterWNative string
+	RouterVersion  string
+	RouterMPC      string
+	RouterFactory  string
+	RouterWNative  string
+	RouterSecurity string
 }
 
 // SetBridge set bridge
@@ -86,6 +88,15 @@ func GetRouterInfo(router, chainID string) *SwapRouterInfo {
 		return info.(*SwapRouterInfo)
 	}
 	return nil
+}
+
+// GetRouterVersion get router version
+func GetRouterVersion(router, chainID string) string {
+	routerInfo := GetRouterInfo(router, chainID)
+	if routerInfo == nil {
+		return ""
+	}
+	return routerInfo.RouterVersion
 }
 
 // GetTokenRouterContract get token router contract

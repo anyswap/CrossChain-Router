@@ -1,8 +1,10 @@
 package tokens
 
 import (
+	"fmt"
 	"math/big"
 
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
 )
 
@@ -56,8 +58,9 @@ func (s SwapType) IsValidType() bool {
 
 // ERC20SwapInfo struct
 type ERC20SwapInfo struct {
-	Token   string `json:"token"`
-	TokenID string `json:"tokenID"`
+	Token     string `json:"token"`
+	TokenID   string `json:"tokenID"`
+	SwapoutID string `json:"swapoutID,omitempty"`
 
 	ForNative     bool     `json:"forNative,omitempty"`
 	ForUnderlying bool     `json:"forUnderlying,omitempty"`
@@ -137,7 +140,6 @@ type SwapTxInfo struct {
 
 // TxStatus struct
 type TxStatus struct {
-	Sender        string      `json:"sender,omitempty"`
 	Receipt       interface{} `json:"receipt,omitempty"`
 	Confirmations uint64      `json:"confirmations"`
 	BlockHeight   uint64      `json:"blockHeight"`
@@ -256,4 +258,15 @@ func (args *BuildTxArgs) GetTxNonce() uint64 {
 		}
 	}
 	return 0
+}
+
+// GetUniqueSwapIdentifier get unique swap identifier
+func (args *BuildTxArgs) GetUniqueSwapIdentifier() string {
+	fromChainID := args.FromChainID
+	swapID := args.SwapID
+	logIndex := args.LogIndex
+	if common.IsHexHash(swapID) {
+		swapID = common.HexToHash(swapID).Hex()
+	}
+	return fmt.Sprintf("%v:%v:%v", fromChainID, swapID, logIndex)
 }

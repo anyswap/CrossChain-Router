@@ -101,6 +101,7 @@ type SwapInfo struct {
 type ERC20SwapInfo struct {
 	Token         string   `bson:"token"                   json:"token"`
 	TokenID       string   `bson:"tokenID"                 json:"tokenID"`
+	SwapoutID string `bson:"swapoutID,omitempty"     json:"swapoutID,omitempty"`
 	ForNative     bool     `bson:"forNative,omitempty"     json:"forNative,omitempty"`
 	ForUnderlying bool     `bson:"forUnderlying,omitempty" json:"forUnderlying,omitempty"`
 	Path          []string `bson:"path,omitempty"          json:"path,omitempty"`

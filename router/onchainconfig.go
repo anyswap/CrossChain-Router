@@ -271,6 +271,7 @@ func GetSwapConfig(tokenID string, toChainID *big.Int) (*tokens.SwapConfig, erro
 // GetCustomConfig abi
 func GetCustomConfig(chainID *big.Int, key string) (string, error) {
 	funcHash := common.FromHex("0x61387d61")
+	key = strings.ToLower(key)
 	data := abicoder.PackDataWithFuncHash(funcHash, chainID, key)
 	res, err := CallOnchainContract(data, "latest")
 	if err != nil {

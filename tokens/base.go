@@ -86,7 +86,7 @@ func NewCrossChainBridgeBase() *CrossChainBridgeBase {
 }
 
 // InitRouterInfo init router info
-func (b *CrossChainBridgeBase) InitRouterInfo(routerContract string) error {
+func (b *CrossChainBridgeBase) InitRouterInfo(routerContract, routerVersion string) error {
 	return ErrNotImplemented
 }
 

@@ -29,7 +29,7 @@ type IBridge interface {
 	IBridgeConfg
 	IMPCSign
 
-	InitRouterInfo(routerContract string) error
+	InitRouterInfo(routerContract, routerVersion string) error
 	InitAfterConfig()
 
 	RegisterSwap(txHash string, args *RegisterArgs) ([]*SwapTxInfo, []error)

@@ -252,7 +252,12 @@ func InitChainConfig(b tokens.IBridge, chainID *big.Int) {
 
 	routerContract := chainCfg.RouterContract
 	if !isRouterInfoLoaded(chainID.String(), routerContract) {
-		err = b.InitRouterInfo(routerContract)
+		routerVersion, errt := router.GetCustomConfig(chainID, routerContract)
+		if errt != nil {
+			logErrFunc("get custom router version failed", "chainID", chainID, "key", routerContract, "err", errt)
+			return
+		}
+		err = b.InitRouterInfo(routerContract, routerVersion)
 		if err == nil {
 			setRouterInfoLoaded(chainID.String(), routerContract)
 		} else {
@@ -303,7 +308,7 @@ func InitTokenConfig(b tokens.IBridge, tokenID string, chainID *big.Int) {
 	}
 	routerContract, err := router.GetCustomConfig(chainID, tokenAddr)
 	if err != nil {
-		logErrFunc("get custom config failed", "chainID", chainID, "key", tokenAddr, "err", err)
+		logErrFunc("get custom router contract failed", "chainID", chainID, "key", tokenAddr, "err", err)
 		return
 	}
 
@@ -316,7 +321,12 @@ func InitTokenConfig(b tokens.IBridge, tokenID string, chainID *big.Int) {
 	log.Info(fmt.Sprintf("[%5v] init '%v' token config success", chainID, tokenID), "tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "isReload", isReload, "underlying", tokenCfg.GetUnderlying())
 
 	if !isRouterInfoLoaded(chainID.String(), routerContract) {
-		err = b.InitRouterInfo(routerContract)
+		routerVersion, errt := router.GetCustomConfig(chainID, routerContract)
+		if errt != nil {
+			logErrFunc("get custom router version failed", "chainID", chainID, "key", routerContract, "err", errt)
+			return
+		}
+		err = b.InitRouterInfo(routerContract, routerVersion)
 		if err == nil {
 			setRouterInfoLoaded(chainID.String(), routerContract)
 		} else {
