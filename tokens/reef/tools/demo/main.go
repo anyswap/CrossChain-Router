@@ -24,26 +24,28 @@ import (
 )
 
 var socketUrl = "wss://testnet.reefscan.com/graphql"
+var httpUrl = "https://rpc-testnet.reefscan.com/"
 
 func main() {
 
-	// api, err := NewReefAPI(config.Default().RPCURL)
-	// if err != nil {
-	// 	panic(err)
-	// }
+	api, err := NewReefAPI(config.Default().RPCURL)
+	if err != nil {
+		panic(err)
+	}
 
 	// meta, err := api.SubAPI.RPC.State.GetMetadataLatest()
 	// if err != nil {
 	// 	panic(err)
 	// }
+	// fmt.Printf(meta.AsMetadataV13.Extrinsic.SignedExtensions[0])
 
-	// Example_simpleConnect(api.SubAPI)
+	Example_simpleConnect(api.SubAPI)
 
 	// Example_makeASimpleTransfer(api)
 
 	// Example_swapoutTransfer(api,meta)
 
-	Example_query_tx()
+	// Example_query_tx()
 
 	// Example_websocket()
 }

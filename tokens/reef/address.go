@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/mr-tron/base58"
 )
 
 const mpc_publickey_type = "sr25519"
@@ -25,6 +26,11 @@ func (b *Bridge) IsValidAddress(address string) bool {
 		}
 	}
 	return ok
+}
+
+func AddressToPubkey(base58Address string) []byte {
+	addrBytes, _ := base58.Decode(base58Address)
+	return addrBytes[1 : len(addrBytes)-2]
 }
 
 func PublicKeyToAddress(pubKey string) (string, error) {

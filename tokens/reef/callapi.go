@@ -2,6 +2,8 @@ package reef
 
 import (
 	"errors"
+	"fmt"
+	"math/big"
 	"strconv"
 	"strings"
 	"time"
@@ -13,11 +15,12 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 )
 
 var (
-	errEmptyURLs              = errors.New("empty URLs")
-	errTxInOrphanBlock        = errors.New("tx is in orphan block")
+	errEmptyURLs = errors.New("empty URLs")
+	// errTxInOrphanBlock        = errors.New("tx is in orphan block")
 	errTxHashMismatch         = errors.New("tx hash mismatch with rpc result")
 	errTxBlockHashMismatch    = errors.New("tx block hash mismatch with rpc result")
 	errTxReceiptMissBlockInfo = errors.New("tx receipt missing block info")
@@ -95,4 +98,36 @@ LOOP:
 		logFunc("call CallContract failed", "contract", contract, "data", data, "err", err)
 	}
 	return "", wrapRPCQueryError(err, "eth_call", contract)
+}
+
+func (b *Bridge) QueryEvmAddress(ss58address string) (addr *common.Address, err error) {
+	for _, ws := range b.WS {
+		addr, err = ws.QueryEvmAddress(ss58address)
+		if err != nil {
+			log.Warn("QueryEvmAddress", "err", err)
+		}
+		if addr != nil {
+			return addr, nil
+		}
+	}
+	return addr, fmt.Errorf("reef QueryEvmAddress address %s not register evm address ", ss58address)
+}
+
+// GetBalance call eth_getBalance
+func (b *Bridge) GetBalance(account string) (balance *big.Int, err error) {
+	key, err := types.CreateStorageKey(b.MetaData, "System", "Account", AddressToPubkey(account))
+	if err != nil {
+		return
+	}
+	var accountInfo types.AccountInfo
+	for _, api := range b.SubstrateAPIs {
+		ok, err := api.RPC.State.GetStorageLatest(key, &accountInfo)
+		if err != nil || !ok {
+			log.Warn("reef getBalance", "account", account, "err", err)
+			continue
+		}
+		balance = new(big.Int).SetUint64(accountInfo.Data.Free.Uint64())
+		break
+	}
+	return
 }

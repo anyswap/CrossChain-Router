@@ -10,6 +10,8 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/eth"
+	gsrpc "github.com/centrifuge/go-substrate-rpc-client/v4"
+	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 )
 
 var (
@@ -32,19 +34,37 @@ const (
 // Reef Bridge extends eth bridge
 type Bridge struct {
 	eth.Bridge
-	WS []*WebSocket
+	WS            []*WebSocket
+	SubstrateAPIs []*gsrpc.SubstrateAPI
+	MetaData      *types.Metadata
 }
 
 // NewCrossChainBridge new bridge
 func NewCrossChainBridge() *Bridge {
 	return &Bridge{
-		Bridge: *eth.NewCrossChainBridge(),
-		WS:     []*WebSocket{},
+		Bridge:        *eth.NewCrossChainBridge(),
+		WS:            []*WebSocket{},
+		SubstrateAPIs: []*gsrpc.SubstrateAPI{},
 	}
 }
 
 // InitAfterConfig init variables (ie. extra members) after loading config
 func (b *Bridge) InitAfterConfig() {
+	for _, url := range b.AllGatewayURLs {
+		api, err := gsrpc.NewSubstrateAPI(url)
+		if err != nil {
+			panic(err)
+		}
+		b.SubstrateAPIs = append(b.SubstrateAPIs, api)
+		if b.MetaData == nil {
+			meta, err := api.RPC.State.GetMetadataLatest()
+			if err != nil {
+				panic(err)
+			}
+			b.MetaData = meta
+		}
+	}
+
 	wsnodes := strings.Split(params.GetCustom(b.ChainConfig.ChainID, "ws"), ",")
 	if len(wsnodes) <= 0 {
 		panic(fmt.Errorf("%s not config ws endpoint", b.ChainConfig.ChainID))
