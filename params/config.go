@@ -2,6 +2,7 @@ package params
 
 import (
 	"encoding/json"
+	"errors"
 	"math/big"
 	"strings"
 	"sync"
@@ -64,6 +65,8 @@ var (
 // exported variables
 var (
 	GetBalanceBlockNumberOpt = "latest" // latest or pending
+
+	GatewayConfigFile string
 )
 
 // RouterServerConfig only for server
@@ -116,16 +119,25 @@ type RouterConfig struct {
 	SwapSubType string
 
 	Onchain *OnchainConfig
-
-	Gateways         map[string][]string // key is chain ID
-	GatewaysExt      map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
-	EVMGatewaysExt   map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
-	FinalizeGateways map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+	*GatewayConfigs
 
 	MPC     *MPCConfig
 	FastMPC *MPCConfig   `toml:",omitempty" json:",omitempty"`
 	Extra   *ExtraConfig `toml:",omitempty" json:",omitempty"`
 
+	*Blacklists
+}
+
+// GatewayConfigs gateway config
+type GatewayConfigs struct {
+	Gateways         map[string][]string // key is chain ID
+	GatewaysExt      map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+	EVMGatewaysExt   map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+	FinalizeGateways map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+}
+
+// Blacklists black lists
+type Blacklists struct {
 	ChainIDBlackList        []string            `toml:",omitempty" json:",omitempty"`
 	TokenIDBlackList        []string            `toml:",omitempty" json:",omitempty"`
 	TokenIDBlackListOnChain map[string][]string `toml:",omitempty" json:",omitempty"`
@@ -1072,7 +1084,7 @@ func initIgnoreAnycallFallbackAppIDs() {
 	log.Info("initIgnoreAnycallFallbackAppIDs success", "appids", GetExtraConfig().IgnoreAnycallFallbackAppIDs, "isReload", IsReload)
 }
 
-// IsCheckTokenBalanceEnabled is check token balance enabled
+// IsAnycallFallbackIgnored is anycall fallback ignored
 func IsAnycallFallbackIgnored(appid string) bool {
 	_, exist := ignoreAnycallFallbackAppIDs[appid]
 	return exist
@@ -1108,7 +1120,6 @@ func LoadRouterConfig(configFile string, isServer, check bool) *RouterConfig {
 		log.Fatalf("LoadRouterConfig error (toml DecodeFile): %v", err)
 	}
 
-	IsSwapServer = isServer
 	if !isServer {
 		config.Server = nil
 	} else {
@@ -1117,6 +1128,14 @@ func LoadRouterConfig(configFile string, isServer, check bool) *RouterConfig {
 
 	if CustomizeConfigFunc != nil {
 		CustomizeConfigFunc(config)
+	}
+
+	if GatewayConfigFile != "" {
+		gateways, err := LoadGatewayConfigs()
+		if err != nil {
+			log.Fatalf("LoadGatewayConfigs error: %v", err)
+		}
+		config.GatewayConfigs = gateways
 	}
 
 	routerConfig = config
@@ -1167,10 +1186,21 @@ func ReloadRouterConfig() {
 		CustomizeConfigFunc(config)
 	}
 
+	if GatewayConfigFile != "" {
+		gateways, err := LoadGatewayConfigs()
+		if err == nil {
+			config.GatewayConfigs = gateways
+		} else {
+			config.GatewayConfigs = routerConfig.GatewayConfigs
+		}
+	}
+
 	if err := config.CheckConfig(isServer); err != nil {
 		log.Errorf("ReloadRouterConfig check config failed. %v", err)
 		return
 	}
+
+	routerConfig = config
 
 	var bs []byte
 	if log.JSONFormat {
@@ -1179,8 +1209,21 @@ func ReloadRouterConfig() {
 		bs, _ = json.MarshalIndent(config, "", "  ")
 	}
 	log.Println("ReloadRouterConfig finished.", string(bs))
+}
 
-	routerConfig = config
+// LoadGatewayConfigs load gateway configs
+func LoadGatewayConfigs() (*GatewayConfigs, error) {
+	if GatewayConfigFile == "" {
+		return nil, errors.New("empty gateway config file")
+	}
+	var config GatewayConfigs
+	if _, err := toml.DecodeFile(GatewayConfigFile, &config); err != nil {
+		log.Errorf("LoadGatewayConfigs error: %v", err)
+		return nil, err
+	}
+
+	log.Info("LoadGatewayConfigs success")
+	return &config, nil
 }
 
 // SetDataDir set data dir

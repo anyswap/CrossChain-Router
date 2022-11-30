@@ -118,10 +118,11 @@ func (b *CrossChainBridgeBase) SetChainConfig(chainCfg *ChainConfig) {
 // SetGatewayConfig set gateway config
 func (b *CrossChainBridgeBase) SetGatewayConfig(gatewayCfg *GatewayConfig) {
 	if len(gatewayCfg.APIAddress) == 0 {
-		log.Fatal("empty gateway 'APIAddress'")
+		log.Error("empty gateway 'APIAddress'")
+	} else {
+		b.GatewayConfig = gatewayCfg
+		b.AllGatewayURLs = append(gatewayCfg.APIAddress, gatewayCfg.APIAddressExt...)
 	}
-	b.GatewayConfig = gatewayCfg
-	b.AllGatewayURLs = append(gatewayCfg.APIAddress, gatewayCfg.APIAddressExt...)
 }
 
 // SetTokenConfig set token config

@@ -152,6 +152,8 @@ func InitRouterBridges(isServer bool) {
 	mpc.Init(isServer)
 
 	success = true
+
+	go WatchGatewayConfig()
 }
 
 func loadSwapAndFeeConfigs() {
@@ -343,22 +345,23 @@ func InitGatewayConfig(b tokens.IBridge, chainID *big.Int) {
 		logErrFunc("init gateway with zero chain ID")
 		return
 	}
+	SetGatewayConfig(b, chainID.String())
+	log.Info(fmt.Sprintf("[%5v] init gateway config success", chainID), "isReload", isReload)
+}
+
+// SetGatewayConfig set gateway config
+func SetGatewayConfig(b tokens.IBridge, chainID string) {
 	cfg := params.GetRouterConfig()
-	apiAddrs := cfg.Gateways[chainID.String()]
-	if len(apiAddrs) == 0 {
-		logErrFunc("gateway not found for chain ID", "chainID", chainID)
-		return
-	}
-	apiAddrsExt := cfg.GatewaysExt[chainID.String()]
-	evmapiext := cfg.EVMGatewaysExt[chainID.String()]
-	finalizeAPIs := cfg.FinalizeGateways[chainID.String()]
+	apiAddrs := cfg.Gateways[chainID]
+	apiAddrsExt := cfg.GatewaysExt[chainID]
+	evmapiext := cfg.EVMGatewaysExt[chainID]
+	finalizeAPIs := cfg.FinalizeGateways[chainID]
 	b.SetGatewayConfig(&tokens.GatewayConfig{
 		APIAddress:         apiAddrs,
 		APIAddressExt:      apiAddrsExt,
 		EVMAPIAddress:      evmapiext,
 		FinalizeAPIAddress: finalizeAPIs,
 	})
-	log.Info(fmt.Sprintf("[%5v] init gateway config success", chainID), "isReload", isReload)
 }
 
 // InitChainConfig impl

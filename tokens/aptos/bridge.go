@@ -79,11 +79,6 @@ func GetStubChainID(network string) *big.Int {
 	return stubChainID
 }
 
-// SetGatewayConfig set gateway config
-func (b *Bridge) SetGatewayConfig(gatewayCfg *tokens.GatewayConfig) {
-	b.CrossChainBridgeBase.SetGatewayConfig(gatewayCfg)
-}
-
 // SetTokenConfig set token config
 func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) {
 	if tokenCfg.RouterContract == "" {
