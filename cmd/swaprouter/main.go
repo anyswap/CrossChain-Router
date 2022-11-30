@@ -40,6 +40,7 @@ func initApp() {
 	app.Flags = []cli.Flag{
 		utils.DataDirFlag,
 		utils.ConfigFileFlag,
+		utils.GatewayConfigFlag,
 		utils.RunServerFlag,
 		utils.LogFileFlag,
 		utils.LogRotationFlag,
@@ -66,6 +67,11 @@ func swaprouter(ctx *cli.Context) error {
 	isServer := ctx.Bool(utils.RunServerFlag.Name)
 
 	params.SetDataDir(utils.GetDataDir(ctx), isServer)
+
+	if ctx.IsSet(utils.GatewayConfigFlag.Name) {
+		params.GatewayConfigFile = ctx.String(utils.GatewayConfigFlag.Name)
+	}
+
 	configFile := utils.GetConfigFilePath(ctx)
 	config := params.LoadRouterConfig(configFile, isServer, true)
 

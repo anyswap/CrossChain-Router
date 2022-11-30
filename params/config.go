@@ -2,6 +2,7 @@ package params
 
 import (
 	"encoding/json"
+	"errors"
 	"math/big"
 	"strings"
 	"sync"
@@ -26,7 +27,7 @@ var IsTestMode bool
 var IsReload bool
 
 var (
-	routerConfig = &RouterConfig{Extra: &ExtraConfig{}}
+	routerConfig = &RouterConfig{Extra: &ExtraConfig{}, MPC: &MPCConfig{}}
 
 	routerConfigFile string
 	locDataDir       string
@@ -63,6 +64,8 @@ var (
 // exported variables
 var (
 	GetBalanceBlockNumberOpt = "latest" // latest or pending
+
+	GatewayConfigFile string
 )
 
 // RouterServerConfig only for server
@@ -116,14 +119,23 @@ type RouterConfig struct {
 	SwapSubType string
 
 	Onchain *OnchainConfig
-
-	Gateways         map[string][]string // key is chain ID
-	GatewaysExt      map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
-	FinalizeGateways map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+	*GatewayConfigs
 
 	MPC   *MPCConfig
 	Extra *ExtraConfig `toml:",omitempty" json:",omitempty"`
 
+	*Blacklists
+}
+
+// GatewayConfigs gateway config
+type GatewayConfigs struct {
+	Gateways         map[string][]string // key is chain ID
+	GatewaysExt      map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+	FinalizeGateways map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+}
+
+// Blacklists black lists
+type Blacklists struct {
 	ChainIDBlackList        []string            `toml:",omitempty" json:",omitempty"`
 	TokenIDBlackList        []string            `toml:",omitempty" json:",omitempty"`
 	TokenIDBlackListOnChain map[string][]string `toml:",omitempty" json:",omitempty"`
@@ -1117,7 +1129,7 @@ func LoadRouterConfig(configFile string, isServer, check bool) *RouterConfig {
 	if !common.FileExist(configFile) {
 		log.Fatalf("LoadRouterConfig error: config file '%v' not exist", configFile)
 	}
-	config := &RouterConfig{Extra: &ExtraConfig{}}
+	config := &RouterConfig{Extra: &ExtraConfig{}, MPC: &MPCConfig{}}
 	if _, err := toml.DecodeFile(configFile, &config); err != nil {
 		log.Fatalf("LoadRouterConfig error (toml DecodeFile): %v", err)
 	}
@@ -1130,6 +1142,14 @@ func LoadRouterConfig(configFile string, isServer, check bool) *RouterConfig {
 
 	if CustomizeConfigFunc != nil {
 		CustomizeConfigFunc(config)
+	}
+
+	if GatewayConfigFile != "" {
+		gateways, err := LoadGatewayConfigs()
+		if err != nil {
+			log.Fatalf("LoadGatewayConfigs error: %v", err)
+		}
+		config.GatewayConfigs = gateways
 	}
 
 	routerConfig = config
@@ -1164,7 +1184,7 @@ func ReloadRouterConfig() {
 
 	log.Info("reload router config file", "configFile", configFile, "isServer", isServer)
 
-	config := &RouterConfig{Extra: &ExtraConfig{}}
+	config := &RouterConfig{Extra: &ExtraConfig{}, MPC: &MPCConfig{}}
 	if _, err := toml.DecodeFile(configFile, &config); err != nil {
 		log.Errorf("ReloadRouterConfig error (toml DecodeFile): %v", err)
 		return
@@ -1180,10 +1200,21 @@ func ReloadRouterConfig() {
 		CustomizeConfigFunc(config)
 	}
 
+	if GatewayConfigFile != "" {
+		gateways, err := LoadGatewayConfigs()
+		if err == nil {
+			config.GatewayConfigs = gateways
+		} else {
+			config.GatewayConfigs = routerConfig.GatewayConfigs
+		}
+	}
+
 	if err := config.CheckConfig(isServer); err != nil {
 		log.Errorf("ReloadRouterConfig check config failed. %v", err)
 		return
 	}
+
+	routerConfig = config
 
 	var bs []byte
 	if log.JSONFormat {
@@ -1192,8 +1223,21 @@ func ReloadRouterConfig() {
 		bs, _ = json.MarshalIndent(config, "", "  ")
 	}
 	log.Println("ReloadRouterConfig finished.", string(bs))
+}
 
-	routerConfig = config
+// LoadGatewayConfigs load gateway configs
+func LoadGatewayConfigs() (*GatewayConfigs, error) {
+	if GatewayConfigFile == "" {
+		return nil, errors.New("empty gateway config file")
+	}
+	var config GatewayConfigs
+	if _, err := toml.DecodeFile(GatewayConfigFile, &config); err != nil {
+		log.Errorf("LoadGatewayConfigs error: %v", err)
+		return nil, err
+	}
+
+	log.Info("LoadGatewayConfigs success")
+	return &config, nil
 }
 
 // SetDataDir set data dir

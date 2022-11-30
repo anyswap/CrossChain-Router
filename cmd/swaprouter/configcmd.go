@@ -15,9 +15,9 @@ import (
 var (
 	configCommand = &cli.Command{
 		Name:  "config",
-		Usage: "config router swap",
+		Usage: "query router config",
 		Description: `
-config router swap
+query router config
 `,
 		Subcommands: []*cli.Command{
 			{
