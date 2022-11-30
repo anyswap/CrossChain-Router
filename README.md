@@ -2,6 +2,8 @@
 
 ## 0. compile
 
+requires at least Go version 1.18
+
 ```shell
 make all
 ```
