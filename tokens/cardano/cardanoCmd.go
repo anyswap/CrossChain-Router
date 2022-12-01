@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	NetWork       = "--testnet-magic 1"
+	NetWork       = "--mainnet" // for testnet, use "--testnet-magic 1"
 	MPCPolicyId   = "f73d0275b986a17537f0dfa94060313f922ac1d7a81aec677fa3bdbe"
 	RawPath       = "txDb/raw/"
 	AdaAsset      = "lovelace"
