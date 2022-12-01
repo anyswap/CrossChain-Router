@@ -156,7 +156,7 @@ ForEnd:
 				continue
 			}
 
-			log.Debugf("%s", string(in))
+			log.Info(r.endpoint+" read", "message", string(in))
 			// pong message
 			if response.Type == "ka" {
 				continue
@@ -245,7 +245,6 @@ func (r *WebSocket) Write(outbound <-chan interface{}) {
 func (r *WebSocket) Read(inbound chan<- []byte) {
 	r.ws.SetReadDeadline(time.Now().Add(pongWait))
 	r.ws.SetPongHandler(func(message string) error {
-		log.Info("ws pong handler", "message", message)
 		r.ws.SetReadDeadline(time.Now().Add(pongWait))
 		return nil
 	})

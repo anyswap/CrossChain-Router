@@ -7,11 +7,10 @@ https://github.com/anyswap/CrossChain-Router/tree/feature/reef-substrate
 https://github.com/anyswap/anyswap-v1-core
 
 
-## router mechanism
+## account mechanism
 ```mermaid
 graph TB
     begin(mpc public key)--> IsRemaining{"generate"}
-    IsRemaining -->|reef|reefAddr[ss58address]--> done(done)
-    IsRemaining --evm--> evmAddr[evmAddr]--> done
+    IsRemaining --sr25519-->reefAddr[ss58Address]--> sign(sign tx)
+    IsRemaining --> |ecdsa|evmAddr[evmAddr]--> interaction(evm calls)
 ```
-

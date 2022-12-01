@@ -84,7 +84,7 @@ func (b *Bridge) InitAfterConfig() {
 	if jspath == "" {
 		panic(fmt.Errorf("%s not config jspath", b.ChainConfig.ChainID))
 	}
-	InstallJSModules(params.GetCustom(b.ChainConfig.ChainID, "ws"))
+	InstallJSModules(jspath)
 }
 
 // SupportsChainID supports chainID

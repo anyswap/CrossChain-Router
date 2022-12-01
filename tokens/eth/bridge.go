@@ -28,6 +28,8 @@ var (
 type EvmContractBridge interface {
 	CallContract(contract string, data hexutil.Bytes, blockNumber string) (string, error)
 	VerifyMPCPubKey(mpcAddress, mpcPubkey string) error
+	GetTransactionReceipt(txHash string) (receipt *types.RPCTxReceipt, err error)
+	GetLatestBlockNumberOf(url string) (latest uint64, err error)
 }
 
 // Bridge eth bridge

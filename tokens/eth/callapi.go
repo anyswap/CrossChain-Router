@@ -82,7 +82,7 @@ func (b *Bridge) GetLatestBlockNumber() (maxHeight uint64, err error) {
 	gateway := b.GatewayConfig
 	var height uint64
 	for _, url := range gateway.APIAddress {
-		height, err = b.GetLatestBlockNumberOf(url)
+		height, err = b.EvmContractBridge.GetLatestBlockNumberOf(url)
 		if height > maxHeight && err == nil {
 			maxHeight = height
 		}

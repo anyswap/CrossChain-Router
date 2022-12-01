@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"strconv"
 	"strings"
 	"time"
 
@@ -38,32 +37,16 @@ func (b *Bridge) GetLatestBlockNumberOf(url string) (latest uint64, err error) {
 	return 0, wrapRPCQueryError(err, "chain_getHeader")
 }
 
-func (b *Bridge) GetLatestBlockNumber() (maxHeight uint64, err error) {
-	gateway := b.GatewayConfig
-	var height uint64
-	for _, url := range gateway.APIAddress {
-		height, err = b.GetLatestBlockNumberOf(url)
-		if height > maxHeight && err == nil {
-			maxHeight = height
-		}
-	}
-	if maxHeight > 0 {
-		return maxHeight, nil
-	}
-	return 0, wrapRPCQueryError(err, "chain_getHeader")
-}
-
 func (b *Bridge) GetGetBlockHash(blockNumber uint64) (blockHash string, err error) {
 	gateway := b.GatewayConfig
-	var result map[string]interface{}
-	param := strconv.FormatUint(blockNumber, 16)
+	var result string
 	for _, url := range gateway.APIAddress {
-		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "chain_getHeader", param)
+		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "chain_getBlockHash", blockNumber)
 		if err == nil {
-			return result["result"].(string), nil
+			return result, nil
 		}
 	}
-	return "", wrapRPCQueryError(err, "chain_getHeader")
+	return "", wrapRPCQueryError(err, "chain_getBlockHash")
 }
 
 // CallContract call eth_call

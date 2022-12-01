@@ -2,7 +2,7 @@ package reef
 
 const TxHash_GQL = "query query_tx_by_hash($hash: String!) {\n  extrinsic(where: {hash: {_eq: $hash}}) {\n    id\n    block_id\n    index\n    type\n    signer\n    section\n    method\n    args\n    hash\n    status\n    timestamp\n    error_message\n inherent_data\n signed_data\n  __typename\n  }\n}\n"
 const EvmAddress_GQL = "subscription query_evm_addr($address: String!) {\n  account(\n where: {address: {_eq: $address}}) {\n    evm_address\n    __typename\n  }\n}\n"
-const EventLog_GQL = "subscription query_eventlogs_by_extrinsic_id($extrinsic_id: bigint!) {\n  event(order_by: {index: asc}, where: {extrinsic_id: {_eq: $extrinsic_id}}) {\n    extrinsic {\n      id\n      block_id\n      index\n      __typename\n    }\n    index\n    data\n    method\n    section\n    __typename\n  }\n}\n"
+const EventLog_GQL = "subscription query_eventlogs_by_extrinsic_id($extrinsic_id: bigint!) {\n  event(order_by: {index: asc}, where: {  _and: [ {extrinsic_id: {_eq: $extrinsic_id}}\n { method: { _eq: \"Log\" } }\n  ] }) {\n    extrinsic {\n      id\n      block_id\n      index\n      __typename\n    }\n    index\n    data\n    method\n    section\n    __typename\n  }\n}\n"
 
 type ReefGraphQLRequest struct {
 	*Command

@@ -12,12 +12,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/types"
 )
 
-func (b *Bridge) GetTransactionReceipt(txHash string) (receipt *types.RPCTxReceipt, err error) {
-	receipt, err = b.getTransactionReceipt(txHash)
-	return receipt, err
-}
-
-func (b *Bridge) getTransactionReceipt(txHash string) (result *types.RPCTxReceipt, err error) {
+func (b *Bridge) GetTransactionReceipt(txHash string) (result *types.RPCTxReceipt, err error) {
 	if len(b.WS) == 0 {
 		return nil, errEmptyURLs
 	}
@@ -88,11 +83,11 @@ func buildRPCTxReceipt(tx string, extrinsic *Extrinsic, blockhash string, logs *
 	var blockNumber hexutil.Big = hexutil.Big(*new(big.Int).SetUint64(*extrinsic.BlockID))
 
 	blockHash := common.HexToHash(blockhash)
-	var status *hexutil.Uint64
+	var status hexutil.Uint64
 	if extrinsic.Status == "success" {
-		*status = hexutil.Uint64(1)
+		status = hexutil.Uint64(1)
 	} else {
-		*status = hexutil.Uint64(0)
+		status = hexutil.Uint64(0)
 	}
 
 	to := common.HexToAddress(extrinsic.Args[0])
@@ -103,8 +98,7 @@ func buildRPCTxReceipt(tx string, extrinsic *Extrinsic, blockhash string, logs *
 		return nil, err
 	}
 
-	var gasfee *hexutil.Uint64
-	*gasfee = hexutil.Uint64(fee.Uint64())
+	gasfee := hexutil.Uint64(fee.Uint64())
 
 	rpclogs := []*types.RPCLog{}
 	for _, log := range *logs {
@@ -129,10 +123,10 @@ func buildRPCTxReceipt(tx string, extrinsic *Extrinsic, blockhash string, logs *
 		TxIndex:     &txIndex,
 		BlockNumber: &blockNumber,
 		BlockHash:   &blockHash,
-		Status:      status,
+		Status:      &status,
 		From:        from,
 		Recipient:   &to,
-		GasUsed:     gasfee,
+		GasUsed:     &gasfee,
 		Logs:        rpclogs,
 	}
 	return result, nil

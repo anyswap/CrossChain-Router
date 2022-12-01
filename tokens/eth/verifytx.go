@@ -10,7 +10,7 @@ import (
 
 // GetTransactionStatus impl
 func (b *Bridge) GetTransactionStatus(txHash string) (*tokens.TxStatus, error) {
-	txr, err := b.GetTransactionReceipt(txHash)
+	txr, err := b.EvmContractBridge.GetTransactionReceipt(txHash)
 	if err != nil {
 		return nil, err
 	}
