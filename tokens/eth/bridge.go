@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
@@ -24,6 +25,11 @@ var (
 	_ tokens.NonceSetter = &Bridge{}
 )
 
+type EvmContractBridge interface {
+	CallContract(contract string, data hexutil.Bytes, blockNumber string) (string, error)
+	VerifyMPCPubKey(mpcAddress, mpcPubkey string) error
+}
+
 // Bridge eth bridge
 type Bridge struct {
 	CustomConfig
@@ -34,14 +40,17 @@ type Bridge struct {
 	// internal usage
 	latestGasPrice  *big.Int
 	autoMaxGasPrice *big.Int
+	EvmContractBridge
 }
 
 // NewCrossChainBridge new bridge
 func NewCrossChainBridge() *Bridge {
-	return &Bridge{
+	b := &Bridge{
 		CustomConfig:    NewCustomConfig(),
 		NonceSetterBase: base.NewNonceSetterBase(),
 	}
+	b.EvmContractBridge = b
+	return b
 }
 
 // CustomConfig custom config
@@ -168,7 +177,7 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 		log.Warn("get mpc public key failed", "chainID", chainID, "mpc", routerMPC, "err", err)
 		return err
 	}
-	if err = VerifyMPCPubKey(routerMPC, routerMPCPubkey); err != nil {
+	if err = b.EvmContractBridge.VerifyMPCPubKey(routerMPC, routerMPCPubkey); err != nil {
 		log.Warn("verify mpc public key failed", "chainID", chainID, "mpc", routerMPC, "mpcPubkey", routerMPCPubkey, "err", err)
 		return err
 	}

@@ -41,11 +41,13 @@ type Bridge struct {
 
 // NewCrossChainBridge new bridge
 func NewCrossChainBridge() *Bridge {
-	return &Bridge{
+	b := &Bridge{
 		Bridge:        *eth.NewCrossChainBridge(),
 		WS:            []*WebSocket{},
 		SubstrateAPIs: []*gsrpc.SubstrateAPI{},
 	}
+	b.Bridge.EvmContractBridge = b
+	return b
 }
 
 // InitAfterConfig init variables (ie. extra members) after loading config
@@ -96,6 +98,9 @@ func SupportsChainID(chainID *big.Int) bool {
 }
 
 // GetStubChainID get stub chainID
+// mainnet: 1001380271430
+// testnet: 1001380271431
+// devnet: 1001380271432
 func GetStubChainID(network string) *big.Int {
 	stubChainID := new(big.Int).SetBytes([]byte("REEF"))
 	switch network {

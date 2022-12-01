@@ -77,10 +77,10 @@ func (b *Bridge) CallContract(contract string, data hexutil.Bytes, blockNumber s
 LOOP:
 	for _, url := range b.AllGatewayURLs {
 		var result string
-		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "evm_call", reqArgs, blockNumber)
+		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "evm_call", reqArgs)
 		if err != nil && router.IsIniting {
 			for i := 0; i < router.RetryRPCCountInInit; i++ {
-				if err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "evm_call", reqArgs, blockNumber); err == nil {
+				if err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "evm_call", reqArgs); err == nil {
 					return result, nil
 				}
 				if strings.Contains(err.Error(), "execution reverted") {

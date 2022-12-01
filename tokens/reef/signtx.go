@@ -51,7 +51,7 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 		return nil, "", tokens.ErrMissMPCPublicKey
 	}
 
-	signer, err := PublicKeyToAddress(mpcPubkey)
+	signer, err := b.PublicKeyToAddress(mpcPubkey)
 	if err != nil {
 		return nil, "", err
 	}
