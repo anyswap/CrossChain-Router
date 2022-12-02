@@ -440,7 +440,7 @@ func (b *Bridge) checkSwapWithPermit(swapInfo *tokens.SwapTxInfo) error {
 	}
 
 	if common.IsEqualIgnoreCase(swapInfo.TxTo, routerContract) {
-		tx, err := b.GetTransactionByHash(swapInfo.Hash)
+		tx, err := b.EvmContractBridge.GetTransactionByHash(swapInfo.Hash)
 		if err != nil {
 			return err
 		}

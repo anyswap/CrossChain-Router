@@ -1,11 +1,9 @@
 package reef
 
 import (
-	"math/big"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
-	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
@@ -75,61 +73,6 @@ func (b *Bridge) GetTransactionReceipt(txHash string) (result *types.RPCTxReceip
 		return result, nil
 	}
 	return nil, wrapRPCQueryError(err, "eth_getTransactionReceipt", txHash)
-}
-
-func buildRPCTxReceipt(tx string, extrinsic *Extrinsic, blockhash string, logs *[]EventLog, from *common.Address) (*types.RPCTxReceipt, error) {
-	txHash := common.HexToHash(tx)
-	var txIndex hexutil.Uint = hexutil.Uint(0)
-	var blockNumber hexutil.Big = hexutil.Big(*new(big.Int).SetUint64(*extrinsic.BlockID))
-
-	blockHash := common.HexToHash(blockhash)
-	var status hexutil.Uint64
-	if extrinsic.Status == "success" {
-		status = hexutil.Uint64(1)
-	} else {
-		status = hexutil.Uint64(0)
-	}
-
-	to := common.HexToAddress(extrinsic.Args[0])
-
-	fee, err := common.GetBigIntFromStr(extrinsic.SignedData.Fee.PartialFee)
-	if err != nil {
-		log.Warn("call GetBigIntFromStr error", "fee", extrinsic.SignedData.Fee.PartialFee, "err", err.Error())
-		return nil, err
-	}
-
-	gasfee := hexutil.Uint64(fee.Uint64())
-
-	rpclogs := []*types.RPCLog{}
-	for _, log := range *logs {
-		tlog := log.Data[0]
-		address := common.HexToAddress(tlog.Address)
-		var data hexutil.Bytes = common.Hex2Bytes(tlog.Data)
-
-		topics := []common.Hash{}
-		for _, topic := range tlog.Topics {
-			topics = append(topics, common.HexToHash(topic))
-		}
-		rpclog := &types.RPCLog{
-			Address: &address,
-			Data:    &data,
-			Topics:  topics,
-		}
-		rpclogs = append(rpclogs, rpclog)
-	}
-
-	result := &types.RPCTxReceipt{
-		TxHash:      &txHash,
-		TxIndex:     &txIndex,
-		BlockNumber: &blockNumber,
-		BlockHash:   &blockHash,
-		Status:      &status,
-		From:        from,
-		Recipient:   &to,
-		GasUsed:     &gasfee,
-		Logs:        rpclogs,
-	}
-	return result, nil
 }
 
 func (b *Bridge) checkTxBlockHash(blockNumber *uint64) error {

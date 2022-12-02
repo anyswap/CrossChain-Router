@@ -14,7 +14,8 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
-	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
+	"github.com/anyswap/CrossChain-Router/v3/types"
+	substrate_types "github.com/centrifuge/go-substrate-rpc-client/v4/types"
 )
 
 var (
@@ -98,11 +99,11 @@ func (b *Bridge) QueryEvmAddress(ss58address string) (addr *common.Address, err 
 
 // GetBalance call eth_getBalance
 func (b *Bridge) GetBalance(account string) (balance *big.Int, err error) {
-	key, err := types.CreateStorageKey(b.MetaData, "System", "Account", AddressToPubkey(account))
+	key, err := substrate_types.CreateStorageKey(b.MetaData, "System", "Account", AddressToPubkey(account))
 	if err != nil {
 		return
 	}
-	var accountInfo types.AccountInfo
+	var accountInfo substrate_types.AccountInfo
 	for _, api := range b.SubstrateAPIs {
 		ok, err := api.RPC.State.GetStorageLatest(key, &accountInfo)
 		if err != nil || !ok {
@@ -113,4 +114,15 @@ func (b *Bridge) GetBalance(account string) (balance *big.Int, err error) {
 		break
 	}
 	return
+}
+
+func (b *Bridge) GetTransactionByHash(txHash string) (tx *types.RPCTransaction, err error) {
+	for _, ws := range b.WS {
+		extrinsic, err := ws.QueryTx(txHash)
+		if err != nil {
+			continue
+		}
+		return buildRPCTransaction(extrinsic), nil
+	}
+	return tx, err
 }

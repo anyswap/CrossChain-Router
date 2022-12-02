@@ -109,7 +109,7 @@ func (b *Bridge) GetBlockByNumber(number *big.Int) (*types.RPCBlock, error) {
 
 // GetTransaction impl
 func (b *Bridge) GetTransaction(txHash string) (interface{}, error) {
-	return b.GetTransactionByHash(txHash)
+	return b.EvmContractBridge.GetTransactionByHash(txHash)
 }
 
 // GetTransactionByHash call eth_getTransactionByHash

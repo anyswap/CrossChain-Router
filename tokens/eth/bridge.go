@@ -30,6 +30,7 @@ type EvmContractBridge interface {
 	VerifyMPCPubKey(mpcAddress, mpcPubkey string) error
 	GetTransactionReceipt(txHash string) (receipt *types.RPCTxReceipt, err error)
 	GetLatestBlockNumberOf(url string) (latest uint64, err error)
+	GetTransactionByHash(txHash string) (tx *types.RPCTransaction, err error)
 }
 
 // Bridge eth bridge
