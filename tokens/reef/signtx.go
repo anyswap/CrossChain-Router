@@ -111,6 +111,7 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 	if err != nil {
 		return nil, "", err
 	}
+	tx.TxHash = &txHash
 	log.Info(logPrefix+"success", "keyID", keyID, "txid", txid, "txhash", txHash, "nonce", tx.AccountNonce)
 	return tx, txHash, nil
 }
@@ -143,6 +144,7 @@ func (b *Bridge) GetSignedTxHashOfKeyID(sender, keyID string, rawTx interface{})
 	if err != nil {
 		return "", err
 	}
+	tx.TxHash = &txHash
 	return txHash, nil
 }
 
@@ -153,7 +155,13 @@ func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, priKey string)
 		return nil, "", errors.New("wrong raw tx param")
 	}
 
-	// TODO sign
+	result, err := SignMessageWithPrivate(tx.buildScriptParam())
+	if err != nil {
+		return nil, "", err
+	}
 
-	return tx, txHash, err
+	tx.Signature = &result[0]
+	tx.TxHash = &result[1]
+
+	return tx, result[1], err
 }

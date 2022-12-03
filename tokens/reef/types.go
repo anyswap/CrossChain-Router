@@ -13,6 +13,7 @@ import (
 type ReefTransaction struct {
 	From         *string
 	EvmAddress   *string
+	ReefAddress  *string
 	To           *string
 	Data         *hexutil.Bytes
 	AccountNonce *uint64
@@ -37,9 +38,9 @@ type ReefTransaction struct {
 func (tx *ReefTransaction) buildScriptParam() []interface{} {
 	param := []interface{}{
 		tx.Data,
-		tx.EvmAddress,
-		tx.From,
-		tx.To,
+		*tx.EvmAddress,
+		*tx.ReefAddress,
+		*tx.To,
 		strconv.FormatUint(*tx.GasLimit, 10),
 		strconv.FormatUint(*tx.StorageGas, 10),
 		*tx.BlockHash,

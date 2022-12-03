@@ -10,6 +10,7 @@ import (
 )
 
 // const mpc_publickey_type = "sr25519"
+const encode = "SS58PRE"
 
 // IsValidAddress check address
 func (b *Bridge) IsValidAddress(address string) bool {
@@ -29,8 +30,28 @@ func (b *Bridge) IsValidAddress(address string) bool {
 	return ok
 }
 
+// pubkey to reef address
+func PubkeyToReefAddress(publicKey string) string {
+	encode := []byte(encode)
+	input := []byte{byte(42)}
+	if common.HasHexPrefix(publicKey) {
+		publicKey = publicKey[2:]
+	}
+	input = append(input, common.Hex2Bytes(publicKey)...)
+	blake2AsU8a := blake2b.Sum512(append(encode, input...))
+
+	input = append(input, blake2AsU8a[0:2]...)
+
+	base58Address := base58.Encode(input)
+	return base58Address
+}
+
+// reef address to pubkey
 func AddressToPubkey(base58Address string) []byte {
 	addrBytes, _ := base58.Decode(base58Address)
+	if len(addrBytes) <= 0 {
+		return nil
+	}
 	return addrBytes[1 : len(addrBytes)-2]
 }
 

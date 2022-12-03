@@ -412,3 +412,32 @@ func (r *WebSocket) QueryEvmAddress(ss58address string) (*common.Address, error)
 	}
 	return nil, nil
 }
+
+func (r *WebSocket) QueryReefAddress(evmAddress string) (*string, error) {
+	cmd := &ReefGraphQLRequest{
+		Command: newCommand("address"),
+		Type:    "start",
+		Payload: ReefGraphQLPayLoad{
+			OperationName: "query_reef_addr",
+			Query:         ReefAddress_GQL,
+			Variables: map[string]interface{}{
+				"address": evmAddress,
+			},
+		}}
+	start := time.Now()
+	err := r.SendCommond(cmd)
+	if err != nil {
+		return nil, err
+	}
+	<-cmd.Ready
+	if cmd.Error != nil {
+		return nil, fmt.Errorf("reef query tx err: %s", *cmd.Error)
+	}
+	log.Infof("reef QueryEventLogs cost:%d", time.Since(start).String())
+	if f, ok := cmd.Result.(*ReefGraphQLResponse).Payload.Data.(*ReefGraphQLAccountData); ok {
+		if len(f.Accounts) > 0 {
+			return &f.Accounts[0].ReefAddress, nil
+		}
+	}
+	return nil, nil
+}

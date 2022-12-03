@@ -34,12 +34,13 @@ func MustRunBashCommand(cwd, cmdStr string) []string {
 	output, err := cmd.CombinedOutput()
 	outputStr := strings.TrimSuffix(string(output), "\n")
 	if err != nil {
-		fmt.Println(outputStr)
-		log.Fatalf("run command %v (cwd='%v') failed. error is '%v'", cmdStr, cwd, err)
+		log.Println(outputStr)
+		log.Printf("run command %v (cwd='%v') failed. error is '%v'", cmdStr, cwd, err)
+		return []string{}
 	} else {
 		log.Printf("run command %v (cwd='%v') success.\n%v", cmdStr, cwd, outputStr)
+		return strings.Split(outputStr, "\n")
 	}
-	return strings.Split(outputStr, "\n")
 }
 
 // MakeName creates a node name that follows the ethereum convention

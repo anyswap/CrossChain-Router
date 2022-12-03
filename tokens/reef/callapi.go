@@ -97,6 +97,19 @@ func (b *Bridge) QueryEvmAddress(ss58address string) (addr *common.Address, err 
 	return addr, fmt.Errorf("reef QueryEvmAddress address %s not register evm address ", ss58address)
 }
 
+func (b *Bridge) QueryReefAddress(evmAddress string) (addr *string, err error) {
+	for _, ws := range b.WS {
+		addr, err = ws.QueryReefAddress(evmAddress)
+		if err != nil {
+			log.Warn("QueryReefAddress", "err", err)
+		}
+		if addr != nil {
+			return addr, nil
+		}
+	}
+	return addr, fmt.Errorf("reef QueryReefAddress evm address %s not found", evmAddress)
+}
+
 // GetBalance call eth_getBalance
 func (b *Bridge) GetBalance(account string) (balance *big.Int, err error) {
 	key, err := substrate_types.CreateStorageKey(b.MetaData, "System", "Account", AddressToPubkey(account))
@@ -110,7 +123,7 @@ func (b *Bridge) GetBalance(account string) (balance *big.Int, err error) {
 			log.Warn("reef getBalance", "account", account, "err", err)
 			continue
 		}
-		balance = new(big.Int).SetUint64(accountInfo.Data.Free.Uint64())
+		balance = accountInfo.Data.Free.Int
 		break
 	}
 	return
