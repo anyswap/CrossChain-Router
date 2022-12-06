@@ -27,7 +27,7 @@ var IsTestMode bool
 var IsReload bool
 
 var (
-	routerConfig = &RouterConfig{Extra: &ExtraConfig{}, MPC: &MPCConfig{}}
+	routerConfig = NewRouterConfig()
 
 	routerConfigFile string
 	locDataDir       string
@@ -68,6 +68,14 @@ var (
 
 	GatewayConfigFile string
 )
+
+func NewRouterConfig() *RouterConfig {
+	return &RouterConfig{
+		MPC:        &MPCConfig{},
+		Blacklists: &Blacklists{},
+		Extra:      &ExtraConfig{},
+	}
+}
 
 // RouterServerConfig only for server
 type RouterServerConfig struct {
@@ -1115,7 +1123,7 @@ func LoadRouterConfig(configFile string, isServer, check bool) *RouterConfig {
 	if !common.FileExist(configFile) {
 		log.Fatalf("LoadRouterConfig error: config file '%v' not exist", configFile)
 	}
-	config := &RouterConfig{Extra: &ExtraConfig{}, MPC: &MPCConfig{}}
+	config := NewRouterConfig()
 	if _, err := toml.DecodeFile(configFile, &config); err != nil {
 		log.Fatalf("LoadRouterConfig error (toml DecodeFile): %v", err)
 	}
@@ -1170,7 +1178,7 @@ func ReloadRouterConfig() {
 
 	log.Info("reload router config file", "configFile", configFile, "isServer", isServer)
 
-	config := &RouterConfig{Extra: &ExtraConfig{}, MPC: &MPCConfig{}}
+	config := NewRouterConfig()
 	if _, err := toml.DecodeFile(configFile, &config); err != nil {
 		log.Errorf("ReloadRouterConfig error (toml DecodeFile): %v", err)
 		return
