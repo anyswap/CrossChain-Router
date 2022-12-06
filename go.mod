@@ -4,7 +4,12 @@ go 1.18
 
 require (
 	github.com/BurntSushi/toml v1.1.0
-	github.com/btcsuite/btcd v0.22.0-beta
+	github.com/btcsuite/btcd v0.22.1
+	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1
+	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
+	github.com/btcsuite/btcwallet/wallet/txauthor v1.0.0
+	github.com/btcsuite/btcwallet/wallet/txrules v1.0.0
+	github.com/btcsuite/btcwallet/wallet/txsizes v1.0.0
 	github.com/deckarep/golang-set v1.8.0
 	github.com/didip/tollbooth/v6 v6.1.2
 	github.com/fbsobreira/gotron-sdk v0.0.0-20221101181131-c4daceb828f0
@@ -31,6 +36,7 @@ require (
 )
 
 require (
+	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/ethereum/go-ethereum v1.10.11 // indirect

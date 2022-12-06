@@ -71,6 +71,7 @@ var (
 	ErrOutputIndexSort        = errors.New("output not order by index asc")
 	ErrCmdArgVerify           = errors.New("cmd args verify fails")
 	ErrAggregateTx            = errors.New("aggregate tx fails")
+	ErrTxWithWrongMemo        = errors.New("tx with wrong memo")
 )
 
 // errors should register in router swap
