@@ -5,13 +5,11 @@ go 1.15
 require (
 	github.com/BurntSushi/toml v0.4.1
 	github.com/btcsuite/btcd v0.22.1
-	github.com/btcsuite/btcd/btcec/v2 v2.1.3 // indirect
-	github.com/btcsuite/btcd/btcutil v1.1.1 // indirect
-	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1 // indirect
+	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
-	github.com/btcsuite/btcwallet/wallet/txauthor v1.0.0 // indirect
-	github.com/btcsuite/btcwallet/wallet/txrules v1.0.0 // indirect
-	github.com/btcsuite/btcwallet/wallet/txsizes v1.0.0 // indirect
+	github.com/btcsuite/btcwallet/wallet/txauthor v1.0.0
+	github.com/btcsuite/btcwallet/wallet/txrules v1.0.0
+	github.com/btcsuite/btcwallet/wallet/txsizes v1.0.0
 	github.com/cosmos/btcutil v1.0.4
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/deckarep/golang-set v1.7.1
