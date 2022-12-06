@@ -162,7 +162,7 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 	}
 
 	// Check tx status
-	if txres.Status.Failure != nil {
+	if txres.Status.Failure != nil || txres.Status.SuccessValue == nil {
 		log.Warn("Near tx status is not success", "result", txres.Status.Failure)
 		return nil, tokens.ErrTxWithWrongStatus
 	}

@@ -21,6 +21,7 @@ var (
 	ErrTxWithWrongContract    = errors.New("tx with wrong contract")
 	ErrTxWithWrongTopics      = errors.New("tx with wrong log topics")
 	ErrSwapoutLogNotFound     = errors.New("swapout log not found or removed")
+	ErrSwapoutPatternMismatch = errors.New("swapout pattern mismatch")
 	ErrTxWithRemovedLog       = errors.New("tx with removed log")
 	ErrWrongBindAddress       = errors.New("wrong bind address")
 	ErrWrongRawTx             = errors.New("wrong raw tx")
