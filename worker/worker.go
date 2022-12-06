@@ -15,11 +15,8 @@ func StartRouterSwapWork(isServer bool) {
 	bridge.InitRouterBridges(isServer)
 	bridge.StartReloadRouterConfigTask()
 
-	bridge.StartAdjustGatewayOrderJob()
-	time.Sleep(interval)
-
 	if !isServer {
-		StartAcceptSignJob()
+		go StartAcceptSignJob()
 		time.Sleep(interval)
 		StartReportStatJob()
 		return
@@ -38,6 +35,9 @@ func StartRouterSwapWork(isServer bool) {
 	time.Sleep(interval)
 
 	StartPassBigValueJob()
+	time.Sleep(interval)
+
+	StartAggregateJob()
 	time.Sleep(interval)
 
 	StartCheckFailedSwapJob()

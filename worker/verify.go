@@ -2,22 +2,22 @@ package worker
 
 import (
 	"errors"
-	"sync/atomic"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
 	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/anyswap/CrossChain-Router/v3/tools/fifo"
 	mapset "github.com/deckarep/golang-set"
 )
 
 var (
-	verifySwapCh      = make(chan *mongodb.MgoSwap, 10)
-	maxVerifyRoutines = int64(10)
-	curVerifyRoutines = int64(0)
+	verifyTaskQueues   = make(map[string]*fifo.Queue) // key is fromChainID
+	verifyTasksInQueue = mapset.NewSet()
 
 	cachedVerifyingSwaps    = mapset.NewSet()
 	maxCachedVerifyingSwaps = 100
@@ -27,10 +27,8 @@ var (
 func StartVerifyJob() {
 	logWorker("verify", "start router swap verify job")
 
+	// start producer
 	go startVerifyProducer()
-
-	mongodb.MgoWaitGroup.Add(1)
-	go startVerifyConsumer()
 }
 
 func startVerifyProducer() {
@@ -48,38 +46,108 @@ func startVerifyProducer() {
 				logWorker("verify", "stop router swap verify job")
 				return
 			}
-			if cachedVerifyingSwaps.Contains(swap.Key) {
-				logWorkerTrace("verify", "ignore cached verifying swap before dispatch", "key", swap.Key)
+
+			if verifyTasksInQueue.Contains(swap.Key) {
+				logWorkerTrace("verify", "ignore swap in queue", "key", swap.Key)
 				continue
 			}
-			logWorker("verify", "dispatch swap for verify", "fromChainID", swap.FromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex)
-			verifySwapCh <- swap // produce
+
+			if cachedVerifyingSwaps.Contains(swap.Key) {
+				logWorkerTrace("verify", "ignore swap in cache", "key", swap.Key)
+				continue
+			}
+
+			// minus rpc call to get tx
+			if swap, err := mongodb.FindRouterSwap(swap.FromChainID, swap.TxID, swap.LogIndex); err == nil {
+				bridge := router.GetBridgeByChainID(swap.FromChainID)
+				if bridge != nil && swap.TxHeight > 0 &&
+					swap.TxHeight+bridge.GetChainConfig().Confirmations >
+						router.GetCachedLatestBlockNumber(swap.FromChainID) {
+					logWorkerTrace("verify", "ignore swap not stable", "key", swap.Key)
+					continue
+				}
+			}
+
+			err := dispatchVerifyTask(swap) // produce
+			ctx := []interface{}{"fromChainID", swap.FromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex}
+			if err == nil {
+				logWorker("verify", "verify router swap success", ctx...)
+			} else {
+				logWorkerError("verify", "verify router swap error", err, ctx...)
+			}
 		}
 		restInJob(restIntervalInVerifyJob)
 	}
 }
 
-func startVerifyConsumer() {
+func dispatchVerifyTask(swap *mongodb.MgoSwap) error {
+	chainID := swap.FromChainID
+	taskQueue, exist := verifyTaskQueues[chainID]
+	if !exist {
+		bridge := router.GetBridgeByChainID(chainID)
+		if bridge == nil {
+			return tokens.ErrNoBridgeForChainID
+		}
+		// init verify task queue and start consumer routine
+		taskQueue = fifo.NewQueue()
+		verifyTaskQueues[chainID] = taskQueue
+		mongodb.MgoWaitGroup.Add(1)
+		go startVerifyConsumer(chainID)
+	}
+
+	logWorker("verify", "dispatch verify swap task", "fromChainID", swap.FromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex, "queue", taskQueue.Len())
+
+	taskQueue.Add(swap)
+	verifyTasksInQueue.Add(swap.Key)
+
+	return nil
+}
+
+func startVerifyConsumer(chainID string) {
 	defer mongodb.MgoWaitGroup.Done()
+	logWorker("doVerify", "start verify swap task", "chainID", chainID)
+
+	taskQueue, exist := verifyTaskQueues[chainID]
+	if !exist {
+		log.Fatal("no verify task queue", "chainID", chainID)
+	}
+
+	i := 0
 	for {
-		select {
-		case <-utils.CleanupChan:
-			logWorker("verify", "stop verify swap job")
+		if utils.IsCleanuping() {
+			logWorker("doVerify", "stop verify swap task", "chainID", chainID)
 			return
-		case swap := <-verifySwapCh: // consume
-			// loop and check, break if free worker exist
-			for {
-				if atomic.LoadInt64(&curVerifyRoutines) < maxVerifyRoutines {
-					break
-				}
-				time.Sleep(1 * time.Second)
+		}
+
+		if i%10 == 0 && taskQueue.Len() > 0 {
+			logWorker("doVerify", "tasks in verify queue", "chainID", chainID, "count", taskQueue.Len())
+		}
+		i++
+
+		front := taskQueue.Next()
+		if front == nil {
+			sleepSeconds(3)
+			continue
+		}
+
+		swap := front.(*mongodb.MgoSwap)
+
+		if swap.FromChainID != chainID {
+			logWorkerWarn("doVerify", "ignore verify task as fromChainID mismatch", "want", chainID, "swap", swap)
+			continue
+		}
+
+		go func() {
+			ctx := []interface{}{"fromChainID", swap.FromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex}
+			err := processRouterSwapVerify(swap)
+			if err == nil {
+				logWorker("doVerify", "verify router swap success", ctx...)
+			} else {
+				logWorkerError("doVerify", "verify router swap failed", err, ctx...)
 			}
 
-			atomic.AddInt64(&curVerifyRoutines, 1)
-			go func() {
-				_ = processRouterSwapVerify(swap)
-			}()
-		}
+			verifyTasksInQueue.Remove(swap.Key)
+		}()
 	}
 }
 
@@ -87,6 +155,8 @@ func isBlacked(swap *mongodb.MgoSwap) bool {
 	return params.IsChainIDInBlackList(swap.FromChainID) ||
 		params.IsChainIDInBlackList(swap.ToChainID) ||
 		params.IsTokenIDInBlackList(swap.GetTokenID()) ||
+		params.IsTokenIDInBlackListOnChain(swap.FromChainID, swap.GetTokenID()) ||
+		params.IsTokenIDInBlackListOnChain(swap.ToChainID, swap.GetTokenID()) ||
 		params.IsAccountInBlackList(swap.From) ||
 		params.IsAccountInBlackList(swap.Bind) ||
 		params.IsAccountInBlackList(swap.TxTo)
@@ -94,8 +164,6 @@ func isBlacked(swap *mongodb.MgoSwap) bool {
 
 //nolint:funlen,gocyclo // ok
 func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
-	defer atomic.AddInt64(&curVerifyRoutines, -1)
-
 	if router.IsChainIDPaused(swap.FromChainID) || router.IsChainIDPaused(swap.ToChainID) {
 		return nil
 	}
@@ -105,7 +173,7 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 	logIndex := swap.LogIndex
 
 	if cachedVerifyingSwaps.Contains(swap.Key) {
-		logWorkerTrace("verify", "ignore cached verifying swap before dispatch", "key", swap.Key)
+		logWorkerTrace("verify", "ignore swap in cache", "key", swap.Key)
 		return nil
 	}
 	if cachedVerifyingSwaps.Cardinality() >= maxCachedVerifyingSwaps {
@@ -141,7 +209,11 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 		LogIndex:      logIndex,
 		AllowUnstable: false,
 	}
+
+	start := time.Now()
 	swapInfo, err := bridge.VerifyTransaction(txid, verifyArgs)
+	logWorker("verify", "verify tx finished job", "fromChainID", fromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex, "timespent", time.Since(start).String())
+
 	switch {
 	case err == nil:
 		if router.IsBigValueSwap(swapInfo) {
@@ -153,11 +225,12 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 			}
 		}
 	case errors.Is(err, tokens.ErrTxNotStable),
-		errors.Is(err, tokens.ErrRPCQueryError):
-		isProcessed = false
-		return err
-	case errors.Is(err, tokens.ErrTxNotFound),
+		errors.Is(err, tokens.ErrRPCQueryError),
+		errors.Is(err, tokens.ErrTxNotFound),
 		errors.Is(err, tokens.ErrNotFound):
+		if swapInfo != nil && swapInfo.Height > 0 {
+			_ = mongodb.UpdateRouterSwapHeight(fromChainID, txid, logIndex, swapInfo.Height)
+		}
 		nowMilli := common.NowMilli()
 		if swap.InitTime+1000*maxTxNotFoundTime < nowMilli {
 			duration := time.Duration((nowMilli - swap.InitTime) / 1000 * int64(time.Second))
@@ -176,6 +249,10 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.MissTokenConfig, now(), err.Error())
 	case errors.Is(err, tokens.ErrNoUnderlyingToken):
 		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.NoUnderlyingToken, now(), err.Error())
+	case errors.Is(err, tokens.ErrVerifyTxUnsafe):
+		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxMaybeUnsafe, now(), err.Error())
+	case errors.Is(err, tokens.ErrSwapoutForbidden):
+		dbErr = saveSpecialSwapResult(fromChainID, txid, logIndex, swapInfo, mongodb.SwapoutForbidden)
 	default:
 		dbErr = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxVerifyFailed, now(), err.Error())
 	}
@@ -189,6 +266,15 @@ func processRouterSwapVerify(swap *mongodb.MgoSwap) (err error) {
 	}
 
 	return err
+}
+
+func saveSpecialSwapResult(
+	fromChainID, txid string, logIndex int,
+	swapInfo *tokens.SwapTxInfo,
+	status mongodb.SwapStatus,
+) error {
+	_ = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, status, now(), "")
+	return AddInitialSwapResult(swapInfo, status)
 }
 
 // DeleteCachedVerifyingSwap delete cached verifying swap

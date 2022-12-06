@@ -7,7 +7,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/btc"
-	"github.com/cosmos/btcutil"
+	"github.com/btcsuite/btcutil"
 )
 
 var (

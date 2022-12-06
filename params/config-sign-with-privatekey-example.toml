@@ -8,10 +8,10 @@ SwapSubType = ""
 
 # modgodb database connection config
 [Server.MongoDB]
-DBURLs = ["localhost:27917"]
+DBURLs = ["localhost:27017"]
 DBName = "testdb"
-UserName = "testuser"
-Password = "testpasswd"
+UserName = "user"
+Password = "123456"
 
 
 # bridge API service
@@ -22,7 +22,7 @@ Port = 11556
 
 # OnChain config
 [OnChain]
-Contract = "0xb89070887e2706cE35642ca430Bb26590B089Ced"
+Contract = "0xCe260d840193A19042DcFaa7aC504A714ac780aB"
 APIAddress = ["https://data-seed-prebsc-1-s1.binance.org:8545"]
 
 

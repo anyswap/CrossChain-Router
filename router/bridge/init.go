@@ -6,13 +6,12 @@ import (
 	"math/big"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/mongodb"
 	"github.com/anyswap/CrossChain-Router/v3/mpc"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
-	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
@@ -49,9 +48,9 @@ func InitRouterBridges(isServer bool) {
 
 	logErrFunc := log.GetLogFuncOr(router.DontPanicInLoading(), log.Error, log.Fatal)
 
-	client.InitHTTPClient()
 	router.InitRouterConfigClients()
 
+	log.Info("start get all chain ids")
 	allChainIDs, err := router.GetAllChainIDs()
 	if err != nil {
 		logErrFunc("call GetAllChainIDs failed", "err", err)
@@ -72,6 +71,7 @@ func InitRouterBridges(isServer bool) {
 		return
 	}
 
+	log.Info("start get all token ids")
 	allTokenIDs, err := router.GetAllTokenIDs()
 	if err != nil {
 		logErrFunc("call GetAllTokenIDs failed", "err", err)
@@ -101,25 +101,46 @@ func InitRouterBridges(isServer bool) {
 			bridge := NewCrossChainBridge(chainID)
 
 			InitGatewayConfig(bridge, chainID)
+			if len(bridge.GetGatewayConfig().APIAddress) == 0 {
+				logErrFunc("bridge has no gateway config", "chainID", chainID)
+				return
+			}
+
 			AdjustGatewayOrder(bridge, chainID.String())
 			InitChainConfig(bridge, chainID)
 
 			bridge.InitAfterConfig()
 			router.SetBridge(chainID.String(), bridge)
 
-			wg2 := new(sync.WaitGroup)
-			wg2.Add(len(tokenIDs))
-			for _, tokenID := range tokenIDs {
-				go func(wg2 *sync.WaitGroup, tokenID string, chainID *big.Int) {
-					defer wg2.Done()
+			latestBlock, err := bridge.GetLatestBlockNumber()
+			if err != nil {
+				log.Warn("get lastest block number failed", "chainID", chainID, "err", err)
+			} else {
+				log.Infof("[%5v] lastest block number is %v", chainID, latestBlock)
+			}
+
+			if params.GetLocalChainConfig(chainID.String()).ForbidParallelLoading {
+				for _, tokenID := range tokenIDs {
 					log.Info("start load token config", "tokenID", tokenID, "chainID", chainID)
 					InitTokenConfig(bridge, tokenID, chainID)
-				}(wg2, tokenID, chainID)
+				}
+			} else {
+				wg2 := new(sync.WaitGroup)
+				wg2.Add(len(tokenIDs))
+				for _, tokenID := range tokenIDs {
+					go func(wg2 *sync.WaitGroup, tokenID string, chainID *big.Int) {
+						defer wg2.Done()
+						log.Info("start load token config", "tokenID", tokenID, "chainID", chainID)
+						InitTokenConfig(bridge, tokenID, chainID)
+					}(wg2, tokenID, chainID)
+				}
+				wg2.Wait()
 			}
-			wg2.Wait()
 		}(wg, chainID)
 	}
 	wg.Wait()
+
+	initSwapNonces()
 
 	router.AllChainIDs = chainIDs
 	router.AllTokenIDs = tokenIDs
@@ -131,6 +152,8 @@ func InitRouterBridges(isServer bool) {
 	mpc.Init(isServer)
 
 	success = true
+
+	go WatchGatewayConfig()
 }
 
 func loadSwapAndFeeConfigs() {
@@ -322,34 +345,23 @@ func InitGatewayConfig(b tokens.IBridge, chainID *big.Int) {
 		logErrFunc("init gateway with zero chain ID")
 		return
 	}
-	cfg := params.GetRouterConfig()
-	apiAddrs := cfg.Gateways[chainID.String()]
-	if len(apiAddrs) == 0 {
-		logErrFunc("gateway not found for chain ID", "chainID", chainID)
-		return
-	}
-	apiAddrsExt := cfg.GatewaysExt[chainID.String()]
-	b.SetGatewayConfig(&tokens.GatewayConfig{
-		APIAddress:    apiAddrs,
-		APIAddressExt: apiAddrsExt,
-	})
-	if !isReload {
-		latestBlock, err := b.GetLatestBlockNumber()
-		if err != nil && router.IsIniting {
-			for i := 0; i < router.RetryRPCCountInInit; i++ {
-				if latestBlock, err = b.GetLatestBlockNumber(); err == nil {
-					break
-				}
-				time.Sleep(router.RetryRPCIntervalInInit)
-			}
-		}
-		if err != nil {
-			logErrFunc("get lastest block number failed", "chainID", chainID, "err", err)
-			return
-		}
-		log.Infof("[%5v] lastest block number is %v", chainID, latestBlock)
-	}
+	SetGatewayConfig(b, chainID.String())
 	log.Info(fmt.Sprintf("[%5v] init gateway config success", chainID), "isReload", isReload)
+}
+
+// SetGatewayConfig set gateway config
+func SetGatewayConfig(b tokens.IBridge, chainID string) {
+	cfg := params.GetRouterConfig()
+	apiAddrs := cfg.Gateways[chainID]
+	apiAddrsExt := cfg.GatewaysExt[chainID]
+	evmapiext := cfg.EVMGatewaysExt[chainID]
+	finalizeAPIs := cfg.FinalizeGateways[chainID]
+	b.SetGatewayConfig(&tokens.GatewayConfig{
+		APIAddress:         apiAddrs,
+		APIAddressExt:      apiAddrsExt,
+		EVMAPIAddress:      evmapiext,
+		FinalizeAPIAddress: finalizeAPIs,
+	})
 }
 
 // InitChainConfig impl
@@ -378,7 +390,7 @@ func InitChainConfig(b tokens.IBridge, chainID *big.Int) {
 
 	routerContract := chainCfg.RouterContract
 	if routerContract != "" && !isRouterInfoLoaded(chainID.String(), routerContract) {
-		err = b.InitRouterInfo(routerContract)
+		err = b.InitRouterInfo(routerContract, chainCfg.RouterVersion)
 		if err == nil {
 			setRouterInfoLoaded(chainID.String(), routerContract)
 		} else {
@@ -427,15 +439,16 @@ func InitTokenConfig(b tokens.IBridge, tokenID string, chainID *big.Int) {
 		logErrFunc("check token config failed", "tokenID", tokenID, "chainID", chainID, "tokenAddr", tokenAddr, "err", err)
 		return
 	}
+	router.InitOnchainCustomConfig(chainID, tokenID)
 	b.SetTokenConfig(tokenAddr, tokenCfg)
 
 	router.SetMultichainToken(tokenID, chainID.String(), tokenAddr)
 
-	log.Info(fmt.Sprintf("[%5v] init '%v' token config success", chainID, tokenID), "tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "isReload", isReload)
+	log.Info(fmt.Sprintf("[%5v] init '%v' token config success", chainID, tokenID), "tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "isReload", isReload, "underlying", tokenCfg.GetUnderlying())
 
 	routerContract := tokenCfg.RouterContract
 	if routerContract != "" && !isRouterInfoLoaded(chainID.String(), routerContract) {
-		err = b.InitRouterInfo(routerContract)
+		err = b.InitRouterInfo(routerContract, tokenCfg.RouterVersion)
 		if err == nil {
 			setRouterInfoLoaded(chainID.String(), routerContract)
 		} else {
@@ -443,4 +456,46 @@ func InitTokenConfig(b tokens.IBridge, tokenID string, chainID *big.Int) {
 			return
 		}
 	}
+}
+
+func initSwapNonces() {
+	if !mongodb.HasClient() {
+		return
+	}
+
+	routerInfoIsLoaded.Range(func(k, v interface{}) bool {
+		key := k.(string)
+		parts := strings.Split(key, ":")
+		if len(parts) != 2 {
+			return true
+		}
+
+		chainID := parts[0]
+		routerContract := parts[1]
+
+		br := router.GetBridgeByChainID(chainID)
+		if br == nil {
+			return true
+		}
+		nonceSetter, ok := br.(tokens.NonceSetter)
+		if !ok {
+			return true
+		}
+
+		routerInfo := router.GetRouterInfo(routerContract, chainID)
+		if routerInfo == nil {
+			return true
+		}
+		routerMPC := routerInfo.RouterMPC
+
+		for i := 0; i < 3; i++ {
+			nextSwapNonce, err := mongodb.FindNextSwapNonce(chainID, routerMPC)
+			if err == nil {
+				nonceSetter.InitSwapNonce(nonceSetter, routerMPC, nextSwapNonce)
+				break
+			}
+		}
+
+		return true
+	})
 }

@@ -14,7 +14,7 @@ func (b *Bridge) RegisterSwap(txHash string, args *tokens.RegisterArgs) ([]*toke
 	logIndex := args.LogIndex
 
 	switch swapType {
-	case tokens.ERC20SwapType:
+	case tokens.ERC20SwapType, tokens.ERC20SwapTypeMixPool:
 		return b.registerERC20SwapTx(txHash, logIndex)
 	case tokens.NFTSwapType:
 		return b.registerNFTSwapTx(txHash, logIndex)
@@ -63,7 +63,7 @@ func (b *Bridge) registerERC20SwapTx(txHash string, logIndex int) ([]*tokens.Swa
 		case err == nil:
 			err = b.checkERC20SwapInfo(swapInfo)
 		default:
-			log.Debug(b.ChainConfig.BlockChain+" register router swap error", "txHash", txHash, "logIndex", swapInfo.LogIndex, "err", err)
+			log.Info(b.ChainConfig.BlockChain+" register router swap error", "txHash", txHash, "logIndex", swapInfo.LogIndex, "err", err)
 		}
 		swapInfos = append(swapInfos, swapInfo)
 		errs = append(errs, err)

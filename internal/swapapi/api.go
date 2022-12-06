@@ -35,11 +35,15 @@ func newRPCInternalError(err error) error {
 
 // GetServerInfo get server info
 func GetServerInfo() *ServerInfo {
+	extra := params.GetExtraConfig()
+	extraCfg := &params.ExtraConfig{
+		CallByContractWhitelist:         extra.CallByContractWhitelist,
+		CallByContractCodeHashWhitelist: extra.CallByContractCodeHashWhitelist,
+	}
 	return &ServerInfo{
 		Identifier:     params.GetIdentifier(),
 		Version:        params.VersionWithMeta,
-		ConfigContract: params.GetOnchainContract(),
-		ExtraConfig:    params.GetExtraConfig(),
+		ExtraConfig:    extraCfg,
 		AllChainIDs:    router.AllChainIDs,
 		PausedChainIDs: router.GetPausedChainIDs(),
 	}
@@ -111,7 +115,8 @@ func RegisterRouterSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, e
 	if err != nil {
 		return nil, err
 	}
-	bridge := router.GetBridgeByChainID(chainID.String())
+	fromChainID = chainID.String()
+	bridge := router.GetBridgeByChainID(fromChainID)
 	if bridge == nil {
 		return nil, newRPCInternalError(tokens.ErrNoBridgeForChainID)
 	}
@@ -124,6 +129,7 @@ func RegisterRouterSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, e
 		SwapType: swapType,
 		LogIndex: logIndex,
 	}
+	log.Debug("[api] register swap start", "chainid", fromChainID, "txid", txid, "logIndex", logIndexStr, "swapType", swapType.String())
 	swapInfos, errs := bridge.RegisterSwap(txid, registerArgs)
 	for i, swapInfo := range swapInfos {
 		var memo string
@@ -154,6 +160,9 @@ func RegisterRouterSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, e
 				result[-1-logIndex] = "verify error: blacklist"
 			}
 			err = addMgoSwap(swapInfo, newStatus, memo)
+			if err != nil {
+				result[logIndex] = "db error"
+			}
 		case verifyErr == nil:
 			switch {
 			case oldSwap.Status == mongodb.TxWithBigValue && router.IsBigValueSwap(swapInfo):
@@ -165,6 +174,7 @@ func RegisterRouterSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, e
 				log.Info("[register] update swap info and status", "chainid", fromChainID, "txid", txid, "logIndex", logIndexStr, "oldStatus", oldSwap.Status, "newStatus", newStatus, "swapinfo", mgoSwapInfo)
 				err = mongodb.UpdateRouterSwapInfoAndStatus(fromChainID, txid, logIndex, &mgoSwapInfo, newStatus, time.Now().Unix(), memo)
 				worker.DeleteCachedVerifyingSwap(oldSwap.Key)
+				result[logIndex] = "retry registered"
 			}
 		default:
 			result[logIndex] = "already registered: " + memo
@@ -173,6 +183,7 @@ func RegisterRouterSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, e
 			log.Info("register swap db error", "chainid", fromChainID, "txid", txid, "logIndex", logIndexStr, "err", err)
 		}
 	}
+	log.Debug("[api] register swap finished", "chainid", fromChainID, "txid", txid, "logIndex", logIndexStr, "swapType", swapType.String())
 	return &result, nil
 }
 
@@ -234,6 +245,16 @@ func GetRouterSwap(fromChainID, txid, logindexStr string) (*SwapInfo, error) {
 		return ConvertMgoSwapToSwapInfo(register), nil
 	}
 	return nil, mongodb.ErrSwapNotFound
+}
+
+// GetRouterSwaps impl
+func GetRouterSwaps(fromChainID, txid string) ([]*SwapInfo, error) {
+	result, _ := mongodb.FindRouterSwapResultsOfTx(fromChainID, txid)
+	res := make([]*SwapInfo, len(result))
+	for i, item := range result {
+		res[i] = ConvertMgoSwapResultToSwapInfo(item)
+	}
+	return res, nil
 }
 
 // GetRouterSwapHistory impl

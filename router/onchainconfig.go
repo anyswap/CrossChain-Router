@@ -68,7 +68,7 @@ func InitRouterConfigClientsWithArgs(configContract string, gateways []string) {
 			log.Fatal("init router config clients failed", "gateway", gateway, "err", err)
 		}
 	}
-	log.Debug("init router config clients success", "gateway", gateways, "configContract", configContract)
+	log.Info("init router config clients success", "gateway", gateways, "configContract", configContract)
 	if len(routerConfigClients) == 0 {
 		log.Fatal("no router config client")
 	}
@@ -80,6 +80,7 @@ func CallOnchainContract(data hexutil.Bytes, blockNumber string) (result []byte,
 		To:   &routerConfigContract,
 		Data: data,
 	}
+LOOP:
 	for _, cli := range routerConfigClients {
 		result, err = cli.CallContract(routerConfigCtx, msg, nil)
 		if err != nil && IsIniting {
@@ -87,6 +88,11 @@ func CallOnchainContract(data hexutil.Bytes, blockNumber string) (result []byte,
 				if result, err = cli.CallContract(routerConfigCtx, msg, nil); err == nil {
 					return result, nil
 				}
+				if strings.Contains(err.Error(), "revert") ||
+					strings.Contains(err.Error(), "VM execution error") {
+					break LOOP
+				}
+				log.Warn("retry call onchain router config contract failed", "contract", routerConfigContract, "times", i+1, "err", err)
 				time.Sleep(RetryRPCIntervalInInit)
 			}
 		}
@@ -94,7 +100,7 @@ func CallOnchainContract(data hexutil.Bytes, blockNumber string) (result []byte,
 			return result, nil
 		}
 	}
-	log.Debug("call onchain contract error", "contract", routerConfigContract.String(), "data", data, "err", err)
+	log.Warn("call onchain router config contract error", "contract", routerConfigContract.String(), "data", data, "err", err)
 	return nil, err
 }
 
@@ -159,7 +165,7 @@ func parseChainConfig(data []byte) (config *tokens.ChainConfig, err error) {
 	if err != nil {
 		return nil, abicoder.ErrParseDataError
 	}
-	routerContract, err := abicoder.ParseStringInData(data, 32)
+	routerContractStr, err := abicoder.ParseStringInData(data, 32)
 	if err != nil {
 		return nil, abicoder.ErrParseDataError
 	}
@@ -169,9 +175,11 @@ func parseChainConfig(data []byte) (config *tokens.ChainConfig, err error) {
 	if err != nil {
 		return nil, abicoder.ErrParseDataError
 	}
+	routerContract, routerVersion := ParseRouterContractConfig(routerContractStr)
 	config = &tokens.ChainConfig{
 		BlockChain:     blockChain,
 		RouterContract: routerContract,
+		RouterVersion:  routerVersion,
 		Confirmations:  confirmations,
 		InitialHeight:  initialHeight,
 		Extra:          extra,
@@ -213,7 +221,7 @@ func parseTokenConfig(data []byte) (config *tokens.TokenConfig, err error) {
 		return nil, abicoder.ErrParseDataError
 	}
 	contractVersion := common.GetBigInt(data, 64, 32).Uint64()
-	routerContract, err := abicoder.ParseStringInData(data, 96)
+	routerContractStr, err := abicoder.ParseStringInData(data, 96)
 	if err != nil {
 		return nil, abicoder.ErrParseDataError
 	}
@@ -222,11 +230,13 @@ func parseTokenConfig(data []byte) (config *tokens.TokenConfig, err error) {
 		return nil, abicoder.ErrParseDataError
 	}
 
+	routerContract, routerVersion := ParseRouterContractConfig(routerContractStr)
 	config = &tokens.TokenConfig{
 		Decimals:        decimals,
 		ContractAddress: contractAddress,
 		ContractVersion: contractVersion,
 		RouterContract:  routerContract,
+		RouterVersion:   routerVersion,
 		Extra:           extra,
 	}
 	return config, err

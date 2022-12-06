@@ -47,6 +47,35 @@ func RPCGetRequest(result interface{}, url string, params, headers map[string]st
 	return nil
 }
 
+// RPCGetRequest2 rpc get request
+func RPCGetRequest2(result interface{}, url string, params, headers map[string]string, timeout int) (errBody []byte, err error) {
+	resp, err := HTTPGet(url, params, headers, timeout)
+	if err != nil {
+		return errBody, fmt.Errorf("GET request error: %w (url: %v, params: %v)", err, url, params)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
+	const maxReadContentLength int64 = 1024 * 1024 * 10 // 10M
+	body, err := ioutil.ReadAll(io.LimitReader(resp.Body, maxReadContentLength))
+	if err != nil {
+		return errBody, fmt.Errorf("read body error: %w", err)
+	}
+
+	if resp.StatusCode != 200 {
+		errBody = body
+		log.Trace("get rpc status error", "url", url, "status", resp.StatusCode, "body", string(body))
+		return errBody, fmt.Errorf("error response status: %v (url: %v)", resp.StatusCode, url)
+	}
+
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return errBody, fmt.Errorf("unmarshal result error: %w", err)
+	}
+	return errBody, nil
+}
+
 // RPCRawGet rpc raw get
 func RPCRawGet(url string) (string, error) {
 	return RPCRawGetRequest(url, nil, nil, defaultSlowTimeout)

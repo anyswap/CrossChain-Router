@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync/atomic"
+	"sync"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
@@ -13,6 +13,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/anyswap/CrossChain-Router/v3/tools/fifo"
 	mapset "github.com/deckarep/golang-set"
 )
 
@@ -21,18 +22,17 @@ const (
 	acceptDisagree = "DISAGREE"
 )
 
+type acceptWorkerInfo struct {
+	workerCount        int
+	acceptInfoQueue    *fifo.Queue // element is signInfo
+	acceptInfosInQueue mapset.Set  // element is keyID
+}
+
 var (
 	cachedAcceptInfos    = mapset.NewSet()
 	maxCachedAcceptInfos = 500
 
-	acceptInfoCh      = make(chan *mpc.SignInfoData, 10)
-	maxAcceptRoutines = int64(10)
-	curAcceptRoutines = int64(0)
-
-	// for fast mpc
-	acceptInfoCh2      = make(chan *mpc.SignInfoData, 10)
-	maxAcceptRoutines2 = int64(10)
-	curAcceptRoutines2 = int64(0)
+	acceptWorkers = make(map[bool]*acceptWorkerInfo)
 
 	// those errors will be ignored in accepting
 	errIdentifierMismatch = errors.New("cross chain bridge identifier mismatch")
@@ -40,27 +40,16 @@ var (
 	errWrongMsgContext    = errors.New("wrong msg context")
 )
 
-func getAcceptInfoCh(isFastMPC bool) chan *mpc.SignInfoData {
-	if isFastMPC {
-		return acceptInfoCh2
-	}
-	return acceptInfoCh
-}
-
-func getAcceptRoutines(isFastMPC bool) (cur, max *int64) {
-	if isFastMPC {
-		return &curAcceptRoutines2, &maxAcceptRoutines2
-	}
-	return &curAcceptRoutines, &maxAcceptRoutines
-}
-
 // StartAcceptSignJob accept job
 func StartAcceptSignJob() {
 	logWorker("accept", "start accept sign job")
 
 	openLeveldb()
+	defer closeLeveldb()
 
 	if mpcConfig := mpc.GetMPCConfig(false); mpcConfig != nil {
+		initAcceptWorkers(false)
+
 		go startAcceptProducer(mpcConfig)
 
 		utils.TopWaitGroup.Add(1)
@@ -68,10 +57,22 @@ func StartAcceptSignJob() {
 	}
 
 	if mpcConfig := mpc.GetMPCConfig(true); mpcConfig != nil {
+		initAcceptWorkers(true)
+
 		go startAcceptProducer(mpcConfig)
 
 		utils.TopWaitGroup.Add(1)
 		go startAcceptConsumer(mpcConfig)
+	}
+
+	utils.TopWaitGroup.Wait()
+}
+
+func initAcceptWorkers(isFastMPC bool) {
+	acceptWorkers[isFastMPC] = &acceptWorkerInfo{
+		workerCount:        10,
+		acceptInfoQueue:    fifo.NewQueue(),
+		acceptInfosInQueue: mapset.NewSet(),
 	}
 }
 
@@ -83,23 +84,27 @@ func startAcceptProducer(mpcConfig *mpc.Config) {
 		retryInterval = waitInterval
 	}
 
-	acceptCh := getAcceptInfoCh(mpcConfig.IsFastMPC)
+	acceptWorker := acceptWorkers[mpcConfig.IsFastMPC]
+	acceptInfoQueue := acceptWorker.acceptInfoQueue
+	acceptInfosInQueue := acceptWorker.acceptInfosInQueue
 
 	i := 0
 	for {
 		if utils.IsCleanuping() {
 			return
 		}
+		start := time.Now()
 		signInfo, err := mpcConfig.GetCurNodeSignInfo(maxAcceptSignTimeInterval)
 		if err != nil {
-			logWorkerError("accept", "getCurNodeSignInfo failed", err)
+			logWorkerError("accept", "getCurNodeSignInfo failed", err, "timespent", time.Since(start).String())
 			time.Sleep(retryInterval)
 			continue
 		}
-		i++
 		if i%7 == 0 {
-			logWorker("accept", "getCurNodeSignInfo", "count", len(signInfo))
+			logWorker("accept", "getCurNodeSignInfo", "count", len(signInfo), "queue", acceptInfoQueue.Len(), "timespent", time.Since(start).String())
 		}
+		i++
+
 		for _, info := range signInfo {
 			if utils.IsCleanuping() {
 				return
@@ -108,49 +113,73 @@ func startAcceptProducer(mpcConfig *mpc.Config) {
 				continue
 			}
 			keyID := info.Key
-			if cachedAcceptInfos.Contains(keyID) {
-				logWorkerTrace("accept", "ignore cached accept sign info before dispatch", "keyID", keyID)
+
+			if acceptInfosInQueue.Contains(keyID) {
+				logWorkerTrace("accept", "ignore accept sign info in queue", "keyID", keyID)
 				continue
 			}
-			logWorker("accept", "dispatch accept sign info", "keyID", keyID)
-			acceptCh <- info // produce
+
+			if cachedAcceptInfos.Contains(keyID) {
+				logWorkerTrace("accept", "ignore accept sign info in cache", "keyID", keyID)
+				continue
+			}
+
+			_, err = filterSignInfo(info)
+			if err != nil {
+				logWorkerTrace("accept", "ignore accept sign info", "keyID", keyID, "msgContext", info.MsgContext, "err", err)
+				continue
+			}
+
+			logWorker("accept", "dispatch accept sign info", "keyID", keyID, "msgContext", info.MsgContext)
+			acceptInfoQueue.Add(info)
+			acceptInfosInQueue.Add(keyID)
 		}
 		time.Sleep(waitInterval)
 	}
 }
 
 func startAcceptConsumer(mpcConfig *mpc.Config) {
-	defer func() {
-		closeLeveldb()
-		utils.TopWaitGroup.Done()
-	}()
+	defer utils.TopWaitGroup.Done()
 
-	cur, max := getAcceptRoutines(mpcConfig.IsFastMPC)
-	acceptCh := getAcceptInfoCh(mpcConfig.IsFastMPC)
+	acceptWorker := acceptWorkers[mpcConfig.IsFastMPC]
+	acceptInfoQueue := acceptWorker.acceptInfoQueue
+	acceptInfosInQueue := acceptWorker.acceptInfosInQueue
 
-	for {
-		select {
-		case <-utils.CleanupChan:
-			logWorker("accept", "stop accept sign job")
-			return
-		case info := <-acceptCh: // consume
-			// loop and check, break if free worker exist
+	wg := new(sync.WaitGroup)
+	wg.Add(acceptWorker.workerCount)
+	for i := 0; i < acceptWorker.workerCount; i++ {
+		go func() {
+			defer wg.Done()
 			for {
-				if atomic.LoadInt64(cur) < *max {
-					break
+				if utils.IsCleanuping() {
+					return
 				}
-				time.Sleep(1 * time.Second)
-			}
 
-			atomic.AddInt64(cur, 1)
-			go processAcceptInfo(mpcConfig, info)
-		}
+				front := acceptInfoQueue.Next()
+				if front == nil {
+					time.Sleep(1 * time.Second)
+					continue
+				}
+
+				info := front.(*mpc.SignInfoData)
+				logWorker("accept", "process accept sign info start", "keyID", info.Key)
+				err := processAcceptInfo(mpcConfig, info)
+				if err == nil {
+					logWorker("accept", "process accept sign info finish", "keyID", info.Key)
+				} else {
+					logWorkerError("accept", "process accept sign info finish", err, "keyID", info.Key)
+				}
+
+				acceptInfosInQueue.Remove(info.Key)
+			}
+		}()
 	}
+	wg.Wait()
 }
 
 func checkAndUpdateCachedAcceptInfoMap(keyID string) (ok bool) {
 	if cachedAcceptInfos.Contains(keyID) {
-		logWorker("accept", "ignore cached accept sign info in process", "keyID", keyID)
+		logWorker("accept", "ignore accept sign info in cache", "keyID", keyID)
 		return false
 	}
 	if cachedAcceptInfos.Cardinality() >= maxCachedAcceptInfos {
@@ -160,13 +189,10 @@ func checkAndUpdateCachedAcceptInfoMap(keyID string) (ok bool) {
 	return true
 }
 
-func processAcceptInfo(mpcConfig *mpc.Config, info *mpc.SignInfoData) {
-	cur, _ := getAcceptRoutines(mpcConfig.IsFastMPC)
-	defer atomic.AddInt64(cur, -1)
-
+func processAcceptInfo(mpcConfig *mpc.Config, info *mpc.SignInfoData) error {
 	keyID := info.Key
 	if !checkAndUpdateCachedAcceptInfoMap(keyID) {
-		return
+		return nil
 	}
 	isProcessed := false
 	defer func() {
@@ -201,15 +227,15 @@ func processAcceptInfo(mpcConfig *mpc.Config, info *mpc.SignInfoData) {
 		ctx = append(ctx, "err", err)
 		logWorkerTrace("accept", "discard sign", ctx...)
 		isProcessed = true
-		return
+		return err
 	case // these are situations we can not judge, ignore them or disagree immediately
 		errors.Is(err, tokens.ErrTxNotStable),
 		errors.Is(err, tokens.ErrTxNotFound),
 		tokens.IsRPCQueryOrNotFoundError(err):
 		if isPendingInvalidAccept {
 			ctx = append(ctx, "err", err)
-			logWorkerTrace("accept", "ignore sign", ctx...)
-			return
+			logWorker("accept", "ignore sign", ctx...)
+			return err
 		}
 	case // these we are sure are config problem, discard them or disagree immediately
 		errors.Is(err, errInitiatorMismatch),
@@ -219,7 +245,7 @@ func processAcceptInfo(mpcConfig *mpc.Config, info *mpc.SignInfoData) {
 			ctx = append(ctx, "err", err)
 			logWorker("accept", "discard sign", ctx...)
 			isProcessed = true
-			return
+			return err
 		}
 	}
 
@@ -229,27 +255,29 @@ func processAcceptInfo(mpcConfig *mpc.Config, info *mpc.SignInfoData) {
 		logWorkerError("accept", "DISAGREE sign", err, ctx...)
 		agreeResult = acceptDisagree
 
-		disgreeReason := err.Error()
-		if len(disgreeReason) > 1000 {
-			disgreeReason = disgreeReason[:1000]
+		disagreeReason := err.Error()
+		if len(disagreeReason) > 1000 {
+			disagreeReason = disagreeReason[:1000]
 		}
-		aggreeMsgContext = append(aggreeMsgContext, disgreeReason)
-		ctx = append(ctx, "disgreeReason", disgreeReason)
+		aggreeMsgContext = append(aggreeMsgContext, disagreeReason)
+		ctx = append(ctx, "disagreeReason", disagreeReason)
 	}
 	ctx = append(ctx, "result", agreeResult)
 
+	start := time.Now()
 	res, err := mpcConfig.DoAcceptSign(keyID, agreeResult, info.MsgHash, aggreeMsgContext)
+	logWorker("accept", "call acceptSign finished", "keyID", keyID, "result", agreeResult, "timespent", time.Since(start).String())
 	if err != nil {
 		ctx = append(ctx, "rpcResult", res)
-		logWorkerError("accept", "accept sign job failed", err, ctx...)
+		logWorkerError("accept", "accept sign failed", err, ctx...)
 	} else {
-		logWorker("accept", "accept sign job finish", ctx...)
+		logWorker("accept", "accept sign finish", ctx...)
 		isProcessed = true
 	}
+	return err
 }
 
-func verifySignInfo(mpcConfig *mpc.Config, signInfo *mpc.SignInfoData) (*tokens.BuildTxArgs, error) {
-	msgHash := signInfo.MsgHash
+func filterSignInfo(signInfo *mpc.SignInfoData) (*tokens.BuildTxArgs, error) {
 	msgContext := signInfo.MsgContext
 	var args tokens.BuildTxArgs
 	err := json.Unmarshal([]byte(msgContext[0]), &args)
@@ -258,21 +286,32 @@ func verifySignInfo(mpcConfig *mpc.Config, signInfo *mpc.SignInfoData) (*tokens.
 	}
 	switch args.Identifier {
 	case params.GetIdentifier():
+	case tokens.AggregateIdentifier:
 	default:
 		return nil, errIdentifierMismatch
+	}
+	return &args, err
+}
+
+func verifySignInfo(mpcConfig *mpc.Config, signInfo *mpc.SignInfoData) (*tokens.BuildTxArgs, error) {
+	args, err := filterSignInfo(signInfo)
+	if err != nil {
+		return args, err
 	}
 	if !mpcConfig.IsMPCInitiator(signInfo.Account) {
 		return nil, errInitiatorMismatch
 	}
-	logWorker("accept", "verifySignInfo", "keyID", signInfo.Key, "msgHash", msgHash, "msgContext", msgContext)
 	if lvldbHandle != nil && args.GetTxNonce() > 0 { // only for eth like chain
-		err = CheckAcceptRecord(&args)
+		err = CheckAcceptRecord(args)
 		if err != nil {
-			return &args, err
+			return args, err
 		}
 	}
-	err = rebuildAndVerifyMsgHash(signInfo.Key, msgHash, &args)
-	return &args, err
+	if args.Identifier == tokens.AggregateIdentifier {
+		return args, nil
+	}
+	err = rebuildAndVerifyMsgHash(signInfo.Key, signInfo.MsgHash, args)
+	return args, err
 }
 
 func getBridges(fromChainID, toChainID string) (srcBridge, dstBridge tokens.IBridge, err error) {
@@ -292,6 +331,8 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 	if err != nil {
 		return err
 	}
+
+	start := time.Now()
 
 	ctx := []interface{}{
 		"keyID", keyID,
@@ -316,6 +357,7 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 		logWorkerError("accept", "verifySignInfo failed", err, ctx...)
 		return err
 	}
+	logWorker("accept", fmt.Sprintf("verifySignInfo success (timespent %v)", time.Since(start).String()), ctx...)
 	if !strings.EqualFold(args.Bind, swapInfo.Bind) {
 		return fmt.Errorf("bind mismatch: '%v' != '%v'", args.Bind, swapInfo.Bind)
 	}
@@ -323,6 +365,7 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 		return fmt.Errorf("toChainID mismatch: '%v' != '%v'", args.ToChainID, swapInfo.ToChainID)
 	}
 
+	start = time.Now()
 	buildTxArgs := &tokens.BuildTxArgs{
 		SwapArgs: tokens.SwapArgs{
 			SwapInfo:    swapInfo.SwapInfo,
@@ -343,15 +386,15 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 	}
 	rawTx, err := dstBridge.BuildRawTransaction(buildTxArgs)
 	if err != nil {
-		logWorkerError("accept", "build raw tx failed", err, ctx...)
+		logWorkerError("accept", fmt.Sprintf("build raw tx failed (timespent %v)", time.Since(start).String()), err, ctx...)
 		return err
 	}
 	err = dstBridge.VerifyMsgHash(rawTx, msgHash)
 	if err != nil {
-		logWorkerError("accept", "verify message hash failed", err, ctx...)
+		logWorkerError("accept", fmt.Sprintf("verify message hash failed (timespent %v)", time.Since(start).String()), err, ctx...)
 		return err
 	}
-	logWorker("accept", "verify message hash success", ctx...)
+	logWorker("accept", fmt.Sprintf("build raw tx and verify message hash success (timespent %v)", time.Since(start).String()), ctx...)
 	if lvldbHandle != nil && args.GetTxNonce() > 0 { // only for eth like chain
 		go saveAcceptRecord(dstBridge, keyID, buildTxArgs, rawTx, ctx)
 	}

@@ -10,7 +10,7 @@ import (
 
 // GetTransactionStatus impl
 func (b *Bridge) GetTransactionStatus(txHash string) (*tokens.TxStatus, error) {
-	txr, url, err := b.GetTransactionReceipt(txHash)
+	txr, err := b.GetTransactionReceipt(txHash)
 	if err != nil {
 		return nil, err
 	}
@@ -23,11 +23,9 @@ func (b *Bridge) GetTransactionStatus(txHash string) (*tokens.TxStatus, error) {
 
 	if txStatus.BlockHeight != 0 {
 		for i := 0; i < 3; i++ {
-			latest, errt := b.GetLatestBlockNumberOf(url)
+			confirmations, errt := b.GetBlockConfirmations(txr)
 			if errt == nil {
-				if latest > txStatus.BlockHeight {
-					txStatus.Confirmations = latest - txStatus.BlockHeight
-				}
+				txStatus.Confirmations = confirmations
 				break
 			}
 			time.Sleep(1 * time.Second)
@@ -63,7 +61,7 @@ func (b *Bridge) VerifyTransaction(txHash string, args *tokens.VerifyArgs) (*tok
 	allowUnstable := args.AllowUnstable
 
 	switch swapType {
-	case tokens.ERC20SwapType:
+	case tokens.ERC20SwapType, tokens.ERC20SwapTypeMixPool:
 		return b.verifyERC20SwapTx(txHash, logIndex, allowUnstable)
 	case tokens.NFTSwapType:
 		return b.verifyNFTSwapTx(txHash, logIndex, allowUnstable)

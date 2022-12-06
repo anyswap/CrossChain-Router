@@ -95,3 +95,7 @@ func (b *Bridge) GetLatestBlockNumberOf(url string) (uint64, error) {
 func (b *Bridge) IsValidAddress(address string) bool {
 	return false
 }
+
+func (b *Bridge) GetPairFor(string, string, string) (string, error) {
+	return "", nil
+}

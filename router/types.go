@@ -28,11 +28,21 @@ var (
 	MPCPublicKeys = new(sync.Map) // key is mpc address
 	RouterInfos   = new(sync.Map) // key is router contract address
 
+	CachedLatestBlockNumber = new(sync.Map) // key is chainID
+
 	IsIniting              bool
 	IsReloading            bool
-	RetryRPCCountInInit    = 10
-	RetryRPCIntervalInInit = 1 * time.Second
+	RetryRPCCountInInit    = 3
+	RetryRPCIntervalInInit = 3 * time.Second
 )
+
+// GetCachedLatestBlockNumber get cached latest block number
+func GetCachedLatestBlockNumber(chainID string) uint64 {
+	if value, exist := CachedLatestBlockNumber.Load(chainID); exist {
+		return value.(uint64)
+	}
+	return 0
+}
 
 // DontPanicInLoading don't panic in loading
 func DontPanicInLoading() bool {
@@ -41,9 +51,9 @@ func DontPanicInLoading() bool {
 
 // SwapRouterInfo swap router info
 type SwapRouterInfo struct {
-	RouterMPC     string
-	RouterFactory string
-	RouterWNative string
+	RouterMPC      string
+	RouterWNative  string `json:",omitempty"`
+	RouterSecurity string `json:",omitempty"`
 }
 
 // SetBridge set bridge
@@ -61,6 +71,24 @@ func GetBridgeByChainID(chainID string) tokens.IBridge {
 		return bridge.(tokens.IBridge)
 	}
 	return nil
+}
+
+// ParseRouterContractConfig parse router contract config
+func ParseRouterContractConfig(routerContractCfg string) (routerContract, routerVersion string) {
+	if routerContractCfg == "" {
+		return
+	}
+	parts := strings.Split(routerContractCfg, ":")
+	if len(parts) > 0 {
+		routerContract = strings.TrimSpace(parts[0])
+	}
+	if len(parts) > 1 {
+		routerVersion = strings.TrimSpace(parts[1])
+	}
+	if routerVersion == "" {
+		routerVersion = params.GetSwapSubType()
+	}
+	return
 }
 
 // SetRouterInfo set router info
@@ -228,6 +256,8 @@ func IsBlacklistSwap(swapInfo *tokens.SwapTxInfo) bool {
 	return params.IsChainIDInBlackList(swapInfo.FromChainID.String()) ||
 		params.IsChainIDInBlackList(swapInfo.ToChainID.String()) ||
 		params.IsTokenIDInBlackList(swapInfo.GetTokenID()) ||
+		params.IsTokenIDInBlackListOnChain(swapInfo.FromChainID.String(), swapInfo.GetTokenID()) ||
+		params.IsTokenIDInBlackListOnChain(swapInfo.ToChainID.String(), swapInfo.GetTokenID()) ||
 		params.IsAccountInBlackList(swapInfo.From) ||
 		params.IsAccountInBlackList(swapInfo.Bind) ||
 		params.IsAccountInBlackList(swapInfo.TxTo)
@@ -278,4 +308,13 @@ func GetPausedChainIDs() []*big.Int {
 // IsChainIDPaused is chainID paused
 func IsChainIDPaused(chainID string) bool {
 	return pausedChainIDs.Contains(chainID)
+}
+
+// IsNonceSupported is nonce supported
+func IsNonceSupported(chainID string) bool {
+	if bridge := GetBridgeByChainID(chainID); bridge != nil {
+		_, ok := bridge.(tokens.NonceSetter)
+		return ok
+	}
+	return false
 }
