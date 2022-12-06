@@ -100,6 +100,7 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 		return swapInfo, tokens.ErrTxWithWrongMemo
 	}
 
+	swapInfo.To = mpcAddress
 	swapInfo.Value = common.BigFromUint64(value)
 	swapInfo.Bind = bindAddress
 	swapInfo.ToChainID, err = common.GetBigIntFromStr(toChainId)
@@ -153,7 +154,7 @@ func (b *Bridge) checkTxStatus(tx *ElectTx, swapInfo *tokens.SwapTxInfo, allowUn
 }
 
 func (b *Bridge) checkSwapoutInfo(swapInfo *tokens.SwapTxInfo) error {
-	if strings.EqualFold(swapInfo.From, swapInfo.To) {
+	if swapInfo.From != "" && strings.EqualFold(swapInfo.From, swapInfo.To) {
 		return tokens.ErrTxWithWrongSender
 	}
 
