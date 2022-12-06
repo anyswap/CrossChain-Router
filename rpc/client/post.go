@@ -168,7 +168,7 @@ func getResultFromJSONResponse(result interface{}, resp *http.Response) error {
 		return fmt.Errorf("read body error: %w", err)
 	}
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("wrong response status %v. message: %v", resp.StatusCode, string(body))
+		return fmt.Errorf("wrong response status %v", resp.StatusCode)
 	}
 	if len(body) == 0 {
 		return fmt.Errorf("empty response body")
@@ -209,7 +209,7 @@ func RPCRawPostWithTimeout(url, reqBody string, timeout int) (string, error) {
 		return "", fmt.Errorf("read body error: %w", err)
 	}
 	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("wrong response status %v. message: %v", resp.StatusCode, string(body))
+		return "", fmt.Errorf("wrong response status %v", resp.StatusCode)
 	}
 	return string(body), nil
 }
@@ -233,7 +233,7 @@ func RPCJsonPostWithTimeout(url, reqBody string, timeout int) (string, error) {
 				return "", fmt.Errorf("read body error: %w", err)
 			} else {
 				if resp.StatusCode != 200 {
-					return "", fmt.Errorf("wrong response status %v. message: %v", resp.StatusCode, string(body))
+					return "", fmt.Errorf("wrong response status %v", resp.StatusCode)
 				}
 				return string(body), nil
 			}

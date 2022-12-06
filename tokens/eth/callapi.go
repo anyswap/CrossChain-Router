@@ -475,7 +475,6 @@ LOOP:
 			}
 		}
 		if err == nil {
-			log.Info("call contract success", "chainID", b.ChainConfig.ChainID, "contract", contract, "data", data, "url", url, "timespent", time.Since(start).String())
 			return result, nil
 		}
 		log.Info("call contract failed", "chainID", b.ChainConfig.ChainID, "contract", contract, "data", data, "timespent", time.Since(start).String(), "err", err)
