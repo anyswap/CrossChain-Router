@@ -165,8 +165,6 @@ func (b *Bridge) parseTxOutput(output Output, logIndex int) (*Token, error) {
 }
 
 func (b *Bridge) parseTokenInfo(swapInfo *tokens.SwapTxInfo, tokenInfo *Token, metadata *Metadata) error {
-	mpc := b.GetRouterContract("")
-
 	amount, err := common.GetBigIntFromStr(tokenInfo.Quantity)
 	if err != nil {
 		return err
@@ -179,7 +177,6 @@ func (b *Bridge) parseTokenInfo(swapInfo *tokens.SwapTxInfo, tokenInfo *Token, m
 	} else {
 		swapInfo.ERC20SwapInfo.Token = tokenInfo.Asset.PolicyId + "." + tokenInfo.Asset.AssetName
 	}
-	swapInfo.From = mpc
 	swapInfo.Bind = metadata.Value.Bind
 
 	if tochainId, err := common.GetBigIntFromStr(metadata.Value.ToChainId); err != nil {

@@ -18,6 +18,11 @@ var (
 		Aliases: []string{"c"},
 		Usage:   "Specify config file",
 	}
+	// GatewayConfigFlag --gateway
+	GatewayConfigFlag = &cli.StringFlag{
+		Name:  "gateway",
+		Usage: "Specify gateway config file",
+	}
 	// LogFileFlag --log
 	LogFileFlag = &cli.StringFlag{
 		Name:  "log",

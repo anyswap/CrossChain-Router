@@ -49,7 +49,7 @@ func (b *Bridge) InitAfterConfig() {
 }
 
 // InitRouterInfo init router info
-func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
+func (b *Bridge) InitRouterInfo(routerContract, routerVersion string) (err error) {
 	if routerContract == "" {
 		return nil
 	}
@@ -111,7 +111,7 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 	isReload := router.IsReloading
 	logErrFunc := log.GetLogFuncOr(isReload, log.Errorf, log.Fatalf)
 
-	if tokenCfg.ContractAddress == b.Denom {
+	if "u"+tokenCfg.ContractAddress == b.Denom {
 		if tokenCfg.Decimals != 6 {
 			logErrFunc("meta coin %v decimals mismatch, have %v want 6", tokenCfg.ContractAddress, tokenCfg.Decimals)
 			if isReload {

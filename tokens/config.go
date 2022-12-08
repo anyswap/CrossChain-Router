@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/anyswap/CrossChain-Router/v3/tools"
 )
 
 // token version boundaries
@@ -19,6 +20,7 @@ type ChainConfig struct {
 	ChainID        string
 	BlockChain     string
 	RouterContract string
+	RouterVersion  string
 	Confirmations  uint64
 	InitialHeight  uint64
 	Extra          string
@@ -34,6 +36,7 @@ type TokenConfig struct {
 	ContractAddress string
 	ContractVersion uint64
 	RouterContract  string
+	RouterVersion   string
 	Extra           string
 
 	// calced value
@@ -62,6 +65,9 @@ type GatewayConfig struct {
 	APIAddressExt      []string `json:",omitempty"`
 	EVMAPIAddress      []string `json:",omitempty"`
 	FinalizeAPIAddress []string `json:",omitempty"`
+
+	// internal usage
+	WeightedAPIs tools.WeightedStringSlice `toml:"-" json:"-"`
 }
 
 // CheckConfig check chain config

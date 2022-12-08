@@ -52,8 +52,8 @@ func DontPanicInLoading() bool {
 // SwapRouterInfo swap router info
 type SwapRouterInfo struct {
 	RouterMPC      string
-	RouterWNative  string
-	RouterSecurity string
+	RouterWNative  string `json:",omitempty"`
+	RouterSecurity string `json:",omitempty"`
 }
 
 // SetBridge set bridge
@@ -71,6 +71,24 @@ func GetBridgeByChainID(chainID string) tokens.IBridge {
 		return bridge.(tokens.IBridge)
 	}
 	return nil
+}
+
+// ParseRouterContractConfig parse router contract config
+func ParseRouterContractConfig(routerContractCfg string) (routerContract, routerVersion string) {
+	if routerContractCfg == "" {
+		return
+	}
+	parts := strings.Split(routerContractCfg, ":")
+	if len(parts) > 0 {
+		routerContract = strings.TrimSpace(parts[0])
+	}
+	if len(parts) > 1 {
+		routerVersion = strings.TrimSpace(parts[1])
+	}
+	if routerVersion == "" {
+		routerVersion = params.GetSwapSubType()
+	}
+	return
 }
 
 // SetRouterInfo set router info

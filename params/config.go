@@ -2,6 +2,7 @@ package params
 
 import (
 	"encoding/json"
+	"errors"
 	"math/big"
 	"strings"
 	"sync"
@@ -26,7 +27,7 @@ var IsTestMode bool
 var IsReload bool
 
 var (
-	routerConfig = &RouterConfig{Extra: &ExtraConfig{}, MPC: &MPCConfig{}}
+	routerConfig = NewRouterConfig()
 
 	routerConfigFile string
 	locDataDir       string
@@ -34,29 +35,26 @@ var (
 	// IsSwapServer is swap server
 	IsSwapServer bool
 
-	chainIDBlacklistMap        = make(map[string]struct{})
-	tokenIDBlacklistMap        = make(map[string]struct{})
-	tokenIDBlacklistOnChainMap = make(map[string]map[string]struct{})
-	accountBlacklistMap        = make(map[string]struct{})
-	fixedGasPriceMap           = make(map[string]*big.Int) // key is chainID
-	maxGasPriceMap             = make(map[string]*big.Int) // key is chainID
-
-	callByContractWhitelist         map[string]map[string]struct{} // chainID -> caller
-	callByContractCodeHashWhitelist map[string]map[string]struct{} // chainID -> codehash
-	bigValueWhitelist               map[string]map[string]struct{} // tokenID -> caller
-
-	autoSwapNonceEnabledChains map[string]struct{}
-
-	dynamicFeeTxEnabledChains            map[string]struct{}
-	enableCheckTxBlockHashChains         map[string]struct{}
-	enableCheckTxBlockIndexChains        map[string]struct{}
-	disableUseFromChainIDInReceiptChains map[string]struct{}
-	useFastMPCChains                     map[string]struct{}
-	dontCheckReceivedTokenIDs            map[string]struct{}
-	dontCheckBalanceTokenIDs             map[string]struct{}
-	dontCheckTotalSupplyTokenIDs         map[string]struct{}
-	checkTokenBalanceEnabledChains       map[string]struct{}
-	ignoreAnycallFallbackAppIDs          map[string]struct{}
+	chainIDBlacklistMap                  = make(map[string]struct{})
+	tokenIDBlacklistMap                  = make(map[string]struct{})
+	tokenIDBlacklistOnChainMap           = make(map[string]map[string]struct{})
+	accountBlacklistMap                  = make(map[string]struct{})
+	fixedGasPriceMap                     = make(map[string]*big.Int)            // key is chainID
+	maxGasPriceMap                       = make(map[string]*big.Int)            // key is chainID
+	callByContractWhitelist              = make(map[string]map[string]struct{}) // chainID -> caller
+	callByContractCodeHashWhitelist      = make(map[string]map[string]struct{}) // chainID -> codehash
+	bigValueWhitelist                    = make(map[string]map[string]struct{}) // tokenID -> caller
+	autoSwapNonceEnabledChains           = make(map[string]struct{})
+	dynamicFeeTxEnabledChains            = make(map[string]struct{})
+	enableCheckTxBlockHashChains         = make(map[string]struct{})
+	enableCheckTxBlockIndexChains        = make(map[string]struct{})
+	disableUseFromChainIDInReceiptChains = make(map[string]struct{})
+	useFastMPCChains                     = make(map[string]struct{})
+	dontCheckReceivedTokenIDs            = make(map[string]struct{})
+	dontCheckBalanceTokenIDs             = make(map[string]struct{})
+	dontCheckTotalSupplyTokenIDs         = make(map[string]struct{})
+	checkTokenBalanceEnabledChains       = make(map[string]struct{})
+	ignoreAnycallFallbackAppIDs          = make(map[string]struct{})
 
 	isDebugMode           *bool
 	isNFTSwapWithData     *bool
@@ -67,7 +65,17 @@ var (
 // exported variables
 var (
 	GetBalanceBlockNumberOpt = "latest" // latest or pending
+
+	GatewayConfigFile string
 )
+
+func NewRouterConfig() *RouterConfig {
+	return &RouterConfig{
+		MPC:        &MPCConfig{},
+		Blacklists: &Blacklists{},
+		Extra:      &ExtraConfig{},
+	}
+}
 
 // RouterServerConfig only for server
 type RouterServerConfig struct {
@@ -119,16 +127,25 @@ type RouterConfig struct {
 	SwapSubType string
 
 	Onchain *OnchainConfig
-
-	Gateways         map[string][]string // key is chain ID
-	GatewaysExt      map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
-	EVMGatewaysExt   map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
-	FinalizeGateways map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+	*GatewayConfigs
 
 	MPC     *MPCConfig
 	FastMPC *MPCConfig   `toml:",omitempty" json:",omitempty"`
 	Extra   *ExtraConfig `toml:",omitempty" json:",omitempty"`
 
+	*Blacklists
+}
+
+// GatewayConfigs gateway config
+type GatewayConfigs struct {
+	Gateways         map[string][]string // key is chain ID
+	GatewaysExt      map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+	EVMGatewaysExt   map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+	FinalizeGateways map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+}
+
+// Blacklists black lists
+type Blacklists struct {
 	ChainIDBlackList        []string            `toml:",omitempty" json:",omitempty"`
 	TokenIDBlackList        []string            `toml:",omitempty" json:",omitempty"`
 	TokenIDBlackListOnChain map[string][]string `toml:",omitempty" json:",omitempty"`
@@ -508,10 +525,10 @@ func CheckEIP1167Master() bool {
 }
 
 func initCallByContractWhitelist() {
-	callByContractWhitelist = make(map[string]map[string]struct{})
 	if GetExtraConfig() == nil || len(GetExtraConfig().CallByContractWhitelist) == 0 {
 		return
 	}
+	allWhitelist := make(map[string]map[string]struct{})
 	for cid, whitelist := range GetExtraConfig().CallByContractWhitelist {
 		if _, err := common.GetBigIntFromStr(cid); err != nil {
 			log.Fatal("initCallByContractWhitelist wrong chainID", "chainID", cid, "err", err)
@@ -523,9 +540,10 @@ func initCallByContractWhitelist() {
 			}
 			whitelistMap[strings.ToLower(address)] = struct{}{}
 		}
-		callByContractWhitelist[cid] = whitelistMap
+		allWhitelist[cid] = whitelistMap
 	}
-	log.Info("initCallByContractWhitelist success")
+	callByContractWhitelist = allWhitelist
+	log.Info("initCallByContractWhitelist success", "isReload", IsReload)
 }
 
 // IsInCallByContractWhitelist is in call by contract whitelist
@@ -546,7 +564,6 @@ func AddOrRemoveCallByContractWhitelist(chainID string, callers []string, isAdd 
 		if !isAdd {
 			return
 		}
-		callByContractWhitelist = make(map[string]map[string]struct{})
 		callByContractWhitelist[chainID] = make(map[string]struct{})
 		whitelist = callByContractWhitelist[chainID]
 	}
@@ -571,10 +588,10 @@ func AddOrRemoveCallByContractWhitelist(chainID string, callers []string, isAdd 
 }
 
 func initCallByContractCodeHashWhitelist() {
-	callByContractCodeHashWhitelist = make(map[string]map[string]struct{})
 	if GetExtraConfig() == nil || len(GetExtraConfig().CallByContractCodeHashWhitelist) == 0 {
 		return
 	}
+	allWhitelist := make(map[string]map[string]struct{})
 	for cid, whitelist := range GetExtraConfig().CallByContractCodeHashWhitelist {
 		if _, err := common.GetBigIntFromStr(cid); err != nil {
 			log.Fatal("initCallByContractCodeHashWhitelist wrong chainID", "chainID", cid, "err", err)
@@ -586,9 +603,10 @@ func initCallByContractCodeHashWhitelist() {
 			}
 			whitelistMap[codehash] = struct{}{}
 		}
-		callByContractCodeHashWhitelist[cid] = whitelistMap
+		allWhitelist[cid] = whitelistMap
 	}
-	log.Info("initCallByContractCodeHashWhitelist success")
+	callByContractCodeHashWhitelist = allWhitelist
+	log.Info("initCallByContractCodeHashWhitelist success", "isReload", IsReload)
 }
 
 // HasCallByContractCodeHashWhitelist has call by contract code hash whitelist
@@ -614,7 +632,6 @@ func AddOrRemoveCallByContractCodeHashWhitelist(chainID string, codehashes []str
 		if !isAdd {
 			return
 		}
-		callByContractCodeHashWhitelist = make(map[string]map[string]struct{})
 		callByContractCodeHashWhitelist[chainID] = make(map[string]struct{})
 		whitelist = callByContractCodeHashWhitelist[chainID]
 	}
@@ -639,10 +656,10 @@ func AddOrRemoveCallByContractCodeHashWhitelist(chainID string, codehashes []str
 }
 
 func initBigValueWhitelist() {
-	bigValueWhitelist = make(map[string]map[string]struct{})
 	if GetExtraConfig() == nil || len(GetExtraConfig().BigValueWhitelist) == 0 {
 		return
 	}
+	allWhitelist := make(map[string]map[string]struct{})
 	for tid, whitelist := range GetExtraConfig().BigValueWhitelist {
 		whitelistMap := make(map[string]struct{}, len(whitelist))
 		for _, address := range whitelist {
@@ -651,9 +668,10 @@ func initBigValueWhitelist() {
 			}
 			whitelistMap[strings.ToLower(address)] = struct{}{}
 		}
-		bigValueWhitelist[tid] = whitelistMap
+		allWhitelist[tid] = whitelistMap
 	}
-	log.Info("initBigValueWhitelist success")
+	bigValueWhitelist = allWhitelist
+	log.Info("initBigValueWhitelist success", "isReload", IsReload)
 }
 
 // IsInBigValueWhitelist is in call by contract whitelist
@@ -674,7 +692,6 @@ func AddOrRemoveBigValueWhitelist(tokenID string, callers []string, isAdd bool) 
 		if !isAdd {
 			return
 		}
-		bigValueWhitelist = make(map[string]map[string]struct{})
 		bigValueWhitelist[tokenID] = make(map[string]struct{})
 		whitelist = bigValueWhitelist[tokenID]
 	}
@@ -865,18 +882,19 @@ func AddOrRemoveAccountBlackList(accounts []string, isAdd bool) {
 }
 
 func initAutoSwapNonceEnabledChains() {
-	autoSwapNonceEnabledChains = make(map[string]struct{})
 	serverCfg := GetRouterServerConfig()
 	if serverCfg == nil || len(serverCfg.AutoSwapNonceEnabledChains) == 0 {
 		return
 	}
+	tempMap := make(map[string]struct{})
 	for _, cid := range serverCfg.AutoSwapNonceEnabledChains {
 		if _, err := common.GetBigIntFromStr(cid); err != nil {
 			log.Fatal("initAutoSwapNonceEnabledChains wrong chainID", "chainID", cid, "err", err)
 		}
-		autoSwapNonceEnabledChains[cid] = struct{}{}
+		tempMap[cid] = struct{}{}
 	}
-	log.Info("initAutoSwapNonceEnabledChains success", "chains", serverCfg.AutoSwapNonceEnabledChains)
+	autoSwapNonceEnabledChains = tempMap
+	log.Info("initAutoSwapNonceEnabledChains success", "chains", serverCfg.AutoSwapNonceEnabledChains, "isReload", IsReload)
 }
 
 // IsAutoSwapNonceEnabled is auto swap nonce enabled
@@ -886,17 +904,18 @@ func IsAutoSwapNonceEnabled(chainID string) bool {
 }
 
 func initDynamicFeeTxEnabledChains() {
-	dynamicFeeTxEnabledChains = make(map[string]struct{})
 	if GetExtraConfig() == nil || len(GetExtraConfig().DynamicFeeTxEnabledChains) == 0 {
 		return
 	}
+	tempMap := make(map[string]struct{})
 	for _, cid := range GetExtraConfig().DynamicFeeTxEnabledChains {
 		if _, err := common.GetBigIntFromStr(cid); err != nil {
 			log.Fatal("initDynamicFeeTxEnabledChains wrong chainID", "chainID", cid, "err", err)
 		}
-		dynamicFeeTxEnabledChains[cid] = struct{}{}
+		tempMap[cid] = struct{}{}
 	}
-	log.Info("initDynamicFeeTxEnabledChains success")
+	dynamicFeeTxEnabledChains = tempMap
+	log.Info("initDynamicFeeTxEnabledChains success", "isReload", IsReload)
 }
 
 // IsDynamicFeeTxEnabled is dynamic fee tx enabled (EIP-1559)
@@ -906,17 +925,18 @@ func IsDynamicFeeTxEnabled(chainID string) bool {
 }
 
 func initEnableCheckTxBlockHashChains() {
-	enableCheckTxBlockHashChains = make(map[string]struct{})
 	if GetExtraConfig() == nil || len(GetExtraConfig().EnableCheckTxBlockHashChains) == 0 {
 		return
 	}
+	tempMap := make(map[string]struct{})
 	for _, cid := range GetExtraConfig().EnableCheckTxBlockHashChains {
 		if _, err := common.GetBigIntFromStr(cid); err != nil {
 			log.Fatal("initEnableCheckTxBlockHashChains wrong chainID", "chainID", cid, "err", err)
 		}
-		enableCheckTxBlockHashChains[cid] = struct{}{}
+		tempMap[cid] = struct{}{}
 	}
-	log.Info("initEnableCheckTxBlockHashChains success")
+	enableCheckTxBlockHashChains = tempMap
+	log.Info("initEnableCheckTxBlockHashChains success", "isReload", IsReload)
 }
 
 // IsCheckTxBlockHashEnabled check tx block hash
@@ -926,17 +946,18 @@ func IsCheckTxBlockHashEnabled(chainID string) bool {
 }
 
 func initEnableCheckTxBlockIndexChains() {
-	enableCheckTxBlockIndexChains = make(map[string]struct{})
 	if GetExtraConfig() == nil || len(GetExtraConfig().EnableCheckTxBlockIndexChains) == 0 {
 		return
 	}
+	tempMap := make(map[string]struct{})
 	for _, cid := range GetExtraConfig().EnableCheckTxBlockIndexChains {
 		if _, err := common.GetBigIntFromStr(cid); err != nil {
 			log.Fatal("initEnableCheckTxBlockIndexChains wrong chainID", "chainID", cid, "err", err)
 		}
-		enableCheckTxBlockIndexChains[cid] = struct{}{}
+		tempMap[cid] = struct{}{}
 	}
-	log.Info("initEnableCheckTxBlockIndexChains success")
+	enableCheckTxBlockIndexChains = tempMap
+	log.Info("initEnableCheckTxBlockIndexChains success", "isReload", IsReload)
 }
 
 // IsCheckTxBlockIndexEnabled check tx block and index
@@ -946,17 +967,18 @@ func IsCheckTxBlockIndexEnabled(chainID string) bool {
 }
 
 func initDisableUseFromChainIDInReceiptChains() {
-	disableUseFromChainIDInReceiptChains = make(map[string]struct{})
 	if GetExtraConfig() == nil || len(GetExtraConfig().DisableUseFromChainIDInReceiptChains) == 0 {
 		return
 	}
+	tempMap := make(map[string]struct{})
 	for _, cid := range GetExtraConfig().DisableUseFromChainIDInReceiptChains {
 		if _, err := common.GetBigIntFromStr(cid); err != nil {
 			log.Fatal("initDisableUseFromChainIDInReceiptChains wrong chainID", "chainID", cid, "err", err)
 		}
-		disableUseFromChainIDInReceiptChains[cid] = struct{}{}
+		tempMap[cid] = struct{}{}
 	}
-	log.Info("initDisableUseFromChainIDInReceiptChains success")
+	disableUseFromChainIDInReceiptChains = tempMap
+	log.Info("initDisableUseFromChainIDInReceiptChains success", "isReload", IsReload)
 }
 
 // IsUseFromChainIDInReceiptDisabled if use fromChainID from receipt log
@@ -966,14 +988,15 @@ func IsUseFromChainIDInReceiptDisabled(chainID string) bool {
 }
 
 func initUseFastMPCChains() {
-	useFastMPCChains = make(map[string]struct{})
 	if GetExtraConfig() == nil || len(GetExtraConfig().UseFastMPCChains) == 0 {
 		return
 	}
+	tempMap := make(map[string]struct{})
 	for _, cid := range GetExtraConfig().UseFastMPCChains {
-		useFastMPCChains[cid] = struct{}{}
+		tempMap[cid] = struct{}{}
 	}
-	log.Info("initUseFastMPCChains success")
+	useFastMPCChains = tempMap
+	log.Info("initUseFastMPCChains success", "isReload", IsReload)
 }
 
 // IsUseFastMPC is use fast mpc
@@ -983,14 +1006,15 @@ func IsUseFastMPC(chainID string) bool {
 }
 
 func initDontCheckReceivedTokenIDs() {
-	dontCheckReceivedTokenIDs = make(map[string]struct{})
 	if GetExtraConfig() == nil || len(GetExtraConfig().DontCheckReceivedTokenIDs) == 0 {
 		return
 	}
+	tempMap := make(map[string]struct{})
 	for _, tid := range GetExtraConfig().DontCheckReceivedTokenIDs {
-		dontCheckReceivedTokenIDs[strings.ToLower(tid)] = struct{}{}
+		tempMap[strings.ToLower(tid)] = struct{}{}
 	}
-	log.Info("initDontCheckReceivedTokenIDs success")
+	dontCheckReceivedTokenIDs = tempMap
+	log.Info("initDontCheckReceivedTokenIDs success", "isReload", IsReload)
 }
 
 // DontCheckTokenReceived do not check token received (a security enhance checking)
@@ -1000,14 +1024,15 @@ func DontCheckTokenReceived(tokenID string) bool {
 }
 
 func initDontCheckBalanceTokenIDs() {
-	dontCheckBalanceTokenIDs = make(map[string]struct{})
 	if GetExtraConfig() == nil || len(GetExtraConfig().DontCheckBalanceTokenIDs) == 0 {
 		return
 	}
+	tempMap := make(map[string]struct{})
 	for _, tid := range GetExtraConfig().DontCheckBalanceTokenIDs {
-		dontCheckBalanceTokenIDs[strings.ToLower(tid)] = struct{}{}
+		tempMap[strings.ToLower(tid)] = struct{}{}
 	}
-	log.Info("initDontCheckBalanceTokenIDs success")
+	dontCheckBalanceTokenIDs = tempMap
+	log.Info("initDontCheckBalanceTokenIDs success", "isReload", IsReload)
 }
 
 // DontCheckTokenBalance do not check token balance (a security enhance checking)
@@ -1017,14 +1042,15 @@ func DontCheckTokenBalance(tokenID string) bool {
 }
 
 func initDontCheckTotalSupplyTokenIDs() {
-	dontCheckTotalSupplyTokenIDs = make(map[string]struct{})
 	if GetExtraConfig() == nil || len(GetExtraConfig().DontCheckTotalSupplyTokenIDs) == 0 {
 		return
 	}
+	tempMap := make(map[string]struct{})
 	for _, tid := range GetExtraConfig().DontCheckTotalSupplyTokenIDs {
-		dontCheckTotalSupplyTokenIDs[strings.ToLower(tid)] = struct{}{}
+		tempMap[strings.ToLower(tid)] = struct{}{}
 	}
-	log.Info("initDontCheckTotalSupplyTokenIDs success")
+	dontCheckTotalSupplyTokenIDs = tempMap
+	log.Info("initDontCheckTotalSupplyTokenIDs success", "isReload", IsReload)
 }
 
 // DontCheckTokenTotalSupply do not check token total supply (a security enhance checking)
@@ -1034,17 +1060,18 @@ func DontCheckTokenTotalSupply(tokenID string) bool {
 }
 
 func initCheckTokenBalanceEnabledChains() {
-	checkTokenBalanceEnabledChains = make(map[string]struct{})
 	if GetExtraConfig() == nil || len(GetExtraConfig().CheckTokenBalanceEnabledChains) == 0 {
 		return
 	}
+	tempMap := make(map[string]struct{})
 	for _, cid := range GetExtraConfig().CheckTokenBalanceEnabledChains {
 		if _, err := common.GetBigIntFromStr(cid); err != nil {
 			log.Fatal("initCheckTokenBalanceEnabledChains wrong chainID", "chainID", cid, "err", err)
 		}
-		checkTokenBalanceEnabledChains[cid] = struct{}{}
+		tempMap[cid] = struct{}{}
 	}
-	log.Info("initCheckTokenBalanceEnabledChains success", "chains", GetExtraConfig().CheckTokenBalanceEnabledChains)
+	checkTokenBalanceEnabledChains = tempMap
+	log.Info("initCheckTokenBalanceEnabledChains success", "chains", GetExtraConfig().CheckTokenBalanceEnabledChains, "isReload", IsReload)
 }
 
 // IsCheckTokenBalanceEnabled is check token balance enabled
@@ -1054,17 +1081,18 @@ func IsCheckTokenBalanceEnabled(chainID string) bool {
 }
 
 func initIgnoreAnycallFallbackAppIDs() {
-	ignoreAnycallFallbackAppIDs = make(map[string]struct{})
 	if GetExtraConfig() == nil || len(GetExtraConfig().IgnoreAnycallFallbackAppIDs) == 0 {
 		return
 	}
+	tempMap := make(map[string]struct{})
 	for _, appid := range GetExtraConfig().IgnoreAnycallFallbackAppIDs {
-		ignoreAnycallFallbackAppIDs[appid] = struct{}{}
+		tempMap[appid] = struct{}{}
 	}
-	log.Info("initIgnoreAnycallFallbackAppIDs success", "appids", GetExtraConfig().IgnoreAnycallFallbackAppIDs)
+	ignoreAnycallFallbackAppIDs = tempMap
+	log.Info("initIgnoreAnycallFallbackAppIDs success", "appids", GetExtraConfig().IgnoreAnycallFallbackAppIDs, "isReload", IsReload)
 }
 
-// IsCheckTokenBalanceEnabled is check token balance enabled
+// IsAnycallFallbackIgnored is anycall fallback ignored
 func IsAnycallFallbackIgnored(appid string) bool {
 	_, exist := ignoreAnycallFallbackAppIDs[appid]
 	return exist
@@ -1095,12 +1123,11 @@ func LoadRouterConfig(configFile string, isServer, check bool) *RouterConfig {
 	if !common.FileExist(configFile) {
 		log.Fatalf("LoadRouterConfig error: config file '%v' not exist", configFile)
 	}
-	config := &RouterConfig{Extra: &ExtraConfig{}, MPC: &MPCConfig{}}
+	config := NewRouterConfig()
 	if _, err := toml.DecodeFile(configFile, &config); err != nil {
 		log.Fatalf("LoadRouterConfig error (toml DecodeFile): %v", err)
 	}
 
-	IsSwapServer = isServer
 	if !isServer {
 		config.Server = nil
 	} else {
@@ -1109,6 +1136,14 @@ func LoadRouterConfig(configFile string, isServer, check bool) *RouterConfig {
 
 	if CustomizeConfigFunc != nil {
 		CustomizeConfigFunc(config)
+	}
+
+	if GatewayConfigFile != "" {
+		gateways, err := LoadGatewayConfigs()
+		if err != nil {
+			log.Fatalf("LoadGatewayConfigs error: %v", err)
+		}
+		config.GatewayConfigs = gateways
 	}
 
 	routerConfig = config
@@ -1143,7 +1178,7 @@ func ReloadRouterConfig() {
 
 	log.Info("reload router config file", "configFile", configFile, "isServer", isServer)
 
-	config := &RouterConfig{Extra: &ExtraConfig{}, MPC: &MPCConfig{}}
+	config := NewRouterConfig()
 	if _, err := toml.DecodeFile(configFile, &config); err != nil {
 		log.Errorf("ReloadRouterConfig error (toml DecodeFile): %v", err)
 		return
@@ -1159,10 +1194,21 @@ func ReloadRouterConfig() {
 		CustomizeConfigFunc(config)
 	}
 
+	if GatewayConfigFile != "" {
+		gateways, err := LoadGatewayConfigs()
+		if err == nil {
+			config.GatewayConfigs = gateways
+		} else {
+			config.GatewayConfigs = routerConfig.GatewayConfigs
+		}
+	}
+
 	if err := config.CheckConfig(isServer); err != nil {
 		log.Errorf("ReloadRouterConfig check config failed. %v", err)
 		return
 	}
+
+	routerConfig = config
 
 	var bs []byte
 	if log.JSONFormat {
@@ -1171,8 +1217,21 @@ func ReloadRouterConfig() {
 		bs, _ = json.MarshalIndent(config, "", "  ")
 	}
 	log.Println("ReloadRouterConfig finished.", string(bs))
+}
 
-	routerConfig = config
+// LoadGatewayConfigs load gateway configs
+func LoadGatewayConfigs() (*GatewayConfigs, error) {
+	if GatewayConfigFile == "" {
+		return nil, errors.New("empty gateway config file")
+	}
+	var config GatewayConfigs
+	if _, err := toml.DecodeFile(GatewayConfigFile, &config); err != nil {
+		log.Errorf("LoadGatewayConfigs error: %v", err)
+		return nil, err
+	}
+
+	log.Info("LoadGatewayConfigs success")
+	return &config, nil
 }
 
 // SetDataDir set data dir
