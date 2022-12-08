@@ -3,7 +3,9 @@ package cosmos
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
+	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -16,10 +18,18 @@ const (
 	Balances    = "/cosmos/bank/v1beta1/balances/"
 )
 
+func joinURLPath(url, path string) string {
+	url = strings.TrimSuffix(url, "/")
+	if !strings.HasPrefix(path, "/") {
+		url += "/"
+	}
+	return url + path
+}
+
 func (b *Bridge) GetLatestBlockNumber() (uint64, error) {
 	var result *GetLatestBlockResponse
 	for _, url := range b.AllGatewayURLs {
-		restApi := url + LatestBlock
+		restApi := joinURLPath(url, LatestBlock)
 		if err := client.RPCGet(&result, restApi); err == nil {
 			if height, err := strconv.ParseUint(result.Block.Header.Height, 10, 64); err == nil {
 				return height, nil
@@ -32,7 +42,7 @@ func (b *Bridge) GetLatestBlockNumber() (uint64, error) {
 func (b *Bridge) GetChainID() (string, error) {
 	var result *GetLatestBlockResponse
 	for _, url := range b.AllGatewayURLs {
-		restApi := url + LatestBlock
+		restApi := joinURLPath(url, LatestBlock)
 		if err := client.RPCGet(&result, restApi); err == nil {
 			return result.Block.Header.ChainID, nil
 		}
@@ -42,7 +52,7 @@ func (b *Bridge) GetChainID() (string, error) {
 
 func (b *Bridge) GetLatestBlockNumberOf(apiAddress string) (uint64, error) {
 	var result *GetLatestBlockResponse
-	restApi := apiAddress + LatestBlock
+	restApi := joinURLPath(apiAddress, LatestBlock)
 	if err := client.RPCGet(&result, restApi); err == nil {
 		return strconv.ParseUint(result.Block.Header.Height, 10, 64)
 	} else {
@@ -53,7 +63,7 @@ func (b *Bridge) GetLatestBlockNumberOf(apiAddress string) (uint64, error) {
 func (b *Bridge) GetTransactionByHash(txHash string) (*GetTxResponse, error) {
 	var result *GetTxResponse
 	for _, url := range b.AllGatewayURLs {
-		restApi := url + TxByHash + txHash
+		restApi := joinURLPath(url, TxByHash+txHash)
 		if err := client.RPCGet(&result, restApi); err == nil {
 			if result.Status == "ERROR" {
 				return nil, fmt.Errorf(
@@ -70,7 +80,7 @@ func (b *Bridge) GetTransactionByHash(txHash string) (*GetTxResponse, error) {
 func (b *Bridge) GetBaseAccount(address string) (*QueryAccountResponse, error) {
 	var result *QueryAccountResponse
 	for _, url := range b.AllGatewayURLs {
-		restApi := url + AccountInfo + address
+		restApi := joinURLPath(url, AccountInfo+address)
 		if err := client.RPCGet(&result, restApi); err == nil {
 			if result.Status == "ERROR" {
 				return nil, fmt.Errorf(
@@ -79,17 +89,26 @@ func (b *Bridge) GetBaseAccount(address string) (*QueryAccountResponse, error) {
 			} else {
 				return result, nil
 			}
+		} else {
+			log.Warn("GetBaseAccount failed", "url", restApi, "err", err)
 		}
 	}
 	return nil, tokens.ErrRPCQueryError
 }
 
 func (b *Bridge) GetDenomBalance(address, denom string) (sdk.Int, error) {
-	var result *QueryBalanceResponse
+	var result *QueryAllBalancesResponse
 	for _, url := range b.AllGatewayURLs {
-		restApi := url + Balances + address + "/" + denom
+		restApi := joinURLPath(url, Balances+address)
 		if err := client.RPCGet(&result, restApi); err == nil {
-			return result.Balance.Amount, nil
+			for _, coin := range result.Balances {
+				if coin.Denom == denom {
+					return coin.Amount, nil
+				}
+			}
+			return sdk.Int{}, nil
+		} else {
+			log.Warn("GetDenomBalance failed", "url", restApi, "err", err)
 		}
 	}
 	return sdk.Int{}, tokens.ErrRPCQueryError

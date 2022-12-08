@@ -15,6 +15,7 @@ import (
 var (
 	paramChainID    string
 	paramSender     string
+	paramDenom      string
 	paramAmount     uint64
 	paramPublicKey  string
 	paramPrivateKey string
@@ -79,7 +80,7 @@ func BuildTx() (*cosmos.BuildRawTx, error) {
 		return nil, err
 	} else {
 		txBuilder := bridge.TxConfig.NewTxBuilder()
-		amount := types.NewCoin("", types.NewIntFromUint64(paramAmount))
+		amount := types.NewCoin(paramDenom, types.NewIntFromUint64(paramAmount))
 		mintMsg := cosmos.BuildMintMsg(paramSender, amount)
 		if err := txBuilder.SetMsgs(mintMsg); err != nil {
 			log.Fatalf("SetMsgs error:%+v", err)
@@ -118,6 +119,7 @@ func BuildTx() (*cosmos.BuildRawTx, error) {
 func initFlags() {
 	flag.StringVar(&paramChainID, "chainID", "", "chain id")
 	flag.StringVar(&paramSender, "sender", "", "tx sender")
+	flag.StringVar(&paramDenom, "denom", "", "denom")
 	flag.Uint64Var(&paramAmount, "amount", paramAmount, "mint amount")
 	flag.Uint64Var(&paramGasLimit, "gasLimit", paramGasLimit, "gas limit")
 	flag.Uint64Var(&paramSequence, "sequence", paramSequence, "sequence number")
