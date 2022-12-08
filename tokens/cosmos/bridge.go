@@ -10,6 +10,8 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/base"
 	cosmosClient "github.com/cosmos/cosmos-sdk/client"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	tokenfactoryTypes "github.com/sei-protocol/sei-chain/x/tokenfactory/types"
 )
 
 var (
@@ -60,6 +62,11 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 		return fmt.Errorf("chainConfig extra error")
 	} else {
 		b.SetPrefixAndDenom(extra[0], extra[1])
+		err := sdk.ValidateDenom(b.Denom)
+		if err != nil {
+			log.Warn("wrong denom: %v %w", b.Denom, err)
+			return err
+		}
 	}
 
 	routerMPC := routerContract
@@ -102,28 +109,25 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 	}
 
 	isReload := router.IsReloading
-	logErrFunc := log.GetLogFuncOr(isReload, log.Error, log.Fatal)
+	logErrFunc := log.GetLogFuncOr(isReload, log.Errorf, log.Fatalf)
 
-	tokenID := tokenCfg.TokenID
-
-	decimals, errt := b.GetTokenDecimals(tokenAddr)
-	if errt != nil {
-		logErrFunc("get token decimals failed", "tokenID", tokenID, "tokenAddr", tokenAddr, "err", errt)
-		if isReload {
-			return
+	if tokenCfg.ContractAddress == b.Denom {
+		if tokenCfg.Decimals != 6 {
+			logErrFunc("meta coin %v decimals mismatch, have %v want 6", tokenCfg.ContractAddress, tokenCfg.Decimals)
+			if isReload {
+				return
+			}
 		}
-	}
-	if decimals != tokenCfg.Decimals {
-		logErrFunc("token decimals mismatch", "tokenID", tokenID, "tokenAddr", tokenAddr, "inconfig", tokenCfg.Decimals, "incontract", decimals)
-		if isReload {
-			return
+	} else {
+		creator, subdenom, err := tokenfactoryTypes.DeconstructDenom(tokenCfg.ContractAddress)
+		if err != nil {
+			logErrFunc("deconstruct denom %v failed: %w", tokenCfg.ContractAddress, err)
+			if isReload {
+				return
+			}
 		}
+		log.Info("deconstruct denom success", "denom", tokenCfg.ContractAddress, "creator", creator, "subdenom", subdenom)
 	}
-}
-
-// GetTokenDecimals query token decimals
-func (b *Bridge) GetTokenDecimals(tokenAddr string) (uint8, error) {
-	return 6, nil
 }
 
 // GetTransaction impl

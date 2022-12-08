@@ -74,32 +74,42 @@ func (b *Bridge) BuildTx(
 		return nil, err
 	} else {
 		var msgs []types.Msg
-		if balance >= amount.Uint64() {
+		if balance.BigInt().Cmp(amount) >= 0 {
 			sendMsg := BuildSendMsg(from, to, denom, amount)
 			msgs = append(msgs, sendMsg)
 
-			if strings.Contains(denom, "/") && balance != amount.Uint64() {
-				creater := strings.Split(denom, "/")[1]
-				if creater == from {
-					coin := types.NewCoin(denom, types.NewIntFromUint64(balance-amount.Uint64()))
+			if strings.Contains(denom, "/") && balance.BigInt().Cmp(amount) > 0 {
+				creator, _, errt := tokenfactoryTypes.DeconstructDenom(denom)
+				if errt != nil {
+					return nil, errt
+				}
+				if creator == from {
+					burnAmount := new(big.Int).Sub(balance.BigInt(), amount)
+					coin := types.NewCoin(denom, types.NewIntFromBigInt(burnAmount))
 					burnMsg := BuildBurnMsg(from, coin)
 					msgs = append(msgs, burnMsg)
 				}
 			}
 		} else {
 			if strings.Contains(denom, "/") {
-				creater := strings.Split(denom, "/")[1]
-				if creater == from {
-					coin := types.NewCoin(denom, types.NewIntFromUint64(amount.Uint64()-balance))
+				creator, _, errt := tokenfactoryTypes.DeconstructDenom(denom)
+				if errt != nil {
+					return nil, errt
+				}
+				if creator == from {
+					mintAmount := new(big.Int).Sub(amount, balance.BigInt())
+					coin := types.NewCoin(denom, types.NewIntFromBigInt(mintAmount))
 					mintMsg := BuildMintMsg(from, coin)
 					msgs = append(msgs, mintMsg)
 
 					sendMsg := BuildSendMsg(from, to, denom, amount)
 					msgs = append(msgs, sendMsg)
 				} else {
+					log.Info("balance not enough", "denom", denom, "balance", balance, "amount", amount)
 					return nil, tokens.ErrBalanceNotEnough
 				}
 			} else {
+				log.Info("balance not enough", "denom", denom, "balance", balance, "amount", amount)
 				return nil, tokens.ErrBalanceNotEnough
 			}
 		}

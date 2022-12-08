@@ -6,6 +6,7 @@ import (
 
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
 const (
@@ -83,18 +84,13 @@ func (b *Bridge) GetBaseAccount(address string) (*QueryAccountResponse, error) {
 	return nil, tokens.ErrRPCQueryError
 }
 
-func (b *Bridge) GetDenomBalance(address, denom string) (uint64, error) {
-	var result *QueryAllBalancesResponse
+func (b *Bridge) GetDenomBalance(address, denom string) (sdk.Int, error) {
+	var result *QueryBalanceResponse
 	for _, url := range b.AllGatewayURLs {
-		restApi := url + Balances + address
+		restApi := url + Balances + address + "/" + denom
 		if err := client.RPCGet(&result, restApi); err == nil {
-			for _, coin := range result.Balances {
-				if coin.Denom == denom {
-					return coin.Amount.Uint64(), nil
-				}
-			}
-			return 0, nil
+			return result.Balance.Amount, nil
 		}
 	}
-	return 0, tokens.ErrRPCQueryError
+	return sdk.Int{}, tokens.ErrRPCQueryError
 }

@@ -52,13 +52,16 @@ for example,
 
 2) tokenConfig
 
-tokenAddress: uatom
-decimals: 0
+for meta coin,
 
-or,
+	tokenAddress: sei
+	decimals: 6
 
-tokenAddress: atom
-decimals: 6
+for other tokens,
+
+	tokenAddress: factory/{creator}/{subdenom}
+	decimals: 6
+
 
 3) example
 
