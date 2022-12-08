@@ -54,7 +54,7 @@ for example,
 
 for meta coin,
 
-	tokenAddress: sei
+	tokenAddress: usei
 	decimals: 6
 
 for other tokens,

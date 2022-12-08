@@ -111,7 +111,7 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 	isReload := router.IsReloading
 	logErrFunc := log.GetLogFuncOr(isReload, log.Errorf, log.Fatalf)
 
-	if "u"+tokenCfg.ContractAddress == b.Denom {
+	if tokenCfg.ContractAddress == b.Denom {
 		if tokenCfg.Decimals != 6 {
 			logErrFunc("meta coin %v decimals mismatch, have %v want 6", tokenCfg.ContractAddress, tokenCfg.Decimals)
 			if isReload {
@@ -121,7 +121,7 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 	} else {
 		creator, subdenom, err := tokenfactoryTypes.DeconstructDenom(tokenCfg.ContractAddress)
 		if err != nil {
-			logErrFunc("deconstruct denom %v failed: %w", tokenCfg.ContractAddress, err)
+			logErrFunc("deconstruct denom %v failed: %v", tokenCfg.ContractAddress, err)
 			if isReload {
 				return
 			}
