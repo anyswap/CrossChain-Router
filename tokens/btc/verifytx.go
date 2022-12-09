@@ -206,6 +206,9 @@ func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable boo
 		return nil, errTxResultType
 	}
 
+	mpcAddress := b.GetChainConfig().RouterContract
+	swapInfo.From = getTxFrom(txres.Vin, mpcAddress)
+
 	statusErr := b.checkTxStatus(txres, swapInfo, allowUnstable)
 	if statusErr != nil {
 		return nil, statusErr
@@ -248,4 +251,23 @@ func GetBindAddressFromMemoScipt(memoScript string) (bind string, toChainID stri
 	bind = memoArray[0]
 	toChainID = memoArray[1]
 	return bind, toChainID, true
+}
+
+// return priorityAddress if has it in Vin
+// return the first address in Vin if has no priorityAddress
+func getTxFrom(vin []*ElectTxin, priorityAddress string) string {
+	from := ""
+	for _, input := range vin {
+		if input != nil &&
+			input.Prevout != nil &&
+			input.Prevout.ScriptpubkeyAddress != nil {
+			if *input.Prevout.ScriptpubkeyAddress == priorityAddress {
+				return priorityAddress
+			}
+			if from == "" {
+				from = *input.Prevout.ScriptpubkeyAddress
+			}
+		}
+	}
+	return from
 }
