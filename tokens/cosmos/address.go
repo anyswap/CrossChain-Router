@@ -34,7 +34,11 @@ func IsValidAddress(prefix, address string) bool {
 			if bech32Addr, err := bech32.ConvertAndEncode(prefix, accAddress); err == nil && bech32Addr == address {
 				return true
 			}
+		} else {
+			log.Warnf("invalid address format %v: %v", address, err)
 		}
+	} else {
+		log.Warnf("invalid address %v: %v", address, err)
 	}
 	return false
 }

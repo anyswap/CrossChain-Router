@@ -42,6 +42,7 @@ func NewCrossChainBridge() *Bridge {
 func (b *Bridge) SetPrefixAndDenom(prefix, denom string) {
 	b.Prefix = prefix
 	b.Denom = denom
+	log.Info("SetPrefixAndDenom finished", "prefix", prefix, "denom", denom)
 }
 
 // InitAfterConfig init variables (ie. extra members) after loading config

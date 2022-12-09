@@ -70,6 +70,7 @@ func (b *Bridge) BuildTx(
 	amount *big.Int,
 	extra *tokens.AllExtras,
 ) (cosmosClient.TxBuilder, error) {
+	log.Info("start to build tx", "from", from, "to", to, "denom", denom, "memo", memo, "amount", amount, "fee", *extra.Fee, "gas", *extra.Gas, "sequence", *extra.Sequence)
 	if balance, err := b.GetDenomBalance(from, denom); err != nil {
 		return nil, err
 	} else {
