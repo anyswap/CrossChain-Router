@@ -43,6 +43,10 @@ func (b *Bridge) SetPrefixAndDenom(prefix, denom string) {
 	b.Prefix = prefix
 	b.Denom = denom
 	log.Info("SetPrefixAndDenom finished", "prefix", prefix, "denom", denom)
+
+	config := sdk.GetConfig()
+	config.SetBech32PrefixForAccount(b.Prefix, "")
+	config.Seal()
 }
 
 // InitAfterConfig init variables (ie. extra members) after loading config
