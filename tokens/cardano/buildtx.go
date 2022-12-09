@@ -26,7 +26,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 			if err := json.Unmarshal(extra.RawTx, &tx); err != nil {
 				return nil, err
 			}
-			if err := b.VerifyRawTransaction(tx, args); err != nil {
+			if err := b.VerifyRawTransaction(&tx, args); err != nil {
 				return nil, err
 			}
 			return &tx, nil
@@ -340,7 +340,7 @@ func (b *Bridge) QueryUtxoOnChain(address string) (map[UtxoKey]AssetsMap, error)
 	}
 }
 
-func (b *Bridge) VerifyRawTransaction(raw RawTransaction, args *tokens.BuildTxArgs) error {
+func (b *Bridge) VerifyRawTransaction(raw *RawTransaction, args *tokens.BuildTxArgs) error {
 	mpcAddr := b.GetRouterContract("")
 	if len(raw.TxOuts) > 2 {
 		return tokens.ErrOutputLength

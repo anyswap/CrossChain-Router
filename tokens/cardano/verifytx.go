@@ -107,6 +107,9 @@ func (b *Bridge) getTxOutputs(swapInfo *tokens.SwapTxInfo, allowUnstable bool) (
 			}
 			for index, metadata := range txres.Metadata {
 				if metadata.Key == MetadataKey {
+					if len(txres.Inputs) > 0 {
+						swapInfo.From = txres.Inputs[0].Address
+					}
 					return txres.Outputs, &txres.Metadata[index], nil
 				}
 			}
@@ -196,7 +199,7 @@ func (b *Bridge) parseTokenInfo(swapInfo *tokens.SwapTxInfo, tokenInfo *Token, m
 }
 
 func (b *Bridge) checkSwapoutInfo(swapInfo *tokens.SwapTxInfo) error {
-	if strings.EqualFold(swapInfo.From, swapInfo.To) {
+	if swapInfo.From != "" && strings.EqualFold(swapInfo.From, swapInfo.To) {
 		return tokens.ErrTxWithWrongSender
 	}
 
