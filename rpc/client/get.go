@@ -65,7 +65,7 @@ func RPCGetRequest2(result interface{}, url string, params, headers map[string]s
 
 	if resp.StatusCode != 200 {
 		errBody = body
-		log.Trace("get rpc status error", "url", url, "status", resp.StatusCode, "body", string(body))
+		log.Trace("get rpc status error", "url", url, "status", resp.StatusCode)
 		return errBody, fmt.Errorf("error response status: %v (url: %v)", resp.StatusCode, url)
 	}
 
@@ -104,7 +104,7 @@ func RPCRawGetRequest(url string, params, headers map[string]string, timeout int
 
 	if resp.StatusCode != 200 {
 		log.Trace("get rpc status error", "url", url, "status", resp.StatusCode)
-		return "", fmt.Errorf("wrong response status %v. message: %v", resp.StatusCode, string(body))
+		return "", fmt.Errorf("wrong response status %v", resp.StatusCode)
 	}
 	return string(body), nil
 }

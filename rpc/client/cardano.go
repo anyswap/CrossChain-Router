@@ -57,7 +57,7 @@ func CardanoGetResultFromJSONResponse(result interface{}, resp *http.Response) e
 		return fmt.Errorf("read body error: %w", err)
 	}
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("wrong response status %v. message: %v", resp.StatusCode, string(body))
+		return fmt.Errorf("wrong response status %v", resp.StatusCode)
 	}
 	if len(body) == 0 {
 		return fmt.Errorf("empty response body")

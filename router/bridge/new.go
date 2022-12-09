@@ -8,6 +8,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens/aptos"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/btc"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/cardano"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmos"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/eth"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/near"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/ripple"
@@ -17,6 +18,8 @@ import (
 // NewCrossChainBridge new bridge
 func NewCrossChainBridge(chainID *big.Int) tokens.IBridge {
 	switch {
+	case cosmos.SupportsChainID(chainID):
+		return cosmos.NewCrossChainBridge()
 	case btc.SupportsChainID(chainID):
 		return btc.NewCrossChainBridge()
 	case cardano.SupportsChainID(chainID):
