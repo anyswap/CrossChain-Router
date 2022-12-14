@@ -85,6 +85,19 @@ func PassRouterSwapVerify(fromChainID, txid string, logindex int, timestamp int6
 	return mgoError(err)
 }
 
+// UpdateRouterSwapHeight update router swap height on source chain
+func UpdateRouterSwapHeight(fromChainID, txid string, logindex int, height uint64) error {
+	key := GetRouterSwapKey(fromChainID, txid, logindex)
+	updates := bson.M{"txheight": height}
+	_, err := collRouterSwap.UpdateByID(clientCtx, key, bson.M{"$set": updates})
+	if err == nil {
+		log.Info("mongodb update router swap height success", "chainid", fromChainID, "txid", txid, "logindex", logindex, "txheight", height)
+	} else {
+		log.Error("mongodb update router swap height failed", "chainid", fromChainID, "txid", txid, "logindex", logindex, "txheight", height, "err", err)
+	}
+	return mgoError(err)
+}
+
 // UpdateRouterSwapStatus update router swap status
 func UpdateRouterSwapStatus(fromChainID, txid string, logindex int, status SwapStatus, timestamp int64, memo string) error {
 	if status == TxNotStable {
@@ -805,6 +818,20 @@ func RouterAdminPassBigValue(fromChainID, txid string, logIndex int) error {
 	if err == nil {
 		return fmt.Errorf("can not pass big value swap with result exist")
 	}
+	return UpdateRouterSwapStatus(fromChainID, txid, logIndex, TxNotSwapped, time.Now().Unix(), "")
+}
+
+// RouterAdminPassForbiddenSwapout pass forbidden swapout
+func RouterAdminPassForbiddenSwapout(fromChainID, txid string, logIndex int) error {
+	swap, err := FindRouterSwapResult(fromChainID, txid, logIndex)
+	if err != nil {
+		return err
+	}
+	if swap.Status != SwapoutForbidden {
+		return fmt.Errorf("swap status is %v, not %v", swap.Status.String(), SwapoutForbidden.String())
+	}
+
+	_ = UpdateRouterSwapResultStatus(fromChainID, txid, logIndex, MatchTxEmpty, time.Now().Unix(), "")
 	return UpdateRouterSwapStatus(fromChainID, txid, logIndex, TxNotSwapped, time.Now().Unix(), "")
 }
 

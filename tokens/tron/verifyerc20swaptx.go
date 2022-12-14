@@ -16,6 +16,8 @@ import (
 
 	tronaddress "github.com/fbsobreira/gotron-sdk/pkg/address"
 	"github.com/fbsobreira/gotron-sdk/pkg/proto/core"
+
+	//nolint:staticcheck // ignore SA1019
 	"github.com/golang/protobuf/ptypes"
 )
 
@@ -112,9 +114,6 @@ func (b *Bridge) checkERC20SwapInfo(swapInfo *tokens.SwapTxInfo) error {
 		log.Warn("get token config failed", "chainID", swapInfo.ToChainID, "token", multichainToken)
 		return tokens.ErrMissTokenConfig
 	}
-	if erc20SwapInfo.ForUnderlying && toTokenCfg.GetUnderlying() == "" {
-		return tokens.ErrNoUnderlyingToken
-	}
 	if !tokens.CheckTokenSwapValue(swapInfo, fromTokenCfg.Decimals, toTokenCfg.Decimals) {
 		return tokens.ErrTxWithWrongValue
 	}
@@ -174,6 +173,7 @@ func (b *Bridge) checkTxSuccess(swapInfo *tokens.SwapTxInfo, allowUnstable bool)
 	switch contract.Type {
 	case core.Transaction_Contract_TriggerSmartContract:
 		var c core.TriggerSmartContract
+		//nolint:staticcheck // ignore SA1019
 		err := ptypes.UnmarshalAny(contract.GetParameter(), &c)
 		if err != nil {
 			return errors.New("tx inconsistent")

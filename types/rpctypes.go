@@ -38,24 +38,29 @@ type RPCBlock struct {
 
 // RPCTransaction struct
 type RPCTransaction struct {
-	Type         hexutil.Uint64  `json:"type"`
-	Hash         *common.Hash    `json:"hash"`
-	TxIndex      *hexutil.Uint   `json:"transactionIndex"`
-	BlockNumber  *hexutil.Big    `json:"blockNumber"`
-	BlockHash    *common.Hash    `json:"blockHash"`
-	From         *common.Address `json:"from"`
-	AccountNonce string          `json:"nonce"` // unexpect RSK has leading zero (eg. 0x01)
-	Price        *hexutil.Big    `json:"gasPrice"`
-	GasTipCap    *hexutil.Big    `json:"maxPriorityFeePerGas,omitempty"`
-	GasFeeCap    *hexutil.Big    `json:"maxFeePerGas,omitempty"`
-	GasLimit     *hexutil.Uint64 `json:"gas"`
-	Recipient    *common.Address `json:"to"`
-	Amount       *hexutil.Big    `json:"value"`
-	Payload      *hexutil.Bytes  `json:"input"`
-	V            *string         `json:"v"`
-	R            *string         `json:"r"`
-	S            *string         `json:"s"` // telos chain may has leading zero
-	ChainID      *hexutil.Big    `json:"chainId,omitempty"`
+	Type        hexutil.Uint64  `json:"type"`
+	Hash        *common.Hash    `json:"hash"`
+	TxIndex     *hexutil.Uint   `json:"transactionIndex"`
+	BlockNumber *hexutil.Big    `json:"blockNumber"`
+	BlockHash   *common.Hash    `json:"blockHash"`
+	From        *common.Address `json:"from"`
+
+	// special cases
+	// RSK has leading zero (eg. 0x01)
+	// zkevm is uint64 type
+	AccountNonce interface{} `json:"nonce"`
+
+	Price     *hexutil.Big    `json:"gasPrice"`
+	GasTipCap *hexutil.Big    `json:"maxPriorityFeePerGas,omitempty"`
+	GasFeeCap *hexutil.Big    `json:"maxFeePerGas,omitempty"`
+	GasLimit  *hexutil.Uint64 `json:"gas"`
+	Recipient *common.Address `json:"to"`
+	Amount    *hexutil.Big    `json:"value"`
+	Payload   *hexutil.Bytes  `json:"input"`
+	V         *string         `json:"v"`
+	R         *string         `json:"r"`
+	S         *string         `json:"s"` // telos chain may has leading zero
+	ChainID   *hexutil.Big    `json:"chainId,omitempty"`
 }
 
 // FeeHistoryResult fee history result
@@ -68,11 +73,16 @@ type FeeHistoryResult struct {
 
 // GetAccountNonce convert
 func (tx *RPCTransaction) GetAccountNonce() uint64 {
-	if tx == nil || tx.AccountNonce == "" {
+	if tx == nil || tx.AccountNonce == nil {
 		return 0
 	}
-	if result, err := common.GetUint64FromStr(tx.AccountNonce); err == nil {
-		return result
+	switch v := tx.AccountNonce.(type) {
+	case string:
+		if result, err := common.GetUint64FromStr(v); err == nil {
+			return result
+		}
+	case uint64:
+		return v
 	}
 	return 0
 }

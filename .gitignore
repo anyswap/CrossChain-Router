@@ -15,5 +15,6 @@
 # vendor/
 
 build/
-
 .vscode
+node_modules
+*.lock

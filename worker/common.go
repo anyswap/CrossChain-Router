@@ -231,6 +231,13 @@ SENDTX_LOOP:
 		return txHash, err
 	}
 
+	if !params.IsParallelSwapEnabled() {
+		nonceSetter, ok := bridge.(tokens.NonceSetter)
+		if ok && nonceSetter != nil {
+			nonceSetter.SetNonce(args.From, swapTxNonce+1)
+		}
+	}
+
 	if params.GetRouterServerConfig().SendTxLoopCount[args.ToChainID.String()] >= 0 {
 		go sendTxLoopUntilSuccess(bridge, txHash, signedTx, args)
 	}
@@ -243,7 +250,7 @@ func sendTxLoopUntilSuccess(bridge tokens.IBridge, txHash string, signedTx inter
 	severCfg := params.GetRouterServerConfig()
 	sendTxLoopCount := severCfg.SendTxLoopCount[toChainID]
 	if sendTxLoopCount == 0 {
-		sendTxLoopCount = 30
+		sendTxLoopCount = 10
 	}
 	sendTxLoopInterval := severCfg.SendTxLoopInterval[toChainID]
 	if sendTxLoopInterval == 0 {
@@ -252,8 +259,13 @@ func sendTxLoopUntilSuccess(bridge tokens.IBridge, txHash string, signedTx inter
 	for loop := 1; loop <= sendTxLoopCount; loop++ {
 		sleepSeconds(sendTxLoopInterval)
 
-		txStatus, err := bridge.GetTransactionStatus(txHash)
-		if err == nil && txStatus.BlockHeight > 0 {
+		swap, err := mongodb.FindRouterSwapResult(args.FromChainID.String(), args.SwapID, args.LogIndex)
+		if err != nil {
+			continue
+		}
+
+		txStatus := getSwapTxStatus(bridge, swap)
+		if txStatus.IsSwapTxOnChain() {
 			logWorker("sendtx", "send tx in loop success", "txHash", txHash, "loop", loop, "blockNumber", txStatus.BlockHeight)
 			matchTx := &MatchTx{
 				SwapTx:     txHash,
@@ -266,7 +278,7 @@ func sendTxLoopUntilSuccess(bridge tokens.IBridge, txHash string, signedTx inter
 
 		txHash, err = bridge.SendTransaction(signedTx)
 		if err != nil {
-			logWorkerError("sendtx", "send tx in loop failed", err, "swapID", args.SwapID, "txHash", txHash, "loop", loop)
+			logWorkerTrace("sendtx", "send tx in loop failed", err, "swapID", args.SwapID, "txHash", txHash, "loop", loop)
 		} else {
 			logWorker("sendtx", "send tx in loop done", "swapID", args.SwapID, "txHash", txHash, "loop", loop)
 		}

@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -128,6 +129,35 @@ func RPCPostRequestWithContext(ctx context.Context, url string, req *Request, re
 	return err
 }
 
+func RPCPostBody(url string, params, headers map[string]string, body, result interface{}, timeout int, success_code map[int]bool) (errBody []byte, err error) {
+	resp, err := HTTPPostWithContext(httpCtx, url, body, params, headers, timeout)
+	if err != nil {
+		log.Trace("post rpc error", "url", url, "request", body, "err", err)
+		return errBody, err
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	const maxReadContentLength int64 = 1024 * 1024 * 10 // 10M
+	bodyBytes, err := ioutil.ReadAll(io.LimitReader(resp.Body, maxReadContentLength))
+	if err != nil {
+		return errBody, fmt.Errorf("read body error: %w", err)
+	}
+	if (success_code != nil && !success_code[resp.StatusCode]) ||
+		(success_code == nil && resp.StatusCode != 200) {
+		errBody = bodyBytes
+		return errBody, fmt.Errorf("wrong response status %v", resp.StatusCode)
+	}
+	if len(bodyBytes) == 0 {
+		return errBody, fmt.Errorf("empty response body")
+	}
+	err = json.Unmarshal(bodyBytes, &result)
+	if err != nil {
+		return errBody, fmt.Errorf("unmarshal body error, body is \"%v\" err=\"%w\"", string(bodyBytes), err)
+	}
+	return errBody, nil
+}
+
 func getResultFromJSONResponse(result interface{}, resp *http.Response) error {
 	defer func() {
 		_ = resp.Body.Close()
@@ -138,7 +168,7 @@ func getResultFromJSONResponse(result interface{}, resp *http.Response) error {
 		return fmt.Errorf("read body error: %w", err)
 	}
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("wrong response status %v. message: %v", resp.StatusCode, string(body))
+		return fmt.Errorf("wrong response status %v", resp.StatusCode)
 	}
 	if len(body) == 0 {
 		return fmt.Errorf("empty response body")
@@ -179,7 +209,34 @@ func RPCRawPostWithTimeout(url, reqBody string, timeout int) (string, error) {
 		return "", fmt.Errorf("read body error: %w", err)
 	}
 	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("wrong response status %v. message: %v", resp.StatusCode, string(body))
+		return "", fmt.Errorf("wrong response status %v", resp.StatusCode)
 	}
 	return string(body), nil
+}
+
+// RPCRawPostWithTimeout rpc raw post with timeout
+func RPCJsonPostWithTimeout(url, reqBody string, timeout int) (string, error) {
+	jsonStr := []byte(reqBody)
+	if req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr)); err != nil {
+		return "", err
+	} else {
+		req.Header.Set("Content-Type", "application/json")
+		client := &http.Client{}
+		if resp, err := client.Do(req); err != nil {
+			return "", err
+		} else {
+			defer func() {
+				_ = resp.Body.Close()
+			}()
+			const maxReadContentLength int64 = 1024 * 1024 * 10 // 10M
+			if body, err := ioutil.ReadAll(io.LimitReader(resp.Body, maxReadContentLength)); err != nil {
+				return "", fmt.Errorf("read body error: %w", err)
+			} else {
+				if resp.StatusCode != 200 {
+					return "", fmt.Errorf("wrong response status %v", resp.StatusCode)
+				}
+				return string(body), nil
+			}
+		}
+	}
 }

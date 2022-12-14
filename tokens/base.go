@@ -19,6 +19,8 @@ var (
 	feeConfigMap     = new(sync.Map) // key is tokenID,fromChainID,toChainID
 	onchainCustomCfg = new(sync.Map) // key is fromChainID,tokenID
 
+	AggregateIdentifier = "aggregate"
+
 	// StubChainIDBase stub chainID base value
 	StubChainIDBase = big.NewInt(1000000000000)
 )
@@ -36,6 +38,7 @@ func IsNativeCoin(name string) bool {
 }
 
 // InitRouterSwapType init router swap type
+//
 //nolint:goconst // allow dupl constant string
 func InitRouterSwapType(swapTypeStr string) {
 	switch strings.ToLower(swapTypeStr) {
@@ -92,7 +95,7 @@ func NewCrossChainBridgeBase() *CrossChainBridgeBase {
 }
 
 // InitRouterInfo init router info
-func (b *CrossChainBridgeBase) InitRouterInfo(routerContract string) error {
+func (b *CrossChainBridgeBase) InitRouterInfo(routerContract, routerVersion string) (err error) {
 	return ErrNotImplemented
 }
 
@@ -116,10 +119,11 @@ func (b *CrossChainBridgeBase) SetChainConfig(chainCfg *ChainConfig) {
 // SetGatewayConfig set gateway config
 func (b *CrossChainBridgeBase) SetGatewayConfig(gatewayCfg *GatewayConfig) {
 	if len(gatewayCfg.APIAddress) == 0 {
-		log.Fatal("empty gateway 'APIAddress'")
+		log.Error("empty gateway 'APIAddress'")
+	} else {
+		b.GatewayConfig = gatewayCfg
+		b.AllGatewayURLs = append(gatewayCfg.APIAddress, gatewayCfg.APIAddressExt...)
 	}
-	b.GatewayConfig = gatewayCfg
-	b.AllGatewayURLs = append(gatewayCfg.APIAddress, gatewayCfg.APIAddressExt...)
 }
 
 // SetTokenConfig set token config
@@ -162,6 +166,20 @@ func (b *CrossChainBridgeBase) GetRouterContract(token string) string {
 		}
 	}
 	return b.ChainConfig.RouterContract
+}
+
+// GetRouterVersion get router version
+func (b *CrossChainBridgeBase) GetRouterVersion(token string) string {
+	if token != "" {
+		tokenCfg := b.GetTokenConfig(token)
+		if tokenCfg == nil {
+			return ""
+		}
+		if tokenCfg.RouterContract != "" {
+			return tokenCfg.RouterVersion
+		}
+	}
+	return b.ChainConfig.RouterVersion
 }
 
 // SetSwapConfigs set swap configs
@@ -232,7 +250,13 @@ func GetBigValueThreshold(tokenID, fromChainID, toChainID string, fromDecimals u
 	if swapCfg == nil {
 		return big.NewInt(0)
 	}
-	return ConvertTokenValue(swapCfg.BigValueThreshold, 18, fromDecimals)
+	value := ConvertTokenValue(swapCfg.BigValueThreshold, 18, fromDecimals)
+	discount := params.GetLocalChainConfig(fromChainID).BigValueDiscount
+	if discount > 0 && discount < 100 {
+		value.Mul(value, new(big.Int).SetUint64(discount))
+		value.Div(value, big.NewInt(100))
+	}
+	return value
 }
 
 // CheckTokenSwapValue check swap value is in right range

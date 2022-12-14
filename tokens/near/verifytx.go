@@ -3,6 +3,7 @@ package near
 import (
 	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -76,7 +77,7 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 		return swapInfo, tokens.ErrLogIndexOutOfRange
 	}
 
-	events, err := b.fliterReceipts(&receipts[logIndex])
+	events, err := b.fliterReceipts(swapInfo, &receipts[logIndex])
 	if err != nil {
 		return swapInfo, err
 	}
@@ -93,7 +94,8 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 
 	if !allowUnstable {
 		log.Info("verify swapout pass",
-			"token", swapInfo.ERC20SwapInfo.Token, "from", swapInfo.From, "to", swapInfo.To,
+			"token", swapInfo.ERC20SwapInfo.Token, "from", swapInfo.From,
+			"txto", swapInfo.TxTo, "to", swapInfo.To,
 			"bind", swapInfo.Bind, "value", swapInfo.Value, "txid", swapInfo.Hash,
 			"height", swapInfo.Height, "timestamp", swapInfo.Timestamp, "logIndex", swapInfo.LogIndex)
 	}
@@ -102,8 +104,9 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 }
 
 func (b *Bridge) checkTxStatus(txres *TransactionResult, allowUnstable bool) error {
-	if txres.Status.Failure != nil {
-		return tokens.ErrTxIsNotValidated
+	if txres.Status.Failure != nil || txres.Status.SuccessValue == nil {
+		log.Warn("Near tx status is not success", "result", txres.Status.Failure)
+		return tokens.ErrTxWithWrongStatus
 	}
 
 	if !allowUnstable {
@@ -121,7 +124,7 @@ func (b *Bridge) checkTxStatus(txres *TransactionResult, allowUnstable bool) err
 			return tokens.ErrTxNotStable
 		}
 
-		if lastHeight < b.ChainConfig.InitialHeight {
+		if txHeight < b.ChainConfig.InitialHeight {
 			return tokens.ErrTxBeforeInitialHeight
 		}
 	}
@@ -147,7 +150,6 @@ func (b *Bridge) parseNep141SwapoutTxEvent(swapInfo *tokens.SwapTxInfo, event []
 
 func (b *Bridge) parseTxEvent(swapInfo *tokens.SwapTxInfo, event []string) error {
 	swapInfo.ERC20SwapInfo.Token = event[1]
-	swapInfo.From = b.GetRouterContract("")
 	swapInfo.Bind = event[2]
 
 	amount, err := common.GetBigIntFromStr(event[3])
@@ -225,10 +227,13 @@ func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable boo
 		return nil, statusErr
 	}
 
+	swapInfo.From = txres.Transaction.SignerID
+	swapInfo.TxTo = txres.Transaction.ReceiverID
+
 	return txres.ReceiptsOutcome, nil
 }
 
-func (b *Bridge) fliterReceipts(receipt *ReceiptsOutcome) ([]string, error) {
+func (b *Bridge) fliterReceipts(swapInfo *tokens.SwapTxInfo, receipt *ReceiptsOutcome) ([]string, error) {
 	mpcAddress := b.GetRouterContract("")
 	executorID := receipt.Outcome.ExecutorID
 	if tokenCfg := b.GetTokenConfig(executorID); tokenCfg == nil {
@@ -257,6 +262,7 @@ func (b *Bridge) fliterReceipts(receipt *ReceiptsOutcome) ([]string, error) {
 					if len(event.Data) == 1 {
 						log := strings.Split(event.Data[0].Memo, " ")
 						if event.Event == TRANSFERV4LOG && len(log) == 2 && event.Data[0].NewOwnerId == mpcAddress {
+							swapInfo.From = event.Data[0].OldOwnerId
 							return []string{TRANSFERLOG, executorID, log[0], event.Data[0].Amount, log[1]}, nil
 						}
 					}
@@ -265,6 +271,18 @@ func (b *Bridge) fliterReceipts(receipt *ReceiptsOutcome) ([]string, error) {
 				log_0 := strings.Split(receipt.Outcome.Logs[0], " ")
 				log_1 := strings.Split(receipt.Outcome.Logs[1], " ")
 				if len(log_0) == 6 && len(log_1) == 3 && log_0[0] == TRANSFERLOG && log_0[5] == mpcAddress {
+					swapInfo.From = log_0[3]
+					return []string{TRANSFERLOG, executorID, log_1[1], log_0[1], log_1[2]}, nil
+				}
+			case 3:
+				log_0 := strings.Split(receipt.Outcome.Logs[0], " ")
+				log_1 := strings.Split(receipt.Outcome.Logs[1], " ")
+				if len(log_0) == 6 && len(log_1) == 3 && log_0[0] == TRANSFERLOG && log_0[5] == mpcAddress {
+					callSuccessPattern := fmt.Sprintf("Transfer amount %v to %v success with memo:", log_0[1], mpcAddress)
+					if !strings.HasPrefix(receipt.Outcome.Logs[2], callSuccessPattern) {
+						return nil, tokens.ErrSwapoutPatternMismatch
+					}
+					swapInfo.From = log_0[3]
 					return []string{TRANSFERLOG, executorID, log_1[1], log_0[1], log_1[2]}, nil
 				}
 			default:

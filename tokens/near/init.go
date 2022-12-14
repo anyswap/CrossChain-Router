@@ -3,10 +3,8 @@ package near
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
-	"github.com/anyswap/CrossChain-Router/v3/mongodb"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
@@ -22,7 +20,7 @@ func (b *Bridge) InitAfterConfig() {
 }
 
 // InitRouterInfo init router info
-func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
+func (b *Bridge) InitRouterInfo(routerContract, routerVersion string) (err error) {
 	if routerContract == "" {
 		return nil
 	}
@@ -54,13 +52,6 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 	router.SetMPCPublicKey(routerMPC, routerMPCPubkey)
 
 	log.Info(fmt.Sprintf("[%5v] init router info success", chainID), "routerContract", routerContract, "routerMPC", routerMPC)
-	if mongodb.HasClient() {
-		nextSwapNonce, err := mongodb.FindNextSwapNonce(chainID, strings.ToLower(routerMPC))
-		if err == nil {
-			log.Info("init next swap nonce from db", "chainID", chainID, "mpc", routerMPC, "nonce", nextSwapNonce)
-			b.InitSwapNonce(b, routerMPC, nextSwapNonce)
-		}
-	}
 
 	return nil
 }

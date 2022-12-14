@@ -80,8 +80,7 @@ func (b *Bridge) VerifyTransaction(txHash string, args *tokens.VerifyArgs) (*tok
 			"txid", txHash, "logIndex", swapInfo.LogIndex, "height", swapInfo.Height, "timestamp", swapInfo.Timestamp,
 			"fromChainID", swapInfo.FromChainID, "toChainID", swapInfo.ToChainID,
 			"token", swapInfo.ERC20SwapInfo.Token,
-			"tokenID", swapInfo.ERC20SwapInfo.TokenID,
-			"forUnderlying", swapInfo.ERC20SwapInfo.ForUnderlying)
+			"tokenID", swapInfo.ERC20SwapInfo.TokenID)
 	}
 
 	return swapInfo, nil

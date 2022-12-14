@@ -3,6 +3,7 @@ package eth
 import (
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -16,6 +17,8 @@ import (
 var (
 	retryRPCCount    = 3
 	retryRPCInterval = 1 * time.Second
+
+	cachedNonce = make(map[string]uint64)
 )
 
 // BuildRawTransaction build raw tx
@@ -75,26 +78,31 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 		isDynamicFeeTx = params.IsDynamicFeeTxEnabled(b.ChainConfig.ChainID)
 	)
 
-	minReserveFee := b.getMinReserveFee()
-	// if min reserve fee is zero, then do not check balance
-	if minReserveFee.Sign() > 0 {
-		// swap need value = tx value + min reserve + 5 * gas fee
-		needValue := big.NewInt(0)
-		if value != nil && value.Sign() > 0 {
-			needValue.Add(needValue, value)
-		}
-		needValue.Add(needValue, minReserveFee)
-		var gasFee *big.Int
-		if isDynamicFeeTx {
-			gasFee = new(big.Int).Mul(gasFeeCap, new(big.Int).SetUint64(gasLimit))
-		} else {
-			gasFee = new(big.Int).Mul(gasPrice, new(big.Int).SetUint64(gasLimit))
-		}
-		needValue.Add(needValue, new(big.Int).Mul(big.NewInt(5), gasFee))
+	if params.IsSwapServer ||
+		(params.GetRouterOracleConfig() != nil &&
+			params.GetRouterOracleConfig().CheckGasTokenBalance) {
+		minReserveFee := b.getMinReserveFee()
+		// if min reserve fee is zero, then do not check balance
+		if minReserveFee.Sign() > 0 {
+			// swap need value = tx value + min reserve + 5 * gas fee
+			needValue := big.NewInt(0)
+			if value != nil && value.Sign() > 0 {
+				needValue.Add(needValue, value)
+			}
+			needValue.Add(needValue, minReserveFee)
+			var gasFee *big.Int
+			if isDynamicFeeTx {
+				gasFee = new(big.Int).Mul(gasFeeCap, new(big.Int).SetUint64(gasLimit))
+			} else {
+				gasFee = new(big.Int).Mul(gasPrice, new(big.Int).SetUint64(gasLimit))
+			}
+			needValue.Add(needValue, new(big.Int).Mul(big.NewInt(5), gasFee))
 
-		err = b.checkCoinBalance(args.From, needValue)
-		if err != nil {
-			return nil, err
+			err = b.checkCoinBalance(args.From, needValue)
+			if err != nil {
+				log.Warn("not enough coin balance", "tx.value", value, "gasFee", gasFee, "gasLimit", gasLimit, "gasPrice", gasPrice, "gasFeeCap", gasFeeCap, "minReserveFee", minReserveFee, "needValue", needValue, "isDynamic", isDynamicFeeTx, "swapID", args.SwapID, "err", err)
+				return nil, err
+			}
 		}
 	}
 
@@ -105,17 +113,17 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 		if err != nil {
 			return nil, err
 		}
-	} else { // oracle logic
-		cmpNonce, err := b.getPoolNonce(args)
-		if err != nil {
-			return nil, err
-		}
-		if *extra.Nonce > *cmpNonce+1000 {
-			return nil, fmt.Errorf("nonce is too big. mine %v, your %v", *cmpNonce, *extra.Nonce)
-		}
 	}
 
 	nonce := *extra.Nonce
+
+	key := strings.ToLower(fmt.Sprintf("%v:%v", b.ChainConfig.ChainID, args.From))
+	cached := cachedNonce[key]
+	if (cached > 0 && (nonce > cached+1000 || nonce+1000 < cached)) ||
+		(cached == 0 && nonce > 10000000) {
+		return nil, fmt.Errorf("nonce is out of range. cached %v, your %v", cached, nonce)
+	}
+	cachedNonce[key] = nonce
 
 	if isDynamicFeeTx {
 		rawTx = types.NewDynamicFeeTx(b.SignerChainID, nonce, &to, value, gasLimit, gasTipCap, gasFeeCap, input, nil)
@@ -212,11 +220,19 @@ func (b *Bridge) setDefaults(args *tokens.BuildTxArgs) (err error) {
 		maxTokenGasLimit := params.GetMaxTokenGasLimit(args.GetTokenID(), b.ChainConfig.ChainID)
 		if maxTokenGasLimit > 0 {
 			if esGasLimit > maxTokenGasLimit {
+				log.Warn(fmt.Sprintf("build %s tx estimated gas is too large", args.SwapType.String()),
+					"swapID", args.SwapID, "from", args.From, "to", args.To,
+					"value", args.Value, "data", *args.Input,
+					"gasLimit", esGasLimit, "maxTokenGasLimit", maxTokenGasLimit)
 				return fmt.Errorf("%w %v %v on chain %v", tokens.ErrBuildTxErrorAndDelay, "estimated gas is too large for token", args.GetTokenID(), b.ChainConfig.ChainID)
 			}
 		} else {
 			maxGasLimit := params.GetMaxGasLimit(b.ChainConfig.ChainID)
 			if maxGasLimit > 0 && esGasLimit > maxGasLimit {
+				log.Warn(fmt.Sprintf("build %s tx estimated gas is too large", args.SwapType.String()),
+					"swapID", args.SwapID, "from", args.From, "to", args.To,
+					"value", args.Value, "data", *args.Input,
+					"gasLimit", esGasLimit, "maxGasLimit", maxGasLimit)
 				return fmt.Errorf("%w %v on chain %v", tokens.ErrBuildTxErrorAndDelay, "estimated gas is too large", b.ChainConfig.ChainID)
 			}
 		}
@@ -244,7 +260,7 @@ func (b *Bridge) getGasPrice(args *tokens.BuildTxArgs) (price *big.Int, err erro
 			if price1, err1 := b.SuggestPrice(); err1 == nil {
 				max := params.GetMaxGasPrice(b.ChainConfig.ChainID)
 				if max != nil && price1.Cmp(max) > 0 {
-					log.Debugf("call eth_gasPrice got gas price %v exceeded maximum limit %v", price1, max)
+					log.Warnf("call eth_gasPrice got gas price %v exceeded maximum limit %v", price1, max)
 				}
 			}
 		}

@@ -1,8 +1,6 @@
 package worker
 
 import (
-	"fmt"
-
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
@@ -20,25 +18,6 @@ var (
 // StartStableJob stable job
 func StartStableJob() {
 	logWorker("stable", "start router swap stable job")
-
-	// init all swap stable task queue
-	router.RouterBridges.Range(func(k, v interface{}) bool {
-		chainID := k.(string)
-		if _, exist := stableTaskQueues[chainID]; !exist {
-			stableTaskQueues[chainID] = fifo.NewQueue()
-		}
-		return true
-	})
-
-	// start comsumers
-	router.RouterBridges.Range(func(k, v interface{}) bool {
-		chainID := k.(string)
-
-		mongodb.MgoWaitGroup.Add(1)
-		go startStableConsumer(chainID)
-
-		return true
-	})
 
 	// start producer
 	go startStableProducer()
@@ -82,16 +61,9 @@ func findRouterSwapResultsToStable() ([]*mongodb.MgoSwapResult, error) {
 	return mongodb.FindRouterSwapResultsWithStatus(mongodb.MatchTxNotStable, septime)
 }
 
-func isTxOnChain(txStatus *tokens.TxStatus) bool {
-	if txStatus == nil || txStatus.BlockHeight == 0 {
-		return false
-	}
-	return txStatus.Receipt != nil
-}
-
 func getSwapTxStatus(resBridge tokens.IBridge, swap *mongodb.MgoSwapResult) *tokens.TxStatus {
 	txStatus, err := resBridge.GetTransactionStatus(swap.SwapTx)
-	if err == nil && isTxOnChain(txStatus) {
+	if err == nil && txStatus.IsSwapTxOnChain() {
 		return txStatus
 	}
 	for _, oldSwapTx := range swap.OldSwapTxs {
@@ -99,7 +71,7 @@ func getSwapTxStatus(resBridge tokens.IBridge, swap *mongodb.MgoSwapResult) *tok
 			continue
 		}
 		txStatus2, err2 := resBridge.GetTransactionStatus(oldSwapTx)
-		if err2 == nil && isTxOnChain(txStatus2) {
+		if err2 == nil && txStatus2.IsSwapTxOnChain() {
 			swap.SwapTx = oldSwapTx
 			return txStatus2
 		}
@@ -111,7 +83,15 @@ func dispatchSwapResultToStable(res *mongodb.MgoSwapResult) error {
 	chainID := res.ToChainID
 	taskQueue, exist := stableTaskQueues[chainID]
 	if !exist {
-		return fmt.Errorf("no stable task queue for chainID '%v'", chainID)
+		bridge := router.GetBridgeByChainID(chainID)
+		if bridge == nil {
+			return tokens.ErrNoBridgeForChainID
+		}
+		// init stable task queue and start consumer routine
+		taskQueue = fifo.NewQueue()
+		stableTaskQueues[chainID] = taskQueue
+		mongodb.MgoWaitGroup.Add(1)
+		go startStableConsumer(chainID)
 	}
 
 	logWorker("stable", "dispatch stable router swap task", "fromChainID", res.FromChainID, "toChainID", res.ToChainID, "txid", res.TxID, "logIndex", res.LogIndex, "value", res.SwapValue, "swapNonce", res.SwapNonce, "queue", taskQueue.Len())
@@ -173,6 +153,11 @@ func processRouterSwapStable(swap *mongodb.MgoSwapResult) (err error) {
 	resBridge := router.GetBridgeByChainID(swap.ToChainID)
 	if resBridge == nil {
 		return tokens.ErrNoBridgeForChainID
+	}
+	if swap.SwapHeight != 0 &&
+		swap.SwapHeight+resBridge.GetChainConfig().Confirmations >
+			router.GetCachedLatestBlockNumber(swap.ToChainID) {
+		return nil
 	}
 	txStatus := getSwapTxStatus(resBridge, swap)
 	if txStatus == nil || txStatus.BlockHeight == 0 {

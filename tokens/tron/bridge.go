@@ -1,15 +1,12 @@
 package tron
 
 import (
-	"errors"
 	"fmt"
 	"math/big"
 	"strings"
-	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
-	"github.com/anyswap/CrossChain-Router/v3/mongodb"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
@@ -81,70 +78,13 @@ func (b *Bridge) InitAfterConfig() {
 	b.InitExtraCustoms()
 }
 
-// InitGatewayConfig impl
-func (b *Bridge) InitGatewayConfig(chainID *big.Int) {
-	if chainID.Sign() == 0 {
-		log.Fatal("zero chain ID")
-	}
-	cfg := params.GetRouterConfig()
-	apiAddrs := cfg.Gateways[chainID.String()]
-	if len(apiAddrs) == 0 {
-		log.Fatal("gateway not found for chain ID", "chainID", chainID)
-	}
-	apiAddrsExt := cfg.GatewaysExt[chainID.String()]
-	b.SetGatewayConfig(&tokens.GatewayConfig{
-		APIAddress:    apiAddrs,
-		APIAddressExt: apiAddrsExt,
-	})
-	latestBlock, err := b.GetLatestBlockNumber()
-	if err != nil && router.IsIniting {
-		for i := 0; i < router.RetryRPCCountInInit; i++ {
-			if latestBlock, err = b.GetLatestBlockNumber(); err == nil {
-				break
-			}
-			time.Sleep(router.RetryRPCIntervalInInit)
-		}
-	}
-	if err != nil {
-		log.Fatal("get lastest block number failed", "chainID", chainID, "err", err)
-	}
-	log.Infof("[%5v] lastest block number is %v", chainID, latestBlock)
-	log.Infof("[%5v] init gateway config success", chainID)
-}
-
-// InitChainConfig impl
-func (b *Bridge) InitChainConfig(chainID *big.Int) {
-	chainCfg, err := router.GetChainConfig(chainID)
-	if err != nil {
-		log.Fatal("get chain config failed", "chainID", chainID, "err", err)
-	}
-	if chainCfg == nil {
-		log.Fatal("chain config not found", "chainID", chainID)
-	}
-	if chainID.String() != chainCfg.ChainID {
-		log.Fatal("verify chain ID mismatch", "inconfig", chainCfg.ChainID, "inchainids", chainID)
-	}
-	if err = chainCfg.CheckConfig(); err != nil {
-		log.Fatal("check chain config failed", "chainID", chainID, "err", err)
-	}
-	if err = b.InitRouterInfo(chainCfg.RouterContract); err != nil {
-		log.Fatal("init chain router info failed", "routerContract", chainCfg.RouterContract, "err", err)
-	}
-	b.SetChainConfig(chainCfg)
-	log.Info("init chain config success", "blockChain", chainCfg.BlockChain, "chainID", chainID)
-}
-
 // InitRouterInfo init router info
-func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
+func (b *Bridge) InitRouterInfo(routerContract, routerVersion string) (err error) {
 	if routerContract == "" {
 		return nil
 	}
-	var routerFactory, routerWNative string
+	var routerWNative string
 	if tokens.IsERC20Router() {
-		routerFactory, err = b.GetFactoryAddress(routerContract)
-		if err != nil {
-			log.Warn("get router factory address failed", "routerContract", routerContract, "err", err)
-		}
 		routerWNative, err = b.GetWNativeAddress(routerContract)
 		if err != nil {
 			log.Warn("get router wNative address failed", "routerContract", routerContract, "err", err)
@@ -175,7 +115,6 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 		chainID,
 		&router.SwapRouterInfo{
 			RouterMPC:     routerMPC,
-			RouterFactory: routerFactory,
 			RouterWNative: routerWNative,
 		},
 	)
@@ -183,84 +122,9 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 
 	log.Info(fmt.Sprintf("[%5v] init router info success", chainID),
 		"routerContract", routerContract, "routerMPC", routerMPC,
-		"routerFactory", routerFactory, "routerWNative", routerWNative)
-
-	if mongodb.HasClient() {
-		nextSwapNonce, err := mongodb.FindNextSwapNonce(chainID, strings.ToLower(routerMPC))
-		if err == nil {
-			log.Info("init next swap nonce from db", "chainID", chainID, "mpc", routerMPC, "nonce", nextSwapNonce)
-		}
-	}
+		"routerWNative", routerWNative)
 
 	return nil
-}
-
-// ReloadChainConfig reload chain config
-func (b *Bridge) ReloadChainConfig(chainID *big.Int) {
-	chainCfg, err := router.GetChainConfig(chainID)
-	if err != nil {
-		log.Error("[reload] get chain config failed", "chainID", chainID, "err", err)
-		return
-	}
-	if chainCfg == nil {
-		log.Error("[reload] chain config not found", "chainID", chainID)
-		return
-	}
-	if chainID.String() != chainCfg.ChainID {
-		log.Error("[reload] verify chain ID mismatch", "inconfig", chainCfg.ChainID, "inchainids", chainID)
-		return
-	}
-	if err = chainCfg.CheckConfig(); err != nil {
-		log.Error("[reload] check chain config failed", "chainID", chainID, "err", err)
-		return
-	}
-	if err = b.InitRouterInfo(chainCfg.RouterContract); err != nil {
-		log.Error("init chain router info failed", "routerContract", chainCfg.RouterContract, "err", err)
-		return
-	}
-	b.SetChainConfig(chainCfg)
-	log.Info("reload chain config success", "blockChain", chainCfg.BlockChain, "chainID", chainID)
-}
-
-// GetSignerChainID default way to get signer chain id
-// use chain ID first, if missing then use network ID instead.
-// normally this way works, but sometimes it failed (eg. ETC),
-// then we should overwrite this function
-// NOTE: call after chain config setted
-func (b *Bridge) GetSignerChainID() (*big.Int, error) {
-	switch strings.ToUpper(b.ChainConfig.BlockChain) {
-	default:
-		chainID, err := b.ChainID()
-		if err != nil {
-			return nil, err
-		}
-		if chainID.Sign() != 0 {
-			return chainID, nil
-		}
-		return b.NetworkID()
-	case "ETHCLASSIC":
-		return b.getETCSignerChainID()
-	}
-}
-
-func (b *Bridge) getETCSignerChainID() (*big.Int, error) {
-	networkID, err := b.NetworkID()
-	if err != nil {
-		return nil, err
-	}
-	var chainID uint64
-	switch networkID.Uint64() {
-	case 1:
-		chainID = 61 // mainnet
-	case 6:
-		chainID = 6 // kotti
-	case 7:
-		chainID = 63 // mordor
-	default:
-		log.Warnf("unsupported etc network id '%v'", networkID)
-		return nil, errors.New("unsupported etc network id")
-	}
-	return new(big.Int).SetUint64(chainID), nil
 }
 
 // InitExtraCustoms init extra customs

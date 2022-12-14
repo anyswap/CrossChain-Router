@@ -5,14 +5,14 @@ Identifier = "routerswap#test"
 SwapType = "erc20swap"
 
 # test module name
-Module = "eth"
+Module = "btc"
 
 # rpc listen port
 Port = 11556
 
 # use private key instead of mpc signing
-SignWithPrivateKey = "0x1111111111111111111111111111111111111111111111111111111111111111"
-SignerAddress = "0x1111111111111111111111111111111111111111"
+SignWithPrivateKey = "cQe83zjzDkDZHg4fN5BK9b9PY4TNnfnDh2mzCZL3Dp333ripJTEX"
+SignerAddress = "mw3Vr9dERAsJZZXEF9Xbi4tuB6xCAp3L2r"
 
 # allow call into router from contract
 AllowCallByContract = false
@@ -21,36 +21,32 @@ AllowCallByContract = false
 IsDebugMode = true
 
 # all chain ids (pass 'miss token config' checking)
-AllChainIDs = ["56", "25"]
-
+AllChainIDs = ["1000004346948", "4"]
 
 [Gateway]
-APIAddress = ["http://127.0.0.1:6711"]
-
+APIAddress = ["https://blockstream.info/testnet/api"]
 
 # chain config
 [Chain]
-ChainID = "56"
-BlockChain = "bsc"
+BlockChain = "btc"
+ChainID = "1000004346948"
+Confirmations = 1
+InitialHeight = 0
 RouterContract = "0x92c079d3155c2722dbf7e65017a5baf9cd15561c"
-Confirmations  = 1
-InitialHeight  = 0
-
 
 # token config
 [Token]
-TokenID         = "anyBNB"
-Decimals        = 18
-ContractVersion = 6
 ContractAddress = "0x49974c3c99f4e74d08845c31d3f4f16fdc264ebd"
-Underlying      = "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c"
-RouterContract  = "0x92c079d3155c2722dbf7e65017a5baf9cd15561c"
-
+ContractVersion = 6
+Decimals = 8
+RouterContract = "0x92c079d3155c2722dbf7e65017a5baf9cd15561c"
+TokenID = "btc"
+Underlying = "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c"
 
 [Swap]
-SwapFeeRatePerMillion = 0
-MaximumSwapFee    = "0"
-MinimumSwapFee    = "0"
-MaximumSwap       = "10000000000000000000000000"
 BigValueThreshold = "10000000000000000000000000"
-MinimumSwap       = "1"
+MaximumSwap = "10000000000000000000000000"
+MaximumSwapFee = "0"
+MinimumSwap = "1"
+MinimumSwapFee = "0"
+SwapFeeRatePerMillion = 0

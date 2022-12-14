@@ -6,6 +6,7 @@ type MgoSwap struct {
 	SwapType    uint32 `bson:"swaptype"`
 	TxID        string `bson:"txid"`
 	TxTo        string `bson:"txto"`
+	TxHeight    uint64 `bson:"txheight"`
 	From        string `bson:"from"`
 	Bind        string `bson:"bind"`
 	Value       string `bson:"value"`
@@ -26,6 +27,7 @@ func (swap *MgoSwap) ToSwapResult() *MgoSwapResult {
 		SwapType:    swap.SwapType,
 		TxID:        swap.TxID,
 		TxTo:        swap.TxTo,
+		TxHeight:    swap.TxHeight,
 		From:        swap.From,
 		Bind:        swap.Bind,
 		Value:       swap.Value,
@@ -97,15 +99,11 @@ type SwapInfo struct {
 
 // ERC20SwapInfo struct
 type ERC20SwapInfo struct {
-	Token         string   `bson:"token"                   json:"token"`
-	TokenID       string   `bson:"tokenID"                 json:"tokenID"`
-	SwapoutID     string   `bson:"swapoutID,omitempty"     json:"swapoutID,omitempty"`
-	ForNative     bool     `bson:"forNative,omitempty"     json:"forNative,omitempty"`
-	ForUnderlying bool     `bson:"forUnderlying,omitempty" json:"forUnderlying,omitempty"`
-	Path          []string `bson:"path,omitempty"          json:"path,omitempty"`
-	AmountOutMin  string   `bson:"amountOutMin,omitempty"  json:"amountOutMin,omitempty"`
-	CallProxy     string   `bson:"callProxy,omitempty"     json:"callProxy,omitempty"`
-	CallData      string   `bson:"callData,omitempty"      json:"callData,omitempty"`
+	Token     string `bson:"token"                   json:"token"`
+	TokenID   string `bson:"tokenID"                 json:"tokenID"`
+	SwapoutID string `bson:"swapoutID,omitempty"     json:"swapoutID,omitempty"`
+	CallProxy string `bson:"callProxy,omitempty"     json:"callProxy,omitempty"`
+	CallData  string `bson:"callData,omitempty"      json:"callData,omitempty"`
 }
 
 // NFTSwapInfo struct
@@ -127,6 +125,7 @@ type AnyCallSwapInfo struct {
 	Flags    string `bson:",omitempty" json:"flags,omitempty"`
 	AppID    string `bson:",omitempty" json:"appid,omitempty"`
 	Nonce    string `bson:",omitempty" json:"nonce,omitempty"`
+	ExtData  string `bson:",omitempty" json:"extdata,omitempty"`
 }
 
 // GetToken get token

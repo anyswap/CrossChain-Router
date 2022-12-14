@@ -17,7 +17,9 @@ type IBridgeConfg interface {
 	GetGatewayConfig() *GatewayConfig
 	GetChainConfig() *ChainConfig
 	GetTokenConfig(tokenAddr string) *TokenConfig
+
 	GetRouterContract(token string) string
+	GetRouterVersion(token string) string
 
 	SetChainConfig(chainCfg *ChainConfig)
 	SetGatewayConfig(gatewayCfg *GatewayConfig)
@@ -29,7 +31,7 @@ type IBridge interface {
 	IBridgeConfg
 	IMPCSign
 
-	InitRouterInfo(routerContract string) error
+	InitRouterInfo(routerContract, routerVersion string) error
 	InitAfterConfig()
 
 	RegisterSwap(txHash string, args *RegisterArgs) ([]*SwapTxInfo, []error)
@@ -57,6 +59,14 @@ type ISwapTrade interface {
 
 // NonceSetter interface (for eth-like)
 type NonceSetter interface {
+	InitSwapNonce(br NonceSetter, address string, nonce uint64)
+
+	// sequential
 	GetPoolNonce(address, height string) (uint64, error)
+	SetNonce(address string, value uint64)
+	AdjustNonce(address string, value uint64) (nonce uint64)
+
+	// parallel
+	AllocateNonce(args *BuildTxArgs) (nonce uint64, err error)
 	RecycleSwapNonce(sender string, nonce uint64)
 }

@@ -43,8 +43,6 @@ PlusGasPricePercentage = 10
 MaxPlusGasPricePercentage = 100
 # maximum gas price flunct percentage
 MaxGasPriceFluctPercent = 10
-# swap deadline offset for trading
-SwapDeadlineOffset = 36000
 # apecify auto swap nonce enabled chainids
 AutoSwapNonceEnabledChains = ["25"]
 
@@ -120,10 +118,10 @@ MaxRequestsLimit = 10
 ServerAPIAddress = "http://127.0.0.1:11556/rpc"
 # don't check server connection
 NoCheckServerConnection = false
+# check gas token balance
+CheckGasTokenBalance = false
 
 [Extra]
-# is swap trade enabled
-EnableSwapTrade = false
 # is swap with permit enabled
 EnableSwapWithPermit = false
 # force call anySwapInAuto
@@ -144,11 +142,15 @@ EnableCheckTxBlockHashChains = ["1285"]
 EnableCheckTxBlockIndexChains = ["1", "56"]
 # chains don't use fromChainID from receipt log
 DisableUseFromChainIDInReceiptChains = ["1666600000"]
-CheckTokenBalanceEnabledChains = ["1"]
 # chains use fast mpc
 UseFastMPCChains = ["1001313161554"]
-DontCheckReceivedTokenIDs = ["USDC", "MIM"]
+# check token balance
+CheckTokenBalanceEnabledChains = ["1"]
 DontCheckBalanceTokenIDs = ["USDC", "MIM"]
+DontCheckTotalSupplyTokenIDs = ["USDC", "MIM"]
+DontCheckReceivedTokenIDs = ["USDC", "MIM"]
+# ignore apps that does not support anaycall fallback
+IgnoreAnycallFallbackAppIDs = ["xxxxxxxxxxx"]
 # allow call into router from contract's constructor
 AllowCallByConstructor = false
 # allow call into router from contract
@@ -197,6 +199,14 @@ EstimatedGasMustBePositive = true
 
 [Extra.LocalChainConfig.86]
 SmallestGasPriceUnit = 1000000000
+
+[Extra.LocalChainConfig.25]
+ForbidParallelLoading = true
+ForbidSwapoutTokenIDs = ["USDC", "USDT"]
+BigValueDiscount = 50
+
+[Extra.SpecialFlags]
+key = "value"
 
 
 # OnChain config
