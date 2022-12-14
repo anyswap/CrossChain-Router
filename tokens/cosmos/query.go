@@ -106,10 +106,10 @@ func (b *Bridge) GetDenomBalance(address, denom string) (sdk.Int, error) {
 					return coin.Amount, nil
 				}
 			}
-			return sdk.Int{}, nil
+			return sdk.ZeroInt(), nil
 		} else {
 			log.Warn("GetDenomBalance failed", "url", restApi, "err", err)
 		}
 	}
-	return sdk.Int{}, tokens.ErrRPCQueryError
+	return sdk.ZeroInt(), tokens.ErrRPCQueryError
 }
