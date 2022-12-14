@@ -52,6 +52,7 @@ func DontPanicInLoading() bool {
 // SwapRouterInfo swap router info
 type SwapRouterInfo struct {
 	RouterMPC      string
+	RouterPDA      string `json:",omitempty"`
 	RouterWNative  string `json:",omitempty"`
 	RouterSecurity string `json:",omitempty"`
 }

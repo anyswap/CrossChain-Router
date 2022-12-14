@@ -12,12 +12,15 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens/eth"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/near"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/ripple"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/solana"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/tron"
 )
 
 // NewCrossChainBridge new bridge
 func NewCrossChainBridge(chainID *big.Int) tokens.IBridge {
 	switch {
+	case solana.SupportChainID(chainID):
+		return solana.NewCrossChainBridge()
 	case cosmos.SupportsChainID(chainID):
 		return cosmos.NewCrossChainBridge()
 	case btc.SupportsChainID(chainID):

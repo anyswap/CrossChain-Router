@@ -6,6 +6,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
@@ -98,5 +99,19 @@ func checkFailedRouterSwap(swap *mongodb.MgoSwapResult) error {
 			"swaptx", swap.SwapTx, "swapnonce", swap.SwapNonce, "latestnonce", nonce)
 		return markSwapResultUnstable(swap.FromChainID, swap.TxID, swap.LogIndex)
 	}
+
+	serverCfg := params.GetRouterServerConfig()
+	if serverCfg.AutoResignTxIfFailed[swap.ToChainID] > 0 && nonce >= resBridge.GetChainConfig().Confirmations+swap.SwapNonce {
+		logWorker("checkfailedswap", "auto resign tx if nonce has passed",
+			"fromChainID", swap.FromChainID, "toChainID", swap.ToChainID,
+			"txid", swap.TxID, "logIndex", swap.LogIndex,
+			"swaptx", swap.SwapTx, "swapnonce", swap.SwapNonce, "latestnonce", nonce)
+		err := markRouterSwapResgin(swap.FromChainID, swap.TxID, swap.LogIndex)
+		if err != nil {
+			return fmt.Errorf("AutoResignTxIfFailed failed, %w", err)
+		}
+		DeleteCachedSwap(swap.FromChainID, swap.TxID, swap.LogIndex)
+	}
+
 	return nil
 }
