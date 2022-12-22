@@ -80,7 +80,8 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 	if !swapValue.IsUint64() {
 		return receiver, amount, tokens.ErrTxWithWrongValue
 	}
-	return receiver, swapValue.Uint64(), err
+	args.SwapValue = swapValue
+	return receiver, args.SwapValue.Uint64(), err
 }
 
 // BuildSwapinMintTransaction build swapin mint tx
