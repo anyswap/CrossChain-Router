@@ -83,7 +83,7 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 	logPrefix := b.ChainConfig.BlockChain + " MPCSignTransaction "
 	log.Info(logPrefix+"start", "txid", txid, "msghash", msgHash)
 	mpcConfig := mpc.GetMPCConfig(b.UseFastMPC)
-	keyID, rsvs, err := mpcConfig.DoSignOneEC(mpcPubkey, msgHash, msgContext)
+	keyID, rsvs, err := mpcConfig.DoSignOne(MPC_PUBLICKEY_TYPE, mpcPubkey, msgHash, msgContext)
 	if err != nil {
 		log.Info(logPrefix+"failed", "keyID", keyID, "txid", txid, "err", err)
 		return nil, "", err

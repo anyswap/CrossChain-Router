@@ -135,3 +135,31 @@ func SendSignedTx(params []interface{}) (string, error) {
 	}
 	return result[0], nil
 }
+
+func BindEvmAddr(publicKey, evmPrivateKey string) ([]string, error) {
+	if len(script_path) == 0 {
+		return nil, fmt.Errorf("script not init")
+	}
+	cmd := fmt.Sprintf("yarn bindEvm '%s' '%s'", publicKey, evmPrivateKey)
+	output := common.MustRunBashCommand(script_path, cmd)
+	if len(output) <= 0 {
+		return nil, fmt.Errorf("BindEvmAddr ts output error")
+	}
+	return output[len(output)-3 : len(output)-1], nil
+}
+
+func SendBindEvm(publicKey, evmPrivateKey, blockHash, blockNumber, nonce, signature string) (string, error) {
+	if len(script_path) == 0 {
+		return "", fmt.Errorf("script not init")
+	}
+	cmd := fmt.Sprintf("yarn sendBindEvm '%s' '%s' %s %s %s %s", publicKey, evmPrivateKey, blockHash, blockNumber, nonce, signature)
+	output := common.MustRunBashCommand(script_path, cmd)
+	if len(output) <= 0 {
+		return "", fmt.Errorf("BindEvmAddr ts output error")
+	}
+	result := strings.Split(output[len(output)-2], " ")
+	if len(result) != 1 {
+		return "", fmt.Errorf("SendSignedTx ts output error")
+	}
+	return result[0], nil
+}

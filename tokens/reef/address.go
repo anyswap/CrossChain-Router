@@ -9,7 +9,7 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
-// const mpc_publickey_type = "sr25519"
+const MPC_PUBLICKEY_TYPE = "SR25519"
 const encode = "SS58PRE"
 
 // IsValidAddress check address
