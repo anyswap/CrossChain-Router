@@ -197,7 +197,10 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 
 	b.CrossChainBridgeBase.SetTokenConfig(tokenAddr, tokenCfg)
 
-	_ = b.checkTokenConfig(tokenCfg)
+	err := b.checkTokenConfig(tokenCfg)
+	if err != nil && params.DontCheckInInitRouter() {
+		tokenCfg.Checked = true
+	}
 }
 
 // GetTokenConfig get and check token config

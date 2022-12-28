@@ -134,6 +134,8 @@ EnableParallelSwap = false
 UsePendingBalance = false
 # dont panic in init router
 DontPanicInInitRouter = false
+# dont check in init router (quick loading)
+DontCheckInInitRouter = false
 # apecify dynamic fee tx enabled chainids
 DynamicFeeTxEnabledChains = ["3"]
 # enable check tx block hash for security reason
