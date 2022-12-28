@@ -138,6 +138,8 @@ EnableParallelSwap = false
 UsePendingBalance = false
 # dont panic in init router
 DontPanicInInitRouter = false
+# dont check in init router (quick loading)
+DontCheckInInitRouter = false
 # getting accept list interval (seconds) in accept job
 GetAcceptListInterval = 5
 # when meet invalid accept, ignore it instead of disagree it immediately
