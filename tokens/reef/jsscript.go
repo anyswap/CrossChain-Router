@@ -155,11 +155,11 @@ func SendBindEvm(publicKey, evmPrivateKey, blockHash, blockNumber, nonce, signat
 	cmd := fmt.Sprintf("yarn sendBindEvm '%s' '%s' %s %s %s %s", publicKey, evmPrivateKey, blockHash, blockNumber, nonce, signature)
 	output := common.MustRunBashCommand(script_path, cmd)
 	if len(output) <= 0 {
-		return "", fmt.Errorf("BindEvmAddr ts output error")
+		return "", fmt.Errorf("SendBindEvm ts output error")
 	}
 	result := strings.Split(output[len(output)-2], " ")
 	if len(result) != 1 {
-		return "", fmt.Errorf("SendSignedTx ts output error")
+		return "", fmt.Errorf("SendBindEvm ts output error")
 	}
 	return result[0], nil
 }
