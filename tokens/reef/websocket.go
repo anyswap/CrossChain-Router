@@ -267,7 +267,9 @@ func (r *WebSocket) Read(inbound chan<- []byte) {
 		if params.IsDebugMode() {
 			log.Info("ws read message", "message", string(message))
 		}
-		r.ws.SetReadDeadline(time.Now().Add(pongWait))
+		if err := r.ws.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+			log.Error("SetReadDeadline", "remote", r.ws.RemoteAddr(), "err", err)
+		}
 		inbound <- message
 	}
 }
