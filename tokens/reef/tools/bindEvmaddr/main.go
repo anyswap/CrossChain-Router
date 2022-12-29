@@ -16,6 +16,8 @@ import (
 var (
 	bridge = reef.NewCrossChainBridge()
 
+	url string
+
 	paramConfigFile string
 	paramChainID    string
 
@@ -33,7 +35,7 @@ func initFlags() {
 	flag.StringVar(&paramPublicKey, "pubkey", "", "signer public key")
 
 	flag.StringVar(&paramEvmPrivateKey, "evmPrivateKey", "", "private key of evm address")
-	flag.StringVar(&jsPath, "jsPath", "", "js path")
+	flag.StringVar(&jsPath, "jspath", "", "js path")
 
 	flag.Parse()
 }
@@ -42,7 +44,7 @@ func main() {
 	log.SetLogger(6, false, true)
 	initAll()
 
-	reef.InstallJSModules(jsPath)
+	reef.InstallJSModules(jsPath, url)
 	out, err := reef.BindEvmAddr(paramPublicKey, paramEvmPrivateKey)
 	if err != nil {
 		panic(err.Error())
@@ -94,6 +96,7 @@ func initBridge() {
 	if len(apiAddrs) == 0 {
 		log.Fatal("gateway not found for chain ID", "chainID", paramChainID)
 	}
+	url = apiAddrs[0]
 	apiAddrsExt := cfg.GatewaysExt[paramChainID]
 	bridge.SetGatewayConfig(&tokens.GatewayConfig{
 		APIAddress:    apiAddrs,

@@ -10,6 +10,7 @@ import (
 )
 
 var script_path = ""
+var rpc_url_env map[string]string
 
 func CurrentCallerDir() string {
 	_, file, _, ok := runtime.Caller(0)
@@ -19,13 +20,15 @@ func CurrentCallerDir() string {
 	return ""
 }
 
-func InstallJSModules(path string) {
+func InstallJSModules(path, url string) {
 	if len(path) == 0 {
 		script_path = CurrentCallerDir()
 	} else {
 		script_path = path
 	}
 	common.MustRunBashCommand(script_path, "yarn")
+	rpc_url_env = map[string]string{}
+	rpc_url_env["URL"] = url
 }
 
 func Public2address(algorithmType, publicKey string) (string, error) {
@@ -33,7 +36,7 @@ func Public2address(algorithmType, publicKey string) (string, error) {
 		return "", fmt.Errorf("script not init")
 	}
 	cmd := fmt.Sprintf("yarn public2address '%s' '%s'", algorithmType, publicKey)
-	output := common.MustRunBashCommand(script_path, cmd)
+	output := common.MustRunBashCommandWithEnv(script_path, cmd, rpc_url_env)
 	if len(output) <= 0 {
 		return "", fmt.Errorf("Public2address ts output error")
 	}
@@ -49,7 +52,7 @@ func GetSignInfo(rawTx, evmAddress, substrateAddress, toAddr string) ([]string, 
 		return nil, fmt.Errorf("script not init")
 	}
 	cmd := fmt.Sprintf("yarn getSignInfo %s %s %s %s", rawTx, evmAddress, substrateAddress, toAddr)
-	output := common.MustRunBashCommand(script_path, cmd)
+	output := common.MustRunBashCommandWithEnv(script_path, cmd, rpc_url_env)
 	if len(output) <= 0 {
 		return nil, fmt.Errorf("getSignInfo ts output error")
 	}
@@ -68,7 +71,7 @@ func BuildSigningMessage(params []interface{}) (string, error) {
 		return "", fmt.Errorf("BuildSigningMessage param len dismatch")
 	}
 	cmd := fmt.Sprintf("yarn buildRawtx %s %s %s %s %s %s %s %s %s", params...)
-	output := common.MustRunBashCommand(script_path, cmd)
+	output := common.MustRunBashCommandWithEnv(script_path, cmd, rpc_url_env)
 	if len(output) <= 0 {
 		return "", fmt.Errorf("getSignInfo ts output error")
 	}
@@ -87,7 +90,7 @@ func SignMessageWithPrivate(params []interface{}) ([]string, error) {
 		return nil, fmt.Errorf("signTxWallet param len dismatch")
 	}
 	cmd := fmt.Sprintf("yarn signTxWallet %s %s %s %s %s %s %s %s %s", params...)
-	output := common.MustRunBashCommand(script_path, cmd)
+	output := common.MustRunBashCommandWithEnv(script_path, cmd, rpc_url_env)
 	if len(output) <= 0 {
 		return nil, fmt.Errorf("signTxWallet ts output error")
 	}
@@ -106,7 +109,7 @@ func GetTxHash(params []interface{}) (string, error) {
 		return "", fmt.Errorf("getTxHash param len dismatch")
 	}
 	cmd := fmt.Sprintf("yarn getTxHash %s %s %s %s %s %s %s %s %s %s", params...)
-	output := common.MustRunBashCommand(script_path, cmd)
+	output := common.MustRunBashCommandWithEnv(script_path, cmd, rpc_url_env)
 	if len(output) <= 0 {
 		return "", fmt.Errorf("getSignInfo ts output error")
 	}
@@ -125,7 +128,7 @@ func SendSignedTx(params []interface{}) (string, error) {
 		return "", fmt.Errorf("SendSignedTx param len dismatch")
 	}
 	cmd := fmt.Sprintf("yarn sendSignedTx %s %s %s %s %s %s %s %s %s %s", params...)
-	output := common.MustRunBashCommand(script_path, cmd)
+	output := common.MustRunBashCommandWithEnv(script_path, cmd, rpc_url_env)
 	if len(output) <= 0 {
 		return "", fmt.Errorf("getSignInfo ts output error")
 	}
@@ -141,7 +144,8 @@ func BindEvmAddr(publicKey, evmPrivateKey string) ([]string, error) {
 		return nil, fmt.Errorf("script not init")
 	}
 	cmd := fmt.Sprintf("yarn bindEvm '%s' '%s'", publicKey, evmPrivateKey)
-	output := common.MustRunBashCommand(script_path, cmd)
+
+	output := common.MustRunBashCommandWithEnv(script_path, cmd, rpc_url_env)
 	if len(output) <= 0 {
 		return nil, fmt.Errorf("BindEvmAddr ts output error")
 	}
@@ -153,7 +157,7 @@ func SendBindEvm(publicKey, evmPrivateKey, blockHash, blockNumber, nonce, signat
 		return "", fmt.Errorf("script not init")
 	}
 	cmd := fmt.Sprintf("yarn sendBindEvm '%s' '%s' %s %s %s %s", publicKey, evmPrivateKey, blockHash, blockNumber, nonce, signature)
-	output := common.MustRunBashCommand(script_path, cmd)
+	output := common.MustRunBashCommandWithEnv(script_path, cmd, rpc_url_env)
 	if len(output) <= 0 {
 		return "", fmt.Errorf("SendBindEvm ts output error")
 	}
