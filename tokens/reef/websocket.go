@@ -130,7 +130,9 @@ func (r *WebSocket) Run() {
 	}()
 	go func() {
 		time.Sleep(2 * time.Second)
-		r.InitConn()
+		if err := r.InitConn(); err != nil {
+			log.Info(r.endpoint+" InitConn", "err", err.Error())
+		}
 	}()
 	// Main run loop
 ForEnd:
@@ -213,7 +215,9 @@ func (r *WebSocket) Write(outbound <-chan interface{}) {
 		// An outbound message is available to send
 		case message, ok := <-outbound:
 			if !ok {
-				r.ws.WriteMessage(websocket.CloseMessage, []byte{})
+				if err := r.ws.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
+					log.Error("ws write message error", "remote", r.ws.RemoteAddr(), "err", err)
+				}
 				return
 			}
 
@@ -243,9 +247,13 @@ func (r *WebSocket) Write(outbound <-chan interface{}) {
 // readPump reads from the websocket and sends to inbound channel.
 // Expects to receive PONGs at specified interval, or logs an error and returns.
 func (r *WebSocket) Read(inbound chan<- []byte) {
-	r.ws.SetReadDeadline(time.Now().Add(pongWait))
+	if err := r.ws.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+		log.Error("SetReadDeadline", "remote", r.ws.RemoteAddr(), "err", err)
+	}
 	r.ws.SetPongHandler(func(message string) error {
-		r.ws.SetReadDeadline(time.Now().Add(pongWait))
+		if err := r.ws.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+			log.Error("SetReadDeadline", "remote", r.ws.RemoteAddr(), "err", err)
+		}
 		return nil
 	})
 	for {
@@ -345,7 +353,7 @@ func (r *WebSocket) QueryTx(hash string) (*Extrinsic, error) {
 	if cmd.Error != nil {
 		return nil, fmt.Errorf("reef query tx err: %s", *cmd.Error)
 	}
-	log.Infof("reef QueryTx cost:%d", time.Since(start).String())
+	log.Infof("reef QueryTx cost: %s", time.Since(start).String())
 	if f, ok := cmd.Result.(*ReefGraphQLResponse).Payload.Data.(*ReefGraphQLTxData); ok {
 		if len(f.Extrinsic) > 0 {
 			return &f.Extrinsic[0], nil
@@ -374,7 +382,7 @@ func (r *WebSocket) QueryEventLogs(extrinsicId uint64) (*[]EventLog, error) {
 	if cmd.Error != nil {
 		return nil, fmt.Errorf("reef query tx err: %s", *cmd.Error)
 	}
-	log.Infof("reef QueryEventLogs cost:%d", time.Since(start).String())
+	log.Infof("reef QueryEventLogs cost:%s", time.Since(start).String())
 	if f, ok := cmd.Result.(*ReefGraphQLResponse).Payload.Data.(*ReefGraphQLEventLogsData); ok {
 		if len(f.Events) > 0 {
 			return &f.Events, nil
@@ -403,7 +411,7 @@ func (r *WebSocket) QueryEvmAddress(ss58address string) (*common.Address, error)
 	if cmd.Error != nil {
 		return nil, fmt.Errorf("reef query tx err: %s", *cmd.Error)
 	}
-	log.Infof("reef QueryEventLogs cost:%d", time.Since(start).String())
+	log.Infof("reef QueryEventLogs cost:%s", time.Since(start).String())
 	if f, ok := cmd.Result.(*ReefGraphQLResponse).Payload.Data.(*ReefGraphQLAccountData); ok {
 		if len(f.Accounts) > 0 {
 			evmAddr := common.HexToAddress(f.Accounts[0].EvmAddress)
@@ -433,7 +441,7 @@ func (r *WebSocket) QueryReefAddress(evmAddress string) (*string, error) {
 	if cmd.Error != nil {
 		return nil, fmt.Errorf("reef query tx err: %s", *cmd.Error)
 	}
-	log.Infof("reef QueryEventLogs cost:%d", time.Since(start).String())
+	log.Infof("reef QueryEventLogs cost:%s", time.Since(start).String())
 	if f, ok := cmd.Result.(*ReefGraphQLResponse).Payload.Data.(*ReefGraphQLAccountData); ok {
 		if len(f.Accounts) > 0 {
 			return &f.Accounts[0].ReefAddress, nil
