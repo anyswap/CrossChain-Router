@@ -47,4 +47,5 @@ in another terminal trigger the testing
 ```shell
 # url format is "http://{host}:{port}/swap/test/{txhash}"
 curl -sS http://127.0.0.1:11556/swap/test/0xcea2be8a05c0155832676e89c129b785fd1e2f308439606fc5df98a0e133bff2
+curl -sS http://127.0.0.1:11556/swap/test/44cd067581fe9ec79699ba775d89614a013708175fb19592882b7a04c343e57e
 ```

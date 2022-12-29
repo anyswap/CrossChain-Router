@@ -16,6 +16,8 @@ import (
 
 	tronaddress "github.com/fbsobreira/gotron-sdk/pkg/address"
 	"github.com/fbsobreira/gotron-sdk/pkg/proto/core"
+
+	//nolint:staticcheck // ignore SA1019
 	"github.com/golang/protobuf/ptypes"
 )
 
@@ -171,6 +173,7 @@ func (b *Bridge) checkTxSuccess(swapInfo *tokens.SwapTxInfo, allowUnstable bool)
 	switch contract.Type {
 	case core.Transaction_Contract_TriggerSmartContract:
 		var c core.TriggerSmartContract
+		//nolint:staticcheck // ignore SA1019
 		err := ptypes.UnmarshalAny(contract.GetParameter(), &c)
 		if err != nil {
 			return errors.New("tx inconsistent")

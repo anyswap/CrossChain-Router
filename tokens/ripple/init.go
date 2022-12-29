@@ -21,11 +21,6 @@ func convertToAsset(tokenAddr string) (*data.Asset, error) {
 	return data.NewAsset(tokenAddr)
 }
 
-// SetGatewayConfig set gateway config
-func (b *Bridge) SetGatewayConfig(gatewayCfg *tokens.GatewayConfig) {
-	b.CrossChainBridgeBase.SetGatewayConfig(gatewayCfg)
-}
-
 // SetTokenConfig set token config
 func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) {
 	b.CrossChainBridgeBase.SetTokenConfig(tokenAddr, tokenCfg)
@@ -79,7 +74,7 @@ func (b *Bridge) VerifyTokenConfig(tokenCfg *tokens.TokenConfig) error {
 }
 
 // InitRouterInfo init router info (in ripple routerContract is routerMPC)
-func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
+func (b *Bridge) InitRouterInfo(routerContract, routerVersion string) (err error) {
 	chainID := b.ChainConfig.ChainID
 	log.Info(fmt.Sprintf("[%5v] start init router info", chainID), "routerContract", routerContract)
 	routerMPC := routerContract // in ripple routerMPC is routerContract

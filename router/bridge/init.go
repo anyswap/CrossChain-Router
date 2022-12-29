@@ -101,7 +101,7 @@ func InitRouterBridges(isServer bool) {
 			bridge := NewCrossChainBridge(chainID)
 
 			InitGatewayConfig(bridge, chainID)
-			if len(bridge.GetGatewayConfig().APIAddress) == 0 {
+			if bridge.GetGatewayConfig() == nil || len(bridge.GetGatewayConfig().APIAddress) == 0 {
 				logErrFunc("bridge has no gateway config", "chainID", chainID)
 				return
 			}
@@ -152,6 +152,8 @@ func InitRouterBridges(isServer bool) {
 	mpc.Init(isServer)
 
 	success = true
+
+	go WatchGatewayConfig()
 }
 
 func loadSwapAndFeeConfigs() {
@@ -343,22 +345,23 @@ func InitGatewayConfig(b tokens.IBridge, chainID *big.Int) {
 		logErrFunc("init gateway with zero chain ID")
 		return
 	}
+	SetGatewayConfig(b, chainID.String())
+	log.Info(fmt.Sprintf("[%5v] init gateway config success", chainID), "isReload", isReload)
+}
+
+// SetGatewayConfig set gateway config
+func SetGatewayConfig(b tokens.IBridge, chainID string) {
 	cfg := params.GetRouterConfig()
-	apiAddrs := cfg.Gateways[chainID.String()]
-	if len(apiAddrs) == 0 {
-		logErrFunc("gateway not found for chain ID", "chainID", chainID)
-		return
-	}
-	apiAddrsExt := cfg.GatewaysExt[chainID.String()]
-	evmapiext := cfg.EVMGatewaysExt[chainID.String()]
-	finalizeAPIs := cfg.FinalizeGateways[chainID.String()]
+	apiAddrs := cfg.Gateways[chainID]
+	apiAddrsExt := cfg.GatewaysExt[chainID]
+	evmapiext := cfg.EVMGatewaysExt[chainID]
+	finalizeAPIs := cfg.FinalizeGateways[chainID]
 	b.SetGatewayConfig(&tokens.GatewayConfig{
 		APIAddress:         apiAddrs,
 		APIAddressExt:      apiAddrsExt,
 		EVMAPIAddress:      evmapiext,
 		FinalizeAPIAddress: finalizeAPIs,
 	})
-	log.Info(fmt.Sprintf("[%5v] init gateway config success", chainID), "isReload", isReload)
 }
 
 // InitChainConfig impl
@@ -387,7 +390,7 @@ func InitChainConfig(b tokens.IBridge, chainID *big.Int) {
 
 	routerContract := chainCfg.RouterContract
 	if routerContract != "" && !isRouterInfoLoaded(chainID.String(), routerContract) {
-		err = b.InitRouterInfo(routerContract)
+		err = b.InitRouterInfo(routerContract, chainCfg.RouterVersion)
 		if err == nil {
 			setRouterInfoLoaded(chainID.String(), routerContract)
 		} else {
@@ -445,7 +448,7 @@ func InitTokenConfig(b tokens.IBridge, tokenID string, chainID *big.Int) {
 
 	routerContract := tokenCfg.RouterContract
 	if routerContract != "" && !isRouterInfoLoaded(chainID.String(), routerContract) {
-		err = b.InitRouterInfo(routerContract)
+		err = b.InitRouterInfo(routerContract, tokenCfg.RouterVersion)
 		if err == nil {
 			setRouterInfoLoaded(chainID.String(), routerContract)
 		} else {

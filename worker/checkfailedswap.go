@@ -98,5 +98,6 @@ func checkFailedRouterSwap(swap *mongodb.MgoSwapResult) error {
 			"swaptx", swap.SwapTx, "swapnonce", swap.SwapNonce, "latestnonce", nonce)
 		return markSwapResultUnstable(swap.FromChainID, swap.TxID, swap.LogIndex)
 	}
+
 	return nil
 }

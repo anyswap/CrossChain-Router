@@ -2,7 +2,6 @@ package worker
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
@@ -27,27 +26,6 @@ var (
 // StartVerifyJob verify job
 func StartVerifyJob() {
 	logWorker("verify", "start router swap verify job")
-
-	// init all verify task queue
-	router.RouterBridges.Range(func(k, v interface{}) bool {
-		chainID := k.(string)
-
-		if _, exist := verifyTaskQueues[chainID]; !exist {
-			verifyTaskQueues[chainID] = fifo.NewQueue()
-		}
-
-		return true
-	})
-
-	// start comsumers
-	router.RouterBridges.Range(func(k, v interface{}) bool {
-		chainID := k.(string)
-
-		mongodb.MgoWaitGroup.Add(1)
-		go startVerifyConsumer(chainID)
-
-		return true
-	})
 
 	// start producer
 	go startVerifyProducer()
@@ -106,7 +84,15 @@ func dispatchVerifyTask(swap *mongodb.MgoSwap) error {
 	chainID := swap.FromChainID
 	taskQueue, exist := verifyTaskQueues[chainID]
 	if !exist {
-		return fmt.Errorf("no verify task queue for chainID '%v'", chainID)
+		bridge := router.GetBridgeByChainID(chainID)
+		if bridge == nil {
+			return tokens.ErrNoBridgeForChainID
+		}
+		// init verify task queue and start consumer routine
+		taskQueue = fifo.NewQueue()
+		verifyTaskQueues[chainID] = taskQueue
+		mongodb.MgoWaitGroup.Add(1)
+		go startVerifyConsumer(chainID)
 	}
 
 	logWorker("verify", "dispatch verify swap task", "fromChainID", swap.FromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex, "queue", taskQueue.Len())

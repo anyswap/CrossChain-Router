@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	NetWork       = "--testnet-magic 1"
+	NetWork       = "--mainnet" // for testnet, use "--testnet-magic 1"
 	MPCPolicyId   = "f73d0275b986a17537f0dfa94060313f922ac1d7a81aec677fa3bdbe"
 	RawPath       = "txDb/raw/"
 	AdaAsset      = "lovelace"
@@ -33,7 +33,7 @@ var (
 	CalcMinFeeCmd               = "cardano-cli transaction calculate-min-fee --tx-body-file %s --tx-in-count %d --tx-out-count %d --witness-count 1 --protocol-params-file txDb/config/protocol.json " + NetWork
 	CalcTxIdCmd                 = "cardano-cli transaction txid --tx-body-file %s"
 	QueryTipCmd                 = "cardano-cli query tip " + NetWork
-	QueryTransaction            = "{transactions(where: { hash: { _eq: \"%s\"}}) {block {number epochNo slotNo}hash metadata{key value} outputs(order_by:{index:asc}){address index tokens{ asset{policyId assetName}quantity}value}validContract}}"
+	QueryTransaction            = "{transactions(where: { hash: { _eq: \"%s\"}}) {block {number epochNo slotNo}hash metadata{key value} inputs(order_by:{sourceTxHash:asc}){address value} outputs(order_by:{index:asc}){address index tokens{ asset{policyId assetName}quantity}value}validContract}}"
 	QueryOutputs                = "{utxos(where: { address: { _eq: \"%s\"}}) {txHash index tokens {asset {policyId assetName} quantity} value}}"
 	TransactionChaining         = &TransactionChainingMap{InputKey: UtxoKey{}, AssetsMap: make(map[string]string)}
 	TransactionChainingKeyCache = &TransactionChainingKey{SpentUtxoMap: make(map[UtxoKey]bool), SpentUtxoListGropByTxHash: make(map[string]*[]UtxoKey)}

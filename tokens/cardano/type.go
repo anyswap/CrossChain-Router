@@ -34,8 +34,14 @@ type Transaction struct {
 	Block         Block      `json:"block"`
 	Hash          string     `json:"hash"`
 	Metadata      []Metadata `json:"metadata"`
+	Inputs        []Input    `json:"inputs"`
 	Outputs       []Output   `json:"outputs"`
 	ValidContract bool       `json:"validContract"`
+}
+
+type Input struct {
+	Address string `json:"address"`
+	Value   string `json:"value"`
 }
 
 type Output struct {

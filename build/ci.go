@@ -47,9 +47,9 @@ func doInstall(cmdline []string) {
 		var minor int
 		_, _ = fmt.Sscanf(strings.TrimPrefix(runtime.Version(), "go1."), "%d", &minor)
 
-		if minor < 12 {
+		if minor < 18 {
 			log.Println("You have Go version", runtime.Version())
-			log.Println("requires at least Go version 1.12 and cannot")
+			log.Println("requires at least Go version 1.18 and cannot")
 			log.Println("be compiled with an earlier version. Please upgrade your Go installation.")
 			os.Exit(1)
 		}

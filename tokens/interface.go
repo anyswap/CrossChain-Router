@@ -17,7 +17,9 @@ type IBridgeConfg interface {
 	GetGatewayConfig() *GatewayConfig
 	GetChainConfig() *ChainConfig
 	GetTokenConfig(tokenAddr string) *TokenConfig
+
 	GetRouterContract(token string) string
+	GetRouterVersion(token string) string
 
 	SetChainConfig(chainCfg *ChainConfig)
 	SetGatewayConfig(gatewayCfg *GatewayConfig)
@@ -29,7 +31,7 @@ type IBridge interface {
 	IBridgeConfg
 	IMPCSign
 
-	InitRouterInfo(routerContract string) error
+	InitRouterInfo(routerContract, routerVersion string) error
 	InitAfterConfig()
 
 	RegisterSwap(txHash string, args *RegisterArgs) ([]*SwapTxInfo, []error)

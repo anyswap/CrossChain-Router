@@ -154,6 +154,10 @@ func (b *Bridge) checkERC20SwapInfo(swapInfo *tokens.SwapTxInfo) error {
 		log.Warn("wrong bind address in erc20 swap", "txid", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "bind", swapInfo.Bind)
 		return tokens.ErrWrongBindAddress
 	}
+	if swapInfo.ERC20SwapInfo.CallProxy != "" &&
+		toBridge.GetRouterVersion(multichainToken) != "v7" {
+		return tokens.ErrRouterVersionMismatch
+	}
 	return nil
 }
 

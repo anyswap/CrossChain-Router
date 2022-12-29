@@ -107,6 +107,9 @@ func (b *Bridge) getTxOutputs(swapInfo *tokens.SwapTxInfo, allowUnstable bool) (
 			}
 			for index, metadata := range txres.Metadata {
 				if metadata.Key == MetadataKey {
+					if len(txres.Inputs) > 0 {
+						swapInfo.From = txres.Inputs[0].Address
+					}
 					return txres.Outputs, &txres.Metadata[index], nil
 				}
 			}
@@ -165,8 +168,6 @@ func (b *Bridge) parseTxOutput(output Output, logIndex int) (*Token, error) {
 }
 
 func (b *Bridge) parseTokenInfo(swapInfo *tokens.SwapTxInfo, tokenInfo *Token, metadata *Metadata) error {
-	mpc := b.GetRouterContract("")
-
 	amount, err := common.GetBigIntFromStr(tokenInfo.Quantity)
 	if err != nil {
 		return err
@@ -179,7 +180,6 @@ func (b *Bridge) parseTokenInfo(swapInfo *tokens.SwapTxInfo, tokenInfo *Token, m
 	} else {
 		swapInfo.ERC20SwapInfo.Token = tokenInfo.Asset.PolicyId + "." + tokenInfo.Asset.AssetName
 	}
-	swapInfo.From = mpc
 	swapInfo.Bind = metadata.Value.Bind
 
 	if tochainId, err := common.GetBigIntFromStr(metadata.Value.ToChainId); err != nil {
@@ -199,7 +199,7 @@ func (b *Bridge) parseTokenInfo(swapInfo *tokens.SwapTxInfo, tokenInfo *Token, m
 }
 
 func (b *Bridge) checkSwapoutInfo(swapInfo *tokens.SwapTxInfo) error {
-	if strings.EqualFold(swapInfo.From, swapInfo.To) {
+	if swapInfo.From != "" && strings.EqualFold(swapInfo.From, swapInfo.To) {
 		return tokens.ErrTxWithWrongSender
 	}
 

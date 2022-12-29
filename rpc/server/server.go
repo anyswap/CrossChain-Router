@@ -46,7 +46,7 @@ func StartAPIServer() {
 		)
 	}
 
-	log.Info("JSON RPC service listen and serving", "port", apiPort, "allowedOrigins", allowedOrigins)
+	log.Info("JSON RPC service listen and serving start", "port", apiPort, "allowedOrigins", allowedOrigins)
 	lmt := tollbooth.NewLimiter(float64(maxRequestsLimit),
 		&limiter.ExpirableOptions{
 			DefaultExpirationTTL: 600 * time.Second,
@@ -67,12 +67,14 @@ func StartAPIServer() {
 	go func() {
 		if err := svr.ListenAndServe(); err != nil {
 			if errors.Is(err, http.ErrServerClosed) && utils.IsCleanuping() {
+				log.Error("ListenAndServe error", "err", err)
 				return
 			}
-			log.Fatal("ListenAndServe error", "err", err)
+			log.Fatal("ListenAndServe failed", "err", err)
 		}
 	}()
 
+	log.Info("JSON RPC service listen and serving finish", "port", apiPort)
 	utils.TopWaitGroup.Add(1)
 	go utils.WaitAndCleanup(func() { doCleanup(&svr) })
 }

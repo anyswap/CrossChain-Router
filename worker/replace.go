@@ -41,25 +41,6 @@ func StartReplaceJob() {
 		return
 	}
 
-	allChainIDs := router.AllChainIDs
-
-	// init all replace swap task queue
-	for _, toChainID := range allChainIDs {
-		if _, exist := replaceTaskQueues[toChainID.String()]; !exist {
-			replaceTaskQueues[toChainID.String()] = fifo.NewQueue()
-		}
-	}
-
-	// start comsumers
-	for _, toChainID := range allChainIDs {
-		if !router.IsNonceSupported(toChainID.String()) {
-			logWorker("replace", "ignore chain does not support nonce", "chainID", toChainID)
-			continue
-		}
-		mongodb.MgoWaitGroup.Add(1)
-		go startReplaceConsumer(toChainID.String())
-	}
-
 	// start producer
 	go startReplaceProducer()
 }
@@ -126,10 +107,22 @@ func dispatchSwapResultToReplace(res *mongodb.MgoSwapResult) error {
 	if res.SwapTx != "" && getSepTimeInFind(waitTimeToReplace) < res.Timestamp {
 		return nil
 	}
+	if !router.IsNonceSupported(res.ToChainID) {
+		return nil
+	}
 
-	taskQueue, exist := replaceTaskQueues[res.ToChainID]
+	chainID := res.ToChainID
+	taskQueue, exist := replaceTaskQueues[chainID]
 	if !exist {
-		return fmt.Errorf("no replace task queue for chainID '%v'", res.ToChainID)
+		bridge := router.GetBridgeByChainID(chainID)
+		if bridge == nil {
+			return tokens.ErrNoBridgeForChainID
+		}
+		// init replace task queue and start consumer routine
+		taskQueue = fifo.NewQueue()
+		replaceTaskQueues[chainID] = taskQueue
+		mongodb.MgoWaitGroup.Add(1)
+		go startReplaceConsumer(chainID)
 	}
 
 	logWorker("replace", "dispatch replace router swap task", "fromChainID", res.FromChainID, "toChainID", res.ToChainID, "txid", res.TxID, "logIndex", res.LogIndex, "value", res.SwapValue, "swapNonce", res.SwapNonce, "queue", taskQueue.Len())
