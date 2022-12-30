@@ -35,6 +35,8 @@ func main() {
 	log.SetLogger(6, false, true)
 	initAll()
 
+	bridge.InitAfterConfig()
+
 	fmt.Printf("pubkey: %s \n", paramPublicKey)
 
 	reefAddr := reef.PubkeyToReefAddress(paramPublicKey)
@@ -79,6 +81,9 @@ func initBridge() {
 	bridge.SetGatewayConfig(&tokens.GatewayConfig{
 		APIAddress:    apiAddrs,
 		APIAddressExt: apiAddrsExt,
+	})
+	bridge.SetChainConfig(&tokens.ChainConfig{
+		ChainID: paramChainID,
 	})
 	log.Info("init bridge finished")
 }
