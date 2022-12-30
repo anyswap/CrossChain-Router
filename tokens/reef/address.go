@@ -72,16 +72,15 @@ func (b *Bridge) VerifyMPCPubKey(mpcAddress, mpcPubkey string) error {
 	if !common.IsHexAddress(mpcAddress) {
 		return fmt.Errorf("wrong mpc address '%v'", mpcAddress)
 	}
-	// evm check
-	pubkeyAddr, err := b.Bridge.PublicKeyToAddress(mpcPubkey)
+	reefAddr := PubkeyToReefAddress(mpcPubkey)
+
+	reefEvmAddr, err := b.QueryEvmAddress(reefAddr)
 	if err != nil {
-		pubkeyAddr, err = b.PublicKeyToAddress(mpcPubkey)
-		if err != nil {
-			return err
-		}
+		return err
 	}
-	if !strings.EqualFold(pubkeyAddr, mpcAddress) {
-		return fmt.Errorf("mpc address %v and public key address %v is not match", mpcAddress, pubkeyAddr)
+
+	if !strings.EqualFold(reefEvmAddr.LowerHex(), mpcAddress) {
+		return fmt.Errorf("mpc address %v and public key reefAddr %v evmaddress %v is not match", mpcAddress, reefAddr, reefEvmAddr.LowerHex())
 	}
 	return nil
 }
