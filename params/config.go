@@ -192,6 +192,8 @@ type ExtraConfig struct {
 	LocalChainConfig map[string]*LocalChainConfig `toml:",omitempty" json:",omitempty"` // key is chain ID
 
 	SpecialFlags map[string]string `toml:",omitempty" json:",omitempty"`
+
+	AttestationServer string `toml:",omitempty" json:",omitempty"`
 }
 
 // LocalChainConfig local chain config
@@ -1277,4 +1279,12 @@ func IsSwapoutForbidden(chainID, tokenID string) bool {
 // DontCheckInInitRouter do not check in init router
 func DontCheckInInitRouter() bool {
 	return GetExtraConfig() != nil && GetExtraConfig().DontCheckInInitRouter
+}
+
+// GetAttestationServer get attestation server
+func GetAttestationServer() string {
+	if GetExtraConfig() != nil {
+		return GetExtraConfig().AttestationServer
+	}
+	return ""
 }
