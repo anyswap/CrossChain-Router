@@ -37,13 +37,21 @@ func main() {
 
 	fmt.Printf("pubkey: %s \n", paramPublicKey)
 
-	fmt.Printf("reefAddr: %s \n", reef.PubkeyToReefAddress(paramPublicKey))
+	reefAddr := reef.PubkeyToReefAddress(paramPublicKey)
+	fmt.Printf("reefAddr: %s \n", reefAddr)
 
 	evmAddr, err := bridge.PublicKeyToAddress(paramPublicKey)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("evmAddr: %s \n", evmAddr)
+	fmt.Printf("calc evmAddr: %s \n", evmAddr)
+
+	bindAddr, err := bridge.QueryEvmAddress(reefAddr)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("bind evmAddr: %s \n", bindAddr.LowerHex())
+
 }
 
 func initAll() {
