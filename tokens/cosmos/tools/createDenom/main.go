@@ -14,7 +14,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmos"
 	"github.com/anyswap/CrossChain-Router/v3/tools/crypto"
-	tokenfactoryTypes "github.com/sei-protocol/sei-chain/x/tokenfactory/types"
 )
 
 var (
@@ -59,10 +58,6 @@ func main() {
 	}
 }
 
-func BuildCreateDenomMsg() *tokenfactoryTypes.MsgCreateDenom {
-	return tokenfactoryTypes.NewMsgCreateDenom(paramSender, paramSubdenom)
-}
-
 func initExtra() (*tokens.AllExtras, error) {
 	extra := &tokens.AllExtras{}
 	if account, err := bridge.GetBaseAccount(paramSender); err != nil {
@@ -94,7 +89,7 @@ func BuildTx() (*cosmos.BuildRawTx, error) {
 		return nil, err
 	} else {
 		txBuilder := bridge.TxConfig.NewTxBuilder()
-		msg := BuildCreateDenomMsg()
+		msg := cosmos.BuildCreateDenomMsg(paramSender, paramSubdenom)
 		if err := txBuilder.SetMsgs(msg); err != nil {
 			log.Fatalf("SetMsgs error:%+v", err)
 		}

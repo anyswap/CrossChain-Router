@@ -11,13 +11,13 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	tokenfactoryTypes "github.com/anyswap/CrossChain-Router/v3/tokens/cosmos/x/tokenfactory/types"
 	cosmosClient "github.com/cosmos/cosmos-sdk/client"
 	cryptoTypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	"github.com/cosmos/cosmos-sdk/types"
 	signingTypes "github.com/cosmos/cosmos-sdk/types/tx/signing"
 	"github.com/cosmos/cosmos-sdk/x/auth/signing"
 	bankTypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	tokenfactoryTypes "github.com/sei-protocol/sei-chain/x/tokenfactory/types"
 )
 
 const (
@@ -34,6 +34,10 @@ func BuildSignerData(chainID string, accountNumber, sequence uint64) signing.Sig
 		AccountNumber: accountNumber,
 		Sequence:      sequence,
 	}
+}
+
+func BuildCreateDenomMsg(sender, subdenom string) *tokenfactoryTypes.MsgCreateDenom {
+	return tokenfactoryTypes.NewMsgCreateDenom(sender, subdenom)
 }
 
 func BuildMintMsg(sender string, amount types.Coin) *tokenfactoryTypes.MsgMint {
