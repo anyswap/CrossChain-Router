@@ -18,12 +18,13 @@ import (
 var (
 	supportedChainIDs     = make(map[string]bool)
 	supportedChainIDsInit sync.Once
-	ChainsList            = []string{"COSMOSHUB", "SEI"}
+	ChainsList            = []string{"COSMOSHUB", "OSMOSIS", "COREUM", "SEI"}
 )
 
 const (
 	mainnetNetWork = "mainnet"
 	testnetNetWork = "testnet"
+	devnetNetWork  = "devnet"
 )
 
 func BuildNewTxConfig() cosmosClient.TxConfig {
@@ -43,6 +44,7 @@ func SupportsChainID(chainID *big.Int) bool {
 		for _, chainName := range ChainsList {
 			supportedChainIDs[GetStubChainID(chainName, mainnetNetWork).String()] = true
 			supportedChainIDs[GetStubChainID(chainName, testnetNetWork).String()] = true
+			supportedChainIDs[GetStubChainID(chainName, devnetNetWork).String()] = true
 		}
 	})
 	return supportedChainIDs[chainID.String()]
@@ -69,6 +71,8 @@ func GetStubChainID(chainName, network string) *big.Int {
 	case mainnetNetWork:
 	case testnetNetWork:
 		stubChainID.Add(stubChainID, big.NewInt(1))
+	case devnetNetWork:
+		stubChainID.Add(stubChainID, big.NewInt(2))
 	default:
 		log.Fatalf("unknown network %v", network)
 	}

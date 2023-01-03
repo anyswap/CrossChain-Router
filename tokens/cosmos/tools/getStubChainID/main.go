@@ -15,7 +15,7 @@ var (
 )
 
 func initFlags() {
-	flag.StringVar(&paramChainName, "n", "", "chainName, eg. cosmoshub, sei, etc.")
+	flag.StringVar(&paramChainName, "n", "", "chainName, eg. cosmoshub, osmosis, coreum, sei, etc.")
 	flag.StringVar(&paramNetwork, "p", "", "network, eg. mainnet, testnet, etc.")
 
 	flag.Parse()
