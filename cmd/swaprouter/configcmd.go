@@ -519,7 +519,7 @@ func getCustomConfig(ctx *cli.Context) error {
 		ctx.String(onchainContractFlag.Name),
 		ctx.StringSlice(gatewaysFlag.Name),
 	)
-	data, err := router.GetCustomConfig(chainID, key)
+	data, err := router.GetCustomConfig(chainID, key, false)
 	if err != nil {
 		return err
 	}

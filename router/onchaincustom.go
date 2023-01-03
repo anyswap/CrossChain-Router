@@ -25,7 +25,7 @@ func InitOnchainCustomConfig(chainID *big.Int, tokenID string) {
 	logErrFunc := log.GetLogFuncOr(DontPanicInLoading(), log.Error, log.Fatal)
 
 	key := getCustomConfigKey(tokenID, additionalSrcChainSwapFeeRateKey)
-	addtionalFeeParams, err := GetCustomConfig(chainID, key)
+	addtionalFeeParams, err := GetCustomConfig(chainID, key, false)
 	if err != nil {
 		logErrFunc("get custom config failed", "chainID", chainID, "key", key, "err", err)
 		return
