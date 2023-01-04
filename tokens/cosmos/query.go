@@ -1,6 +1,7 @@
 package cosmos
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -16,6 +17,8 @@ const (
 	TxByHash    = "/cosmos/tx/v1beta1/txs/"
 	AccountInfo = "/cosmos/auth/v1beta1/accounts/"
 	Balances    = "/cosmos/bank/v1beta1/balances/"
+	SimulateTx  = "/cosmos/tx/v1beta1/simulate"
+	BroadTx     = "/cosmos/tx/v1beta1/txs"
 )
 
 func joinURLPath(url, path string) string {
@@ -112,4 +115,37 @@ func (b *Bridge) GetDenomBalance(address, denom string) (sdk.Int, error) {
 		}
 	}
 	return sdk.ZeroInt(), tokens.ErrRPCQueryError
+}
+
+func (b *Bridge) SimulateTx(simulateReq *SimulateRequest) (string, error) {
+	if data, err := json.Marshal(simulateReq); err != nil {
+		return "", err
+	} else {
+		for _, url := range b.AllGatewayURLs {
+			restApi := joinURLPath(url, SimulateTx)
+			if res, err := client.RPCRawPostWithTimeout(restApi, string(data), 120); err == nil && res != "" && res != "\n" {
+				return res, nil
+			}
+		}
+		return "", tokens.ErrSimulateTx
+	}
+}
+
+func (b *Bridge) BroadcastTx(req *BroadcastTxRequest) (string, error) {
+	if data, err := json.Marshal(req); err != nil {
+		return "", err
+	} else {
+		var res string
+		var success bool
+		for _, url := range b.AllGatewayURLs {
+			restApi := joinURLPath(url, BroadTx)
+			if res, err = client.RPCJsonPostWithTimeout(restApi, string(data), 120); err == nil {
+				success = true
+			}
+		}
+		if success {
+			return res, nil
+		}
+		return "", tokens.ErrBroadcastTx
+	}
 }

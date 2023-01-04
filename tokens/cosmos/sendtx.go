@@ -5,12 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
-)
-
-const (
-	BroadTx = "/cosmos/tx/v1beta1/txs"
 )
 
 // SendTransaction send signed tx
@@ -39,24 +34,5 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (string, error) {
 			}
 			return txResponse.TxResponse.TxHash, nil
 		}
-	}
-}
-
-func (b *Bridge) BroadcastTx(req *BroadcastTxRequest) (string, error) {
-	if data, err := json.Marshal(req); err != nil {
-		return "", err
-	} else {
-		var res string
-		var success bool
-		for _, url := range b.AllGatewayURLs {
-			restApi := joinURLPath(url, BroadTx)
-			if res, err = client.RPCJsonPostWithTimeout(restApi, string(data), 120); err == nil {
-				success = true
-			}
-		}
-		if success {
-			return res, nil
-		}
-		return "", tokens.ErrBroadcastTx
 	}
 }

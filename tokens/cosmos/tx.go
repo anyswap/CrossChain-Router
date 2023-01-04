@@ -3,12 +3,10 @@ package cosmos
 import (
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
-	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	cosmosClient "github.com/cosmos/cosmos-sdk/client"
 	cryptoTypes "github.com/cosmos/cosmos-sdk/crypto/types"
@@ -16,10 +14,6 @@ import (
 	signingTypes "github.com/cosmos/cosmos-sdk/types/tx/signing"
 	"github.com/cosmos/cosmos-sdk/x/auth/signing"
 	bankTypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-)
-
-const (
-	SimulateTx = "/cosmos/tx/v1beta1/simulate"
 )
 
 func (b *Bridge) NewSignModeHandler() signing.SignModeHandler {
@@ -97,20 +91,6 @@ func (b *Bridge) BuildTx(
 		}
 
 		return txBuilder, nil
-	}
-}
-
-func (b *Bridge) SimulateTx(simulateReq *SimulateRequest) (string, error) {
-	if data, err := json.Marshal(simulateReq); err != nil {
-		return "", err
-	} else {
-		for _, url := range b.AllGatewayURLs {
-			restApi := joinURLPath(url, SimulateTx)
-			if res, err := client.RPCRawPostWithTimeout(restApi, string(data), 120); err == nil && res != "" && res != "\n" {
-				return res, nil
-			}
-		}
-		return "", tokens.ErrSimulateTx
 	}
 }
 
