@@ -130,7 +130,7 @@ func initFlags() {
 	flag.Uint64Var(&paramSequence, "sequence", paramSequence, "sequence number")
 	flag.StringVar(&paramFee, "fee", paramFee, "tx fee")
 	flag.StringVar(&paramPublicKey, "publicKey", "", "public Key")
-	flag.StringVar(&paramPrivateKey, "privateKey", "", "(optional) private key")
+	flag.StringVar(&paramPrivateKey, "privateKey", "", "private key")
 	flag.StringVar(&paramMemo, "memo", "", "tx memo")
 
 	flag.Parse()

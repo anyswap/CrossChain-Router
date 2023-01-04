@@ -49,7 +49,7 @@ func (b *Bridge) BroadcastTx(req *BroadcastTxRequest) (string, error) {
 		var res string
 		var success bool
 		for _, url := range b.AllGatewayURLs {
-			restApi := url + BroadTx
+			restApi := joinURLPath(url, BroadTx)
 			if res, err = client.RPCJsonPostWithTimeout(restApi, string(data), 120); err == nil {
 				success = true
 			}

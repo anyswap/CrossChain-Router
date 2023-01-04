@@ -151,7 +151,7 @@ func (b *Bridge) SimulateTx(simulateReq *SimulateRequest) (string, error) {
 		return "", err
 	} else {
 		for _, url := range b.AllGatewayURLs {
-			restApi := url + SimulateTx
+			restApi := joinURLPath(url, SimulateTx)
 			if res, err := client.RPCRawPostWithTimeout(restApi, string(data), 120); err == nil && res != "" && res != "\n" {
 				return res, nil
 			}
