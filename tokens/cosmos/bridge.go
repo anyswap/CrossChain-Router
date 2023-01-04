@@ -9,7 +9,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/base"
-	tokenfactoryTypes "github.com/anyswap/CrossChain-Router/v3/tokens/cosmos/x/tokenfactory/types"
 	cosmosClient "github.com/cosmos/cosmos-sdk/client"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
@@ -116,22 +115,19 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 	isReload := router.IsReloading
 	logErrFunc := log.GetLogFuncOr(isReload, log.Errorf, log.Fatalf)
 
-	if tokenCfg.ContractAddress == b.Denom {
-		if tokenCfg.Decimals != 6 {
-			logErrFunc("meta coin %v decimals mismatch, have %v want 6", tokenCfg.ContractAddress, tokenCfg.Decimals)
-			if isReload {
-				return
-			}
+	err := sdk.ValidateDenom(tokenCfg.ContractAddress)
+	if err != nil {
+		logErrFunc("wrong meta coin denom: %v %w", tokenCfg.ContractAddress, err)
+		if isReload {
+			return
 		}
-	} else {
-		creator, subdenom, err := tokenfactoryTypes.DeconstructDenom(tokenCfg.ContractAddress)
-		if err != nil {
-			logErrFunc("deconstruct denom %v failed: %v", tokenCfg.ContractAddress, err)
-			if isReload {
-				return
-			}
+	}
+
+	if tokenCfg.Decimals != 6 {
+		logErrFunc("meta coin %v decimals mismatch, have %v want 6", tokenCfg.ContractAddress, tokenCfg.Decimals)
+		if isReload {
+			return
 		}
-		log.Info("deconstruct denom success", "denom", tokenCfg.ContractAddress, "creator", creator, "subdenom", subdenom)
 	}
 }
 

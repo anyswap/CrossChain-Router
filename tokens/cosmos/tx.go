@@ -6,12 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
-	tokenfactoryTypes "github.com/anyswap/CrossChain-Router/v3/tokens/cosmos/x/tokenfactory/types"
 	cosmosClient "github.com/cosmos/cosmos-sdk/client"
 	cryptoTypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	"github.com/cosmos/cosmos-sdk/types"
@@ -34,18 +32,6 @@ func BuildSignerData(chainID string, accountNumber, sequence uint64) signing.Sig
 		AccountNumber: accountNumber,
 		Sequence:      sequence,
 	}
-}
-
-func BuildCreateDenomMsg(sender, subdenom string) *tokenfactoryTypes.MsgCreateDenom {
-	return tokenfactoryTypes.NewMsgCreateDenom(sender, subdenom)
-}
-
-func BuildMintMsg(sender string, amount types.Coin) *tokenfactoryTypes.MsgMint {
-	return tokenfactoryTypes.NewMsgMint(sender, amount)
-}
-
-func BuildBurnMsg(sender string, amount types.Coin) *tokenfactoryTypes.MsgBurn {
-	return tokenfactoryTypes.NewMsgBurn(sender, amount)
 }
 
 func BuildSendMsg(from, to, unit string, amount *big.Int) *bankTypes.MsgSend {
@@ -82,41 +68,9 @@ func (b *Bridge) BuildTx(
 		if balance.BigInt().Cmp(amount) >= 0 {
 			sendMsg := BuildSendMsg(from, to, denom, amount)
 			msgs = append(msgs, sendMsg)
-
-			if strings.Contains(denom, "/") && balance.BigInt().Cmp(amount) > 0 {
-				creator, _, errt := tokenfactoryTypes.DeconstructDenom(denom)
-				if errt != nil {
-					return nil, errt
-				}
-				if creator == from {
-					burnAmount := new(big.Int).Sub(balance.BigInt(), amount)
-					coin := types.NewCoin(denom, types.NewIntFromBigInt(burnAmount))
-					burnMsg := BuildBurnMsg(from, coin)
-					msgs = append(msgs, burnMsg)
-				}
-			}
 		} else {
-			if strings.Contains(denom, "/") {
-				creator, _, errt := tokenfactoryTypes.DeconstructDenom(denom)
-				if errt != nil {
-					return nil, errt
-				}
-				if creator == from {
-					mintAmount := new(big.Int).Sub(amount, balance.BigInt())
-					coin := types.NewCoin(denom, types.NewIntFromBigInt(mintAmount))
-					mintMsg := BuildMintMsg(from, coin)
-					msgs = append(msgs, mintMsg)
-
-					sendMsg := BuildSendMsg(from, to, denom, amount)
-					msgs = append(msgs, sendMsg)
-				} else {
-					log.Info("balance not enough", "denom", denom, "balance", balance, "amount", amount)
-					return nil, tokens.ErrBalanceNotEnough
-				}
-			} else {
-				log.Info("balance not enough", "denom", denom, "balance", balance, "amount", amount)
-				return nil, tokens.ErrBalanceNotEnough
-			}
+			log.Info("balance not enough", "denom", denom, "balance", balance, "amount", amount)
+			return nil, tokens.ErrBalanceNotEnough
 		}
 
 		txBuilder := b.TxConfig.NewTxBuilder()
