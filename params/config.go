@@ -142,6 +142,7 @@ type GatewayConfigs struct {
 	GatewaysExt      map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	EVMGatewaysExt   map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	FinalizeGateways map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+	GRPCGateways     map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 }
 
 // Blacklists black lists

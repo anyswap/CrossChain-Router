@@ -30,6 +30,9 @@ func joinURLPath(url, path string) string {
 }
 
 func (b *Bridge) GetLatestBlockNumber() (uint64, error) {
+	if result, err := b.GRPCGetLatestBlockNumber(); err == nil {
+		return result, nil
+	}
 	var result *GetLatestBlockResponse
 	for _, url := range b.AllGatewayURLs {
 		restApi := joinURLPath(url, LatestBlock)
@@ -42,7 +45,23 @@ func (b *Bridge) GetLatestBlockNumber() (uint64, error) {
 	return 0, tokens.ErrRPCQueryError
 }
 
+func (b *Bridge) GetLatestBlockNumberOf(apiAddress string) (uint64, error) {
+	if result, err := b.GRPCGetLatestBlockNumberOf(apiAddress); err == nil {
+		return result, nil
+	}
+	var result *GetLatestBlockResponse
+	restApi := joinURLPath(apiAddress, LatestBlock)
+	if err := client.RPCGet(&result, restApi); err == nil {
+		return strconv.ParseUint(result.Block.Header.Height, 10, 64)
+	} else {
+		return 0, err
+	}
+}
+
 func (b *Bridge) GetChainID() (string, error) {
+	if result, err := b.GRPCGetChainID(); err == nil {
+		return result, nil
+	}
 	var result *GetLatestBlockResponse
 	for _, url := range b.AllGatewayURLs {
 		restApi := joinURLPath(url, LatestBlock)
@@ -53,17 +72,10 @@ func (b *Bridge) GetChainID() (string, error) {
 	return "", tokens.ErrRPCQueryError
 }
 
-func (b *Bridge) GetLatestBlockNumberOf(apiAddress string) (uint64, error) {
-	var result *GetLatestBlockResponse
-	restApi := joinURLPath(apiAddress, LatestBlock)
-	if err := client.RPCGet(&result, restApi); err == nil {
-		return strconv.ParseUint(result.Block.Header.Height, 10, 64)
-	} else {
-		return 0, err
-	}
-}
-
 func (b *Bridge) GetTransactionByHash(txHash string) (*GetTxResponse, error) {
+	if result, err := b.GRPCGetTransactionByHash(txHash); err == nil {
+		return result, nil
+	}
 	var result *GetTxResponse
 	for _, url := range b.AllGatewayURLs {
 		restApi := joinURLPath(url, TxByHash+txHash)
@@ -81,6 +93,9 @@ func (b *Bridge) GetTransactionByHash(txHash string) (*GetTxResponse, error) {
 }
 
 func (b *Bridge) GetBaseAccount(address string) (*QueryAccountResponse, error) {
+	if result, err := b.GRPCGetBaseAccount(address); err == nil {
+		return result, nil
+	}
 	var result *QueryAccountResponse
 	for _, url := range b.AllGatewayURLs {
 		restApi := joinURLPath(url, AccountInfo+address)
@@ -100,6 +115,9 @@ func (b *Bridge) GetBaseAccount(address string) (*QueryAccountResponse, error) {
 }
 
 func (b *Bridge) GetDenomBalance(address, denom string) (sdk.Int, error) {
+	if result, err := b.GRPCGetDenomBalance(address, denom); err == nil {
+		return result, nil
+	}
 	var result *QueryAllBalancesResponse
 	for _, url := range b.AllGatewayURLs {
 		restApi := joinURLPath(url, Balances+address)
@@ -118,6 +136,9 @@ func (b *Bridge) GetDenomBalance(address, denom string) (sdk.Int, error) {
 }
 
 func (b *Bridge) SimulateTx(simulateReq *SimulateRequest) (string, error) {
+	if result, err := b.GRPCSimulateTx(simulateReq); err == nil {
+		return result, nil
+	}
 	if data, err := json.Marshal(simulateReq); err != nil {
 		return "", err
 	} else {
@@ -132,6 +153,9 @@ func (b *Bridge) SimulateTx(simulateReq *SimulateRequest) (string, error) {
 }
 
 func (b *Bridge) BroadcastTx(req *BroadcastTxRequest) (string, error) {
+	if result, err := b.GRPCBroadcastTx(req); err == nil {
+		return result, nil
+	}
 	if data, err := json.Marshal(req); err != nil {
 		return "", err
 	} else {

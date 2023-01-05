@@ -101,7 +101,7 @@ func InitRouterBridges(isServer bool) {
 			bridge := NewCrossChainBridge(chainID)
 
 			InitGatewayConfig(bridge, chainID)
-			if bridge.GetGatewayConfig() == nil || len(bridge.GetGatewayConfig().APIAddress) == 0 {
+			if bridge.GetGatewayConfig().IsEmpty() {
 				logErrFunc("bridge has no gateway config", "chainID", chainID)
 				return
 			}
@@ -356,11 +356,13 @@ func SetGatewayConfig(b tokens.IBridge, chainID string) {
 	apiAddrsExt := cfg.GatewaysExt[chainID]
 	evmapiext := cfg.EVMGatewaysExt[chainID]
 	finalizeAPIs := cfg.FinalizeGateways[chainID]
+	grpcAPIs := cfg.GRPCGateways[chainID]
 	b.SetGatewayConfig(&tokens.GatewayConfig{
 		APIAddress:         apiAddrs,
 		APIAddressExt:      apiAddrsExt,
 		EVMAPIAddress:      evmapiext,
 		FinalizeAPIAddress: finalizeAPIs,
+		GRPCAPIAddress:     grpcAPIs,
 	})
 }
 
