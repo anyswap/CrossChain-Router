@@ -10,7 +10,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmos"
-	"github.com/cosmos/cosmos-sdk/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
 var (
@@ -82,7 +82,7 @@ func BuildTx() (*cosmos.BuildRawTx, error) {
 		return nil, err
 	} else {
 		txBuilder := bridge.TxConfig.NewTxBuilder()
-		amount := types.NewIntFromUint64(paramAmount)
+		amount := sdk.NewIntFromUint64(paramAmount)
 		sendMsg := cosmos.BuildSendMsg(paramSender, paramTo, paramDenom, amount.BigInt())
 		if err := txBuilder.SetMsgs(sendMsg); err != nil {
 			log.Fatalf("SetMsgs error:%+v", err)
@@ -154,7 +154,7 @@ func initBridge() {
 		ChainID: chainID.String(),
 	})
 
-	config := types.GetConfig()
+	config := sdk.GetConfig()
 	config.SetBech32PrefixForAccount(paramPrefix, "")
 	config.Seal()
 }

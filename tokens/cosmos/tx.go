@@ -10,7 +10,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	cosmosClient "github.com/cosmos/cosmos-sdk/client"
 	cryptoTypes "github.com/cosmos/cosmos-sdk/crypto/types"
-	"github.com/cosmos/cosmos-sdk/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	signingTypes "github.com/cosmos/cosmos-sdk/types/tx/signing"
 	"github.com/cosmos/cosmos-sdk/x/auth/signing"
 	bankTypes "github.com/cosmos/cosmos-sdk/x/bank/types"
@@ -32,8 +32,8 @@ func BuildSendMsg(from, to, unit string, amount *big.Int) *bankTypes.MsgSend {
 	return &bankTypes.MsgSend{
 		FromAddress: from,
 		ToAddress:   to,
-		Amount: types.Coins{
-			types.NewCoin(unit, types.NewIntFromBigInt(amount)),
+		Amount: sdk.Coins{
+			sdk.NewCoin(unit, sdk.NewIntFromBigInt(amount)),
 		},
 	}
 }
@@ -58,7 +58,7 @@ func (b *Bridge) BuildTx(
 	if balance, err := b.GetDenomBalance(from, denom); err != nil {
 		return nil, err
 	} else {
-		var msgs []types.Msg
+		var msgs []sdk.Msg
 		if balance.BigInt().Cmp(amount) >= 0 {
 			sendMsg := BuildSendMsg(from, to, denom, amount)
 			msgs = append(msgs, sendMsg)

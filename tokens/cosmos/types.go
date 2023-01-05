@@ -2,7 +2,7 @@ package cosmos
 
 import (
 	cosmosClient "github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
 type BuildRawTx struct {
@@ -51,7 +51,7 @@ type TxResponse struct {
 	// non-deterministic.
 	RawLog string `protobuf:"bytes,6,opt,name=raw_log,json=rawLog,proto3" json:"raw_log,omitempty"`
 	// The output of the application's logger (typed). May be non-deterministic.
-	Logs types.ABCIMessageLogs `protobuf:"bytes,7,rep,name=logs,proto3,castrepeated=ABCIMessageLogs" json:"logs"`
+	Logs sdk.ABCIMessageLogs `protobuf:"bytes,7,rep,name=logs,proto3,castrepeated=ABCIMessageLogs" json:"logs"`
 }
 
 // Tx tx
@@ -112,5 +112,5 @@ type BaseAccount struct {
 // QueryAllBalancesResponse balances
 type QueryAllBalancesResponse struct {
 	// balances is the balances of all the coins.
-	Balances types.Coins `protobuf:"bytes,1,rep,name=balances,proto3,castrepeated=github.com/cosmos/cosmos-sdk/types.Coins" json:"balances"`
+	Balances sdk.Coins `protobuf:"bytes,1,rep,name=balances,proto3,castrepeated=github.com/cosmos/cosmos-sdk/types.Coins" json:"balances"`
 }
