@@ -9,6 +9,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/base"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmos/grpc"
 	cosmosClient "github.com/cosmos/cosmos-sdk/client"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
@@ -26,15 +27,19 @@ type Bridge struct {
 
 	cosmosClient.TxConfig
 
+	grpc.ClientContext
+
 	Prefix string
 	Denom  string
 }
 
 // NewCrossChainBridge new bridge
 func NewCrossChainBridge() *Bridge {
+	clientCtx := NewClientContext()
 	return &Bridge{
 		NonceSetterBase: base.NewNonceSetterBase(),
-		TxConfig:        BuildNewTxConfig(),
+		TxConfig:        clientCtx.TxConfig,
+		ClientContext:   grpc.NewClientContext(clientCtx),
 	}
 }
 
@@ -50,6 +55,12 @@ func (b *Bridge) SetPrefixAndDenom(prefix, denom string) {
 
 // InitAfterConfig init variables (ie. extra members) after loading config
 func (b *Bridge) InitAfterConfig() {
+}
+
+// SetGatewayConfig set gateway config
+func (b *Bridge) SetGatewayConfig(gatewayCfg *tokens.GatewayConfig) {
+	b.CrossChainBridgeBase.SetGatewayConfig(gatewayCfg)
+	b.initGrpcClients()
 }
 
 // InitRouterInfo init router info

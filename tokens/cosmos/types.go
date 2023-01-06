@@ -30,8 +30,6 @@ type Header struct {
 }
 
 type GetTxResponse struct {
-	Status string `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
-	Msg    string `protobuf:"bytes,1,opt,name=msg,proto3" json:"msg,omitempty"`
 	// The request transaction bytes.
 	Tx *Tx `protobuf:"bytes,11,opt,name=tx,proto3" json:"tx,omitempty"`
 	// tx_response is the queried TxResponses.
@@ -47,9 +45,6 @@ type TxResponse struct {
 	TxHash string `protobuf:"bytes,2,opt,name=txhash,proto3" json:"txhash,omitempty"`
 	// Response code.
 	Code uint32 `protobuf:"varint,4,opt,name=code,proto3" json:"code,omitempty"`
-	// The output of the application's logger (raw string). May be
-	// non-deterministic.
-	RawLog string `protobuf:"bytes,6,opt,name=raw_log,json=rawLog,proto3" json:"raw_log,omitempty"`
 	// The output of the application's logger (typed). May be non-deterministic.
 	Logs sdk.ABCIMessageLogs `protobuf:"bytes,7,rep,name=logs,proto3,castrepeated=ABCIMessageLogs" json:"logs"`
 }
@@ -98,8 +93,6 @@ type GasInfo struct {
 type QueryAccountResponse struct {
 	// account defines the account of the corresponding address.
 	Account *BaseAccount `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
-	Status  string       `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
-	Msg     string       `protobuf:"bytes,1,opt,name=msg,proto3" json:"msg,omitempty"`
 }
 
 // BaseAccount base account

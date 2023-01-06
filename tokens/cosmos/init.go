@@ -13,6 +13,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	cryptoTypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	authTx "github.com/cosmos/cosmos-sdk/x/auth/tx"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 )
 
 var (
@@ -27,15 +28,21 @@ const (
 	devnetNetWork  = "devnet"
 )
 
-func BuildNewTxConfig() cosmosClient.TxConfig {
-	interfaceRegistry := codecTypes.NewInterfaceRegistry()
-	PublicKeyRegisterInterfaces(interfaceRegistry)
-	protoCodec := codec.NewProtoCodec(interfaceRegistry)
-	return authTx.NewTxConfig(protoCodec, authTx.DefaultSignModes)
-}
+func NewClientContext() cosmosClient.Context {
+	amino := codec.NewLegacyAmino()
 
-func PublicKeyRegisterInterfaces(registry codecTypes.InterfaceRegistry) {
-	registry.RegisterImplementations((*cryptoTypes.PubKey)(nil), &secp256k1.PubKey{})
+	interfaceRegistry := codecTypes.NewInterfaceRegistry()
+	interfaceRegistry.RegisterImplementations((*cryptoTypes.PubKey)(nil), &secp256k1.PubKey{})
+	interfaceRegistry.RegisterImplementations((*authtypes.AccountI)(nil), &authtypes.BaseAccount{})
+
+	protoCodec := codec.NewProtoCodec(interfaceRegistry)
+	txConfig := authTx.NewTxConfig(protoCodec, authTx.DefaultSignModes)
+
+	return cosmosClient.Context{}.
+		WithCodec(protoCodec).
+		WithInterfaceRegistry(interfaceRegistry).
+		WithTxConfig(txConfig).
+		WithLegacyAmino(amino)
 }
 
 // SupportsChainID supports chainID

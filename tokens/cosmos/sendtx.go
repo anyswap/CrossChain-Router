@@ -28,9 +28,7 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (string, error) {
 				return "", err
 			}
 			if txResponse.TxResponse.Code != 0 && txResponse.TxResponse.Code != 19 {
-				return "", fmt.Errorf(
-					"SendTransaction error, code: %v, log:%v",
-					txResponse.TxResponse.Code, txResponse.TxResponse.RawLog)
+				return "", fmt.Errorf("SendTransaction error, code: %v", txResponse.TxResponse.Code)
 			}
 			return txResponse.TxResponse.TxHash, nil
 		}
