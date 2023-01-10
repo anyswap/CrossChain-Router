@@ -73,7 +73,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		} else {
 			memo := args.GetUniqueSwapIdentifier()
 			mpcPubkey := router.GetMPCPublicKey(args.From)
-			if txBuilder, err := b.BuildTx(args.From, receiver, multichainToken, memo, mpcPubkey, amount, extra); err != nil {
+			if txBuilder, err := b.BuildTx(args, receiver, multichainToken, memo, mpcPubkey, amount); err != nil {
 				return nil, err
 			} else {
 				accountNumber, err := b.GetAccountNum(args.From)

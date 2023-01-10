@@ -7,6 +7,7 @@ import (
 	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	cosmosClient "github.com/cosmos/cosmos-sdk/client"
 	cryptoTypes "github.com/cosmos/cosmos-sdk/crypto/types"
@@ -50,11 +51,13 @@ func BuildSignatures(publicKey cryptoTypes.PubKey, sequence uint64, signature []
 }
 
 func (b *Bridge) BuildTx(
-	from, to, denom, memo, publicKey string,
+	args *tokens.BuildTxArgs,
+	to, denom, memo, publicKey string,
 	amount *big.Int,
-	extra *tokens.AllExtras,
 ) (cosmosClient.TxBuilder, error) {
-	log.Info("start to build tx", "from", from, "to", to, "denom", denom, "memo", memo, "amount", amount, "fee", *extra.Fee, "gas", *extra.Gas, "sequence", *extra.Sequence)
+	from := args.From
+	extra := args.Extra
+	log.Info("start to build tx", "swapID", args.SwapID, "from", from, "to", to, "denom", denom, "memo", memo, "amount", amount, "fee", *extra.Fee, "gas", *extra.Gas, "sequence", *extra.Sequence)
 	if balance, err := b.GetDenomBalance(from, denom); err != nil {
 		return nil, err
 	} else {
@@ -65,6 +68,21 @@ func (b *Bridge) BuildTx(
 		} else {
 			log.Info("balance not enough", "denom", denom, "balance", balance, "amount", amount)
 			return nil, tokens.ErrBalanceNotEnough
+		}
+
+		// process charge fee on dest chain
+		tokenID := args.GetTokenID()
+		fromChainID := args.FromChainID
+		toChainID := args.ToChainID
+		if params.ChargeFeeOnDestChain(tokenID, fromChainID.String(), toChainID.String()) {
+			if extra.BridgeFee != nil && extra.BridgeFee.Sign() > 0 {
+				bridgeFeeReceiver := params.FeeReceiverOnDestChain(toChainID.String())
+				if bridgeFeeReceiver != "" {
+					sendMsg := BuildSendMsg(from, bridgeFeeReceiver, denom, extra.BridgeFee)
+					msgs = append(msgs, sendMsg)
+					log.Info("build charge fee on dest chain", "swapID", args.SwapID, "from", from, "receiver", bridgeFeeReceiver, "denom", denom, "amount", extra.BridgeFee)
+				}
+			}
 		}
 
 		txBuilder := b.TxConfig.NewTxBuilder()

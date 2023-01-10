@@ -204,6 +204,10 @@ type LocalChainConfig struct {
 	ForbidSwapoutTokenIDs      []string `toml:",omitempty" json:",omitempty"`
 	BigValueDiscount           uint64   `toml:",omitempty" json:",omitempty"`
 
+	// chainID -> tokenids
+	ChargeFeeOnDestChain   map[string][]string `toml:",omitempty" json:",omitempty"`
+	FeeReceiverOnDestChain string              `toml:",omitempty" json:",omitempty"`
+
 	forbidSwapoutTokenIDMap map[string]struct{}
 
 	lock *sync.Mutex
@@ -1279,4 +1283,24 @@ func IsSwapoutForbidden(chainID, tokenID string) bool {
 // DontCheckInInitRouter do not check in init router
 func DontCheckInInitRouter() bool {
 	return GetExtraConfig() != nil && GetExtraConfig().DontCheckInInitRouter
+}
+
+// FeeReceiverOnDestChain fee receiver on dest chain
+func FeeReceiverOnDestChain(toChainID string) string {
+	c := GetLocalChainConfig(toChainID)
+	return c.FeeReceiverOnDestChain
+}
+
+// ChargeFeeOnDestChain charge fee on dest chain
+func ChargeFeeOnDestChain(tokenID, fromChainID, toChainID string) bool {
+	c := GetLocalChainConfig(toChainID)
+	if c.ChargeFeeOnDestChain == nil {
+		return false
+	}
+	for _, tid := range c.ChargeFeeOnDestChain[fromChainID] {
+		if strings.EqualFold(tid, tokenID) {
+			return true
+		}
+	}
+	return false
 }
