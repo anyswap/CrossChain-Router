@@ -12,6 +12,8 @@ import (
 	codecTypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	cryptoTypes "github.com/cosmos/cosmos-sdk/crypto/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	sdktx "github.com/cosmos/cosmos-sdk/types/tx"
 	authTx "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 )
@@ -34,6 +36,7 @@ func NewClientContext() cosmosClient.Context {
 	interfaceRegistry := codecTypes.NewInterfaceRegistry()
 	interfaceRegistry.RegisterImplementations((*cryptoTypes.PubKey)(nil), &secp256k1.PubKey{})
 	interfaceRegistry.RegisterImplementations((*authtypes.AccountI)(nil), &authtypes.BaseAccount{})
+	interfaceRegistry.RegisterImplementations((*sdk.Tx)(nil), &sdktx.Tx{})
 
 	protoCodec := codec.NewProtoCodec(interfaceRegistry)
 	txConfig := authTx.NewTxConfig(protoCodec, authTx.DefaultSignModes)

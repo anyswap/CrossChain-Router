@@ -42,7 +42,7 @@ func GetTransactionByHash(ctx context.Context, clientCtx ClientContext, txHash s
 		return nil, errors.WithStack(err)
 	}
 	var tx sdktx.Tx
-	err = protoCodec.Unmarshal(txres.Tx, &tx) //TODO
+	err = protoCodec.Unmarshal(txres.Tx, &tx)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

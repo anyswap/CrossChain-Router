@@ -91,15 +91,22 @@ func (b *Bridge) GRPCGetTransactionByHash(txHash string) (res *GetTxResponse, er
 		clientCtx := b.ClientContext.WithClient(rpcClient)
 		txres, err = grpc.GetTransactionByHash(ctx, clientCtx, txHash)
 		if err == nil {
-			var tx sdktx.Tx
+			var tx *sdktx.Tx
 			if err := clientCtx.InterfaceRegistry().UnpackAny(txres.Tx, &tx); err != nil {
 				log.Warn("GRPCGetTransactionByHash failed", "txHash", txHash, "err", err)
 				return nil, errors.WithStack(err)
 			}
+			if tx == nil {
+				return nil, fmt.Errorf("unpack tx error")
+			}
+			var txMemo string
+			if tx.Body != nil {
+				txMemo = tx.Body.Memo
+			}
 			return &GetTxResponse{
 				Tx: &Tx{
 					Body: TxBody{
-						Memo: tx.Body.Memo,
+						Memo: txMemo,
 					},
 				},
 				TxResponse: &TxResponse{
