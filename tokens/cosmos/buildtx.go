@@ -80,6 +80,15 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 				if err != nil {
 					return nil, err
 				}
+				log.Info(fmt.Sprintf("build %s raw tx", args.SwapType.String()),
+					"identifier", args.Identifier, "swapID", args.SwapID,
+					"fromChainID", args.FromChainID, "toChainID", args.ToChainID,
+					"from", args.From, "receiver", receiver,
+					"accountNumber", accountNumber, "sequence", *extra.Sequence,
+					"gasLimit", *extra.Gas, "replaceNum", args.GetReplaceNum(),
+					"originValue", args.OriginValue, "swapValue", args.SwapValue,
+					"gasFee", *extra.Fee, "bridgeFee", extra.BridgeFee,
+				)
 				return &BuildRawTx{
 					TxBuilder:     txBuilder,
 					AccountNumber: accountNumber,
@@ -214,5 +223,6 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 		return receiver, amount, tokens.ErrMissTokenConfig
 	}
 	amount = tokens.CalcSwapValue(erc20SwapInfo.TokenID, args.FromChainID.String(), b.ChainConfig.ChainID, args.OriginValue, fromTokenCfg.Decimals, toTokenCfg.Decimals, args.OriginFrom, args.OriginTxTo)
+	args.Extra.BridgeFee = new(big.Int).Sub(args.OriginValue, amount)
 	return receiver, amount, err
 }

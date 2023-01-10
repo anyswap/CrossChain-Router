@@ -221,6 +221,9 @@ type AllExtras struct {
 	Gas        *uint64       `json:"gas,omitempty"`
 	RawTx      hexutil.Bytes `json:"rawTx,omitempty"`
 	BlockHash  *string       `json:"blockHash,omitempty"`
+
+	// calculated value
+	BridgeFee *big.Int `json:"bridgeFee,omitempty"`
 }
 
 // EthExtraArgs struct
