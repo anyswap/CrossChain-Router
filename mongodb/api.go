@@ -31,6 +31,8 @@ var (
 	updateResultLock sync.Mutex
 
 	maxCountOfResults = int64(1000)
+
+	errInvalidSwap = errors.New("invalid swap fields")
 )
 
 // GetRouterSwapKey get router swap key
@@ -40,6 +42,9 @@ func GetRouterSwapKey(fromChainID, txid string, logindex int) string {
 
 // AddRouterSwap add router swap
 func AddRouterSwap(ms *MgoSwap) error {
+	if !ms.IsValid() {
+		return errInvalidSwap
+	}
 	ms.Key = GetRouterSwapKey(ms.FromChainID, ms.TxID, ms.LogIndex)
 	ms.InitTime = common.NowMilli()
 	_, err := collRouterSwap.InsertOne(clientCtx, ms)

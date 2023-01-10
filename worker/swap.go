@@ -389,6 +389,9 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 		}
 		return err
 	}
+	if args.SwapValue == nil {
+		return tokens.ErrNilSwapValue
+	}
 	swapTxNonce := args.GetTxNonce() // assign after build tx
 	logWorker("doSwap", "build tx success", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "swapNonce", swapTxNonce, "timespent", time.Since(start).String())
 
@@ -420,10 +423,8 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 	matchTx := &MatchTx{
 		SwapTx:    txHash,
 		SwapNonce: swapTxNonce,
+		SwapValue: args.SwapValue.String(),
 		MPC:       args.From,
-	}
-	if args.SwapValue != nil {
-		matchTx.SwapValue = args.SwapValue.String()
 	}
 	err = updateRouterSwapResult(fromChainID, txid, logIndex, matchTx)
 	if err != nil {

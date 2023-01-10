@@ -433,6 +433,7 @@ func (b *Bridge) buildAnyCallSwapTxInput(args *tokens.BuildTxArgs) (err error) {
 
 	routerContract := b.GetRouterContract("")
 	args.To = routerContract // to
+	args.SwapValue = big.NewInt(0)
 
 	return nil
 }

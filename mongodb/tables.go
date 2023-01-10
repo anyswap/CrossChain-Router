@@ -20,6 +20,13 @@ type MgoSwap struct {
 	Memo        string     `bson:"memo"`
 }
 
+// IsValid is valid
+func (swap *MgoSwap) IsValid() bool {
+	return swap.TxID != "" && swap.From != "" &&
+		swap.Bind != "" && swap.Value != "" &&
+		swap.FromChainID != "" && swap.ToChainID != ""
+}
+
 // ToSwapResult converts
 func (swap *MgoSwap) ToSwapResult() *MgoSwapResult {
 	return &MgoSwapResult{
