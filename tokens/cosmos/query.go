@@ -34,6 +34,8 @@ func joinURLPath(url, path string) string {
 func (b *Bridge) GetLatestBlockNumber() (uint64, error) {
 	if result, err := b.GRPCGetLatestBlockNumber(); err == nil {
 		return result, nil
+	} else if len(b.AllGatewayURLs) == 0 {
+		return 0, err
 	}
 	var result *GetLatestBlockResponse
 	var err error
@@ -51,6 +53,8 @@ func (b *Bridge) GetLatestBlockNumber() (uint64, error) {
 func (b *Bridge) GetLatestBlockNumberOf(apiAddress string) (uint64, error) {
 	if result, err := b.GRPCGetLatestBlockNumberOf(apiAddress); err == nil {
 		return result, nil
+	} else if len(b.AllGatewayURLs) == 0 {
+		return 0, err
 	}
 	var result *GetLatestBlockResponse
 	restApi := joinURLPath(apiAddress, LatestBlock)
@@ -64,6 +68,8 @@ func (b *Bridge) GetLatestBlockNumberOf(apiAddress string) (uint64, error) {
 func (b *Bridge) GetChainID() (string, error) {
 	if result, err := b.GRPCGetChainID(); err == nil {
 		return result, nil
+	} else if len(b.AllGatewayURLs) == 0 {
+		return "", err
 	}
 	var result *GetLatestBlockResponse
 	var err error
@@ -79,6 +85,8 @@ func (b *Bridge) GetChainID() (string, error) {
 func (b *Bridge) GetTransactionByHash(txHash string) (*GetTxResponse, error) {
 	if result, err := b.GRPCGetTransactionByHash(txHash); err == nil {
 		return result, nil
+	} else if len(b.AllGatewayURLs) == 0 {
+		return nil, err
 	}
 	var result *GetTxResponse
 	var err error
@@ -94,6 +102,8 @@ func (b *Bridge) GetTransactionByHash(txHash string) (*GetTxResponse, error) {
 func (b *Bridge) GetBaseAccount(address string) (*QueryAccountResponse, error) {
 	if result, err := b.GRPCGetBaseAccount(address); err == nil {
 		return result, nil
+	} else if len(b.AllGatewayURLs) == 0 {
+		return nil, err
 	}
 	var result *QueryAccountResponse
 	var err error
@@ -111,6 +121,8 @@ func (b *Bridge) GetBaseAccount(address string) (*QueryAccountResponse, error) {
 func (b *Bridge) GetDenomBalance(address, denom string) (sdk.Int, error) {
 	if result, err := b.GRPCGetDenomBalance(address, denom); err == nil {
 		return result, nil
+	} else if len(b.AllGatewayURLs) == 0 {
+		return sdk.ZeroInt(), err
 	}
 	var result *QueryAllBalancesResponse
 	var err error
@@ -133,6 +145,8 @@ func (b *Bridge) GetDenomBalance(address, denom string) (sdk.Int, error) {
 func (b *Bridge) SimulateTx(simulateReq *SimulateRequest) (string, error) {
 	if result, err := b.GRPCSimulateTx(simulateReq); err == nil {
 		return common.ToJSONString(result.GasInfo, false), nil
+	} else if len(b.AllGatewayURLs) == 0 {
+		return "", err
 	}
 	if data, err := json.Marshal(simulateReq); err != nil {
 		return "", err
@@ -150,6 +164,8 @@ func (b *Bridge) SimulateTx(simulateReq *SimulateRequest) (string, error) {
 func (b *Bridge) BroadcastTx(req *BroadcastTxRequest) (string, error) {
 	if result, err := b.GRPCBroadcastTx(req); err == nil {
 		return result.TxHash, nil
+	} else if len(b.AllGatewayURLs) == 0 {
+		return "", err
 	}
 	if data, err := json.Marshal(req); err != nil {
 		return "", err
