@@ -59,6 +59,8 @@ AutoSwapNonceEnabledChains = ["25"]
 [Server.SendTxLoopInterval]
 43114 = 10
 25    = 10
+#[Server.DefaultFee]
+#1007961752911 = 6250
 # default gas limit. key is chainID. if not set, use 90000 as default.
 [Server.DefaultGasLimit]
 4     = 90000

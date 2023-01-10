@@ -103,6 +103,7 @@ type RouterServerConfig struct {
 	SendTxLoopCount            map[string]int    `toml:",omitempty" json:",omitempty"` // key is chain ID
 	SendTxLoopInterval         map[string]int    `toml:",omitempty" json:",omitempty"` // key is chain ID
 
+	DefaultFee       map[string]string            `toml:",omitempty" json:",omitempty"` // key is chain ID
 	DefaultGasLimit  map[string]uint64            `toml:",omitempty" json:",omitempty"` // key is chain ID
 	MaxGasLimit      map[string]uint64            `toml:",omitempty" json:",omitempty"` // key is chain ID
 	MaxTokenGasLimit map[string]map[string]uint64 `toml:",omitempty" json:",omitempty"` // key is tokenID,chainID

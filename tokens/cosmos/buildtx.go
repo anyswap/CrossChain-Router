@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -90,7 +91,6 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 }
 
 func (b *Bridge) initExtra(args *tokens.BuildTxArgs) (extra *tokens.AllExtras, err error) {
-	denom := b.Denom
 	extra = args.Extra
 	if extra == nil {
 		extra = &tokens.AllExtras{}
@@ -105,10 +105,28 @@ func (b *Bridge) initExtra(args *tokens.BuildTxArgs) (extra *tokens.AllExtras, e
 		extra.Gas = &DefaultGasLimit
 	}
 	if extra.Fee == nil {
-		fee := DefaultFee + denom
+		fee := b.getDefaultFee()
 		extra.Fee = &fee
 	}
 	return extra, nil
+}
+
+func (b *Bridge) getDefaultFee() string {
+	fee := DefaultFee
+	serverCfg := params.GetRouterServerConfig()
+	if serverCfg != nil {
+		if cfgFee, exist := serverCfg.DefaultFee[b.ChainConfig.ChainID]; exist {
+			fee = cfgFee
+		}
+	}
+	if is_numeric(fee) {
+		fee += b.Denom
+	}
+	return fee
+}
+
+func is_numeric(word string) bool {
+	return regexp.MustCompile(`.\d`).MatchString(word)
 }
 
 // GetPoolNonce impl NonceSetter interface
