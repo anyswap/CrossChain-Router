@@ -120,7 +120,11 @@ func (b *NonceSetterBase) SetNonce(address string, value uint64) {
 		b.swapNonce[account] = &value
 	}
 	if old < value {
-		log.Info("set next nonce", "chainID", b.ChainConfig.ChainID, "account", account, "old", old, "new", value)
+		var chainID string
+		if b.ChainConfig != nil {
+			chainID = b.ChainConfig.ChainID
+		}
+		log.Info("set next nonce", "chainID", chainID, "account", account, "old", old, "new", value)
 	}
 }
 
