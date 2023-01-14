@@ -83,15 +83,15 @@ func sendRawTransaction(sendTxParams []interface{}, urls []string) (txHash strin
 		err = client.RPCPost(&result, url, "sendTransaction", sendTxParams...)
 		if err != nil {
 			if strings.Contains(err.Error(), "Blockhash not found") {
-				logFunc("solana sendRawTransaction: Blockhash not found, wait 5 sec retry", "retry times", i+1)
+				logFunc("Solana SendSignedTransaction: Blockhash not found, wait 5 sec retry", "retry times", i+1)
 				time.Sleep(5 * time.Second)
 				continue
 			} else {
-				logFunc("SendSignedTransaction failed", "url", url, "err", err)
+				logFunc("Solana SendSignedTransaction failed", "url", url, "err", err)
 				break
 			}
 		} else {
-			logFunc("SendSignedTransaction success", "txHash", result, "url", url)
+			logFunc("Solana SendSignedTransaction success", "txHash", result, "url", url)
 			txHash = result
 			break
 		}
