@@ -7,7 +7,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
-	"github.com/anyswap/CrossChain-Router/v3/tokens/base"
 	routerprog "github.com/anyswap/CrossChain-Router/v3/tokens/solana/programs/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/solana/types"
 )
@@ -16,14 +15,11 @@ var (
 	// ensure Bridge impl tokens.CrossChainBridge
 	_ tokens.IBridge = &Bridge{}
 
-	_ tokens.NonceSetter = &Bridge{}
-
 	routerPDASeeds = [][]byte{[]byte("Router")}
 )
 
 // Bridge solana bridge
 type Bridge struct {
-	*base.NonceSetterBase
 	*tokens.CrossChainBridgeBase
 }
 
@@ -152,13 +148,4 @@ func (b *Bridge) GetTxBlockInfo(txHash string) (blockHeight, blockTime uint64) {
 		return 0, 0
 	}
 	return txStatus.BlockHeight, txStatus.BlockTime
-}
-
-// GetPoolNonce impl NonceSetter interface
-func (b *Bridge) GetPoolNonce(address, _height string) (uint64, error) {
-	nonce, err := b.GetBlockHeight()
-	if err != nil {
-		return 0, fmt.Errorf("solana GetBlockHeight, %w", err)
-	}
-	return nonce, nil
 }

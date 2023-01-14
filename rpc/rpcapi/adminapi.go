@@ -103,7 +103,7 @@ func getKeys(args *admin.CallArgs, startPos int) (chainID, txid string, logIndex
 		return
 	}
 	txid = args.Params[startPos+1]
-	if !common.IsHexHash(txid) {
+	if txid == "" || (common.HasHexPrefix(txid) && !common.IsHexHash(txid)) {
 		err = fmt.Errorf("wrong tx id '%v'", txid)
 		return
 	}

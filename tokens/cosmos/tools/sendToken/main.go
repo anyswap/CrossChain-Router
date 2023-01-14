@@ -16,6 +16,7 @@ import (
 var (
 	paramURLs       string
 	paramChainID    string
+	paramPrefix     string
 	paramSender     string
 	paramTo         string
 	paramDenom      string
@@ -120,6 +121,7 @@ func BuildTx() (*cosmos.BuildRawTx, error) {
 func initFlags() {
 	flag.StringVar(&paramURLs, "url", "https://sei-testnet-rpc.allthatnode.com:1317", "urls (comma separated)")
 	flag.StringVar(&paramChainID, "chainID", "", "chain id")
+	flag.StringVar(&paramPrefix, "prefix", "sei", "bech32 prefix for account")
 	flag.StringVar(&paramSender, "sender", "", "sender address")
 	flag.StringVar(&paramTo, "to", "", "to address")
 	flag.StringVar(&paramDenom, "denom", "", "denom")
@@ -151,4 +153,8 @@ func initBridge() {
 	bridge.SetChainConfig(&tokens.ChainConfig{
 		ChainID: chainID.String(),
 	})
+
+	config := types.GetConfig()
+	config.SetBech32PrefixForAccount(paramPrefix, "")
+	config.Seal()
 }
