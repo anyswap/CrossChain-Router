@@ -228,9 +228,21 @@ func GetFeeConfig(tokenID, fromChainID, toChainID string) *FeeConfig {
 
 // SetOnchainCustomConfig set onchain custom config
 func SetOnchainCustomConfig(chainID, tokenID string, config *OnchainCustomConfig) {
-	m := new(sync.Map)
-	m.Store(tokenID, config)
-	onchainCustomCfg.Store(chainID, m)
+	m, exist := onchainCustomCfg.Load(chainID)
+	if exist {
+		mm := m.(*sync.Map)
+		mm.Store(tokenID, config)
+	} else {
+		mm := new(sync.Map)
+		mm.Store(tokenID, config)
+		onchainCustomCfg.Store(chainID, mm)
+	}
+	cfg := GetOnchainCustomConfig(chainID, tokenID)
+	if cfg != config {
+		log.Error("set onchain custom config failed", "chainID", chainID, "tokenID", tokenID, "set", config, "get", cfg)
+	} else {
+		log.Info("set onchain custom config success", "chainID", chainID, "tokenID", tokenID, "config", config)
+	}
 }
 
 // GetOnchainCustomConfig get onchain custom config
