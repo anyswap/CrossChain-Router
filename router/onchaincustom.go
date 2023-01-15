@@ -74,5 +74,4 @@ func InitOnchainCustomConfig(chainID *big.Int, tokenID string) {
 	ccConfig.AdditionalSrcMaximumSwapFee = additionalMaxFee
 
 	tokens.SetOnchainCustomConfig(chainID.String(), tokenID, ccConfig)
-	log.Info("set onchain custom config", "chainID", chainID, "tokenID", tokenID, "config", ccConfig)
 }
