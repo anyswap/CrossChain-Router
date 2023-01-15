@@ -101,7 +101,7 @@ func InitRouterBridges(isServer bool) {
 			bridge := NewCrossChainBridge(chainID)
 
 			InitGatewayConfig(bridge, chainID)
-			if len(bridge.GetGatewayConfig().APIAddress) == 0 {
+			if bridge.GetGatewayConfig() == nil || len(bridge.GetGatewayConfig().APIAddress) == 0 {
 				logErrFunc("bridge has no gateway config", "chainID", chainID)
 				return
 			}
@@ -195,7 +195,7 @@ func loadSwapConfigs() {
 					return
 				}
 				swapConfig.Store(chainID.String(), swapCfg)
-				log.Info("load swap config success", "tokenID", tokenID, "chainID", chainID, "multichainToken", multichainToken)
+				log.Info("load swap config success", "tokenID", tokenID, "chainID", chainID, "multichainToken", multichainToken, "swapCfg", swapCfg)
 			}(wg, tokenID, chainID)
 		}
 	}

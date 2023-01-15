@@ -270,6 +270,7 @@ func GetSwapConfig(tokenID string, toChainID *big.Int) (*tokens.SwapConfig, erro
 
 // GetCustomConfig abi
 func GetCustomConfig(chainID *big.Int, key string, lowerCaseKey bool) (string, error) {
+	log.Info("call GetCustomConfig start", "chainID", chainID, "key", key, "lowerCaseKey", lowerCaseKey)
 	funcHash := common.FromHex("0x61387d61")
 	if lowerCaseKey {
 		key = strings.ToLower(key)
@@ -277,12 +278,15 @@ func GetCustomConfig(chainID *big.Int, key string, lowerCaseKey bool) (string, e
 	data := abicoder.PackDataWithFuncHash(funcHash, chainID, key)
 	res, err := CallOnchainContract(data, "latest")
 	if err != nil {
+		log.Error("call GetCustomConfig failed", "chainID", chainID, "key", key, "err", err)
 		return "", err
 	}
-	if len(res) == 0 {
-		return "", nil
+	var result string
+	if len(res) > 0 {
+		result, err = abicoder.ParseStringInData(res, 0)
 	}
-	return abicoder.ParseStringInData(res, 0)
+	log.Info("call GetCustomConfig success", "chainID", chainID, "key", key, "res", result)
+	return result, err
 }
 
 // GetMPCPubkey abi

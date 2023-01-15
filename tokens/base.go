@@ -262,6 +262,8 @@ func CalcSwapValue(tokenID, fromChainID, toChainID string, value *big.Int, fromD
 		log.Info("calc swap fee start",
 			"tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID,
 			"value", value, "feeRate", swapfeeRatePerMillion,
+			"cfgFeeRate", swapCfg.SwapFeeRatePerMillion,
+			"srcFeeRate", srcFeeCfg.AdditionalSrcChainSwapFeeRate,
 			"minFee", minimumSwapFee, "maxFee", maximumSwapFee)
 
 		var swapFee, adjustBaseFee *big.Int
