@@ -270,6 +270,9 @@ func GetSwapConfig(tokenID string, toChainID *big.Int) (*tokens.SwapConfig, erro
 
 // GetCustomConfig abi
 func GetCustomConfig(chainID *big.Int, key string, lowerCaseKey bool) (string, error) {
+	if key == "" {
+		return "", nil
+	}
 	log.Info("call GetCustomConfig start", "chainID", chainID, "key", key, "lowerCaseKey", lowerCaseKey)
 	funcHash := common.FromHex("0x61387d61")
 	if lowerCaseKey {
