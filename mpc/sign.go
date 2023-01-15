@@ -29,6 +29,7 @@ var (
 	errRValueIsUsed         = errors.New("r value is already used")
 	errWrongSignatureLength = errors.New("wrong signature length")
 	errNoUsableSignGroups   = errors.New("no usable sign groups")
+	errEmptyKeyID           = errors.New("empty keyID")
 
 	// delete if fail too many times consecutively, 0 means disable checking
 	maxSignGroupFailures      = 0
@@ -148,6 +149,9 @@ func doSignImpl(mpcNode *NodeInfo, signGroupIndex int, signType, signPubkey stri
 	keyID, err = Sign(rawTX, rpcAddr)
 	if err != nil {
 		return "", nil, err
+	}
+	if keyID == "" {
+		return "", nil, errEmptyKeyID
 	}
 
 	rsvs, err = getSignResult(keyID, rpcAddr)
