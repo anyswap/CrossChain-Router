@@ -187,6 +187,7 @@ func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
 		OriginFrom:  swap.From,
 		OriginTxTo:  swap.TxTo,
 		OriginValue: biValue,
+		Extra:       &tokens.AllExtras{},
 	}
 	args.SwapInfo, err = mongodb.ConvertFromSwapInfo(&swap.SwapInfo)
 	if err != nil {

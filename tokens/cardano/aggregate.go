@@ -59,7 +59,8 @@ func (b *Bridge) SignAggregateTx(swapId string, rawTx interface{}) (string, erro
 				Identifier: tokens.AggregateIdentifier,
 				SwapID:     swapId,
 			},
-			From: mpcAddress,
+			From:  mpcAddress,
+			Extra: &tokens.AllExtras{},
 		}
 		if signTx, _, err := b.MPCSignTransaction(rawTransaction, args); err != nil {
 			return "", err
