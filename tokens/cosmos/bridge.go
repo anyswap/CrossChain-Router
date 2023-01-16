@@ -75,7 +75,7 @@ func (b *Bridge) InitRouterInfo(routerContract, routerVersion string) (err error
 	extra := strings.Split(b.ChainConfig.Extra, ":")
 	if len(extra) != 2 {
 		return fmt.Errorf("chainConfig extra error")
-	} else {
+	} else if b.Prefix == "" {
 		b.SetPrefixAndDenom(extra[0], extra[1])
 		err := sdk.ValidateDenom(b.Denom)
 		if err != nil {
