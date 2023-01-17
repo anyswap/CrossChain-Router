@@ -210,6 +210,8 @@ func CreateRawTx(rawTransaction *RawTransaction, mpcAddr string) error {
 	} else {
 		cmdString = fmt.Sprintf(BuildRawTxWithoutMintCmd, rawTransaction.Fee, inputString, outputString, RawPath+rawTransaction.OutFile+RawSuffix)
 	}
+
+	log.Infof("CardanoExecCmd", "cmdString", cmdString)
 	if _, err := ExecCmd(cmdString, "  "); err != nil {
 		return err
 	}
