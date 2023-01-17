@@ -9,6 +9,8 @@ import (
 
 	tronaddress "github.com/fbsobreira/gotron-sdk/pkg/address"
 	"github.com/fbsobreira/gotron-sdk/pkg/proto/core"
+
+	//nolint:staticcheck // ignore SA1019
 	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/protobuf/proto"
 
@@ -26,6 +28,7 @@ func getTriggerSmartContract(tx *core.Transaction) (*core.TriggerSmartContract, 
 	contracts := rawdata.GetContract()
 
 	var contract core.TriggerSmartContract
+	//nolint:staticcheck // ignore SA1019
 	err := ptypes.UnmarshalAny(contracts[0].GetParameter(), &contract)
 	if err != nil {
 		return nil, fmt.Errorf("decode trigger smart contract tx error: %w", err)

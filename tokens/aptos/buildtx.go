@@ -3,6 +3,7 @@ package aptos
 import (
 	"errors"
 	"fmt"
+	"math/big"
 	"strconv"
 	"strings"
 	"time"
@@ -169,9 +170,10 @@ func (b *Bridge) BuildSwapinTransferTransaction(args *tokens.BuildTxArgs, tokenC
 			Type:          SCRIPT_FUNCTION_PAYLOAD,
 			Function:      GetRouterFunctionId(args.From, CONTRACT_NAME_ROUTER, CONTRACT_FUNC_SWAPIN),
 			TypeArguments: []string{tokenCfg.Extra, tokenCfg.ContractAddress},
-			Arguments:     []interface{}{receiver, strconv.FormatUint(amount, 10), args.GetUniqueSwapIdentifier(), args.FromChainID.String()},
+			Arguments:     []interface{}{receiver, strconv.FormatUint(amount.Uint64(), 10), args.GetUniqueSwapIdentifier(), args.FromChainID.String()},
 		},
 	}
+	args.SwapValue = amount
 	return tx, nil
 }
 
@@ -197,7 +199,7 @@ func (b *Bridge) BuildSwapinTransferTransactionForScript(router, coin, poolcoin,
 	return tx, nil
 }
 
-func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken string) (receiver string, amount uint64, err error) {
+func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken string) (receiver string, amount *big.Int, err error) {
 	erc20SwapInfo := args.ERC20SwapInfo
 	receiver = args.Bind
 	if !b.IsValidAddress(receiver) {
@@ -221,7 +223,7 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 	if !swapValue.IsUint64() {
 		return receiver, amount, tokens.ErrTxWithWrongValue
 	}
-	return receiver, swapValue.Uint64(), err
+	return receiver, swapValue, err
 }
 
 func (b *Bridge) getGasPrice() string {

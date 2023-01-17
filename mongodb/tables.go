@@ -6,6 +6,7 @@ type MgoSwap struct {
 	SwapType    uint32 `bson:"swaptype"`
 	TxID        string `bson:"txid"`
 	TxTo        string `bson:"txto"`
+	TxHeight    uint64 `bson:"txheight"`
 	From        string `bson:"from"`
 	Bind        string `bson:"bind"`
 	Value       string `bson:"value"`
@@ -26,6 +27,7 @@ func (swap *MgoSwap) ToSwapResult() *MgoSwapResult {
 		SwapType:    swap.SwapType,
 		TxID:        swap.TxID,
 		TxTo:        swap.TxTo,
+		TxHeight:    swap.TxHeight,
 		From:        swap.From,
 		Bind:        swap.Bind,
 		Value:       swap.Value,

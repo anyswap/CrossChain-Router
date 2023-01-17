@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -42,24 +43,7 @@ var (
 
 // StartSwapJob swap job
 func StartSwapJob() {
-	// init all swap task queue
-	router.RouterBridges.Range(func(k, v interface{}) bool {
-		chainID := k.(string)
-		if _, exist := swapTaskQueues[chainID]; !exist {
-			swapTaskQueues[chainID] = fifo.NewQueue()
-		}
-		return true
-	})
-
-	// start comsumers
-	router.RouterBridges.Range(func(k, v interface{}) bool {
-		chainID := k.(string)
-
-		mongodb.MgoWaitGroup.Add(1)
-		go startSwapConsumer(chainID)
-
-		return true
-	})
+	logWorker("swap", "start router swap job")
 
 	// start producer
 	go startSwapProducer()
@@ -67,7 +51,6 @@ func StartSwapJob() {
 }
 
 func startSwapProducer() {
-	logWorker("swap", "start router swap job")
 	for {
 		res, err := findRouterSwapToSwap()
 		if err != nil {
@@ -134,10 +117,10 @@ func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
 	}
 
 	if isBlacked(swap) {
-		logWorkerTrace("swap", "swap is in black list", "txid", txid, "logIndex", logIndex,
-			"fromChainID", fromChainID, "toChainID", toChainID, "token", swap.GetToken(), "tokenID", swap.GetTokenID())
+		logWorkerWarn("swap", "swap is in black list", "txid", txid, "logIndex", logIndex, "fromChainID", fromChainID, "toChainID", toChainID, "token", swap.GetToken(), "tokenID", swap.GetTokenID())
 		err = tokens.ErrSwapInBlacklist
 		_ = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.SwapInBlacklist, now(), err.Error())
+		_ = mongodb.UpdateRouterSwapResultStatus(fromChainID, txid, logIndex, mongodb.SwapInBlacklist, now(), err.Error())
 		return nil
 	}
 
@@ -240,9 +223,13 @@ func preventReswap(res *mongodb.MgoSwapResult) (err error) {
 	return processHistory(res)
 }
 
+func isPendingSwapStatus(status mongodb.SwapStatus) bool {
+	return status == mongodb.MatchTxEmpty || status == mongodb.Reswapping
+}
+
 func processNonEmptySwapResult(res *mongodb.MgoSwapResult) error {
 	if res.SwapNonce > 0 ||
-		!(res.Status == mongodb.MatchTxEmpty || res.Status == mongodb.Reswapping) ||
+		!isPendingSwapStatus(res.Status) ||
 		res.SwapTx != "" ||
 		res.SwapHeight != 0 ||
 		len(res.OldSwapTxs) > 0 {
@@ -253,7 +240,7 @@ func processNonEmptySwapResult(res *mongodb.MgoSwapResult) error {
 }
 
 func processHistory(res *mongodb.MgoSwapResult) error {
-	if (res.Status == mongodb.MatchTxEmpty || res.Status == mongodb.Reswapping) && res.SwapNonce == 0 {
+	if isPendingSwapStatus(res.Status) && res.SwapNonce == 0 {
 		return nil
 	}
 	chainID := res.FromChainID
@@ -273,9 +260,18 @@ func dispatchSwapTask(args *tokens.BuildTxArgs) error {
 		return fmt.Errorf("unknown router swap type %d", args.SwapType)
 	}
 
-	taskQueue, exist := swapTaskQueues[args.ToChainID.String()]
+	chainID := args.ToChainID.String()
+	taskQueue, exist := swapTaskQueues[chainID]
 	if !exist {
-		return fmt.Errorf("no task queue for chainID '%v'", args.ToChainID)
+		bridge := router.GetBridgeByChainID(chainID)
+		if bridge == nil {
+			return tokens.ErrNoBridgeForChainID
+		}
+		// init swap task queue and start consumer routine
+		taskQueue = fifo.NewQueue()
+		swapTaskQueues[chainID] = taskQueue
+		mongodb.MgoWaitGroup.Add(1)
+		go startSwapConsumer(chainID)
 	}
 
 	logWorker("doSwap", "dispatch router swap task", "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "value", args.OriginValue, "swapNonce", args.GetTxNonce(), "queue", taskQueue.Len())
@@ -384,26 +380,28 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 		return tokens.ErrNoBridgeForChainID
 	}
 
+	start := time.Now()
 	rawTx, err := resBridge.BuildRawTransaction(args)
 	if err != nil {
-		logWorkerError("doSwap", "build tx failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex)
+		logWorkerError("doSwap", "build tx failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "timespent", time.Since(start).String())
 		if errors.Is(err, tokens.ErrBuildTxErrorAndDelay) {
 			_ = updateSwapMemo(fromChainID, txid, logIndex, err.Error())
 		}
 		return err
 	}
 	swapTxNonce := args.GetTxNonce() // assign after build tx
-	logWorker("doSwap", "build tx success", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "swapNonce", swapTxNonce)
+	logWorker("doSwap", "build tx success", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "swapNonce", swapTxNonce, "timespent", time.Since(start).String())
 
+	start = time.Now()
 	signedTx, txHash, err := resBridge.MPCSignTransaction(rawTx, args)
 	if err != nil {
-		logWorkerError("doSwap", "sign tx failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex)
+		logWorkerError("doSwap", "sign tx failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "timespent", time.Since(start).String())
 		if errors.Is(err, mpc.ErrGetSignStatusHasDisagree) {
 			reverifySwap(args)
 		}
 		return err
 	}
-	logWorker("doSwap", "sign tx success", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "txHash", txHash, "swapNonce", swapTxNonce)
+	logWorker("doSwap", "sign tx success", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "txHash", txHash, "swapNonce", swapTxNonce, "timespent", time.Since(start).String())
 
 	disagreeRecords.Delete(cacheKey)
 
@@ -440,16 +438,18 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 		return err
 	}
 
+	start = time.Now()
 	sentTxHash, err := sendSignedTransaction(resBridge, signedTx, args)
 	if err == nil && txHash != sentTxHash {
 		logWorkerError("doSwap", "send tx success but with different hash", errSendTxWithDiffHash,
 			"fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex,
-			"txHash", txHash, "sentTxHash", sentTxHash, "swapNonce", swapTxNonce)
+			"txHash", txHash, "sentTxHash", sentTxHash, "swapNonce", swapTxNonce,
+			"timespent", time.Since(start).String())
 		_ = mongodb.UpdateRouterOldSwapTxs(fromChainID, txid, logIndex, sentTxHash)
 	} else if err == nil {
 		logWorker("doSwap", "send tx success",
 			"fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex,
-			"txHash", txHash, "swapNonce", swapTxNonce)
+			"txHash", txHash, "swapNonce", swapTxNonce, "timespent", time.Since(start).String())
 	}
 	logWorker("doSwap", "finish to process", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "value", originValue)
 	return err
@@ -507,14 +507,16 @@ func signAndSendTx(rawTx interface{}, args *tokens.BuildTxArgs) error {
 	swapTxNonce := args.GetTxNonce()
 	resBridge := router.GetBridgeByChainID(toChainID)
 
+	start := time.Now()
 	signedTx, txHash, err := resBridge.MPCSignTransaction(rawTx, args)
 	if err != nil {
-		logWorkerError("doSwap", "sign tx failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "swapNonce", swapTxNonce)
+		logWorkerError("doSwap", "sign tx failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "swapNonce", swapTxNonce, "timespent", time.Since(start).String())
 		if errors.Is(err, mpc.ErrGetSignStatusHasDisagree) {
 			reverifySwap(args)
 		}
 		return err
 	}
+	logWorker("doSwap", "sign tx success", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "swapNonce", swapTxNonce, "timespent", time.Since(start).String())
 
 	cacheKey := mongodb.GetRouterSwapKey(fromChainID, txid, logIndex)
 	disagreeRecords.Delete(cacheKey)
@@ -523,12 +525,18 @@ func signAndSendTx(rawTx interface{}, args *tokens.BuildTxArgs) error {
 	addSwapHistory(fromChainID, txid, logIndex, txHash)
 	_ = updateSwapTx(fromChainID, txid, logIndex, txHash)
 
+	start = time.Now()
 	sentTxHash, err := sendSignedTransaction(resBridge, signedTx, args)
 	if err == nil && txHash != sentTxHash {
 		logWorkerError("doSwap", "send tx success but with different hash", errSendTxWithDiffHash,
 			"fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex,
-			"txHash", txHash, "sentTxHash", sentTxHash, "swapNonce", swapTxNonce)
+			"txHash", txHash, "sentTxHash", sentTxHash, "swapNonce", swapTxNonce,
+			"timespent", time.Since(start).String())
 		_ = mongodb.UpdateRouterOldSwapTxs(fromChainID, txid, logIndex, sentTxHash)
+	} else if err == nil {
+		logWorker("doSwap", "send tx success",
+			"fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex,
+			"txHash", txHash, "swapNonce", swapTxNonce, "timespent", time.Since(start).String())
 	}
 	return err
 }
@@ -538,6 +546,12 @@ func reverifySwap(args *tokens.BuildTxArgs) {
 	toChainID := args.ToChainID.String()
 	txid := args.SwapID
 	logIndex := args.LogIndex
+
+	res, err := mongodb.FindRouterSwapResult(fromChainID, txid, logIndex)
+	if err == nil && !isPendingSwapStatus(res.Status) {
+		return
+	}
+
 	verifyArgs := &tokens.VerifyArgs{
 		SwapType:      args.SwapType,
 		LogIndex:      logIndex,
@@ -547,7 +561,8 @@ func reverifySwap(args *tokens.BuildTxArgs) {
 	if srcBridge == nil {
 		return
 	}
-	_, err := srcBridge.VerifyTransaction(txid, verifyArgs)
+	start := time.Now()
+	_, err = srcBridge.VerifyTransaction(txid, verifyArgs)
 	switch {
 	case err == nil,
 		errors.Is(err, tokens.ErrTxNotStable),
@@ -558,6 +573,7 @@ func reverifySwap(args *tokens.BuildTxArgs) {
 		_ = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxNotStable, now(), "")
 		_ = mongodb.UpdateRouterSwapResultStatus(fromChainID, txid, logIndex, mongodb.TxNotStable, now(), err.Error())
 	}
+	logWorker("verify", "reverify tx finished job", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "timespent", time.Since(start).String())
 
 	var disagreeCount uint64
 	cacheKey := mongodb.GetRouterSwapKey(fromChainID, txid, logIndex)

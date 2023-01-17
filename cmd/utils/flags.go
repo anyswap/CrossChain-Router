@@ -18,6 +18,11 @@ var (
 		Aliases: []string{"c"},
 		Usage:   "Specify config file",
 	}
+	// GatewayConfigFlag --gateway
+	GatewayConfigFlag = &cli.StringFlag{
+		Name:  "gateway",
+		Usage: "Specify gateway config file",
+	}
 	// LogFileFlag --log
 	LogFileFlag = &cli.StringFlag{
 		Name:  "log",
@@ -130,6 +135,11 @@ var (
 	GasPriceFlag = &cli.StringFlag{
 		Name:  "gasPrice",
 		Usage: "gas price",
+	}
+	// MemoFlag --memo
+	MemoFlag = &cli.StringFlag{
+		Name:  "memo",
+		Usage: "memo text",
 	}
 
 	// CommonLogFlags common log flags

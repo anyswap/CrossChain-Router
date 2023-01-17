@@ -128,11 +128,10 @@ func (b *Bridge) initSigner(chainID *big.Int) (err error) {
 }
 
 // InitRouterInfo init router info
-func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
+func (b *Bridge) InitRouterInfo(routerContract, routerVersion string) (err error) {
 	if routerContract == "" {
 		return nil
 	}
-
 	chainID := b.ChainConfig.ChainID
 	log.Info(fmt.Sprintf("[%5v] start init router info", chainID), "routerContract", routerContract)
 	var routerWNative, routerSecurity string
@@ -141,7 +140,7 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 		if err != nil {
 			log.Warn("get router wNative address failed", "chainID", chainID, "routerContract", routerContract, "err", err)
 		}
-		if params.GetSwapSubType() == "v7" {
+		if routerVersion == "v7" {
 			routerSecurity, err = b.GetRouterSecurity(routerContract)
 			if err != nil {
 				log.Warn("get router security address failed", "chainID", chainID, "routerContract", routerContract, "err", err)
@@ -198,7 +197,10 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 
 	b.CrossChainBridgeBase.SetTokenConfig(tokenAddr, tokenCfg)
 
-	_ = b.checkTokenConfig(tokenCfg)
+	err := b.checkTokenConfig(tokenCfg)
+	if err != nil && params.DontCheckInInitRouter() {
+		tokenCfg.Checked = true
+	}
 }
 
 // GetTokenConfig get and check token config

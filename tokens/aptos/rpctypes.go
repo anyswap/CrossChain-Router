@@ -65,7 +65,7 @@ type Event struct {
 	Key            string            `json:"key,omitempty"`
 	SequenceNumber string            `json:"sequence_number,omitempty"`
 	Type           string            `json:"type,omitempty"`
-	Data           map[string]string `json:"data,omitempty"`
+	Data           map[string]string `json:"data,omitempty"` // TODO map[string]interface{}
 }
 
 type Transaction struct {

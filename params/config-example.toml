@@ -118,6 +118,8 @@ MaxRequestsLimit = 10
 ServerAPIAddress = "http://127.0.0.1:11556/rpc"
 # don't check server connection
 NoCheckServerConnection = false
+# check gas token balance
+CheckGasTokenBalance = false
 
 [Extra]
 # is swap with permit enabled
@@ -132,6 +134,8 @@ EnableParallelSwap = false
 UsePendingBalance = false
 # dont panic in init router
 DontPanicInInitRouter = false
+# dont check in init router (quick loading)
+DontCheckInInitRouter = false
 # apecify dynamic fee tx enabled chainids
 DynamicFeeTxEnabledChains = ["3"]
 # enable check tx block hash for security reason
@@ -199,7 +203,12 @@ EstimatedGasMustBePositive = true
 SmallestGasPriceUnit = 1000000000
 
 [Extra.LocalChainConfig.25]
+ForbidParallelLoading = true
 ForbidSwapoutTokenIDs = ["USDC", "USDT"]
+BigValueDiscount = 50
+
+[Extra.SpecialFlags]
+key = "value"
 
 
 # OnChain config
