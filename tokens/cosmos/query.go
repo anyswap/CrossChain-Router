@@ -51,10 +51,12 @@ func (b *Bridge) GetLatestBlockNumber() (uint64, error) {
 }
 
 func (b *Bridge) GetLatestBlockNumberOf(apiAddress string) (uint64, error) {
-	if result, err := b.GRPCGetLatestBlockNumberOf(apiAddress); err == nil {
-		return result, nil
-	} else if len(b.AllGatewayURLs) == 0 {
-		return 0, err
+	if _, exist := rpcClientsMap[apiAddress]; exist {
+		if result, err := b.GRPCGetLatestBlockNumberOf(apiAddress); err == nil {
+			return result, nil
+		} else if len(b.AllGatewayURLs) == 0 {
+			return 0, err
+		}
 	}
 	var result *GetLatestBlockResponse
 	restApi := joinURLPath(apiAddress, LatestBlock)

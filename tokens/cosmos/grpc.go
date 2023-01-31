@@ -65,7 +65,7 @@ func (b *Bridge) GRPCGetLatestBlockNumberOf(url string) (res uint64, err error) 
 	if err == nil {
 		return res, nil
 	}
-	if err != nil {
+	if err != nil && exist {
 		log.Warn("GRPCGetLatestBlockNumber failed", "err", err)
 	}
 	return 0, wrapRPCQueryError(err, "GRPCGetLatestBlockNumber")
