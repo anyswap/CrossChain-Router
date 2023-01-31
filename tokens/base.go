@@ -261,21 +261,26 @@ func CalcSwapValue(tokenID, fromChainID, toChainID string, value *big.Int, fromD
 	minimumSwapFee := swapCfg.MinimumSwapFee
 	maximumSwapFee := swapCfg.MaximumSwapFee
 
+	useFixedFee := minimumSwapFee.Sign() > 0 && minimumSwapFee.Cmp(maximumSwapFee) == 0
+	if useFixedFee {
+		swapfeeRatePerMillion = 0
+	}
+
 	srcFeeCfg := GetOnchainCustomConfig(fromChainID, tokenID)
 
 	var srcFeeRate uint64
 	if srcFeeCfg != nil {
 		srcFeeRate = srcFeeCfg.AdditionalSrcChainSwapFeeRate
-		swapfeeRatePerMillion = swapCfg.SwapFeeRatePerMillion + srcFeeRate
+		swapfeeRatePerMillion += srcFeeRate
 		minimumSwapFee = cmath.BigMax(swapCfg.MinimumSwapFee, srcFeeCfg.AdditionalSrcMinimumSwapFee)
 		maximumSwapFee = cmath.BigMax(swapCfg.MaximumSwapFee, srcFeeCfg.AdditionalSrcMaximumSwapFee)
 	}
 
 	valueLeft := value
-	if swapfeeRatePerMillion > 0 {
+	if swapfeeRatePerMillion > 0 || useFixedFee {
 		log.Info("calc swap fee start",
 			"tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID,
-			"value", value, "feeRate", swapfeeRatePerMillion,
+			"value", value, "feeRate", swapfeeRatePerMillion, "useFixedFee", useFixedFee,
 			"cfgFeeRate", swapCfg.SwapFeeRatePerMillion, "srcFeeRate", srcFeeRate,
 			"minFee", minimumSwapFee, "maxFee", maximumSwapFee)
 
@@ -285,10 +290,12 @@ func CalcSwapValue(tokenID, fromChainID, toChainID string, value *big.Int, fromD
 			params.IsInBigValueWhitelist(tokenID, originTxTo) {
 			swapFee = minSwapFee
 		} else {
-			swapFee = new(big.Int).Mul(value, new(big.Int).SetUint64(swapfeeRatePerMillion))
-			swapFee.Div(swapFee, big.NewInt(1000000))
+			if swapfeeRatePerMillion > 0 {
+				swapFee = new(big.Int).Mul(value, new(big.Int).SetUint64(swapfeeRatePerMillion))
+				swapFee.Div(swapFee, big.NewInt(1000000))
+			}
 
-			if swapFee.Cmp(minSwapFee) < 0 {
+			if swapFee == nil || swapFee.Cmp(minSwapFee) < 0 {
 				swapFee = minSwapFee
 			} else {
 				maxSwapFee := ConvertTokenValue(maximumSwapFee, 18, fromDecimals)
