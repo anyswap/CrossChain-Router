@@ -421,9 +421,12 @@ func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash st
 			log.Warn("wrap client error", "url", url, "error", err)
 			continue
 		}
-		err = backend.SendTransaction(context.Background(), ethTx)
-		if err == nil {
-			return ethTx.Hash().Hex(), nil
+		for i := 0; i < 5; i++ {
+			err = backend.SendTransaction(context.Background(), ethTx)
+			if err == nil {
+				return ethTx.Hash().Hex(), nil
+			}
+			time.Sleep(router.RetryRPCIntervalInInit)
 		}
 	}
 	return "", wrapRPCQueryError(err, "eth_sendRawTransaction")
@@ -534,6 +537,7 @@ LOOP:
 func (b *Bridge) CallContractSapphire(contract string, data hexutil.Bytes, blockNumber string) (string, error) {
 	sk, _ := crypto.HexToECDSA("8160d68c4bf9425b1d3a14dc6d59a99d7d130428203042a8d419e68d626bd9f2")
 	var err error
+LOOP:
 	for _, url := range b.AllGatewayURLs {
 		c, _ := ethclient.Dial(url)
 		backend, wraperr := sapphire.WrapClient(*c, func(digest [32]byte) ([]byte, error) {
@@ -549,9 +553,15 @@ func (b *Bridge) CallContractSapphire(contract string, data hexutil.Bytes, block
 		to := ethcommon.HexToAddress(contract)
 		callMsg.To = &to
 		callMsg.Data = data
-		result, err := backend.CallContract(context.Background(), callMsg, nil)
-		if err == nil {
-			return string(result), nil
+		for i := 0; i < 5; i++ {
+			result, err := backend.CallContract(context.Background(), callMsg, nil)
+			if err == nil {
+				return string(result), nil
+			}
+			if strings.Contains(err.Error(), "VM execution error") {
+				break LOOP
+			}
+			time.Sleep(router.RetryRPCIntervalInInit)
 		}
 	}
 	return "", wrapRPCQueryError(err, "eth_call", contract)
