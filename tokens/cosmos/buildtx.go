@@ -223,6 +223,7 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 		return receiver, amount, tokens.ErrMissTokenConfig
 	}
 	amount = tokens.CalcSwapValue(erc20SwapInfo.TokenID, args.FromChainID.String(), b.ChainConfig.ChainID, args.OriginValue, fromTokenCfg.Decimals, toTokenCfg.Decimals, args.OriginFrom, args.OriginTxTo)
-	args.Extra.BridgeFee = new(big.Int).Sub(args.OriginValue, amount)
+	totalAmount := tokens.ConvertTokenValue(args.OriginValue, fromTokenCfg.Decimals, toTokenCfg.Decimals)
+	args.Extra.BridgeFee = new(big.Int).Sub(totalAmount, amount)
 	return receiver, amount, err
 }
