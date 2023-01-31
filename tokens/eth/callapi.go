@@ -421,7 +421,7 @@ func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash st
 			log.Warn("wrap client error", "url", url, "error", err)
 			continue
 		}
-		for i := 0; i < 5; i++ {
+		for i := 0; i < 10; i++ {
 			err = backend.SendTransaction(context.Background(), ethTx)
 			if err == nil {
 				return ethTx.Hash().Hex(), nil
@@ -535,6 +535,7 @@ LOOP:
 
 // CallContractSapphire
 func (b *Bridge) CallContractSapphire(contract string, data hexutil.Bytes, blockNumber string) (string, error) {
+	block, _ := new(big.Int).SetString(blockNumber, 0)
 	sk, _ := crypto.HexToECDSA("8160d68c4bf9425b1d3a14dc6d59a99d7d130428203042a8d419e68d626bd9f2")
 	var err error
 LOOP:
@@ -553,8 +554,8 @@ LOOP:
 		to := ethcommon.HexToAddress(contract)
 		callMsg.To = &to
 		callMsg.Data = data
-		for i := 0; i < 5; i++ {
-			result, err := backend.CallContract(context.Background(), callMsg, nil)
+		for i := 0; i < 10; i++ {
+			result, err := backend.CallContract(context.Background(), callMsg, block)
 			if err == nil {
 				return string(result), nil
 			}
