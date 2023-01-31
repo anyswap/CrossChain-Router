@@ -333,9 +333,16 @@ func CalcSwapValue(tokenID, fromChainID, toChainID string, value *big.Int, fromD
 			if swapfeeRatePerMillion > 0 {
 				swapFee = new(big.Int).Mul(value, new(big.Int).SetUint64(swapfeeRatePerMillion))
 				swapFee.Div(swapFee, big.NewInt(1000000))
+			} else {
+				swapFee = big.NewInt(0)
 			}
 
-			if swapFee == nil || swapFee.Cmp(minSwapFee) < 0 {
+			if useFixedFee {
+				fixedFee := ConvertTokenValue(feeCfg.MinimumSwapFee, 18, fromDecimals)
+				swapFee.Add(swapFee, fixedFee)
+			}
+
+			if swapFee.Cmp(minSwapFee) < 0 {
 				swapFee = minSwapFee
 			} else {
 				maxSwapFee := ConvertTokenValue(maximumSwapFee, 18, fromDecimals)
