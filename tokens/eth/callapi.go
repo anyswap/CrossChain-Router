@@ -15,6 +15,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/mpc"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
@@ -402,7 +403,6 @@ func (b *Bridge) SendSignedTransaction(tx *types.Transaction) (txHash string, er
 }
 
 func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash string, err error) {
-	sk, _ := crypto.HexToECDSA("8160d68c4bf9425b1d3a14dc6d59a99d7d130428203042a8d419e68d626bd9f2")
 	buf := new(bytes.Buffer)
 	if err := tx.EncodeRLP(buf); err != nil {
 		return "", err
@@ -410,24 +410,44 @@ func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash st
 	s := rlp.NewStream(buf, 0)
 	ethTx := new(ethtypes.Transaction)
 	ethTx.DecodeRLP(s)
-	for _, url := range b.AllGatewayURLs {
-		c, _ := ethclient.Dial(url)
-		backend, wraperr := sapphire.WrapClient(*c, func(digest [32]byte) ([]byte, error) {
-			// Pass in a custom signing function to interact with the signer
-			return crypto.Sign(digest[:], sk)
-		})
-		if wraperr != nil {
-			err = wraperr
-			log.Warn("wrap client error", "url", url, "error", err)
-			continue
-		}
-		for i := 0; i < 10; i++ {
-			err = backend.SendTransaction(context.Background(), ethTx)
-			if err == nil {
-				return ethTx.Hash().Hex(), nil
+
+	chainId, _ := b.ChainID()
+	signer := ethtypes.LatestSignerForChainID(chainId)
+
+	sign := func(digest [32]byte) (sig []byte, err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				err = fmt.Errorf("sign error: %v", r)
 			}
-			time.Sleep(router.RetryRPCIntervalInInit)
+		}()
+		mpcConfig := mpc.GetMPCConfig(b.UseFastMPC)
+		var mpcaddress string
+		mpcPubkey := router.GetMPCPublicKey(mpcaddress)
+		_, rsvs, _ := mpcConfig.DoSignOneEC(mpcPubkey, common.ToHex(digest[:]), "")
+
+		return common.FromHex(rsvs[0]), nil
+		//sk, _ := crypto.HexToECDSA("8160d68c4bf9425b1d3a14dc6d59a99d7d130428203042a8d419e68d626bd9f2")
+		//return crypto.Sign(digest[:], sk)
+	}
+
+	for _, url := range b.AllGatewayURLs {
+		cipher, _ := sapphire.NewCipher(chainId.Uint64())
+		packedTx, _ := sapphire.PackTx(*ethTx, cipher)
+		txHash_ := signer.Hash(packedTx)
+		signature, err := sign(*(*[32]byte)(txHash_.Bytes()))
+		if err != nil {
+			return "", wrapRPCQueryError(err, "eth_sendRawTransaction")
 		}
+		signedTx, _ := packedTx.WithSignature(signer, signature)
+		data, _ := signedTx.MarshalBinary()
+
+		hexData := hexutil.Encode(data)
+		var result string
+		err = client.RPCPostWithTimeout(5000000000, &result, url, "eth_sendRawTransaction", hexData)
+		if err == nil {
+			return signedTx.Hash().Hex(), nil
+		}
+		return "", fmt.Errorf("eth_sendRawTransaction")
 	}
 	return "", wrapRPCQueryError(err, "eth_sendRawTransaction")
 }
