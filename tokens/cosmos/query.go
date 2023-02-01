@@ -2,6 +2,7 @@ package cosmos
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -165,7 +166,15 @@ func (b *Bridge) SimulateTx(simulateReq *SimulateRequest) (string, error) {
 
 func (b *Bridge) BroadcastTx(req *BroadcastTxRequest) (string, error) {
 	if result, err := b.GRPCBroadcastTx(req); err == nil {
-		return result.TxHash, nil
+		data, _ := json.Marshal(BroadcastTxResponse{
+			TxResponse: &TxResponse{
+				Height: fmt.Sprintf("%d", result.Height),
+				TxHash: result.TxHash,
+				Code:   result.Code,
+				Logs:   result.Logs,
+			},
+		})
+		return string(data), nil
 	} else if len(b.AllGatewayURLs) == 0 {
 		return "", err
 	}

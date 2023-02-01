@@ -149,6 +149,7 @@ func initFlags() {
 func initBridge() {
 	bridge.SetGatewayConfig(&tokens.GatewayConfig{
 		APIAddress: strings.Split(paramURLs, ","),
+		//GRPCAPIAddress: strings.Split(paramURLs, ","),
 	})
 	bridge.SetChainConfig(&tokens.ChainConfig{
 		ChainID: chainID.String(),

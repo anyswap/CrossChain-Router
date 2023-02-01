@@ -2,6 +2,7 @@ package cosmos
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -174,11 +175,15 @@ func (b *Bridge) GRPCSimulateTx(simulateReq *SimulateRequest) (res *sdktx.Simula
 }
 
 func (b *Bridge) GRPCBroadcastTx(req *BroadcastTxRequest) (res *sdk.TxResponse, err error) {
+	txBytes, err := base64.StdEncoding.DecodeString(req.TxBytes)
+	if err != nil {
+		return nil, wrapRPCQueryError(err, "GRPCBroadcastTx")
+	}
 	for _, rpcClient := range rpcClients {
 		clientCtx := b.ClientContext.
 			WithClient(rpcClient).
 			WithBroadcastMode(flags.BroadcastSync)
-		res, err = grpc.BroadcastRawTx(ctx, clientCtx, []byte(req.TxBytes))
+		res, err = grpc.BroadcastRawTx(ctx, clientCtx, txBytes)
 		if err == nil {
 			return res, nil
 		}
