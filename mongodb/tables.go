@@ -1,5 +1,9 @@
 package mongodb
 
+import (
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
+)
+
 // MgoSwap registered swap
 type MgoSwap struct {
 	Key         string `bson:"_id"` // fromChainID + txid + logindex
@@ -22,9 +26,30 @@ type MgoSwap struct {
 
 // IsValid is valid
 func (swap *MgoSwap) IsValid() bool {
-	return swap.TxID != "" && swap.From != "" &&
-		swap.Bind != "" && swap.Value != "" &&
-		swap.FromChainID != "" && swap.ToChainID != ""
+	swapType := tokens.SwapType(swap.SwapType)
+	if !swapType.IsValidType() ||
+		swap.FromChainID == "" || swap.ToChainID == "" ||
+		swap.TxID == "" || swap.Value == "" {
+		return false
+	}
+	switch swapType {
+	case tokens.ERC20SwapType, tokens.ERC20SwapTypeMixPool:
+		if swap.ERC20SwapInfo == nil || swap.From == "" || swap.Bind == "" {
+			return false
+		}
+	case tokens.NFTSwapType:
+		if swap.NFTSwapInfo == nil || swap.From == "" || swap.Bind == "" {
+			return false
+		}
+	case tokens.AnyCallSwapType:
+		if swap.AnyCallSwapInfo == nil {
+			return false
+		}
+	default:
+		return false
+	}
+
+	return true
 }
 
 // ToSwapResult converts
