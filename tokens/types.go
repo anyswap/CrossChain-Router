@@ -90,6 +90,9 @@ type AnyCallSwapInfo struct {
 	AppID    string        `json:"appid,omitempty"`
 	Nonce    string        `json:"nonce,omitempty"`
 	ExtData  hexutil.Bytes `json:"extdata,omitempty"`
+
+	Message     hexutil.Bytes `json:"message,omitempty"`
+	Attestation hexutil.Bytes `json:"attestation,omitempty"`
 }
 
 // SwapInfo struct
