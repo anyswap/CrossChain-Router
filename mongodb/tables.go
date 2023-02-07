@@ -150,14 +150,16 @@ type NFTSwapInfo struct {
 
 // AnyCallSwapInfo struct
 type AnyCallSwapInfo struct {
-	CallFrom string `bson:",omitempty" json:"callFrom,omitempty"`
-	CallTo   string `bson:",omitempty" json:"callTo,omitempty"`
-	CallData string `bson:",omitempty" json:"callData,omitempty"`
-	Fallback string `bson:",omitempty" json:"fallback,omitempty"`
-	Flags    string `bson:",omitempty" json:"flags,omitempty"`
-	AppID    string `bson:",omitempty" json:"appid,omitempty"`
-	Nonce    string `bson:",omitempty" json:"nonce,omitempty"`
-	ExtData  string `bson:",omitempty" json:"extdata,omitempty"`
+	CallFrom    string `bson:",omitempty" json:"callFrom,omitempty"`
+	CallTo      string `bson:",omitempty" json:"callTo,omitempty"`
+	CallData    string `bson:",omitempty" json:"callData,omitempty"`
+	Fallback    string `bson:",omitempty" json:"fallback,omitempty"`
+	Flags       string `bson:",omitempty" json:"flags,omitempty"`
+	AppID       string `bson:",omitempty" json:"appid,omitempty"`
+	Nonce       string `bson:",omitempty" json:"nonce,omitempty"`
+	ExtData     string `bson:",omitempty" json:"extdata,omitempty"`
+	Message     string `bson:",omitempty" json:"message,omitempty"`
+	Attestation string `bson:",omitempty" json:"attestation,omitempty"`
 }
 
 // GetToken get token

@@ -85,7 +85,7 @@ type AnyCallSwapInfo struct {
 	CallFrom string        `json:"callFrom"`
 	CallTo   string        `json:"callTo"`
 	CallData hexutil.Bytes `json:"callData"`
-	Fallback string        `json:"fallback"`
+	Fallback string        `json:"fallback,omitempty"`
 	Flags    string        `json:"flags,omitempty"`
 	AppID    string        `json:"appid,omitempty"`
 	Nonce    string        `json:"nonce,omitempty"`
