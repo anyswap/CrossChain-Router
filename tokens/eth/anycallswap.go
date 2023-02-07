@@ -393,7 +393,8 @@ func (b *Bridge) findMessageSentInfo(swapInfo *tokens.SwapTxInfo, logs []*types.
 			messageHash := common.Keccak256Hash(messageBytes)
 			log.Info("find message sent info success", "txHash", swapInfo.Hash, "logIndex", logIndex, "msgIndex", i, "message", common.ToHex(messageBytes), "messageHash", messageHash.String())
 
-			if !allowUnstable {
+			// only the swap server need get attestation
+			if params.IsSwapServer && !allowUnstable {
 				var attestation *USDCAttestation
 				attestation, err = GetUSDCAttestation(messageHash)
 				if err != nil {

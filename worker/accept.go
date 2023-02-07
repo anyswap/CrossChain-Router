@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -365,10 +366,24 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 		return fmt.Errorf("toChainID mismatch: '%v' != '%v'", args.ToChainID, swapInfo.ToChainID)
 	}
 
+	verifySwapInfo := swapInfo.SwapInfo
+	argsSwapInfo := args.SwapArgs.SwapInfo
+	if verifySwapInfo.AnyCallSwapInfo != nil &&
+		argsSwapInfo.AnyCallSwapInfo != nil &&
+		len(argsSwapInfo.AnyCallSwapInfo.Attestation) > 0 {
+		if !bytes.Equal(verifySwapInfo.AnyCallSwapInfo.Message, argsSwapInfo.AnyCallSwapInfo.Message) {
+			return fmt.Errorf("attestation meassge mismatch: '%v' != '%v'",
+				verifySwapInfo.AnyCallSwapInfo.Message,
+				argsSwapInfo.AnyCallSwapInfo.Message,
+			)
+		}
+		verifySwapInfo.AnyCallSwapInfo.Attestation = argsSwapInfo.AnyCallSwapInfo.Attestation
+	}
+
 	start = time.Now()
 	buildTxArgs := &tokens.BuildTxArgs{
 		SwapArgs: tokens.SwapArgs{
-			SwapInfo:    swapInfo.SwapInfo,
+			SwapInfo:    verifySwapInfo,
 			Identifier:  params.GetIdentifier(),
 			SwapID:      swapInfo.Hash,
 			SwapType:    swapInfo.SwapType,
