@@ -238,6 +238,9 @@ APIAddress = ["http://127.0.0.1:8711", "http://127.0.0.1:8722"]
 4     = ["http://127.0.0.1:6000"]
 46688 = ["http://127.0.0.1:8000"]
 
+#[GRPCGateways]
+#1007961752911 = ["XXXXXX"]
+
 # FastMPC config
 #[FastMPC]
 ## ec sign type key
