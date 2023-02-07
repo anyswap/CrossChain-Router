@@ -248,9 +248,16 @@ func (args *BuildTxArgs) GetReplaceNum() uint64 {
 
 // GetExtraArgs get extra args
 func (args *BuildTxArgs) GetExtraArgs() *BuildTxArgs {
+	swapArgs := args.SwapArgs
+	if swapArgs.SwapInfo.AnyCallSwapInfo != nil {
+		// message should be retrieved from receipt logs
+		anycallInfo := *swapArgs.SwapInfo.AnyCallSwapInfo
+		anycallInfo.Message = nil
+		swapArgs.SwapInfo.AnyCallSwapInfo = &anycallInfo
+	}
 	return &BuildTxArgs{
 		From:     args.From,
-		SwapArgs: args.SwapArgs,
+		SwapArgs: swapArgs,
 		Extra:    args.Extra,
 	}
 }

@@ -1,7 +1,6 @@
 package worker
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -371,12 +370,6 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 	if verifySwapInfo.AnyCallSwapInfo != nil &&
 		argsSwapInfo.AnyCallSwapInfo != nil &&
 		len(argsSwapInfo.AnyCallSwapInfo.Attestation) > 0 {
-		if !bytes.Equal(verifySwapInfo.AnyCallSwapInfo.Message, argsSwapInfo.AnyCallSwapInfo.Message) {
-			return fmt.Errorf("attestation meassge mismatch: '%v' != '%v'",
-				verifySwapInfo.AnyCallSwapInfo.Message,
-				argsSwapInfo.AnyCallSwapInfo.Message,
-			)
-		}
 		verifySwapInfo.AnyCallSwapInfo.Attestation = argsSwapInfo.AnyCallSwapInfo.Attestation
 	}
 
