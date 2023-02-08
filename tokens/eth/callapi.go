@@ -557,14 +557,19 @@ LOOP:
 func (b *Bridge) CallContractSapphire(contract string, data hexutil.Bytes, blockNumber string) (string, error) {
 	block, _ := new(big.Int).SetString(blockNumber, 0)
 	sk, _ := crypto.HexToECDSA("8160d68c4bf9425b1d3a14dc6d59a99d7d130428203042a8d419e68d626bd9f2")
+
+	/// notice: only when from address does not matter
+	/// if from address is specified, use a special signer here
+	signer := func(digest [32]byte) ([]byte, error) {
+		// Pass in a custom signing function to interact with the signer
+		return crypto.Sign(digest[:], sk)
+	}
+
 	var err error
 LOOP:
 	for _, url := range b.AllGatewayURLs {
 		c, _ := ethclient.Dial(url)
-		backend, wraperr := sapphire.WrapClient(*c, func(digest [32]byte) ([]byte, error) {
-			// Pass in a custom signing function to interact with the signer
-			return crypto.Sign(digest[:], sk)
-		})
+		backend, wraperr := sapphire.WrapClient(*c, signer)
 		if wraperr != nil {
 			err = wraperr
 			log.Warn("wrap client error", "url", url, "error", err)
@@ -670,6 +675,10 @@ func (b *Bridge) GetBaseFee(blockCount int) (*big.Int, error) {
 
 // EstimateGas call eth_estimateGas
 func (b *Bridge) EstimateGas(from, to string, value *big.Int, data []byte) (uint64, error) {
+	chainId, _ := b.ChainID()
+	if chainId.Uint64() == 23294 || chainId.Uint64() == 23295 {
+		return EstimateGasSapphire(from, to string, value *big.Int, data []byte)
+	}
 	reqArgs := map[string]interface{}{
 		"from":  from,
 		"to":    to,
@@ -686,6 +695,12 @@ func (b *Bridge) EstimateGas(from, to string, value *big.Int, data []byte) (uint
 	}
 	log.Warn("[rpc] estimate gas failed", "from", from, "to", to, "value", value, "data", hexutil.Bytes(data), "err", err)
 	return 0, wrapRPCQueryError(err, "eth_estimateGas")
+}
+
+func (b *Bridge) EstimateGasSapphire(from, to string, value *big.Int, data []byte) (uint64, error) {
+	// they didnt implement this function:
+	// https://github.com/oasisprotocol/sapphire-paratime/blob/main/clients/go/compat.go#L232
+	return sapphire.DefaultGasLimit, nil
 }
 
 // GetContractLogs get contract logs
