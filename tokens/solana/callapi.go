@@ -50,7 +50,7 @@ func getMaxLatestBlockNumber(urls []string) (maxHeight uint64, err error) {
 // Please use getRecentBlockhash for solana-core v1.8
 func (b *Bridge) GetLatestBlockhash() (result *types.GetLatestBlockhashResult, err error) {
 	obj := map[string]string{
-		"commitment": "confirmed",
+		"commitment": "finalized",
 	}
 	callMethod := "getLatestBlockhash"
 	err = RPCCall(&result, b.GatewayConfig.APIAddress, callMethod, obj)
@@ -60,7 +60,7 @@ func (b *Bridge) GetLatestBlockhash() (result *types.GetLatestBlockhashResult, e
 // GetRecentBlockhash get recent block hash
 func (b *Bridge) GetRecentBlockhash() (result *types.GetRecentBlockhashResult, err error) {
 	obj := map[string]string{
-		"commitment": "confirmed",
+		"commitment": "finalized",
 	}
 	callMethod := "getRecentBlockhash"
 	err = RPCCall(&result, b.GatewayConfig.APIAddress, callMethod, obj)
@@ -72,7 +72,7 @@ func (b *Bridge) GetRecentBlockhash() (result *types.GetRecentBlockhashResult, e
 // Please use getFees for solana-core v1.8
 func (b *Bridge) GetFeeForMessage(blockhash, message string) (result uint64, err error) {
 	obj := map[string]string{
-		"commitment": "confirmed",
+		"commitment": "finalized",
 	}
 	callMethod := "getFeeForMessage"
 	err = RPCCall(&result, b.GatewayConfig.APIAddress, callMethod, blockhash, message, obj)
@@ -82,7 +82,7 @@ func (b *Bridge) GetFeeForMessage(blockhash, message string) (result uint64, err
 // GetFees get fees
 func (b *Bridge) GetFees() (result *types.GetFeesResult, err error) {
 	obj := map[string]string{
-		"commitment": "confirmed",
+		"commitment": "finalized",
 	}
 	callMethod := "getFees"
 	err = RPCCall(&result, b.GatewayConfig.APIAddress, callMethod, obj)
