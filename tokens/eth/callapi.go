@@ -677,7 +677,7 @@ func (b *Bridge) GetBaseFee(blockCount int) (*big.Int, error) {
 func (b *Bridge) EstimateGas(from, to string, value *big.Int, data []byte) (uint64, error) {
 	chainId, _ := b.ChainID()
 	if chainId.Uint64() == 23294 || chainId.Uint64() == 23295 {
-		return EstimateGasSapphire(from, to string, value *big.Int, data []byte)
+		return b.EstimateGasSapphire(from, to, value, data)
 	}
 	reqArgs := map[string]interface{}{
 		"from":  from,
