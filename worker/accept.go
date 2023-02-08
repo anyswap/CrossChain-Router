@@ -365,10 +365,18 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 		return fmt.Errorf("toChainID mismatch: '%v' != '%v'", args.ToChainID, swapInfo.ToChainID)
 	}
 
+	verifySwapInfo := swapInfo.SwapInfo
+	argsSwapInfo := args.SwapArgs.SwapInfo
+	if verifySwapInfo.AnyCallSwapInfo != nil &&
+		argsSwapInfo.AnyCallSwapInfo != nil &&
+		len(argsSwapInfo.AnyCallSwapInfo.Attestation) > 0 {
+		verifySwapInfo.AnyCallSwapInfo.Attestation = argsSwapInfo.AnyCallSwapInfo.Attestation
+	}
+
 	start = time.Now()
 	buildTxArgs := &tokens.BuildTxArgs{
 		SwapArgs: tokens.SwapArgs{
-			SwapInfo:    swapInfo.SwapInfo,
+			SwapInfo:    verifySwapInfo,
 			Identifier:  params.GetIdentifier(),
 			SwapID:      swapInfo.Hash,
 			SwapType:    swapInfo.SwapType,

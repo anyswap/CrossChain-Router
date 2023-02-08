@@ -85,11 +85,14 @@ type AnyCallSwapInfo struct {
 	CallFrom string        `json:"callFrom"`
 	CallTo   string        `json:"callTo"`
 	CallData hexutil.Bytes `json:"callData"`
-	Fallback string        `json:"fallback"`
+	Fallback string        `json:"fallback,omitempty"`
 	Flags    string        `json:"flags,omitempty"`
 	AppID    string        `json:"appid,omitempty"`
 	Nonce    string        `json:"nonce,omitempty"`
 	ExtData  hexutil.Bytes `json:"extdata,omitempty"`
+
+	Message     hexutil.Bytes `json:"message,omitempty"`
+	Attestation hexutil.Bytes `json:"attestation,omitempty"`
 }
 
 // SwapInfo struct
@@ -245,9 +248,16 @@ func (args *BuildTxArgs) GetReplaceNum() uint64 {
 
 // GetExtraArgs get extra args
 func (args *BuildTxArgs) GetExtraArgs() *BuildTxArgs {
+	swapArgs := args.SwapArgs
+	if swapArgs.SwapInfo.AnyCallSwapInfo != nil {
+		// message should be retrieved from receipt logs
+		anycallInfo := *swapArgs.SwapInfo.AnyCallSwapInfo
+		anycallInfo.Message = nil
+		swapArgs.SwapInfo.AnyCallSwapInfo = &anycallInfo
+	}
 	return &BuildTxArgs{
 		From:     args.From,
-		SwapArgs: args.SwapArgs,
+		SwapArgs: swapArgs,
 		Extra:    args.Extra,
 	}
 }
