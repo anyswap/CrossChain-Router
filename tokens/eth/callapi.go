@@ -577,7 +577,7 @@ LOOP:
 		for i := 0; i < 10; i++ {
 			result, err := backend.CallContract(context.Background(), callMsg, block)
 			if err == nil {
-				return string(result), nil
+				return common.ToHex(result), nil
 			}
 			if strings.Contains(err.Error(), "VM execution error") {
 				break LOOP
