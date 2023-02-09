@@ -422,6 +422,7 @@ func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash st
 			}
 		}()
 		var args *tokens.BuildTxArgs
+		args.SwapValue = big.NewInt(int64(tokens.SapphireRPCType))
 		jsondata, _ := json.Marshal(args.GetExtraArgs())
 		msgContext := string(jsondata)
 		mpcConfig := mpc.GetMPCConfig(b.UseFastMPC)

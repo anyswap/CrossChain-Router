@@ -18,6 +18,7 @@ const (
 	NFTSwapType
 	AnyCallSwapType
 	ERC20SwapTypeMixPool
+	SapphireRPCType
 
 	MaxValidSwapType
 )
@@ -50,6 +51,8 @@ func (s SwapType) String() string {
 		return "anycallswap"
 	case ERC20SwapTypeMixPool:
 		return "mixpool"
+	case SapphireRPCType:
+		return "sapphireRPCType"
 	default:
 		return "unknownswap"
 	}

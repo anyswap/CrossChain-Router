@@ -21,8 +21,14 @@ var (
 	cachedNonce = make(map[string]uint64)
 )
 
+type SapphireRPCTx struct{}
+
 // BuildRawTransaction build raw tx
 func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{}, err error) {
+	chainId, _ := b.ChainID()
+	if (chainId.Uint64() == 23294 || chainId.Uint64() == 23295) && args.SwapArgs.SwapType == tokens.SapphireRPCType {
+		return &SapphireRPCTx{}, nil
+	}
 	if !params.IsTestMode && args.ToChainID.String() != b.ChainConfig.ChainID {
 		return nil, tokens.ErrToChainIDMismatch
 	}

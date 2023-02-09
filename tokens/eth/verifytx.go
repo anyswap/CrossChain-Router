@@ -37,6 +37,13 @@ func (b *Bridge) GetTransactionStatus(txHash string) (*tokens.TxStatus, error) {
 
 // VerifyMsgHash verify msg hash
 func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) error {
+	chainId, _ := b.ChainID()
+	if chainId.Uint64() == 23294 || chainId.Uint64() == 23295 {
+		_, ok := rawTx.(*SapphireRPCTx)
+		if ok {
+			return nil
+		}
+	}
 	tx, ok := rawTx.(*types.Transaction)
 	if !ok {
 		return tokens.ErrWrongRawTx
@@ -67,7 +74,17 @@ func (b *Bridge) VerifyTransaction(txHash string, args *tokens.VerifyArgs) (*tok
 		return b.verifyNFTSwapTx(txHash, logIndex, allowUnstable)
 	case tokens.AnyCallSwapType:
 		return b.verifyAnyCallSwapTx(txHash, logIndex, allowUnstable)
+	case tokens.SapphireRPCType:
+		return b.verifySapphireRPC(txHash, args)
 	default:
 		return nil, tokens.ErrSwapTypeNotSupported
 	}
+}
+
+func (b *Bridge) verifySapphireRPC(txHash string, args *tokens.VerifyArgs) (*tokens.SwapTxInfo, error) {
+	swapTxInfo := new(tokens.SwapTxInfo)
+	swapTxInfo.SwapType = args.SwapType
+	chainId, _ := b.ChainID()
+	swapTxInfo.ToChainID = chainId
+	return swapTxInfo, nil
 }
