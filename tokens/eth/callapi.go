@@ -414,6 +414,12 @@ func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash st
 
 	chainId, _ := b.ChainID()
 	signer := ethtypes.LatestSignerForChainID(chainId)
+	rawtx, _ := ethTx.MarshalBinary()
+
+	routerMPC, err := router.GetRouterMPC("", b.ChainConfig.ChainID)
+	if err != nil {
+		return "", err
+	}
 
 	sign := func(digest [32]byte) (sig []byte, err error) {
 		defer func() {
@@ -422,12 +428,12 @@ func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash st
 			}
 		}()
 		var args *tokens.BuildTxArgs
+		args.Extra.RawTx = rawtx
 		args.SwapValue = big.NewInt(int64(tokens.SapphireRPCType))
 		jsondata, _ := json.Marshal(args.GetExtraArgs())
 		msgContext := string(jsondata)
 		mpcConfig := mpc.GetMPCConfig(b.UseFastMPC)
-		var mpcaddress string
-		mpcPubkey := router.GetMPCPublicKey(mpcaddress)
+		mpcPubkey := router.GetMPCPublicKey(routerMPC)
 		_, rsvs, err := mpcConfig.DoSignOneEC(mpcPubkey, common.ToHex(digest[:]), msgContext)
 		if err != nil {
 			return nil, err
