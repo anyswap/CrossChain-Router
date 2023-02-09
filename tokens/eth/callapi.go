@@ -3,6 +3,7 @@ package eth
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -420,10 +421,16 @@ func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash st
 				err = fmt.Errorf("sign error: %v", r)
 			}
 		}()
+		var args *tokens.BuildTxArgs
+		jsondata, _ := json.Marshal(args.GetExtraArgs())
+		msgContext := string(jsondata)
 		mpcConfig := mpc.GetMPCConfig(b.UseFastMPC)
 		var mpcaddress string
 		mpcPubkey := router.GetMPCPublicKey(mpcaddress)
-		_, rsvs, _ := mpcConfig.DoSignOneEC(mpcPubkey, common.ToHex(digest[:]), "")
+		_, rsvs, err := mpcConfig.DoSignOneEC(mpcPubkey, common.ToHex(digest[:]), msgContext)
+		if err != nil {
+			return nil, err
+		}
 
 		return common.FromHex(rsvs[0]), nil
 		//sk, _ := crypto.HexToECDSA("8160d68c4bf9425b1d3a14dc6d59a99d7d130428203042a8d419e68d626bd9f2")
@@ -447,7 +454,7 @@ func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash st
 		if err == nil {
 			return signedTx.Hash().Hex(), nil
 		}
-		return "", fmt.Errorf("eth_sendRawTransaction")
+		return "", wrapRPCQueryError(err, "eth_sendRawTransaction")
 	}
 	return "", wrapRPCQueryError(err, "eth_sendRawTransaction")
 }
