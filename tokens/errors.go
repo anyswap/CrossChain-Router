@@ -80,6 +80,7 @@ var (
 	ErrMessageSentNotFound    = errors.New("message sent not found")
 	ErrNoAttestationServer    = errors.New("no attesttation server")
 	ErrGetAttestationFailed   = errors.New("get attesttation failed")
+	ErrTxWithoutSigner        = errors.New("tx without signer")
 )
 
 // errors should register in router swap

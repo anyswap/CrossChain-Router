@@ -147,7 +147,7 @@ type TxStatus struct {
 	Confirmations uint64      `json:"confirmations"`
 	BlockHeight   uint64      `json:"block_height"`
 	BlockHash     string      `json:"block_hash"`
-	BlockTime     uint64      `json:"block_time"`
+	BlockTime     uint64      `json:"block_time,omitempty"`
 }
 
 // StatusInterface interface

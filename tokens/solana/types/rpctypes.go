@@ -107,6 +107,11 @@ type TransactionWithMeta struct {
 	Meta        *TransactionMeta `json:"meta,omitempty"`
 }
 
+// IsStatusOk in status ok
+func (tx *TransactionWithMeta) IsStatusOk() bool {
+	return tx != nil && tx.Meta != nil && tx.Meta.Err == nil && len(tx.Meta.LogMessages) > 0
+}
+
 // TransactionParsed tx parsed
 type TransactionParsed struct {
 	Transaction *ParsedTransaction `json:"transaction"`
@@ -130,11 +135,6 @@ type TokenBalances struct {
 	Mint          PublicKey         `json:"mint"`
 	Owner         PublicKey         `json:"owner"`
 	UITokenAmount TokenAmountResult `json:"uiTokenAmount"`
-}
-
-// IsStatusOk in status ok
-func (m *TransactionMeta) IsStatusOk() bool {
-	return m != nil && m.Err == nil && len(m.LogMessages) > 0
 }
 
 // TransactionSignature tx signature

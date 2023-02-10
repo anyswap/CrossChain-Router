@@ -111,7 +111,7 @@ func main() {
 		fmt.Println("get tx status ...")
 		time.Sleep(5 * time.Second)
 	}
-	fmt.Printf("tx comfired success at slot: %v BlockTime: %v status: %v\n", uint64(txm.Slot), txm.BlockTime, txm.Meta.IsStatusOk())
+	fmt.Printf("tx comfired success at slot: %v BlockTime: %v status: %v\n", uint64(txm.Slot), txm.BlockTime, txm.IsStatusOk())
 
 	result, err := bridge.GetAccountInfo(ownerAtaPublicKey.String(), "jsonParsed")
 	if err != nil {

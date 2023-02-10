@@ -6,7 +6,7 @@ import (
 
 // MgoSwap registered swap
 type MgoSwap struct {
-	Key         string `bson:"_id"` // fromChainID + txid + logindex
+	Key         string `bson:"_id" json:",omitempty"` // fromChainID + txid + logindex
 	SwapType    uint32 `bson:"swaptype"`
 	TxID        string `bson:"txid"`
 	TxTo        string `bson:"txto"`
@@ -21,7 +21,7 @@ type MgoSwap struct {
 	Status      SwapStatus `bson:"status"`
 	InitTime    int64      `bson:"inittime"`
 	Timestamp   int64      `bson:"timestamp"`
-	Memo        string     `bson:"memo"`
+	Memo        string     `bson:"memo" json:",omitempty"`
 }
 
 // IsValid is valid
@@ -81,7 +81,7 @@ type MgoSwapResult struct {
 	TxID        string `bson:"txid"`
 	TxTo        string `bson:"txto"`
 	TxHeight    uint64 `bson:"txheight"`
-	TxTime      uint64 `bson:"txtime"`
+	TxTime      uint64 `bson:"txtime" json:",omitempty"`
 	From        string `bson:"from"`
 	To          string `bson:"to"`
 	Bind        string `bson:"bind"`
@@ -99,7 +99,7 @@ type MgoSwapResult struct {
 	Status      SwapStatus `bson:"status"`
 	InitTime    int64      `bson:"inittime"`
 	Timestamp   int64      `bson:"timestamp"`
-	Memo        string     `bson:"memo"`
+	Memo        string     `bson:"memo" json:",omitempty"`
 	MPC         string     `bson:"mpc"`
 }
 
