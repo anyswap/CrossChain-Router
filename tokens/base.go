@@ -173,7 +173,7 @@ func (b *CrossChainBridgeBase) GetRouterVersion(token string) string {
 		if tokenCfg == nil {
 			return ""
 		}
-		if tokenCfg.RouterContract != "" {
+		if tokenCfg.RouterVersion != "" {
 			return tokenCfg.RouterVersion
 		}
 	}

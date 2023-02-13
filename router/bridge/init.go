@@ -388,7 +388,7 @@ func InitChainConfig(b tokens.IBridge, chainID *big.Int) {
 		return
 	}
 	b.SetChainConfig(chainCfg)
-	log.Info("init chain config success", "blockChain", chainCfg.BlockChain, "chainID", chainID, "isReload", isReload)
+	log.Info("init chain config success", "blockChain", chainCfg.BlockChain, "chainID", chainID, "isReload", isReload, "chainCfg", chainCfg)
 
 	routerContract := chainCfg.RouterContract
 	if routerContract != "" && !isRouterInfoLoaded(chainID.String(), routerContract) {
@@ -446,7 +446,7 @@ func InitTokenConfig(b tokens.IBridge, tokenID string, chainID *big.Int) {
 
 	router.SetMultichainToken(tokenID, chainID.String(), tokenAddr)
 
-	log.Info(fmt.Sprintf("[%5v] init '%v' token config success", chainID, tokenID), "tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "isReload", isReload, "underlying", tokenCfg.GetUnderlying())
+	log.Info(fmt.Sprintf("[%5v] init '%v' token config success", chainID, tokenID), "tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "isReload", isReload, "tokenCfg", tokenCfg)
 
 	routerContract := tokenCfg.RouterContract
 	if routerContract != "" && !isRouterInfoLoaded(chainID.String(), routerContract) {
