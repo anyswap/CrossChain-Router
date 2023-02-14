@@ -175,6 +175,9 @@ func parseChainConfig(data []byte) (config *tokens.ChainConfig, err error) {
 	if err != nil {
 		return nil, abicoder.ErrParseDataError
 	}
+	if extra == `""` {
+		extra = ""
+	}
 	routerContract, routerVersion := ParseRouterContractConfig(routerContractStr)
 	config = &tokens.ChainConfig{
 		BlockChain:     blockChain,
@@ -229,7 +232,9 @@ func parseTokenConfig(data []byte) (config *tokens.TokenConfig, err error) {
 	if err != nil {
 		return nil, abicoder.ErrParseDataError
 	}
-
+	if extra == `""` {
+		extra = ""
+	}
 	routerContract, routerVersion := ParseRouterContractConfig(routerContractStr)
 	config = &tokens.TokenConfig{
 		Decimals:        decimals,
@@ -337,7 +342,11 @@ func GetCustomConfig(chainID *big.Int, key string) (string, error) {
 	if len(res) == 0 {
 		return "", nil
 	}
-	return abicoder.ParseStringInData(res, 0)
+	custom, err := abicoder.ParseStringInData(res, 0)
+	if custom == `""` {
+		custom = ""
+	}
+	return custom, err
 }
 
 // GetExtraConfig abi
@@ -351,7 +360,11 @@ func GetExtraConfig(key string) (string, error) {
 	if len(res) == 0 {
 		return "", nil
 	}
-	return abicoder.ParseStringInData(res, 0)
+	extra, err := abicoder.ParseStringInData(res, 0)
+	if extra == `""` {
+		extra = ""
+	}
+	return extra, err
 }
 
 // GetMPCPubkey abi
@@ -360,17 +373,21 @@ func GetMPCPubkey(mpcAddress string) (pubkey string, err error) {
 	data := abicoder.PackDataWithFuncHash(funcHash, mpcAddress)
 	res, err := CallOnchainContract(data, "latest")
 	if err != nil {
-		if common.IsHexAddress(mpcAddress) && strings.ToLower(mpcAddress) == mpcAddress {
-			mixAddress := common.HexToAddress(mpcAddress).Hex()
-			data = abicoder.PackDataWithFuncHash(funcHash, mixAddress)
-			res, err = CallOnchainContract(data, "latest")
-			if err == nil {
-				return abicoder.ParseStringInData(res, 0)
-			}
+		if !common.IsHexAddress(mpcAddress) || strings.ToLower(mpcAddress) != mpcAddress {
+			return "", err
 		}
-		return "", err
+		mixAddress := common.HexToAddress(mpcAddress).Hex()
+		data = abicoder.PackDataWithFuncHash(funcHash, mixAddress)
+		res, err = CallOnchainContract(data, "latest")
+		if err != nil {
+			return "", err
+		}
 	}
-	return abicoder.ParseStringInData(res, 0)
+	pubkey, err = abicoder.ParseStringInData(res, 0)
+	if pubkey == `""` {
+		pubkey = ""
+	}
+	return pubkey, err
 }
 
 // IsChainIDExist abi
@@ -594,6 +611,9 @@ func parseChainConfig2(data []byte) (*ChainConfigInContract, error) {
 	if err != nil {
 		return nil, abicoder.ErrParseDataError
 	}
+	if extra == `""` {
+		extra = ""
+	}
 
 	return &ChainConfigInContract{
 		ChainID:        chainID,
@@ -676,6 +696,9 @@ func parseTokenConfig2(data []byte) (*TokenConfigInContract, error) {
 	extra, err := abicoder.ParseStringInData(data, 160)
 	if err != nil {
 		return nil, abicoder.ErrParseDataError
+	}
+	if extra == `""` {
+		extra = ""
 	}
 
 	return &TokenConfigInContract{
