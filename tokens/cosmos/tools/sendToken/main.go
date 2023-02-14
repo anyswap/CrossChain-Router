@@ -27,6 +27,7 @@ var (
 	paramGasLimit   = uint64(200000)
 	paramFee        = "1usei"
 	paramSequence   uint64
+	paramUseGrpc    bool
 
 	chainID = big.NewInt(0)
 	bridge  = cosmos.NewCrossChainBridge()
@@ -132,6 +133,7 @@ func initFlags() {
 	flag.StringVar(&paramPublicKey, "publicKey", "", "public Key")
 	flag.StringVar(&paramPrivateKey, "privateKey", "", "private key")
 	flag.StringVar(&paramMemo, "memo", "", "tx memo")
+	flag.BoolVar(&paramUseGrpc, "grpc", paramUseGrpc, "use grpc call")
 
 	flag.Parse()
 
@@ -143,14 +145,17 @@ func initFlags() {
 		chainID = cid
 	}
 
-	log.Info("init flags finished")
+	log.Info("init flags finished", "useGrpc", paramUseGrpc)
 }
 
 func initBridge() {
-	bridge.SetGatewayConfig(&tokens.GatewayConfig{
-		APIAddress: strings.Split(paramURLs, ","),
-		//GRPCAPIAddress: strings.Split(paramURLs, ","),
-	})
+	gateway := &tokens.GatewayConfig{}
+	if paramUseGrpc {
+		gateway.GRPCAPIAddress = strings.Split(paramURLs, ",")
+	} else {
+		gateway.APIAddress = strings.Split(paramURLs, ",")
+	}
+	bridge.SetGatewayConfig(gateway)
 	bridge.SetChainConfig(&tokens.ChainConfig{
 		ChainID: chainID.String(),
 	})
