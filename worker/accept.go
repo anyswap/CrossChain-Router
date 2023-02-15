@@ -44,9 +44,6 @@ var (
 func StartAcceptSignJob() {
 	logWorker("accept", "start accept sign job")
 
-	openLeveldb()
-	defer closeLeveldb()
-
 	if mpcConfig := mpc.GetMPCConfig(false); mpcConfig != nil {
 		initAcceptWorkers(false)
 
@@ -309,12 +306,6 @@ func verifySignInfo(mpcConfig *mpc.Config, signInfo *mpc.SignInfoData) (*tokens.
 		}
 		return args, nil
 	}
-	if lvldbHandle != nil && args.GetTxNonce() > 0 { // only for eth like chain
-		err = CheckAcceptRecord(args)
-		if err != nil {
-			return args, err
-		}
-	}
 	err = rebuildAndVerifyMsgHash(signInfo.Key, signInfo.MsgHash, args)
 	return args, err
 }
@@ -408,31 +399,5 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 		return err
 	}
 	logWorker("accept", fmt.Sprintf("build raw tx and verify message hash success (timespent %v)", time.Since(start).String()), ctx...)
-	if lvldbHandle != nil && args.GetTxNonce() > 0 { // only for eth like chain
-		go saveAcceptRecord(dstBridge, keyID, buildTxArgs, rawTx, ctx)
-	}
 	return nil
-}
-
-func saveAcceptRecord(bridge tokens.IBridge, keyID string, args *tokens.BuildTxArgs, rawTx interface{}, ctx []interface{}) {
-	impl, ok := bridge.(interface {
-		GetSignedTxHashOfKeyID(sender, keyID string, rawTx interface{}) (txHash string, err error)
-	})
-	if !ok {
-		return
-	}
-
-	swapTx, err := impl.GetSignedTxHashOfKeyID(args.From, keyID, rawTx)
-	if err != nil {
-		logWorkerError("accept", "get signed tx hash failed", err, ctx...)
-		return
-	}
-	ctx = append(ctx, "swaptx", swapTx)
-
-	err = AddAcceptRecord(args, swapTx)
-	if err != nil {
-		logWorkerError("accept", "save accept record to db failed", err, ctx...)
-		return
-	}
-	logWorker("accept", "save accept record to db success", ctx...)
 }

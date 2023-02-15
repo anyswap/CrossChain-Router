@@ -38,7 +38,6 @@ func initApp() {
 		utils.VersionCommand,
 	}
 	app.Flags = []cli.Flag{
-		utils.DataDirFlag,
 		utils.ConfigFileFlag,
 		utils.GatewayConfigFlag,
 		utils.RunServerFlag,
