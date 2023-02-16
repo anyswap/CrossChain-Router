@@ -52,11 +52,6 @@ type IBridge interface {
 	GetBalance(account string) (*big.Int, error)
 }
 
-// ISwapTrade interface
-type ISwapTrade interface {
-	GetPairFor(factory, token0, token1 string) (string, error)
-}
-
 // NonceSetter interface (for eth-like)
 type NonceSetter interface {
 	InitSwapNonce(br NonceSetter, address string, nonce uint64)

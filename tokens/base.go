@@ -1,6 +1,7 @@
 package tokens
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -433,7 +434,7 @@ func CheckNativeBalance(b IBridge, account string, needValue *big.Int) (err erro
 	var balance *big.Int
 	for i := 0; i < 3; i++ {
 		balance, err = b.GetBalance(account)
-		if err == nil {
+		if err == nil || errors.Is(err, ErrNotImplemented) {
 			break
 		}
 		time.Sleep(1 * time.Second)
