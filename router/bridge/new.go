@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/aptos"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/btc"
@@ -14,11 +15,16 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens/ripple"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/solana"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/tron"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/wrapper"
 )
 
 // NewCrossChainBridge new bridge
 func NewCrossChainBridge(chainID *big.Int) tokens.IBridge {
+	cfg := params.GetRouterConfig()
+	wrapperCfg := cfg.WrapperGateways[chainID.String()]
 	switch {
+	case wrapperCfg != nil && wrapperCfg.RPCAddress != "":
+		return wrapper.NewCrossChainBridge(wrapperCfg)
 	case solana.SupportChainID(chainID):
 		return solana.NewCrossChainBridge()
 	case cosmos.SupportsChainID(chainID):

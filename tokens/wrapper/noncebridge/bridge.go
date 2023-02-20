@@ -3,6 +3,7 @@ package noncebridge
 import (
 	"math/big"
 
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/base"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/wrapper/impl"
@@ -20,7 +21,7 @@ type Bridge struct {
 }
 
 // NewCrossChainBridge new bridge
-func NewCrossChainBridge(cfg *impl.BridgeConfig) *Bridge {
+func NewCrossChainBridge(cfg *params.WrapperConfig) *Bridge {
 	return &Bridge{
 		NonceSetterBase: base.NewNonceSetterBase(),
 		Bridge:          impl.NewCrossChainBridge(cfg),

@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tools"
 )
 
@@ -67,6 +68,8 @@ type GatewayConfig struct {
 	FinalizeAPIAddress []string `json:",omitempty"`
 	GRPCAPIAddress     []string `json:",omitempty"`
 
+	WrapperConfig *params.WrapperConfig `json:",omitempty"`
+
 	// internal usage
 	WeightedAPIs tools.WeightedStringSlice `toml:"-" json:"-"`
 }
@@ -78,7 +81,8 @@ func (c *GatewayConfig) IsEmpty() bool {
 	}
 	return len(c.APIAddress) == 0 &&
 		len(c.EVMAPIAddress) == 0 &&
-		len(c.GRPCAPIAddress) == 0
+		len(c.GRPCAPIAddress) == 0 &&
+		c.WrapperConfig == nil
 }
 
 // CheckConfig check chain config

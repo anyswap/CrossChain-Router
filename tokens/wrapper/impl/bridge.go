@@ -5,26 +5,20 @@ import (
 	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
-// BridgeConfig bridge config
-type BridgeConfig struct {
-	SupportNonce bool
-	RPCTimeout   int
-	RPCAddress   string
-}
-
 // Bridge bridge
 type Bridge struct {
-	*BridgeConfig
+	*params.WrapperConfig
 }
 
 // NewCrossChainBridge new bridge
-func NewCrossChainBridge(cfg *BridgeConfig) *Bridge {
+func NewCrossChainBridge(cfg *params.WrapperConfig) *Bridge {
 	return &Bridge{
-		BridgeConfig: cfg,
+		WrapperConfig: cfg,
 	}
 }
 
@@ -34,7 +28,7 @@ func (b *Bridge) callService(result interface{}, method string, params ...interf
 	if err != nil {
 		log.Error(fmt.Sprintf("call %v failed", method), "err", err)
 	} else {
-		log.Infof(fmt.Sprintf("call %v success", method), "result", result)
+		log.Info(fmt.Sprintf("call %v success", method), "result", result)
 	}
 	return err
 }

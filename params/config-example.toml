@@ -243,6 +243,11 @@ APIAddress = ["http://127.0.0.1:8711", "http://127.0.0.1:8722"]
 #[GRPCGateways]
 #1007961752911 = ["XXXXXX"]
 
+[WrapperGateways.1007961752910]
+SupportNonce = true
+RPCTimeout = 20
+RPCAddress = "XXXXXX"
+
 # FastMPC config
 #[FastMPC]
 ## ec sign type key

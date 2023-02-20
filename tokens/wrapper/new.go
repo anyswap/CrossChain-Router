@@ -3,14 +3,14 @@
 package wrapper
 
 import (
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/wrapper/commonbridge"
-	"github.com/anyswap/CrossChain-Router/v3/tokens/wrapper/impl"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/wrapper/noncebridge"
 )
 
 // NewCrossChainBridge new bridge
-func NewCrossChainBridge(cfg *impl.BridgeConfig) tokens.IBridge {
+func NewCrossChainBridge(cfg *params.WrapperConfig) tokens.IBridge {
 	if cfg.SupportNonce {
 		return noncebridge.NewCrossChainBridge(cfg)
 	}

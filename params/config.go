@@ -139,11 +139,19 @@ type RouterConfig struct {
 
 // GatewayConfigs gateway config
 type GatewayConfigs struct {
-	Gateways         map[string][]string // key is chain ID
-	GatewaysExt      map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
-	EVMGatewaysExt   map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
-	FinalizeGateways map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
-	GRPCGateways     map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+	Gateways         map[string][]string       // key is chain ID
+	GatewaysExt      map[string][]string       `toml:",omitempty" json:",omitempty"` // key is chain ID
+	EVMGatewaysExt   map[string][]string       `toml:",omitempty" json:",omitempty"` // key is chain ID
+	FinalizeGateways map[string][]string       `toml:",omitempty" json:",omitempty"` // key is chain ID
+	GRPCGateways     map[string][]string       `toml:",omitempty" json:",omitempty"` // key is chain ID
+	WrapperGateways  map[string]*WrapperConfig `toml:",omitempty" json:",omitempty"` // key is chain ID
+}
+
+// WrapperConfig bridge config
+type WrapperConfig struct {
+	SupportNonce bool
+	RPCTimeout   int
+	RPCAddress   string
 }
 
 // Blacklists black lists

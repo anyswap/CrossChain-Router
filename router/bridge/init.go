@@ -357,12 +357,19 @@ func SetGatewayConfig(b tokens.IBridge, chainID string) {
 	evmapiext := cfg.EVMGatewaysExt[chainID]
 	finalizeAPIs := cfg.FinalizeGateways[chainID]
 	grpcAPIs := cfg.GRPCGateways[chainID]
+
+	wrapperCfg := cfg.WrapperGateways[chainID]
+	if wrapperCfg != nil && wrapperCfg.RPCAddress == "" {
+		wrapperCfg = nil
+	}
+
 	b.SetGatewayConfig(&tokens.GatewayConfig{
 		APIAddress:         apiAddrs,
 		APIAddressExt:      apiAddrsExt,
 		EVMAPIAddress:      evmapiext,
 		FinalizeAPIAddress: finalizeAPIs,
 		GRPCAPIAddress:     grpcAPIs,
+		WrapperConfig:      wrapperCfg,
 	})
 }
 
