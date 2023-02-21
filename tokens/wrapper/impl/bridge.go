@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
@@ -28,7 +29,7 @@ func (b *Bridge) callService(result interface{}, method string, params ...interf
 	if err != nil {
 		log.Error(fmt.Sprintf("call %v failed", method), "err", err)
 	} else {
-		log.Info(fmt.Sprintf("call %v success", method), "result", result)
+		log.Info(fmt.Sprintf("call %v success", method), "result", common.ToJSONString(result, false))
 	}
 	return err
 }
