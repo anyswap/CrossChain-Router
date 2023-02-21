@@ -212,8 +212,14 @@ func (b *Bridge) buildERC20SwapinTxInput(args *tokens.BuildTxArgs, multichainTok
 		)
 	default:
 		funcHash = GetSwapInFuncHash1(toTokenCfg)
+		var swapIDHash common.Hash
+		if common.IsHexHash(args.SwapID) {
+			swapIDHash = common.HexToHash(args.SwapID)
+		} else {
+			swapIDHash = common.BytesToHash([]byte(args.SwapID))
+		}
 		input = abicoder.PackDataWithFuncHash(funcHash,
-			common.HexToHash(args.SwapID),
+			swapIDHash,
 			common.HexToAddress(multichainToken),
 			receiver,
 			amount,
@@ -276,5 +282,7 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 		return receiver, amount, tokens.ErrMissTokenConfig
 	}
 	amount = tokens.CalcSwapValue(erc20SwapInfo.TokenID, args.FromChainID.String(), b.ChainConfig.ChainID, args.OriginValue, fromTokenCfg.Decimals, toTokenCfg.Decimals, args.OriginFrom, args.OriginTxTo)
+	totalAmount := tokens.ConvertTokenValue(args.OriginValue, fromTokenCfg.Decimals, toTokenCfg.Decimals)
+	args.Extra.BridgeFee = new(big.Int).Sub(totalAmount, amount)
 	return receiver, amount, err
 }

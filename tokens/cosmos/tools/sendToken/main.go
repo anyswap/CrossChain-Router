@@ -10,7 +10,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmos"
-	"github.com/cosmos/cosmos-sdk/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
 var (
@@ -27,6 +27,7 @@ var (
 	paramGasLimit   = uint64(200000)
 	paramFee        = "1usei"
 	paramSequence   uint64
+	paramUseGrpc    bool
 
 	chainID = big.NewInt(0)
 	bridge  = cosmos.NewCrossChainBridge()
@@ -82,7 +83,7 @@ func BuildTx() (*cosmos.BuildRawTx, error) {
 		return nil, err
 	} else {
 		txBuilder := bridge.TxConfig.NewTxBuilder()
-		amount := types.NewIntFromUint64(paramAmount)
+		amount := sdk.NewIntFromUint64(paramAmount)
 		sendMsg := cosmos.BuildSendMsg(paramSender, paramTo, paramDenom, amount.BigInt())
 		if err := txBuilder.SetMsgs(sendMsg); err != nil {
 			log.Fatalf("SetMsgs error:%+v", err)
@@ -130,8 +131,9 @@ func initFlags() {
 	flag.Uint64Var(&paramSequence, "sequence", paramSequence, "sequence number")
 	flag.StringVar(&paramFee, "fee", paramFee, "tx fee")
 	flag.StringVar(&paramPublicKey, "publicKey", "", "public Key")
-	flag.StringVar(&paramPrivateKey, "privateKey", "", "(optional) private key")
+	flag.StringVar(&paramPrivateKey, "privateKey", "", "private key")
 	flag.StringVar(&paramMemo, "memo", "", "tx memo")
+	flag.BoolVar(&paramUseGrpc, "grpc", paramUseGrpc, "use grpc call")
 
 	flag.Parse()
 
@@ -143,18 +145,22 @@ func initFlags() {
 		chainID = cid
 	}
 
-	log.Info("init flags finished")
+	log.Info("init flags finished", "useGrpc", paramUseGrpc)
 }
 
 func initBridge() {
-	bridge.SetGatewayConfig(&tokens.GatewayConfig{
-		APIAddress: strings.Split(paramURLs, ","),
-	})
+	gateway := &tokens.GatewayConfig{}
+	if paramUseGrpc {
+		gateway.GRPCAPIAddress = strings.Split(paramURLs, ",")
+	} else {
+		gateway.APIAddress = strings.Split(paramURLs, ",")
+	}
+	bridge.SetGatewayConfig(gateway)
 	bridge.SetChainConfig(&tokens.ChainConfig{
 		ChainID: chainID.String(),
 	})
 
-	config := types.GetConfig()
+	config := sdk.GetConfig()
 	config.SetBech32PrefixForAccount(paramPrefix, "")
 	config.Seal()
 }

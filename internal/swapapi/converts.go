@@ -91,6 +91,7 @@ func ConvertChainConfig(c *tokens.ChainConfig) *ChainConfig {
 		ChainID:        c.ChainID,
 		BlockChain:     c.BlockChain,
 		RouterContract: c.RouterContract,
+		RouterVersion:  c.RouterVersion,
 		Confirmations:  c.Confirmations,
 		InitialHeight:  c.InitialHeight,
 	}
@@ -107,6 +108,7 @@ func ConvertTokenConfig(c *tokens.TokenConfig) *TokenConfig {
 		ContractAddress: c.ContractAddress,
 		ContractVersion: c.ContractVersion,
 		RouterContract:  c.RouterContract,
+		RouterVersion:   c.RouterVersion,
 		Underlying:      c.GetUnderlying(),
 	}
 }

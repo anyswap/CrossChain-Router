@@ -59,6 +59,9 @@ AutoSwapNonceEnabledChains = ["25"]
 [Server.SendTxLoopInterval]
 43114 = 10
 25    = 10
+# default gas fee (string type)
+#[Server.DefaultFee]
+#1007961752911 = "6250"
 # default gas limit. key is chainID. if not set, use 90000 as default.
 [Server.DefaultGasLimit]
 4     = 90000
@@ -122,6 +125,8 @@ NoCheckServerConnection = false
 CheckGasTokenBalance = false
 
 [Extra]
+# usdc attestation server
+AttestationServer = ""
 # is swap with permit enabled
 EnableSwapWithPermit = false
 # force call anySwapInAuto
@@ -207,6 +212,10 @@ ForbidParallelLoading = true
 ForbidSwapoutTokenIDs = ["USDC", "USDT"]
 BigValueDiscount = 50
 
+[Extra.LocalChainConfig.1007961752911]
+FeeReceiverOnDestChain = "xxxxxx"
+ChargeFeeOnDestChain.1000005788241 = ["XXX"]
+
 [Extra.SpecialFlags]
 key = "value"
 
@@ -230,6 +239,9 @@ APIAddress = ["http://127.0.0.1:8711", "http://127.0.0.1:8722"]
 [GatewaysExt]
 4     = ["http://127.0.0.1:6000"]
 46688 = ["http://127.0.0.1:8000"]
+
+#[GRPCGateways]
+#1007961752911 = ["XXXXXX"]
 
 # FastMPC config
 #[FastMPC]

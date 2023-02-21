@@ -53,14 +53,9 @@ func GetServerInfo() *ServerInfo {
 func GetOracleInfo() map[string]*OracleInfo {
 	result := make(map[string]*OracleInfo, 4)
 	oraclesInfo.Range(func(k, v interface{}) bool {
-		enode := k.(string)
-		startIndex := strings.Index(enode, "enode://")
-		endIndex := strings.Index(enode, "@")
-		if startIndex != -1 && endIndex != -1 {
-			info := v.(*OracleInfo)
-			enodeID := enode[startIndex+8 : endIndex]
-			result[strings.ToLower(enodeID)] = info
-		}
+		enodeID := k.(string)
+		info := v.(*OracleInfo)
+		result[enodeID] = info
 		return true
 	})
 	return result
@@ -73,21 +68,29 @@ func GetStatusInfo(status string) (map[string]interface{}, error) {
 
 // ReportOracleInfo report oracle info
 func ReportOracleInfo(oracle string, info *OracleInfo) error {
+	oracleID := mpc.GetEnodeID(oracle)
+	if oracleID == "" {
+		return newRPCError(-32000, "empty oracle enode")
+	}
 	mpcConfig := mpc.GetMPCConfig(false)
+	seflEnodeID := mpc.GetEnodeID(mpcConfig.GetSelfEnode())
+	allEnodeIDs := mpc.GetEnodeIDs(mpcConfig.GetAllEnodes())
 	var exist bool
-	for _, enode := range mpcConfig.GetAllEnodes() {
-		if strings.EqualFold(oracle, enode) {
-			if !strings.EqualFold(oracle, mpcConfig.GetSelfEnode()) {
+	for _, enodeID := range allEnodeIDs {
+		if strings.EqualFold(oracleID, enodeID) {
+			// ignore server itself
+			if !strings.EqualFold(oracleID, seflEnodeID) {
 				exist = true
 			}
 			break
 		}
 	}
 	if !exist {
-		return newRPCError(-32000, "wrong oracle info")
+		log.Warn("unknown oracle enode", "oracle", oracleID, "enodes", allEnodeIDs)
+		return newRPCError(-32000, "unknown oracle enode")
 	}
 
-	key := strings.ToLower(oracle)
+	key := strings.ToLower(oracleID)
 	if val, exist := oraclesInfo.Load(key); exist {
 		oldInfo := val.(*OracleInfo)
 		oldTime := oldInfo.HeartbeatTimestamp

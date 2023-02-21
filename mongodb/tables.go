@@ -1,8 +1,12 @@
 package mongodb
 
+import (
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
+)
+
 // MgoSwap registered swap
 type MgoSwap struct {
-	Key         string `bson:"_id"` // fromChainID + txid + logindex
+	Key         string `bson:"_id" json:",omitempty"` // fromChainID + txid + logindex
 	SwapType    uint32 `bson:"swaptype"`
 	TxID        string `bson:"txid"`
 	TxTo        string `bson:"txto"`
@@ -17,7 +21,35 @@ type MgoSwap struct {
 	Status      SwapStatus `bson:"status"`
 	InitTime    int64      `bson:"inittime"`
 	Timestamp   int64      `bson:"timestamp"`
-	Memo        string     `bson:"memo"`
+	Memo        string     `bson:"memo" json:",omitempty"`
+}
+
+// IsValid is valid
+func (swap *MgoSwap) IsValid() bool {
+	swapType := tokens.SwapType(swap.SwapType)
+	if !swapType.IsValidType() ||
+		swap.FromChainID == "" || swap.ToChainID == "" ||
+		swap.TxID == "" || swap.Value == "" {
+		return false
+	}
+	switch swapType {
+	case tokens.ERC20SwapType, tokens.ERC20SwapTypeMixPool:
+		if swap.ERC20SwapInfo == nil || swap.From == "" || swap.Bind == "" {
+			return false
+		}
+	case tokens.NFTSwapType:
+		if swap.NFTSwapInfo == nil || swap.From == "" || swap.Bind == "" {
+			return false
+		}
+	case tokens.AnyCallSwapType:
+		if swap.AnyCallSwapInfo == nil {
+			return false
+		}
+	default:
+		return false
+	}
+
+	return true
 }
 
 // ToSwapResult converts
@@ -49,7 +81,7 @@ type MgoSwapResult struct {
 	TxID        string `bson:"txid"`
 	TxTo        string `bson:"txto"`
 	TxHeight    uint64 `bson:"txheight"`
-	TxTime      uint64 `bson:"txtime"`
+	TxTime      uint64 `bson:"txtime" json:",omitempty"`
 	From        string `bson:"from"`
 	To          string `bson:"to"`
 	Bind        string `bson:"bind"`
@@ -67,7 +99,7 @@ type MgoSwapResult struct {
 	Status      SwapStatus `bson:"status"`
 	InitTime    int64      `bson:"inittime"`
 	Timestamp   int64      `bson:"timestamp"`
-	Memo        string     `bson:"memo"`
+	Memo        string     `bson:"memo" json:",omitempty"`
 	MPC         string     `bson:"mpc"`
 }
 
@@ -118,14 +150,16 @@ type NFTSwapInfo struct {
 
 // AnyCallSwapInfo struct
 type AnyCallSwapInfo struct {
-	CallFrom string `bson:",omitempty" json:"callFrom,omitempty"`
-	CallTo   string `bson:",omitempty" json:"callTo,omitempty"`
-	CallData string `bson:",omitempty" json:"callData,omitempty"`
-	Fallback string `bson:",omitempty" json:"fallback,omitempty"`
-	Flags    string `bson:",omitempty" json:"flags,omitempty"`
-	AppID    string `bson:",omitempty" json:"appid,omitempty"`
-	Nonce    string `bson:",omitempty" json:"nonce,omitempty"`
-	ExtData  string `bson:",omitempty" json:"extdata,omitempty"`
+	CallFrom    string `bson:",omitempty" json:"callFrom,omitempty"`
+	CallTo      string `bson:",omitempty" json:"callTo,omitempty"`
+	CallData    string `bson:",omitempty" json:"callData,omitempty"`
+	Fallback    string `bson:",omitempty" json:"fallback,omitempty"`
+	Flags       string `bson:",omitempty" json:"flags,omitempty"`
+	AppID       string `bson:",omitempty" json:"appid,omitempty"`
+	Nonce       string `bson:",omitempty" json:"nonce,omitempty"`
+	ExtData     string `bson:",omitempty" json:"extdata,omitempty"`
+	Message     string `bson:",omitempty" json:"message,omitempty"`
+	Attestation string `bson:",omitempty" json:"attestation,omitempty"`
 }
 
 // GetToken get token

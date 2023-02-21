@@ -3,25 +3,18 @@ package cosmos
 import (
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"math/big"
-	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
-	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	cosmosClient "github.com/cosmos/cosmos-sdk/client"
 	cryptoTypes "github.com/cosmos/cosmos-sdk/crypto/types"
-	"github.com/cosmos/cosmos-sdk/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	signingTypes "github.com/cosmos/cosmos-sdk/types/tx/signing"
 	"github.com/cosmos/cosmos-sdk/x/auth/signing"
 	bankTypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	tokenfactoryTypes "github.com/sei-protocol/sei-chain/x/tokenfactory/types"
-)
-
-const (
-	SimulateTx = "/cosmos/tx/v1beta1/simulate"
 )
 
 func (b *Bridge) NewSignModeHandler() signing.SignModeHandler {
@@ -36,20 +29,12 @@ func BuildSignerData(chainID string, accountNumber, sequence uint64) signing.Sig
 	}
 }
 
-func BuildMintMsg(sender string, amount types.Coin) *tokenfactoryTypes.MsgMint {
-	return tokenfactoryTypes.NewMsgMint(sender, amount)
-}
-
-func BuildBurnMsg(sender string, amount types.Coin) *tokenfactoryTypes.MsgBurn {
-	return tokenfactoryTypes.NewMsgBurn(sender, amount)
-}
-
 func BuildSendMsg(from, to, unit string, amount *big.Int) *bankTypes.MsgSend {
 	return &bankTypes.MsgSend{
 		FromAddress: from,
 		ToAddress:   to,
-		Amount: types.Coins{
-			types.NewCoin(unit, types.NewIntFromBigInt(amount)),
+		Amount: sdk.Coins{
+			sdk.NewCoin(unit, sdk.NewIntFromBigInt(amount)),
 		},
 	}
 }
@@ -66,52 +51,37 @@ func BuildSignatures(publicKey cryptoTypes.PubKey, sequence uint64, signature []
 }
 
 func (b *Bridge) BuildTx(
-	from, to, denom, memo, publicKey string,
+	args *tokens.BuildTxArgs,
+	to, denom, memo, publicKey string,
 	amount *big.Int,
-	extra *tokens.AllExtras,
 ) (cosmosClient.TxBuilder, error) {
-	log.Info("start to build tx", "from", from, "to", to, "denom", denom, "memo", memo, "amount", amount, "fee", *extra.Fee, "gas", *extra.Gas, "sequence", *extra.Sequence)
+	from := args.From
+	extra := args.Extra
+	log.Info("start to build tx", "swapID", args.SwapID, "from", from, "to", to, "denom", denom, "memo", memo, "amount", amount, "fee", *extra.Fee, "gas", *extra.Gas, "sequence", *extra.Sequence)
 	if balance, err := b.GetDenomBalance(from, denom); err != nil {
 		return nil, err
 	} else {
-		var msgs []types.Msg
+		var msgs []sdk.Msg
 		if balance.BigInt().Cmp(amount) >= 0 {
 			sendMsg := BuildSendMsg(from, to, denom, amount)
 			msgs = append(msgs, sendMsg)
-
-			if strings.Contains(denom, "/") && balance.BigInt().Cmp(amount) > 0 {
-				creator, _, errt := tokenfactoryTypes.DeconstructDenom(denom)
-				if errt != nil {
-					return nil, errt
-				}
-				if creator == from {
-					burnAmount := new(big.Int).Sub(balance.BigInt(), amount)
-					coin := types.NewCoin(denom, types.NewIntFromBigInt(burnAmount))
-					burnMsg := BuildBurnMsg(from, coin)
-					msgs = append(msgs, burnMsg)
-				}
-			}
 		} else {
-			if strings.Contains(denom, "/") {
-				creator, _, errt := tokenfactoryTypes.DeconstructDenom(denom)
-				if errt != nil {
-					return nil, errt
-				}
-				if creator == from {
-					mintAmount := new(big.Int).Sub(amount, balance.BigInt())
-					coin := types.NewCoin(denom, types.NewIntFromBigInt(mintAmount))
-					mintMsg := BuildMintMsg(from, coin)
-					msgs = append(msgs, mintMsg)
+			log.Info("balance not enough", "denom", denom, "balance", balance, "amount", amount)
+			return nil, tokens.ErrBalanceNotEnough
+		}
 
-					sendMsg := BuildSendMsg(from, to, denom, amount)
+		// process charge fee on dest chain
+		tokenID := args.GetTokenID()
+		fromChainID := args.FromChainID
+		toChainID := args.ToChainID
+		if params.ChargeFeeOnDestChain(tokenID, fromChainID.String(), toChainID.String()) {
+			if extra.BridgeFee != nil && extra.BridgeFee.Sign() > 0 {
+				bridgeFeeReceiver := params.FeeReceiverOnDestChain(toChainID.String())
+				if bridgeFeeReceiver != "" {
+					sendMsg := BuildSendMsg(from, bridgeFeeReceiver, denom, extra.BridgeFee)
 					msgs = append(msgs, sendMsg)
-				} else {
-					log.Info("balance not enough", "denom", denom, "balance", balance, "amount", amount)
-					return nil, tokens.ErrBalanceNotEnough
+					log.Info("build charge fee on dest chain", "swapID", args.SwapID, "from", from, "receiver", bridgeFeeReceiver, "denom", denom, "amount", extra.BridgeFee)
 				}
-			} else {
-				log.Info("balance not enough", "denom", denom, "balance", balance, "amount", amount)
-				return nil, tokens.ErrBalanceNotEnough
 			}
 		}
 
@@ -139,20 +109,6 @@ func (b *Bridge) BuildTx(
 		}
 
 		return txBuilder, nil
-	}
-}
-
-func (b *Bridge) SimulateTx(simulateReq *SimulateRequest) (string, error) {
-	if data, err := json.Marshal(simulateReq); err != nil {
-		return "", err
-	} else {
-		for _, url := range b.AllGatewayURLs {
-			restApi := url + SimulateTx
-			if res, err := client.RPCRawPostWithTimeout(restApi, string(data), 120); err == nil && res != "" && res != "\n" {
-				return res, nil
-			}
-		}
-		return "", tokens.ErrSimulateTx
 	}
 }
 

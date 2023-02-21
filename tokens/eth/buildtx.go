@@ -136,6 +136,7 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 		"fromChainID", args.FromChainID, "toChainID", args.ToChainID,
 		"from", args.From, "to", to.String(), "bind", args.Bind, "nonce", nonce,
 		"gasLimit", gasLimit, "replaceNum", args.GetReplaceNum(),
+		"bridgeFee", args.Extra.BridgeFee,
 	}
 	if gasTipCap != nil || gasFeeCap != nil {
 		ctx = append(ctx, "gasTipCap", gasTipCap, "gasFeeCap", gasFeeCap)
