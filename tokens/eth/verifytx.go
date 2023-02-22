@@ -5,7 +5,6 @@ import (
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
-	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/types"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -40,19 +39,18 @@ func (b *Bridge) GetTransactionStatus(txHash string) (*tokens.TxStatus, error) {
 
 // VerifyMsgHash verify msg hash
 func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) error {
-	chainId, _ := b.ChainID()
-	if chainId.Uint64() == 23294 || chainId.Uint64() == 23295 {
+	if b.IsSapphireChain() {
 		rawSapphire, ok := rawTx.(*SapphireRPCTx)
 		if ok {
 			tx2 := new(ethtypes.Transaction)
-			tx2.UnmarshalBinary(rawSapphire.Raw)
-			signer := ethtypes.LatestSignerForChainID(chainId)
-			msg, _ := tx2.AsMessage(signer, nil)
-			routerMPC, err := router.GetRouterMPC("", b.ChainConfig.ChainID)
+			err := tx2.UnmarshalBinary(rawSapphire.Raw)
 			if err != nil {
 				return tokens.ErrWrongRawTx
 			}
-			if msg.From().Hex() == common.HexToAddress(routerMPC).Hex() {
+			chainId := b.ChainConfig.GetChainID()
+			signer := ethtypes.LatestSignerForChainID(chainId)
+			msg, _ := tx2.AsMessage(signer, nil)
+			if msg.From().Hex() == common.HexToAddress(rawSapphire.Sender).Hex() {
 				return nil
 			} else {
 				return tokens.ErrWrongRawTx
@@ -97,9 +95,10 @@ func (b *Bridge) VerifyTransaction(txHash string, args *tokens.VerifyArgs) (*tok
 }
 
 func (b *Bridge) verifySapphireRPC(txHash string, args *tokens.VerifyArgs) (*tokens.SwapTxInfo, error) {
-	swapTxInfo := new(tokens.SwapTxInfo)
-	swapTxInfo.SwapType = args.SwapType
-	chainId, _ := b.ChainID()
-	swapTxInfo.ToChainID = chainId
+	swapTxInfo := &tokens.SwapTxInfo{SwapInfo: tokens.SwapInfo{ERC20SwapInfo: &tokens.ERC20SwapInfo{}}}
+	swapTxInfo.SwapType = tokens.SapphireRPCType
+	chainID := b.ChainConfig.GetChainID()
+	swapTxInfo.FromChainID = chainID
+	swapTxInfo.ToChainID = chainID
 	return swapTxInfo, nil
 }

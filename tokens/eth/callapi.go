@@ -54,6 +54,11 @@ func (b *Bridge) NeedsFinalizeAPIAddress() bool {
 	}
 }
 
+func (b *Bridge) IsSapphireChain() bool {
+	chainId := b.ChainConfig.ChainID
+	return chainId == "23294" || chainId == "23295"
+}
+
 // GetBlockConfirmations some chain may override this method
 func (b *Bridge) GetBlockConfirmations(receipt *types.RPCTxReceipt) (uint64, error) {
 	if b.ChainConfig != nil {
@@ -363,8 +368,7 @@ func (b *Bridge) getMedianGasPrice() (mdGasPrice *big.Int, err error) {
 
 // SendSignedTransaction call eth_sendRawTransaction
 func (b *Bridge) SendSignedTransaction(tx *types.Transaction) (txHash string, err error) {
-	chainId, _ := b.ChainID()
-	if chainId.Uint64() == 23294 || chainId.Uint64() == 23295 {
+	if b.IsSapphireChain() {
 		return b.SendSignedTransactionSapphire(tx)
 	}
 	data, err := tx.MarshalBinary()
@@ -405,21 +409,24 @@ func (b *Bridge) SendSignedTransaction(tx *types.Transaction) (txHash string, er
 
 func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash string, err error) {
 	buf := new(bytes.Buffer)
-	if err := tx.EncodeRLP(buf); err != nil {
+	if err = tx.EncodeRLP(buf); err != nil {
 		return "", err
 	}
 	s := rlp.NewStream(buf, 0)
 	ethTx := new(ethtypes.Transaction)
-	ethTx.DecodeRLP(s)
+	if err = ethTx.DecodeRLP(s); err != nil {
+		return "", err
+	}
 
-	chainId, _ := b.ChainID()
+	chainId := b.ChainConfig.GetChainID()
 	signer := ethtypes.LatestSignerForChainID(chainId)
 	rawtx, _ := ethTx.MarshalBinary()
 
-	routerMPC, err := router.GetRouterMPC("", b.ChainConfig.ChainID)
+	sender, err := ethtypes.Sender(signer, ethTx)
 	if err != nil {
 		return "", err
 	}
+	routerMPC := sender.Hex()
 
 	sign := func(digest [32]byte) (sig []byte, err error) {
 		defer func() {
@@ -427,9 +434,15 @@ func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash st
 				err = fmt.Errorf("sign error: %v", r)
 			}
 		}()
-		var args *tokens.BuildTxArgs
-		args.Extra.RawTx = rawtx
-		args.SwapType = tokens.SapphireRPCType
+		args := &tokens.BuildTxArgs{
+			SwapArgs: tokens.SwapArgs{
+				SwapType: tokens.SapphireRPCType,
+			},
+			From: routerMPC,
+			Extra: &tokens.AllExtras{
+				RawTx: rawtx,
+			},
+		}
 		jsondata, _ := json.Marshal(args.GetExtraArgs())
 		msgContext := string(jsondata)
 		mpcConfig := mpc.GetMPCConfig(b.UseFastMPC)
@@ -440,8 +453,6 @@ func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash st
 		}
 
 		return common.FromHex(rsvs[0]), nil
-		//sk, _ := crypto.HexToECDSA("8160d68c4bf9425b1d3a14dc6d59a99d7d130428203042a8d419e68d626bd9f2")
-		//return crypto.Sign(digest[:], sk)
 	}
 
 	for _, url := range b.AllGatewayURLs {
@@ -457,11 +468,10 @@ func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash st
 
 		hexData := hexutil.Encode(data)
 		var result string
-		err = client.RPCPostWithTimeout(5000000000, &result, url, "eth_sendRawTransaction", hexData)
+		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_sendRawTransaction", hexData)
 		if err == nil {
 			return signedTx.Hash().Hex(), nil
 		}
-		return "", wrapRPCQueryError(err, "eth_sendRawTransaction")
 	}
 	return "", wrapRPCQueryError(err, "eth_sendRawTransaction")
 }
@@ -530,8 +540,7 @@ func (b *Bridge) GetCode(contract string) (code []byte, err error) {
 
 // CallContract call eth_call
 func (b *Bridge) CallContract(contract string, data hexutil.Bytes, blockNumber string) (string, error) {
-	chainId, _ := b.ChainID()
-	if chainId.Uint64() == 23294 || chainId.Uint64() == 23295 {
+	if b.IsSapphireChain() {
 		return b.CallContractSapphire(contract, data, blockNumber)
 	}
 	reqArgs := map[string]interface{}{
@@ -689,8 +698,7 @@ func (b *Bridge) GetBaseFee(blockCount int) (*big.Int, error) {
 
 // EstimateGas call eth_estimateGas
 func (b *Bridge) EstimateGas(from, to string, value *big.Int, data []byte) (uint64, error) {
-	chainId, _ := b.ChainID()
-	if chainId.Uint64() == 23294 || chainId.Uint64() == 23295 {
+	if b.IsSapphireChain() {
 		return b.EstimateGasSapphire(from, to, value, data)
 	}
 	reqArgs := map[string]interface{}{

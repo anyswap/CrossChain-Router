@@ -23,14 +23,17 @@ var (
 )
 
 type SapphireRPCTx struct {
-	Raw hexutil.Bytes
+	Raw    hexutil.Bytes
+	Sender string
 }
 
 // BuildRawTransaction build raw tx
 func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{}, err error) {
-	chainId, _ := b.ChainID()
-	if (chainId.Uint64() == 23294 || chainId.Uint64() == 23295) && args.SwapArgs.SwapType == tokens.SapphireRPCType {
-		return &SapphireRPCTx{Raw: args.Extra.RawTx}, nil
+	if b.IsSapphireChain() && args.SwapType == tokens.SapphireRPCType {
+		return &SapphireRPCTx{
+			Raw:    args.Extra.RawTx,
+			Sender: args.From,
+		}, nil
 	}
 	if !params.IsTestMode && args.ToChainID.String() != b.ChainConfig.ChainID {
 		return nil, tokens.ErrToChainIDMismatch

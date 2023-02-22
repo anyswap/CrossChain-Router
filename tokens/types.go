@@ -17,6 +17,8 @@ const (
 	ERC20SwapType
 	NFTSwapType
 	AnyCallSwapType
+
+	// special flags, do not use in register
 	ERC20SwapTypeMixPool
 	SapphireRPCType
 

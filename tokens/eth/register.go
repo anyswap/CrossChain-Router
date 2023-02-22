@@ -14,7 +14,7 @@ func (b *Bridge) RegisterSwap(txHash string, args *tokens.RegisterArgs) ([]*toke
 	logIndex := args.LogIndex
 
 	switch swapType {
-	case tokens.ERC20SwapType, tokens.ERC20SwapTypeMixPool:
+	case tokens.ERC20SwapType:
 		return b.registerERC20SwapTx(txHash, logIndex)
 	case tokens.NFTSwapType:
 		return b.registerNFTSwapTx(txHash, logIndex)
