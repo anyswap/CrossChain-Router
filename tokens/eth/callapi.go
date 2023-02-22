@@ -1,6 +1,9 @@
 package eth
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -13,12 +16,22 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/mpc"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/eth/callapi"
 	"github.com/anyswap/CrossChain-Router/v3/types"
+
+	ethereum "github.com/ethereum/go-ethereum"
+	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rlp"
+
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
+	sapphire "github.com/oasisprotocol/sapphire-paratime/clients/go"
 )
 
 var (
@@ -350,6 +363,10 @@ func (b *Bridge) getMedianGasPrice() (mdGasPrice *big.Int, err error) {
 
 // SendSignedTransaction call eth_sendRawTransaction
 func (b *Bridge) SendSignedTransaction(tx *types.Transaction) (txHash string, err error) {
+	chainId, _ := b.ChainID()
+	if chainId.Uint64() == 23294 || chainId.Uint64() == 23295 {
+		return b.SendSignedTransactionSapphire(tx)
+	}
 	data, err := tx.MarshalBinary()
 	if err != nil {
 		return "", err
@@ -382,6 +399,69 @@ func (b *Bridge) SendSignedTransaction(tx *types.Transaction) (txHash string, er
 		if err == nil && txHash != "" {
 			return txHash, nil
 		}
+	}
+	return "", wrapRPCQueryError(err, "eth_sendRawTransaction")
+}
+
+func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash string, err error) {
+	buf := new(bytes.Buffer)
+	if err := tx.EncodeRLP(buf); err != nil {
+		return "", err
+	}
+	s := rlp.NewStream(buf, 0)
+	ethTx := new(ethtypes.Transaction)
+	ethTx.DecodeRLP(s)
+
+	chainId, _ := b.ChainID()
+	signer := ethtypes.LatestSignerForChainID(chainId)
+	rawtx, _ := ethTx.MarshalBinary()
+
+	routerMPC, err := router.GetRouterMPC("", b.ChainConfig.ChainID)
+	if err != nil {
+		return "", err
+	}
+
+	sign := func(digest [32]byte) (sig []byte, err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				err = fmt.Errorf("sign error: %v", r)
+			}
+		}()
+		var args *tokens.BuildTxArgs
+		args.Extra.RawTx = rawtx
+		args.SwapType = tokens.SapphireRPCType
+		jsondata, _ := json.Marshal(args.GetExtraArgs())
+		msgContext := string(jsondata)
+		mpcConfig := mpc.GetMPCConfig(b.UseFastMPC)
+		mpcPubkey := router.GetMPCPublicKey(routerMPC)
+		_, rsvs, err := mpcConfig.DoSignOneEC(mpcPubkey, common.ToHex(digest[:]), msgContext)
+		if err != nil {
+			return nil, err
+		}
+
+		return common.FromHex(rsvs[0]), nil
+		//sk, _ := crypto.HexToECDSA("8160d68c4bf9425b1d3a14dc6d59a99d7d130428203042a8d419e68d626bd9f2")
+		//return crypto.Sign(digest[:], sk)
+	}
+
+	for _, url := range b.AllGatewayURLs {
+		cipher, _ := sapphire.NewCipher(chainId.Uint64())
+		packedTx, _ := sapphire.PackTx(*ethTx, cipher)
+		txHash_ := signer.Hash(packedTx)
+		signature, err := sign(*(*[32]byte)(txHash_.Bytes()))
+		if err != nil {
+			return "", wrapRPCQueryError(err, "eth_sendRawTransaction")
+		}
+		signedTx, _ := packedTx.WithSignature(signer, signature)
+		data, _ := signedTx.MarshalBinary()
+
+		hexData := hexutil.Encode(data)
+		var result string
+		err = client.RPCPostWithTimeout(5000000000, &result, url, "eth_sendRawTransaction", hexData)
+		if err == nil {
+			return signedTx.Hash().Hex(), nil
+		}
+		return "", wrapRPCQueryError(err, "eth_sendRawTransaction")
 	}
 	return "", wrapRPCQueryError(err, "eth_sendRawTransaction")
 }
@@ -450,6 +530,10 @@ func (b *Bridge) GetCode(contract string) (code []byte, err error) {
 
 // CallContract call eth_call
 func (b *Bridge) CallContract(contract string, data hexutil.Bytes, blockNumber string) (string, error) {
+	chainId, _ := b.ChainID()
+	if chainId.Uint64() == 23294 || chainId.Uint64() == 23295 {
+		return b.CallContractSapphire(contract, data, blockNumber)
+	}
 	reqArgs := map[string]interface{}{
 		"to":   contract,
 		"data": data,
@@ -479,6 +563,46 @@ LOOP:
 			return result, nil
 		}
 		log.Info("call contract failed", "chainID", b.ChainConfig.ChainID, "contract", contract, "data", data, "timespent", time.Since(start).String(), "err", err)
+	}
+	return "", wrapRPCQueryError(err, "eth_call", contract)
+}
+
+// CallContractSapphire
+func (b *Bridge) CallContractSapphire(contract string, data hexutil.Bytes, blockNumber string) (string, error) {
+	block, _ := new(big.Int).SetString(blockNumber, 0)
+	sk, _ := crypto.HexToECDSA("8160d68c4bf9425b1d3a14dc6d59a99d7d130428203042a8d419e68d626bd9f2")
+
+	/// notice: only when from address does not matter
+	/// if from address is specified, use a special signer here
+	signer := func(digest [32]byte) ([]byte, error) {
+		// Pass in a custom signing function to interact with the signer
+		return crypto.Sign(digest[:], sk)
+	}
+
+	var err error
+LOOP:
+	for _, url := range b.AllGatewayURLs {
+		c, _ := ethclient.Dial(url)
+		backend, wraperr := sapphire.WrapClient(*c, signer)
+		if wraperr != nil {
+			err = wraperr
+			log.Warn("wrap client error", "url", url, "error", err)
+			continue
+		}
+		callMsg := ethereum.CallMsg{}
+		to := ethcommon.HexToAddress(contract)
+		callMsg.To = &to
+		callMsg.Data = data
+		for i := 0; i < 10; i++ {
+			result, err := backend.CallContract(context.Background(), callMsg, block)
+			if err == nil {
+				return common.ToHex(result), nil
+			}
+			if strings.Contains(err.Error(), "VM execution error") {
+				break LOOP
+			}
+			time.Sleep(router.RetryRPCIntervalInInit)
+		}
 	}
 	return "", wrapRPCQueryError(err, "eth_call", contract)
 }
@@ -565,6 +689,10 @@ func (b *Bridge) GetBaseFee(blockCount int) (*big.Int, error) {
 
 // EstimateGas call eth_estimateGas
 func (b *Bridge) EstimateGas(from, to string, value *big.Int, data []byte) (uint64, error) {
+	chainId, _ := b.ChainID()
+	if chainId.Uint64() == 23294 || chainId.Uint64() == 23295 {
+		return b.EstimateGasSapphire(from, to, value, data)
+	}
 	reqArgs := map[string]interface{}{
 		"from":  from,
 		"to":    to,
@@ -581,6 +709,12 @@ func (b *Bridge) EstimateGas(from, to string, value *big.Int, data []byte) (uint
 	}
 	log.Warn("[rpc] estimate gas failed", "from", from, "to", to, "value", value, "data", hexutil.Bytes(data), "err", err)
 	return 0, wrapRPCQueryError(err, "eth_estimateGas")
+}
+
+func (b *Bridge) EstimateGasSapphire(from, to string, value *big.Int, data []byte) (uint64, error) {
+	// they didnt implement this function:
+	// https://github.com/oasisprotocol/sapphire-paratime/blob/main/clients/go/compat.go#L232
+	return sapphire.DefaultGasLimit, nil
 }
 
 // GetContractLogs get contract logs

@@ -3,9 +3,12 @@ package eth
 import (
 	"time"
 
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/types"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 // GetTransactionStatus impl
@@ -37,6 +40,25 @@ func (b *Bridge) GetTransactionStatus(txHash string) (*tokens.TxStatus, error) {
 
 // VerifyMsgHash verify msg hash
 func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) error {
+	chainId, _ := b.ChainID()
+	if chainId.Uint64() == 23294 || chainId.Uint64() == 23295 {
+		rawSapphire, ok := rawTx.(*SapphireRPCTx)
+		if ok {
+			tx2 := new(ethtypes.Transaction)
+			tx2.UnmarshalBinary(rawSapphire.Raw)
+			signer := ethtypes.LatestSignerForChainID(chainId)
+			msg, _ := tx2.AsMessage(signer, nil)
+			routerMPC, err := router.GetRouterMPC("", b.ChainConfig.ChainID)
+			if err != nil {
+				return tokens.ErrWrongRawTx
+			}
+			if msg.From().Hex() == common.HexToAddress(routerMPC).Hex() {
+				return nil
+			} else {
+				return tokens.ErrWrongRawTx
+			}
+		}
+	}
 	tx, ok := rawTx.(*types.Transaction)
 	if !ok {
 		return tokens.ErrWrongRawTx
@@ -67,7 +89,17 @@ func (b *Bridge) VerifyTransaction(txHash string, args *tokens.VerifyArgs) (*tok
 		return b.verifyNFTSwapTx(txHash, logIndex, allowUnstable)
 	case tokens.AnyCallSwapType:
 		return b.verifyAnyCallSwapTx(txHash, logIndex, allowUnstable)
+	case tokens.SapphireRPCType:
+		return b.verifySapphireRPC(txHash, args)
 	default:
 		return nil, tokens.ErrSwapTypeNotSupported
 	}
+}
+
+func (b *Bridge) verifySapphireRPC(txHash string, args *tokens.VerifyArgs) (*tokens.SwapTxInfo, error) {
+	swapTxInfo := new(tokens.SwapTxInfo)
+	swapTxInfo.SwapType = args.SwapType
+	chainId, _ := b.ChainID()
+	swapTxInfo.ToChainID = chainId
+	return swapTxInfo, nil
 }
