@@ -1,7 +1,6 @@
 package eth
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -27,7 +26,6 @@ import (
 	ethereum "github.com/ethereum/go-ethereum"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -408,21 +406,12 @@ func (b *Bridge) SendSignedTransaction(tx *types.Transaction) (txHash string, er
 }
 
 func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash string, err error) {
-	buf := new(bytes.Buffer)
-	if err = tx.EncodeRLP(buf); err != nil {
-		return "", err
-	}
-	s := rlp.NewStream(buf, 0)
-	ethTx := new(ethtypes.Transaction)
-	if err = ethTx.DecodeRLP(s); err != nil {
-		return "", err
-	}
-
 	chainId := b.ChainConfig.GetChainID()
-	signer := ethtypes.LatestSignerForChainID(chainId)
-	rawtx, _ := ethTx.MarshalBinary()
-
-	sender, err := ethtypes.Sender(signer, ethTx)
+	rawtx, err := tx.MarshalBinary()
+	if err != nil {
+		return "", err
+	}
+	sender, err := types.Sender(b.Signer, tx)
 	if err != nil {
 		return "", err
 	}
@@ -455,18 +444,51 @@ func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash st
 		return common.FromHex(rsvs[0]), nil
 	}
 
-	for _, url := range b.AllGatewayURLs {
-		cipher, _ := sapphire.NewCipher(chainId.Uint64())
-		packedTx, _ := sapphire.PackTx(*ethTx, cipher)
-		txHash_ := signer.Hash(packedTx)
-		signature, err := sign(*(*[32]byte)(txHash_.Bytes()))
+	cipher, err := sapphire.NewCipher(chainId.Uint64())
+	if err != nil {
+		return "", err
+	}
+	ethtx := new(ethtypes.Transaction)
+	err = ethtx.UnmarshalBinary(rawtx)
+	if err != nil {
+		return "", err
+	}
+	packedTx, err := sapphire.PackTx(*ethtx, cipher)
+	if err != nil {
+		return "", err
+	}
+	signer := ethtypes.LatestSignerForChainID(chainId)
+	signHash := signer.Hash(packedTx)
+	signature, err := sign(([32]byte)(signHash))
+	if err != nil {
+		return "", err
+	}
+	if len(signature) != crypto.SignatureLength {
+		return "", errors.New("wrong signature length")
+	}
+	signedTx, err := packedTx.WithSignature(signer, signature)
+	if err != nil {
+		return "", err
+	}
+	checkSender, err := ethtypes.Sender(signer, signedTx)
+	if err != nil {
+		return "", err
+	}
+	if checkSender.Hex() != sender.Hex() {
+		signature[crypto.SignatureLength-1] ^= 0x1 // v can only be 0 or 1
+		signedTx, err = packedTx.WithSignature(signer, signature)
 		if err != nil {
-			return "", wrapRPCQueryError(err, "eth_sendRawTransaction")
+			return "", err
 		}
-		signedTx, _ := packedTx.WithSignature(signer, signature)
-		data, _ := signedTx.MarshalBinary()
+	}
+	data, err := signedTx.MarshalBinary()
+	if err != nil {
+		return "", err
+	}
 
-		hexData := hexutil.Encode(data)
+	hexData := hexutil.Encode(data)
+
+	for _, url := range b.AllGatewayURLs {
 		var result string
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_sendRawTransaction", hexData)
 		if err == nil {
