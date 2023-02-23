@@ -427,8 +427,10 @@ func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash st
 		return "", err
 	}
 	routerMPC := sender.Hex()
+	log.Info("debug sapphire SendSignedTransaction 1111", "routerMPC", routerMPC)
 
 	sign := func(digest [32]byte) (sig []byte, err error) {
+		log.Info("debug sapphire SendSignedTransaction MPC sign 1111", "digest", fmt.Sprintf("%x", digest))
 		defer func() {
 			if r := recover(); r != nil {
 				err = fmt.Errorf("sign error: %v", r)
@@ -447,10 +449,12 @@ func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash st
 		msgContext := string(jsondata)
 		mpcConfig := mpc.GetMPCConfig(b.UseFastMPC)
 		mpcPubkey := router.GetMPCPublicKey(routerMPC)
+		log.Info("debug sapphire SendSignedTransaction MPC sign 2222", "mpcPubkey", mpcPubkey)
 		_, rsvs, err := mpcConfig.DoSignOneEC(mpcPubkey, common.ToHex(digest[:]), msgContext)
 		if err != nil {
 			return nil, err
 		}
+		log.Info("debug sapphire SendSignedTransaction MPC sign 3333", "rsvs", rsvs)
 
 		return common.FromHex(rsvs[0]), nil
 	}
@@ -459,17 +463,24 @@ func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash st
 		cipher, _ := sapphire.NewCipher(chainId.Uint64())
 		packedTx, _ := sapphire.PackTx(*ethTx, cipher)
 		txHash_ := signer.Hash(packedTx)
+		log.Info("debug sapphire SendSignedTransaction 2222", "txHash_", txHash_)
 		signature, err := sign(*(*[32]byte)(txHash_.Bytes()))
+		log.Info("debug sapphire SendSignedTransaction 3333", "signature", signature)
 		if err != nil {
+			log.Info("debug sapphire SendSignedTransaction sign error", "err", err)
 			return "", wrapRPCQueryError(err, "eth_sendRawTransaction")
 		}
 		signedTx, _ := packedTx.WithSignature(signer, signature)
+		log.Info("debug sapphire SendSignedTransaction 4444", "signedTx", signedTx, "hash", signedTx.Hash().Hex())
 		data, _ := signedTx.MarshalBinary()
+		log.Info("debug sapphire SendSignedTransaction 5555", "data", data)
 
 		hexData := hexutil.Encode(data)
+		log.Info("debug sapphire SendSignedTransaction 6666", "hexData", hexData)
 		var result string
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_sendRawTransaction", hexData)
 		if err == nil {
+			log.Info("debug sapphire SendSignedTransaction rpc post", "err", err)
 			return signedTx.Hash().Hex(), nil
 		}
 	}
