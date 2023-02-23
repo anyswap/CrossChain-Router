@@ -18,15 +18,18 @@ func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) (err error
 	if rawTransaction, ok := rawTx.(*RawTransaction); !ok {
 		return tokens.ErrWrongRawTx
 	} else {
-		txPath := RawPath + rawTransaction.OutFile + RawSuffix
-		if txHash, err := CalcTxId(txPath); err != nil {
-			return err
-		} else {
-			if txHash != msgHashes[0] {
-				return tokens.ErrMsgHashMismatch
-			}
-			return nil
+		tx, err := b.CreateRawTx(rawTransaction, b.GetRouterContract(""))
+		if err != nil {
+			return tokens.ErrWrongRawTx
 		}
+		txhash, err := tx.Hash()
+		if err != nil {
+			return tokens.ErrWrongRawTx
+		}
+		if txhash.String() != msgHashes[0] {
+			return tokens.ErrMsgHashMismatch
+		}
+		return nil
 	}
 }
 

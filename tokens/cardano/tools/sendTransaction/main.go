@@ -1,10 +1,11 @@
 package main
 
 import (
-	"crypto/ed25519"
 	"flag"
+	"fmt"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -15,15 +16,16 @@ import (
 )
 
 var (
-	bridge = cardano.NewCrossChainBridge()
+	b = cardano.NewCrossChainBridge()
 
 	paramConfigFile string
 	paramChainID    string
 	paramFrom       string
-	paramPublicKey  string
 	paramTo         string
 	paramAsset      string
 	paramAmount     string
+	bind            string
+	toChainId       string
 	chainID         = big.NewInt(0)
 	mpcConfig       *mpc.Config
 )
@@ -33,89 +35,48 @@ func main() {
 
 	initAll()
 
-	if len(paramPublicKey) != 64 {
-		log.Fatal("len of public key not match")
+	policy := strings.Split(paramAsset, ".")
+	if len(policy) != 2 {
+		panic("policy format error")
 	}
 
-	if value, err := common.GetBigIntFromStr(paramAmount); err != nil {
-		log.Fatal("GetBigIntFromStr fails", "paramAmount", paramAmount)
+	// _, _, policyID := b.GetAssetPolicy(paramAsset)
+	// assetName := cardanosdk.NewAssetName(paramAsset)
+	// assetNameWithPolicy := policyID.String() + "." + common.Bytes2Hex(assetName.Bytes())
+
+	paramAmount, err := common.GetBigIntFromStr(paramAmount)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("send asset: %s amount: %d to: %s", paramAsset, paramAmount.Int64(), paramTo)
+
+	utxos, err := b.QueryUtxo(paramFrom, paramAsset, paramAmount)
+	if err != nil {
+		panic(err)
+	}
+
+	swapId := fmt.Sprintf("send_%s_%d", paramAsset, time.Now().Unix())
+	rawTx, err := b.BuildTx(swapId, paramTo, paramAsset, paramAmount, utxos)
+	if err != nil {
+		panic(err)
+	}
+	args := &tokens.BuildTxArgs{
+		SwapArgs: tokens.SwapArgs{
+			Identifier: tokens.AggregateIdentifier,
+			SwapID:     swapId,
+		},
+		From:  paramFrom,
+		Extra: &tokens.AllExtras{},
+	}
+	if signTx, _, err := b.MPCSignSwapTransaction(rawTx, args, bind, toChainId); err != nil {
+		panic(err)
 	} else {
-		if utxos, err := bridge.QueryUtxoOnChain(paramFrom); err != nil {
-			log.Fatal("QueryUtxo", "err", err)
+		if txHash, err := b.SendTransaction(signTx); err != nil {
+			panic(err)
 		} else {
-			if rawTransaction, err := bridge.BuildTx("swapId", paramTo, paramAsset, value, utxos); err != nil {
-				if err := cardano.CreateRawTx(rawTransaction, paramFrom); err != nil {
-					log.Fatal("CreateRawTx", "err", err)
-				} else {
-					if minFee, err := cardano.CalcMinFee(rawTransaction); err != nil {
-						log.Fatal("CalcMinFee", "err", err)
-					} else {
-						if feeList := strings.Split(minFee, " "); len(feeList) != 2 {
-							log.Fatal("feeList length not match")
-						} else {
-							rawTransaction.Fee = feeList[0]
-							if adaAmount, err := common.GetBigIntFromStr(rawTransaction.TxOuts[paramFrom][paramAsset]); err != nil {
-								log.Fatal("GetBigIntFromStr", "err", err)
-							} else {
-								if feeAmount, err := common.GetBigIntFromStr(feeList[0]); err != nil {
-									log.Fatal("GetBigIntFromStr", "err", err)
-								} else {
-									returnAmount := adaAmount.Sub(adaAmount, feeAmount)
-									if returnAmount.Cmp(cardano.FixAdaAmount) < 0 {
-										log.Fatal("return value less than min value")
-									} else {
-										rawTransaction.TxOuts[paramFrom][paramAsset] = returnAmount.String()
-										if err := cardano.CreateRawTx(rawTransaction, paramFrom); err != nil {
-											log.Fatal("CreateRawTx", "err", err)
-										} else {
-											txPath := cardano.RawPath + rawTransaction.OutFile + cardano.RawSuffix
-											witnessPath := cardano.WitnessPath + rawTransaction.OutFile + cardano.WitnessSuffix
-											signedPath := cardano.SignedPath + rawTransaction.OutFile + cardano.SignedSuffix
-											if txHash, err := cardano.CalcTxId(txPath); err != nil {
-												log.Fatal("CalcTxId", "err", err)
-											} else {
-												if keyID, rsvs, err := mpcConfig.DoSignOneED(paramPublicKey, txHash, ""); err != nil {
-													log.Fatal("DoSignOneED", "err", err)
-												} else {
-													if len(rsvs) != 1 {
-														log.Fatal("get sign status require one rsv but return many",
-															"rsvs", len(rsvs), "keyID", keyID)
-													}
-
-													rsv := rsvs[0]
-													sig := common.FromHex(rsv)
-													if len(sig) != ed25519.SignatureSize {
-														log.Fatal("wrong signature length", "keyID", keyID, "have", len(sig), "want", ed25519.SignatureSize)
-													}
-
-													if err := bridge.CreateWitness(witnessPath, paramPublicKey, sig); err != nil {
-														log.Fatal("CreateWitness", "err", err)
-													} else {
-														if err := bridge.SignTx(txPath, witnessPath, signedPath); err != nil {
-															log.Fatal("SignTx", "err", err)
-														} else {
-															if txHash, err := bridge.SendTransaction(&cardano.SignedTransaction{
-																FilePath: signedPath,
-																TxHash:   txHash,
-															}); err != nil {
-																log.Fatal("SendTransaction", "err", err)
-															} else {
-																log.Info("SendTransaction", "txHash", txHash)
-															}
-														}
-													}
-												}
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
+			fmt.Printf("txHash: %s", txHash)
 		}
-
 	}
 
 }
@@ -143,21 +104,34 @@ func initBridge() {
 		log.Fatal("gateway not found for chain ID", "chainID", chainID)
 	}
 	apiAddrsExt := cfg.GatewaysExt[chainID.String()]
-	bridge.SetGatewayConfig(&tokens.GatewayConfig{
+	b.SetGatewayConfig(&tokens.GatewayConfig{
 		APIAddress:    apiAddrs,
 		APIAddressExt: apiAddrsExt,
 	})
 	log.Info("init bridge finished")
+
+	b.SetChainConfig(&tokens.ChainConfig{
+		BlockChain:     "Cardano",
+		ChainID:        chainID.String(),
+		RouterContract: paramFrom,
+		Confirmations:  1,
+	})
+
+	b.GetChainConfig().CheckConfig()
+
+	b.InitAfterConfig()
+
 }
 
 func initFlags() {
 	flag.StringVar(&paramConfigFile, "config", "", "config file to init mpc and gateway")
 	flag.StringVar(&paramChainID, "chainID", "", "chain id")
-	flag.StringVar(&paramPublicKey, "pubKey", "", "signer public key")
-	flag.StringVar(&paramFrom, "from", "", "sender address")
+	flag.StringVar(&paramFrom, "from", "", "mpc address")
 	flag.StringVar(&paramTo, "to", "", "receive address")
 	flag.StringVar(&paramAmount, "amount", "", "receive amount")
-	flag.StringVar(&paramAsset, "asset", "", "asset")
+	flag.StringVar(&paramAsset, "asset", "", "asset With Policy e.g.f0573f98953b187eec04b21eb25a5983d9d03b0d87223c768555b2ec.55534454")
+	flag.StringVar(&bind, "bind", "", "to address")
+	flag.StringVar(&toChainId, "toChainId", "", "toChainId")
 
 	flag.Parse()
 
