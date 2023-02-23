@@ -126,7 +126,7 @@ func initFlags() {
 	flag.StringVar(&paramSender, "sender", "", "sender address")
 	flag.StringVar(&paramTo, "to", "", "to address")
 	flag.StringVar(&paramDenom, "denom", "", "denom")
-	flag.Uint64Var(&paramAmount, "amount", paramAmount, "mint amount")
+	flag.Uint64Var(&paramAmount, "amount", paramAmount, "amount")
 	flag.Uint64Var(&paramGasLimit, "gasLimit", paramGasLimit, "gas limit")
 	flag.Uint64Var(&paramSequence, "sequence", paramSequence, "sequence number")
 	flag.StringVar(&paramFee, "fee", paramFee, "tx fee")

@@ -13,8 +13,7 @@ import (
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	sdktx "github.com/cosmos/cosmos-sdk/types/tx"
 	"github.com/pkg/errors"
-	"github.com/tendermint/tendermint/mempool"
-	coretypes "github.com/tendermint/tendermint/rpc/core/types"
+	coretypes "github.com/tendermint/tendermint/rpc/coretypes"
 	tmtypes "github.com/tendermint/tendermint/types"
 
 	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmos/grpc/retry"
@@ -145,7 +144,7 @@ func BroadcastRawTx(ctx context.Context, clientCtx ClientContext, txBytes []byte
 		}
 
 		if res.Code != 0 {
-			return nil, errors.Wrapf(sdkerrors.ABCIError(res.Codespace, res.Code, res.Log),
+			return nil, errors.Wrapf(sdkerrors.ABCIError(res.Codespace, res.Code, ""),
 				"transaction '%s' failed", res.Hash.String())
 		}
 
@@ -182,7 +181,7 @@ func broadcastTxCommit(ctx context.Context, clientCtx ClientContext, encodedTx [
 			return nil, errors.WithStack(err)
 		}
 	} else if res.Code != 0 {
-		return nil, errors.Wrapf(sdkerrors.ABCIError(res.Codespace, res.Code, res.Log),
+		return nil, errors.Wrapf(sdkerrors.ABCIError(res.Codespace, res.Code, ""),
 			"transaction '%s' failed", txHash)
 	}
 
@@ -234,7 +233,7 @@ func AwaitTx(
 
 		if resultTx.TxResult.Code != 0 {
 			res := resultTx.TxResult
-			return errors.Wrapf(sdkerrors.ABCIError(res.Codespace, res.Code, res.Log), "transaction '%s' failed", txHash)
+			return errors.Wrapf(sdkerrors.ABCIError(res.Codespace, res.Code, ""), "transaction '%s' failed", txHash)
 		}
 
 		if resultTx.Height == 0 {
@@ -300,7 +299,7 @@ func convertTendermintError(err error) error {
 	errStr := strings.ToLower(err.Error())
 
 	switch {
-	case strings.Contains(errStr, strings.ToLower(mempool.ErrTxInCache.Error())):
+	case strings.Contains(errStr, strings.ToLower(tmtypes.ErrTxInCache.Error())):
 		return sdkerrors.ErrTxInMempoolCache.Wrap(err.Error())
 	case strings.Contains(errStr, sdkerrors.ErrMempoolIsFull.Error()):
 		return sdkerrors.ErrMempoolIsFull.Wrap(err.Error())

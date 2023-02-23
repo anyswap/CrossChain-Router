@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
@@ -15,6 +16,7 @@ import (
 	signingTypes "github.com/cosmos/cosmos-sdk/types/tx/signing"
 	"github.com/cosmos/cosmos-sdk/x/auth/signing"
 	bankTypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	tokenfactoryTypes "github.com/sei-protocol/sei-chain/x/tokenfactory/types"
 )
 
 func (b *Bridge) NewSignModeHandler() signing.SignModeHandler {
@@ -27,6 +29,18 @@ func BuildSignerData(chainID string, accountNumber, sequence uint64) signing.Sig
 		AccountNumber: accountNumber,
 		Sequence:      sequence,
 	}
+}
+
+func BuildCreateDenomMsg(sender, subdenom string) *tokenfactoryTypes.MsgCreateDenom {
+	return tokenfactoryTypes.NewMsgCreateDenom(sender, subdenom)
+}
+
+func BuildMintMsg(sender string, amount sdk.Coin) *tokenfactoryTypes.MsgMint {
+	return tokenfactoryTypes.NewMsgMint(sender, amount)
+}
+
+func BuildBurnMsg(sender string, amount sdk.Coin) *tokenfactoryTypes.MsgBurn {
+	return tokenfactoryTypes.NewMsgBurn(sender, amount)
 }
 
 func BuildSendMsg(from, to, unit string, amount *big.Int) *bankTypes.MsgSend {
@@ -65,24 +79,76 @@ func (b *Bridge) BuildTx(
 		if balance.BigInt().Cmp(amount) >= 0 {
 			sendMsg := BuildSendMsg(from, to, denom, amount)
 			msgs = append(msgs, sendMsg)
+
+			if strings.Contains(denom, "/") && balance.BigInt().Cmp(amount) > 0 {
+				creator, _, errt := tokenfactoryTypes.DeconstructDenom(denom)
+				if errt != nil {
+					return nil, errt
+				}
+				if creator == from {
+					burnAmount := new(big.Int).Sub(balance.BigInt(), amount)
+					coin := sdk.NewCoin(denom, sdk.NewIntFromBigInt(burnAmount))
+					burnMsg := BuildBurnMsg(from, coin)
+					msgs = append(msgs, burnMsg)
+				}
+			}
 		} else {
-			log.Info("balance not enough", "denom", denom, "balance", balance, "amount", amount)
-			return nil, tokens.ErrBalanceNotEnough
+			if strings.Contains(denom, "/") {
+				creator, _, errt := tokenfactoryTypes.DeconstructDenom(denom)
+				if errt != nil {
+					return nil, errt
+				}
+				if creator == from {
+					sendMsg := BuildSendMsg(from, to, denom, balance.BigInt())
+					msgs = append(msgs, sendMsg)
+
+					mintAmount := new(big.Int).Sub(amount, balance.BigInt())
+					coin := sdk.NewCoin(denom, sdk.NewIntFromBigInt(mintAmount))
+					mintMsg := BuildMintMsg(from, coin)
+					msgs = append(msgs, mintMsg)
+				} else {
+					log.Info("balance not enough", "denom", denom, "balance", balance, "amount", amount)
+					return nil, tokens.ErrBalanceNotEnough
+				}
+			} else {
+				log.Info("balance not enough", "denom", denom, "balance", balance, "amount", amount)
+				return nil, tokens.ErrBalanceNotEnough
+			}
 		}
 
 		// process charge fee on dest chain
+		var bridgeFeeReceiver string
 		tokenID := args.GetTokenID()
 		fromChainID := args.FromChainID
 		toChainID := args.ToChainID
 		if params.ChargeFeeOnDestChain(tokenID, fromChainID.String(), toChainID.String()) {
 			if extra.BridgeFee != nil && extra.BridgeFee.Sign() > 0 {
-				bridgeFeeReceiver := params.FeeReceiverOnDestChain(toChainID.String())
-				if bridgeFeeReceiver != "" {
-					sendMsg := BuildSendMsg(from, bridgeFeeReceiver, denom, extra.BridgeFee)
-					msgs = append(msgs, sendMsg)
-					log.Info("build charge fee on dest chain", "swapID", args.SwapID, "from", from, "receiver", bridgeFeeReceiver, "denom", denom, "amount", extra.BridgeFee)
+				bridgeFeeReceiver = params.FeeReceiverOnDestChain(toChainID.String())
+			}
+		}
+		if bridgeFeeReceiver != "" {
+			var isMinted bool
+			if strings.Contains(denom, "/") {
+				creator, _, errt := tokenfactoryTypes.DeconstructDenom(denom)
+				if errt != nil {
+					return nil, errt
+				}
+				if creator == from {
+					coin := sdk.NewCoin(denom, sdk.NewIntFromBigInt(extra.BridgeFee))
+					mintMsg := BuildMintMsg(bridgeFeeReceiver, coin)
+					msgs = append(msgs, mintMsg)
+					isMinted = true
 				}
 			}
+			if !isMinted {
+				if balance.BigInt().Cmp(new(big.Int).Add(amount, extra.BridgeFee)) < 0 {
+					log.Info("balance not enough", "denom", denom, "balance", balance, "amount", amount, "fee", extra.BridgeFee)
+					return nil, tokens.ErrBalanceNotEnough
+				}
+				sendMsg := BuildSendMsg(from, bridgeFeeReceiver, denom, extra.BridgeFee)
+				msgs = append(msgs, sendMsg)
+			}
+			log.Info("build charge fee on dest chain", "swapID", args.SwapID, "from", from, "receiver", bridgeFeeReceiver, "denom", denom, "fee", extra.BridgeFee)
 		}
 
 		txBuilder := b.TxConfig.NewTxBuilder()

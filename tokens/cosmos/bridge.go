@@ -12,6 +12,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmos/grpc"
 	cosmosClient "github.com/cosmos/cosmos-sdk/client"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	tokenfactoryTypes "github.com/sei-protocol/sei-chain/x/tokenfactory/types"
 )
 
 var (
@@ -126,18 +127,28 @@ func (b *Bridge) SetTokenConfig(tokenAddr string, tokenCfg *tokens.TokenConfig) 
 	isReload := router.IsReloading
 	logErrFunc := log.GetLogFuncOr(isReload, log.Errorf, log.Fatalf)
 
-	err := sdk.ValidateDenom(tokenCfg.ContractAddress)
-	if err != nil {
-		logErrFunc("wrong meta coin denom: %v %w", tokenCfg.ContractAddress, err)
-		if isReload {
-			return
+	if strings.Contains(tokenCfg.ContractAddress, "/") {
+		creator, subdenom, err := tokenfactoryTypes.DeconstructDenom(tokenCfg.ContractAddress)
+		if err != nil {
+			logErrFunc("deconstruct denom %v failed: %v", tokenCfg.ContractAddress, err)
+			if isReload {
+				return
+			}
 		}
-	}
-
-	if tokenCfg.Decimals != 6 {
-		logErrFunc("meta coin %v decimals mismatch, have %v want 6", tokenCfg.ContractAddress, tokenCfg.Decimals)
-		if isReload {
-			return
+		log.Info("deconstruct denom success", "denom", tokenCfg.ContractAddress, "creator", creator, "subdenom", subdenom)
+	} else {
+		err := sdk.ValidateDenom(tokenCfg.ContractAddress)
+		if err != nil {
+			logErrFunc("wrong meta coin denom: %v %w", tokenCfg.ContractAddress, err)
+			if isReload {
+				return
+			}
+		}
+		if tokenCfg.Decimals != 6 {
+			logErrFunc("meta coin %v decimals mismatch, have %v want 6", tokenCfg.ContractAddress, tokenCfg.Decimals)
+			if isReload {
+				return
+			}
 		}
 	}
 }
