@@ -1,13 +1,19 @@
 package cardano
 
 import (
+	"crypto/ed25519"
+	"crypto/rand"
 	"errors"
 	"math/big"
 	"sync"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/base"
+	"github.com/btcsuite/btcutil/bech32"
+	cardanosdk "github.com/echovl/cardano-go"
+	"github.com/echovl/cardano-go/crypto"
 )
 
 var (
@@ -30,15 +36,26 @@ const (
 type Bridge struct {
 	*base.NonceSetterBase
 	RPCClientTimeout int
+	RpcClient        cardanosdk.Node
+	FakePrikey       crypto.PrvKey
+	ProtocolParams   *cardanosdk.ProtocolParams
 }
 
 // NewCrossChainBridge new bridge
 func NewCrossChainBridge() *Bridge {
+	_, priv, _ := ed25519.GenerateKey(rand.Reader)
+	priStr, _ := bech32.EncodeFromBase256("addr_sk", priv)
+	fakePrikey, err := crypto.NewPrvKey(priStr)
+	if err != nil {
+		panic(err)
+	}
 	instance := &Bridge{
 		NonceSetterBase:  base.NewNonceSetterBase(),
 		RPCClientTimeout: 60,
+		FakePrikey:       fakePrikey,
 	}
 	BridgeInstance = instance
+
 	return instance
 }
 
@@ -69,10 +86,30 @@ func GetStubChainID(network string) *big.Int {
 	return stubChainID
 }
 
+// InitAfterConfig init variables (ie. extra members) after loading config
+func (b *Bridge) InitAfterConfig() {
+	chainId := b.GetChainConfig().GetChainID()
+	apiKey := params.GetCustom(b.ChainConfig.ChainID, "APIKey")
+	if chainId.Cmp(GetStubChainID(mainnetNetWork)) == 0 {
+		b.RpcClient = NewNode(cardanosdk.Mainnet, CardanoMainNet, apiKey)
+	} else {
+		b.RpcClient = NewNode(cardanosdk.Testnet, CardanoPreProd, apiKey)
+	}
+
+	protocolParams, err := b.RpcClient.ProtocolParams()
+	if err != nil {
+		panic(err)
+	}
+	b.ProtocolParams = protocolParams
+}
+
 // GetLatestBlockNumber gets latest block number
 func (b *Bridge) GetLatestBlockNumber() (num uint64, err error) {
-	if blockNumber, err := GetLatestBlockNumber(); err == nil {
-		return blockNumber, nil
+	if b.RpcClient == nil {
+		return 0, nil
+	}
+	if tip, err := b.RpcClient.Tip(); err == nil {
+		return tip.Block, nil
 	} else {
 		return 0, err
 	}
@@ -80,7 +117,7 @@ func (b *Bridge) GetLatestBlockNumber() (num uint64, err error) {
 
 // GetLatestBlockNumberOf gets latest block number from single api
 func (b *Bridge) GetLatestBlockNumberOf(url string) (num uint64, err error) {
-	return GetLatestBlockNumber()
+	return b.GetLatestBlockNumber()
 }
 
 // GetTransaction impl
@@ -98,6 +135,8 @@ func (b *Bridge) GetTransactionByHash(txHash string) (*Transaction, error) {
 		}
 	}
 	return nil, tokens.ErrTxNotFound
+
+	// b.RpcClient.(*BlockfrostNode).GetTransactionByHash(txHash)
 }
 
 // GetTransactionByHash call eth_getTransactionByHash

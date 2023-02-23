@@ -1,5 +1,7 @@
 package cardano
 
+import cardanosdk "github.com/echovl/cardano-go"
+
 type TransactionChainingMap struct {
 	InputKey  UtxoKey   `json:"inputKey"`
 	AssetsMap AssetsMap `json:"assetsMap"`
@@ -81,20 +83,27 @@ type MetadataValue struct {
 type AssetsMap map[string]string
 
 type RawTransaction struct {
-	Fee     string               `json:"fee"`
-	TxIns   []UtxoKey            `json:"txIns"`
-	TxOuts  map[string]AssetsMap `json:"txOuts"`
-	Mint    AssetsMap            `json:"mint"`
-	TxIndex uint64               `json:"txIndex"`
-	OutFile string               `json:"outFile"`
+	// Fee string `json:"fee"`
+	TxIns            []UtxoKey            `json:"txIns"`
+	TxInsAssets      []AssetsMap          `json:"txInsAssets"`
+	TxOuts           map[string]AssetsMap `json:"txOuts"`
+	Mint             AssetsMap            `json:"mint"`
+	TxIndex          uint64               `json:"txIndex"`
+	SwapId           string               `json:"swapId"`
+	KeyDeposit       uint64               `json:"keyDeposit"`
+	CoinsPerUTXOWord uint64               `json:"coinsPerUTXOWord"`
+	MinFeeA          uint64               `json:"minFeeA"`
+	MinFeeB          uint64               `json:"minFeeB"`
+	Slot             uint64               `json:"slot"`
 }
 
 func (*RawTransaction) ProtoMessage() {}
 
 type SignedTransaction struct {
-	FilePath  string    `json:"filePath"`
-	TxIns     []UtxoKey `json:"txIns"`
-	TxHash    string    `json:"txHash"`
-	TxIndex   uint64    `json:"txIndex"`
-	AssetsMap AssetsMap `json:"assetsMap"`
+	FilePath  string         `json:"filePath"`
+	TxIns     []UtxoKey      `json:"txIns"`
+	TxHash    string         `json:"txHash"`
+	TxIndex   uint64         `json:"txIndex"`
+	AssetsMap AssetsMap      `json:"assetsMap"`
+	Tx        *cardanosdk.Tx `json:"-"`
 }
