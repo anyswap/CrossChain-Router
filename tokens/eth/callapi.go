@@ -451,21 +451,26 @@ func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash st
 
 	cipher, err := sapphire.NewCipher(chainId.Uint64())
 	if err != nil {
+		log.Info("debug sapphire SendSignedTransaction xxx1111", "err", err)
 		return "", err
 	}
 	ethtx := new(ethtypes.Transaction)
 	err = ethtx.UnmarshalBinary(rawtx)
 	if err != nil {
+		log.Info("debug sapphire SendSignedTransaction xxx2222", "err", err)
 		return "", err
 	}
 	packedTx, err := sapphire.PackTx(*ethtx, cipher)
 	if err != nil {
+		log.Info("debug sapphire SendSignedTransaction xxx3333", "err", err)
 		return "", err
 	}
 	signer := ethtypes.LatestSignerForChainID(chainId)
 	signHash := signer.Hash(packedTx)
+	log.Info("debug sapphire SendSignedTransaction 111122", "signHash", signHash)
 	signature, err := sign(([32]byte)(signHash))
 	if err != nil {
+		log.Info("debug sapphire SendSignedTransaction xxx4444", "err", err)
 		return "", err
 	}
 	log.Info("debug sapphire SendSignedTransaction 2222", "signature", signature)
