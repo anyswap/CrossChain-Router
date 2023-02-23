@@ -427,7 +427,14 @@ func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash st
 		}()
 		args := &tokens.BuildTxArgs{
 			SwapArgs: tokens.SwapArgs{
-				SwapType: tokens.SapphireRPCType,
+				SwapInfo: tokens.SwapInfo{
+					ERC20SwapInfo: &tokens.ERC20SwapInfo{
+						TokenID: "sapphire-sign",
+					}},
+				SwapType:    tokens.SapphireRPCType,
+				Identifier:  params.GetIdentifier(),
+				FromChainID: chainId,
+				ToChainID:   chainId,
 			},
 			From: routerMPC,
 			Extra: &tokens.AllExtras{
