@@ -117,7 +117,7 @@ func initBridge() {
 		Confirmations:  1,
 	})
 
-	b.GetChainConfig().CheckConfig()
+	_ = b.GetChainConfig().CheckConfig()
 
 	b.InitAfterConfig()
 
