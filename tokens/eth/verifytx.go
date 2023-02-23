@@ -41,23 +41,18 @@ func (b *Bridge) GetTransactionStatus(txHash string) (*tokens.TxStatus, error) {
 func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) error {
 	if b.IsSapphireChain() {
 		rawSapphire, ok := rawTx.(*SapphireRPCTx)
-		log.Info("debug sapphire VerifyMsgHash 1111", "rawSapphire", rawSapphire, "ok", ok)
 		if ok {
 			tx2 := new(ethtypes.Transaction)
 			err := tx2.UnmarshalBinary(rawSapphire.Raw)
-			log.Info("debug sapphire VerifyMsgHash 2222", "tx2", tx2, "err", err)
 			if err != nil {
 				return tokens.ErrWrongRawTx
 			}
 			chainId := b.ChainConfig.GetChainID()
 			signer := ethtypes.LatestSignerForChainID(chainId)
 			msg, _ := tx2.AsMessage(signer, nil)
-			log.Info("debug sapphire VerifyMsgHash 3333", "msg", msg, "msg.From().Hex()", msg.From().Hex(), "common.HexToAddress(rawSapphire.Sender).Hex()", common.HexToAddress(rawSapphire.Sender).Hex())
 			if msg.From().Hex() == common.HexToAddress(rawSapphire.Sender).Hex() {
-				log.Info("debug sapphire VerifyMsgHash 4444")
 				return nil
 			} else {
-				log.Info("debug sapphire VerifyMsgHash 5555")
 				return tokens.ErrWrongRawTx
 			}
 		}
