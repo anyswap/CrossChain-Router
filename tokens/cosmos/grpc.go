@@ -93,7 +93,7 @@ func (b *Bridge) GRPCGetTransactionByHash(txHash string) (res *GetTxResponse, er
 		txres, err = grpc.GetTransactionByHash(ctx, clientCtx, txHash)
 		if err == nil {
 			var tx *sdktx.Tx
-			if err := clientCtx.InterfaceRegistry().UnpackAny(txres.Tx, &tx); err != nil {
+			if err := clientCtx.InterfaceRegistry.UnpackAny(txres.Tx, &tx); err != nil {
 				log.Warn("GRPCGetTransactionByHash failed", "txHash", txHash, "err", err)
 				return nil, errors.WithStack(err)
 			}
@@ -183,7 +183,7 @@ func (b *Bridge) GRPCBroadcastTx(req *BroadcastTxRequest) (res *sdk.TxResponse, 
 		clientCtx := b.ClientContext.
 			WithClient(rpcClient).
 			WithBroadcastMode(flags.BroadcastSync)
-		res, err = grpc.BroadcastRawTx(ctx, clientCtx, txBytes)
+		res, err = clientCtx.BroadcastTx(txBytes)
 		if err == nil {
 			return res, nil
 		}

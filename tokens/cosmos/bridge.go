@@ -9,7 +9,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/base"
-	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmos/grpc"
 	cosmosClient "github.com/cosmos/cosmos-sdk/client"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	tokenfactoryTypes "github.com/sei-protocol/sei-chain/x/tokenfactory/types"
@@ -28,7 +27,7 @@ type Bridge struct {
 
 	cosmosClient.TxConfig
 
-	grpc.ClientContext
+	ClientContext cosmosClient.Context
 
 	Prefix string
 	Denom  string
@@ -40,7 +39,7 @@ func NewCrossChainBridge() *Bridge {
 	return &Bridge{
 		NonceSetterBase: base.NewNonceSetterBase(),
 		TxConfig:        clientCtx.TxConfig,
-		ClientContext:   grpc.NewClientContext(clientCtx),
+		ClientContext:   clientCtx,
 	}
 }
 

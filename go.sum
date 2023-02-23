@@ -557,8 +557,6 @@ github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQD
 github.com/sasha-s/go-deadlock v0.3.1 h1:sqv7fDNShgjcaxkO0JNcOAlr8B9+cV5Ey/OB71efZx0=
 github.com/sasha-s/go-deadlock v0.3.1/go.mod h1:F73l+cr82YSh10GxyRI6qZiCgK64VaZjwesgfQ1/iLM=
 github.com/savaki/jq v0.0.0-20161209013833-0e6baecebbf8 h1:ajJQhvqPSQFJJ4aV5mDAMx8F7iFi6Dxfo6y62wymLNs=
-github.com/sei-protocol/sei-chain v0.0.0-20221104071159-5f3f795fc612 h1:7CzrkFsQII2jLMSUJbiybMoOHP7ScraFZ8qzs23Zp7A=
-github.com/sei-protocol/sei-chain v0.0.0-20221104071159-5f3f795fc612/go.mod h1:bmJMDGaFH6yT8QESWtAF3caHumH5jMUei71ZDWhKakE=
 github.com/sei-protocol/sei-chain v0.0.0-20230223023702-722312f5b3ec h1:TL4awG1Q1HHWAzJNKOwRcv3gv2H/mTYP3w2NtTYHZbo=
 github.com/sei-protocol/sei-chain v0.0.0-20230223023702-722312f5b3ec/go.mod h1:dev800vSEhb1ODegVFiCS7zyH+5lRpWV9kt/uPYtAHM=
 github.com/sei-protocol/sei-cosmos v0.1.431 h1:dHiav7EXEtgYgxMdYZZfgCrSFmmhhbN0+IgNkbGB+CQ=
@@ -733,8 +731,6 @@ golang.org/x/exp v0.0.0-20191227195350-da58074b4299/go.mod h1:2RIsYlXP63K8oxa1u0
 golang.org/x/exp v0.0.0-20200119233911-0405dc783f0a/go.mod h1:2RIsYlXP63K8oxa1u096TMicItID8zy7Y6sNkU49FU4=
 golang.org/x/exp v0.0.0-20200207192155-f17229e696bd/go.mod h1:J/WKrq2StrnmMY6+EHIKF9dgMWnmCNThgcyBT1FY9mM=
 golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6/go.mod h1:3jZMyOhIsHpP37uCMkUooju7aAi5cS1Q23tOzKc+0MU=
-golang.org/x/exp v0.0.0-20221026153819-32f3d567a233 h1:9bNbSKT4RPLEzne0Xh1v3NaNecsa1DKjkOuTbY6V9rI=
-golang.org/x/exp v0.0.0-20221026153819-32f3d567a233/go.mod h1:CxIveKay+FTh1D0yPZemJVgC/95VzuuOLq5Qi4xnoYc=
 golang.org/x/exp v0.0.0-20221031165847-c99f073a8326 h1:QfTh0HpN6hlw6D3vu8DAwC8pBIwikq0AI1evdm+FksE=
 golang.org/x/exp v0.0.0-20221031165847-c99f073a8326/go.mod h1:CxIveKay+FTh1D0yPZemJVgC/95VzuuOLq5Qi4xnoYc=
 golang.org/x/image v0.0.0-20190227222117-0694c2d4d067/go.mod h1:kZ7UVZpmo3dzQBMxlp+ypCbDeSB+sBbTgSJuh5dn5js=
