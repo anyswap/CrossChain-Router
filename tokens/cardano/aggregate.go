@@ -1,9 +1,9 @@
 package cardano
 
 import (
+	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -13,15 +13,30 @@ import (
 func (b *Bridge) BuildAggregateTx(swapId string, utxos map[UtxoKey]AssetsMap) (*RawTransaction, error) {
 	log.Infof("BuildAggregateTx:\nswapId:%+v\nutxos:%+v\n", swapId, utxos)
 	routerMpc := b.GetRouterContract("")
+	pparams, err := b.RpcClient.ProtocolParams()
+	if err != nil {
+		return nil, err
+	}
+	nodeTip, err := b.RpcClient.Tip()
+	if err != nil {
+		return nil, err
+	}
 	rawTransaction := &RawTransaction{
-		Fee:     "0",
-		OutFile: swapId,
-		TxOuts:  make(map[string]AssetsMap),
-		TxIns:   []UtxoKey{},
+		// Fee:     "0",
+		SwapId:           swapId,
+		TxOuts:           make(map[string]AssetsMap),
+		TxIns:            []UtxoKey{},
+		TxInsAssets:      []AssetsMap{},
+		Slot:             nodeTip.Slot,
+		CoinsPerUTXOWord: uint64(pparams.CoinsPerUTXOWord),
+		KeyDeposit:       uint64(pparams.KeyDeposit),
+		MinFeeA:          uint64(pparams.MinFeeA),
+		MinFeeB:          uint64(pparams.MinFeeB),
 	}
 	allAssetsMap := map[string]uint64{}
 	for utxoKey, assetsMap := range utxos {
 		rawTransaction.TxIns = append(rawTransaction.TxIns, utxoKey)
+		rawTransaction.TxInsAssets = append(rawTransaction.TxInsAssets, assetsMap)
 		for asset, assetAmount := range assetsMap {
 			if value, err := common.GetBigIntFromStr(assetAmount); err != nil {
 				return nil, err
@@ -33,18 +48,24 @@ func (b *Bridge) BuildAggregateTx(swapId string, utxos map[UtxoKey]AssetsMap) (*
 
 	rawTransaction.TxOuts[routerMpc] = map[string]string{}
 	for assetIdWithName, assetAmount := range allAssetsMap {
-		policyId := strings.Split(assetIdWithName, ".")[0]
-		if policyId != MPCPolicyId {
+		if assetIdWithName == AdaAsset {
 			rawTransaction.TxOuts[routerMpc][assetIdWithName] = fmt.Sprint(assetAmount)
 		} else {
-			rawTransaction.Mint = map[string]string{
-				assetIdWithName: fmt.Sprintf("-%d", assetAmount),
+			policy := strings.Split(assetIdWithName, ".")
+			assetName := string(common.Hex2Bytes(policy[1]))
+			_, _, policyId := b.GetAssetPolicy(assetName)
+			if policy[0] != policyId.String() {
+				rawTransaction.TxOuts[routerMpc][assetIdWithName] = fmt.Sprint(assetAmount)
+			} else {
+				rawTransaction.Mint = map[string]string{
+					assetName: fmt.Sprintf("-%d", assetAmount),
+				}
 			}
 		}
 	}
 
 	if rawTransaction.Mint == nil || len(rawTransaction.Mint) == 0 {
-		return nil, tokens.ErrAggregateTx
+		return nil, errors.New("no need to Aggregate")
 	}
 	return rawTransaction, nil
 }
@@ -75,31 +96,22 @@ func (b *Bridge) SignAggregateTx(swapId string, rawTx interface{}) (string, erro
 }
 
 func (b *Bridge) AggregateTx() (txHash string, err error) {
-	mpcAddress := b.GetRouterContract("")
-	swapId := fmt.Sprintf("doAggregateJob_%d", time.Now().Unix())
-	if utxo, err := b.QueryUtxoOnChain(mpcAddress); err == nil {
-		if rawTransaction, err := b.BuildAggregateTx(swapId, utxo); err == nil {
-			if err := CreateRawTx(rawTransaction, mpcAddress); err == nil {
-				if minFee, err := CalcMinFee(rawTransaction); err == nil {
-					if feeList := strings.Split(minFee, " "); len(feeList) == 2 {
-						rawTransaction.Fee = feeList[0]
-						if adaAmount, err := common.GetBigIntFromStr(rawTransaction.TxOuts[mpcAddress][AdaAsset]); err == nil {
-							if feeAmount, err := common.GetBigIntFromStr(feeList[0]); err == nil {
-								returnAmount := adaAmount.Sub(adaAmount, feeAmount)
-								if returnAmount.Cmp(FixAdaAmount) > 0 {
-									rawTransaction.TxOuts[mpcAddress][AdaAsset] = returnAmount.String()
-									if err := CreateRawTx(rawTransaction, mpcAddress); err == nil {
-										if txHash, err := b.SignAggregateTx(swapId, rawTransaction); err == nil {
-											return txHash, nil
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	return "", tokens.ErrAggregateTx
+	// sdk not support burn
+	return "", errors.New("no need to Aggregate")
+	// mpcAddress := b.GetRouterContract("")
+	// swapId := fmt.Sprintf("doAggregateJob_%d", time.Now().Unix())
+	// utxo, err := b.QueryUtxoOnChain(mpcAddress)
+	// if err != nil {
+	// 	return "", err
+	// }
+	// rawTransaction, err := b.BuildAggregateTx(swapId, utxo)
+	// if err != nil {
+	// 	return "", err
+	// }
+	// txhash, err := b.SignAggregateTx(swapId, rawTransaction)
+	// if err != nil {
+	// 	return "", err
+	// }
+	// log.Info("CardanoAggregateTx", "txHash", txhash, "success", true)
+	// return txhash, nil
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -18,8 +19,7 @@ var (
 	paramChainID    string
 	chainID         = big.NewInt(0)
 	mpcConfig       *mpc.Config
-	paramAddress    string
-	paramTxHash     string
+	paramPubkey     string
 )
 
 func main() {
@@ -27,28 +27,11 @@ func main() {
 
 	initAll()
 
-	if res, err := b.GetTransactionByHash(paramTxHash); err != nil {
-		log.Fatal("get transaction by txHash error", "txHash", paramTxHash, "err", err)
-	} else {
-		log.Warnf("transaction:%+v", res)
+	addr, err := b.PublicKeyToAddress(paramPubkey)
+	if err != nil {
+		panic(err)
 	}
-
-	if outputs, err := b.GetUtxosByAddress(paramAddress); err != nil {
-		log.Fatal("get outputs by address error", "address", paramAddress, "err", err)
-	} else {
-		log.Warnf("outputs:%+v", outputs)
-		utxos := make(map[cardano.UtxoKey]cardano.AssetsMap)
-		for _, output := range *outputs {
-			utxoKey := cardano.UtxoKey{TxHash: output.TxHash, TxIndex: output.Index}
-			utxos[utxoKey] = make(cardano.AssetsMap)
-
-			utxos[utxoKey][cardano.AdaAsset] = output.Value
-			for _, token := range output.Tokens {
-				utxos[utxoKey][token.Asset.PolicyId+token.Asset.AssetName] = token.Quantity
-			}
-		}
-		log.Warnf("utxos:%+v", utxos)
-	}
+	fmt.Println(addr)
 }
 
 func initAll() {
@@ -95,8 +78,7 @@ func initBridge() {
 func initFlags() {
 	flag.StringVar(&paramConfigFile, "config", "", "config file to init mpc and gateway")
 	flag.StringVar(&paramChainID, "chainID", "", "chain id")
-	flag.StringVar(&paramAddress, "address", "", "address")
-	flag.StringVar(&paramTxHash, "txHash", "", "txHash")
+	flag.StringVar(&paramPubkey, "pubkey", "", "pubkey")
 	flag.Parse()
 
 	if paramChainID != "" {
