@@ -440,10 +440,11 @@ func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash st
 		mpcPubkey := router.GetMPCPublicKey(routerMPC)
 		log.Info("debug sapphire SendSignedTransaction MPC sign 2222", "mpcPubkey", mpcPubkey)
 		_, rsvs, err := mpcConfig.DoSignOneEC(mpcPubkey, common.ToHex(digest[:]), msgContext)
+		log.Info("debug sapphire SendSignedTransaction MPC sign 3333", "rsvs", rsvs, "err", err)
 		if err != nil {
 			return nil, err
 		}
-		log.Info("debug sapphire SendSignedTransaction MPC sign 3333", "rsvs", rsvs)
+		log.Info("debug sapphire SendSignedTransaction MPC sign 4444", "rsvs", rsvs)
 
 		return common.FromHex(rsvs[0]), nil
 	}
@@ -498,8 +499,8 @@ func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash st
 	for _, url := range b.AllGatewayURLs {
 		var result string
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_sendRawTransaction", hexData)
+		log.Info("debug sapphire SendSignedTransaction rpc post", "err", err)
 		if err == nil {
-			log.Info("debug sapphire SendSignedTransaction rpc post", "err", err)
 			return signedTx.Hash().Hex(), nil
 		}
 	}
