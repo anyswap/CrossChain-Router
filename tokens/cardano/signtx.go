@@ -68,18 +68,18 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 
 			pubStr, _ := bech32.EncodeFromBase256("addr_vk", common.FromHex(mpcPubkey))
 			pubKey, _ := crypto.NewPubKey(pubStr)
-			b.appendSignature(tx, pubKey, sig)
+			b.AppendSignature(tx, pubKey, sig)
 
 			cacheAssetsMap := rawTransaction.TxOuts[args.From]
 			txInputs := rawTransaction.TxIns
 			txIndex := rawTransaction.TxIndex
 			return &SignedTransaction{
 				TxIns:     txInputs,
-				TxHash:    txHash,
+				TxHash:    signingMsg.String(),
 				TxIndex:   txIndex,
 				AssetsMap: cacheAssetsMap,
 				Tx:        tx,
-			}, txHash, nil
+			}, signingMsg.String(), nil
 		}
 	}
 }
@@ -94,7 +94,7 @@ func (b *Bridge) SignTransactionWithPrivateKey(tx *cardanosdk.Tx, rawTransaction
 	if err != nil {
 		return nil, "", err
 	}
-	b.appendSignature(tx, sk.PubKey(), sk.Sign(txHash))
+	b.AppendSignature(tx, sk.PubKey(), sk.Sign(txHash))
 
 	cacheAssetsMap := rawTransaction.TxOuts[args.From]
 	txInputs := rawTransaction.TxIns
@@ -109,7 +109,7 @@ func (b *Bridge) SignTransactionWithPrivateKey(tx *cardanosdk.Tx, rawTransaction
 	}, txHash.String(), nil
 }
 
-func (b *Bridge) appendSignature(tx *cardanosdk.Tx, pubKey crypto.PubKey, signature []byte) {
+func (b *Bridge) AppendSignature(tx *cardanosdk.Tx, pubKey crypto.PubKey, signature []byte) {
 	newVKeyWitnessSet := []cardanosdk.VKeyWitness{}
 	for _, vKeyWitness := range tx.WitnessSet.VKeyWitnessSet {
 		if vKeyWitness.VKey.String() == b.FakePrikey.PubKey().String() {
@@ -202,7 +202,7 @@ func (b *Bridge) MPCSignSwapTransaction(rawTx interface{}, args *tokens.BuildTxA
 
 			pubStr, _ := bech32.EncodeFromBase256("addr_vk", common.FromHex(mpcPubkey))
 			pubKey, _ := crypto.NewPubKey(pubStr)
-			b.appendSignature(tx, pubKey, sig)
+			b.AppendSignature(tx, pubKey, sig)
 
 			cacheAssetsMap := rawTransaction.TxOuts[args.From]
 			txInputs := rawTransaction.TxIns
