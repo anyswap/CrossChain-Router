@@ -95,6 +95,9 @@ func (b *Bridge) VerifyTransaction(txHash string, args *tokens.VerifyArgs) (*tok
 }
 
 func (b *Bridge) verifySapphireRPC(txHash string, args *tokens.VerifyArgs) (*tokens.SwapTxInfo, error) {
+	if !b.IsSapphireChain() {
+		return nil, tokens.ErrSwapTypeNotSupported
+	}
 	swapTxInfo := &tokens.SwapTxInfo{SwapInfo: tokens.SwapInfo{ERC20SwapInfo: &tokens.ERC20SwapInfo{}}}
 	swapTxInfo.SwapType = tokens.SapphireRPCType
 	chainID := b.ChainConfig.GetChainID()

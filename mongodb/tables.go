@@ -45,6 +45,8 @@ func (swap *MgoSwap) IsValid() bool {
 		if swap.AnyCallSwapInfo == nil {
 			return false
 		}
+	case tokens.SapphireRPCType: // internal usage, never store
+		return false
 	default:
 		return false
 	}
