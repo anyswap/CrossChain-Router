@@ -1,6 +1,9 @@
 package main
 
 import (
+	"crypto/ed25519"
+	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"math/big"
@@ -14,6 +17,8 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/cardano"
+	"github.com/cosmos/btcutil/bech32"
+	"github.com/echovl/cardano-go/crypto"
 )
 
 var (
@@ -70,14 +75,69 @@ func main() {
 		From:  paramFrom,
 		Extra: &tokens.AllExtras{},
 	}
-	if signTx, _, err := b.MPCSignSwapTransaction(rawTx, args, bind, toChainId); err != nil {
+
+	tx, err := b.CreateSwapoutRawTx(rawTx, b.GetRouterContract(""), bind, toChainId)
+	if err != nil {
+		panic(err)
+	}
+
+	mpcParams := params.GetMPCConfig(b.UseFastMPC)
+	var signTx *cardano.SignedTransaction
+
+	if mpcParams.SignWithPrivateKey {
+		priKey := mpcParams.GetSignerPrivateKey(b.ChainConfig.ChainID)
+		signTx, _, _ = b.SignTransactionWithPrivateKey(tx, rawTx, args, priKey)
+	} else {
+		signingMsg, err := tx.Hash()
+		if err != nil {
+			panic(err)
+		}
+
+		jsondata, _ := json.Marshal(args.GetExtraArgs())
+		msgContext := string(jsondata)
+
+		txid := args.SwapID
+		logPrefix := b.ChainConfig.BlockChain + " MPCSignTransaction "
+		log.Info(logPrefix+"start", "txid", txid, "signingMsg", signingMsg.String())
+
+		keyID, rsvs, err := mpcConfig.DoSignOneED(paramPubkey, signingMsg.String(), msgContext)
+		if err != nil {
+			panic(err)
+		}
+
+		if len(rsvs) != 1 {
+			log.Warn("get sign status require one rsv but return many",
+				"rsvs", len(rsvs), "keyID", keyID, "txid", txid)
+			panic(errors.New("get sign status require one rsv but return many"))
+		}
+
+		rsv := rsvs[0]
+		log.Trace(logPrefix+"get rsv signature success", "keyID", keyID, "txid", txid, "rsv", rsv)
+		sig := common.FromHex(rsv)
+		if len(sig) != ed25519.SignatureSize {
+			log.Error("wrong signature length", "keyID", keyID, "txid", txid, "have", len(sig), "want", ed25519.SignatureSize)
+			panic(errors.New("wrong signature length"))
+		}
+
+		pubStr, _ := bech32.EncodeFromBase256("addr_vk", common.FromHex(paramPubkey))
+		pubKey, _ := crypto.NewPubKey(pubStr)
+		b.AppendSignature(tx, pubKey, sig)
+
+		cacheAssetsMap := rawTx.TxOuts[args.From]
+		txInputs := rawTx.TxIns
+		txIndex := rawTx.TxIndex
+		signTx = &cardano.SignedTransaction{
+			TxIns:     txInputs,
+			TxHash:    signingMsg.String(),
+			TxIndex:   txIndex,
+			AssetsMap: cacheAssetsMap,
+			Tx:        tx,
+		}
+	}
+	if txHash, err := b.SendTransaction(signTx); err != nil {
 		panic(err)
 	} else {
-		if txHash, err := b.SendTransaction(signTx); err != nil {
-			panic(err)
-		} else {
-			fmt.Printf("txHash: %s", txHash)
-		}
+		fmt.Printf("txHash: %s", txHash)
 	}
 
 }

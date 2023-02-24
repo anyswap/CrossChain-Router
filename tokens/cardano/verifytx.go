@@ -11,7 +11,7 @@ import (
 
 const (
 	MetadataKey       = "123"
-	SwapInMetadataKey = 223
+	SwapInMetadataKey = "223"
 )
 
 // VerifyMsgHash verify msg hash

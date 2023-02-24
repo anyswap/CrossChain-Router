@@ -195,9 +195,10 @@ func (b *Bridge) calcMaxFee() uint64 {
 }
 
 func (b *Bridge) CreateRawTx(rawTransaction *RawTransaction, mpcAddr string) (*cardanosdk.Tx, error) {
+	label, _ := strconv.Atoi(SwapInMetadataKey)
 	txBuilder, err := b.genTxBuilder(mpcAddr, rawTransaction, &cardanosdk.AuxiliaryData{
 		Metadata: cardanosdk.Metadata{
-			SwapInMetadataKey: map[string]interface{}{
+			uint(label): map[string]interface{}{
 				"SwapId": rawTransaction.SwapId,
 			},
 		},
