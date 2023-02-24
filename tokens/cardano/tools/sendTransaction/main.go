@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"math/big"
-	"strings"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -42,10 +41,10 @@ func main() {
 
 	initAll()
 
-	policy := strings.Split(paramAsset, ".")
-	if len(policy) != 2 {
-		panic("policy format error")
-	}
+	// policy := strings.Split(paramAsset, ".")
+	// if len(policy) != 2 {
+	// 	panic("policy format error")
+	// }
 
 	// _, _, policyID := b.GetAssetPolicy(paramAsset)
 	// assetName := cardanosdk.NewAssetName(paramAsset)
