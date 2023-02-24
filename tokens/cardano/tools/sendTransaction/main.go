@@ -11,6 +11,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mpc"
 	"github.com/anyswap/CrossChain-Router/v3/params"
+	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/cardano"
 )
@@ -26,6 +27,7 @@ var (
 	paramAmount     string
 	bind            string
 	toChainId       string
+	paramPubkey     string
 	chainID         = big.NewInt(0)
 	mpcConfig       *mpc.Config
 )
@@ -120,6 +122,10 @@ func initBridge() {
 
 	b.InitAfterConfig()
 
+	if paramPubkey != "" {
+		router.SetMPCPublicKey(paramFrom, paramPubkey)
+	}
+
 }
 
 func initFlags() {
@@ -131,6 +137,7 @@ func initFlags() {
 	flag.StringVar(&paramAsset, "asset", "", "asset With Policy e.g.f0573f98953b187eec04b21eb25a5983d9d03b0d87223c768555b2ec.55534454")
 	flag.StringVar(&bind, "bind", "", "to address")
 	flag.StringVar(&toChainId, "toChainId", "", "toChainId")
+	flag.StringVar(&paramPubkey, "pubkey", "", "mpc pubkey")
 
 	flag.Parse()
 
