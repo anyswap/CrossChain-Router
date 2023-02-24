@@ -20,7 +20,6 @@ const (
 	coinTypeIndex      uint32 = 1815 + 0x80000000
 	accountIndex       uint32 = 0x80000000
 	externalChainIndex uint32 = 0x0
-	stakingChainIndex  uint32 = 0x02
 )
 
 func initFlags() {

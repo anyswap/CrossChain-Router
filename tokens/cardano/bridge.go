@@ -148,7 +148,10 @@ func (b *Bridge) GetTransactionByHash(txHash string) (*Transaction, error) {
 		for _, md := range *txMetadata {
 			tmp, _ := json.Marshal(md.JsonMetadata)
 			var mv MetadataValue
-			json.Unmarshal(tmp, &mv)
+			err = json.Unmarshal(tmp, &mv)
+			if err != nil {
+				return nil, err
+			}
 			metadata = append(metadata, Metadata{
 				Key:   md.Label,
 				Value: mv,

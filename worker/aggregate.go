@@ -1,17 +1,33 @@
 package worker
 
 import (
+	"errors"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/cardano"
 )
 
 var (
 	aggInterval = 7 * 24 * time.Hour
+
+	errInvalidAggregate = errors.New("invalid agregate")
 )
+
+func verifyAggregate(msgHash []string, args *tokens.BuildTxArgs) error {
+	if args.FromChainID == nil || args.ToChainID == nil ||
+		args.FromChainID.Cmp(args.ToChainID) != 0 {
+		return errors.New("aggregate: from and to chainid is not same")
+	}
+	if cardano.BridgeInstance == nil ||
+		!cardano.SupportsChainID(args.ToChainID) {
+		return errors.New("aggregate: dest chain does not support it")
+	}
+	return cardano.BridgeInstance.VerifyAggregate(msgHash, args)
+}
 
 // StartAggregateJob aggregate job
 func StartAggregateJob() {

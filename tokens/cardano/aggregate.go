@@ -1,9 +1,11 @@
 package cardano
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -74,14 +76,23 @@ func (b *Bridge) SignAggregateTx(swapId string, rawTx interface{}) (string, erro
 	if rawTransaction, ok := rawTx.(*RawTransaction); !ok {
 		return "", tokens.ErrWrongRawTx
 	} else {
+		txdata, err := json.Marshal(rawTransaction)
+		if err != nil {
+			return "", err
+		}
+		chainId := b.ChainConfig.GetChainID()
 		mpcAddress := b.GetRouterContract("")
 		args := &tokens.BuildTxArgs{
 			SwapArgs: tokens.SwapArgs{
-				Identifier: tokens.AggregateIdentifier,
-				SwapID:     swapId,
+				Identifier:  tokens.AggregateIdentifier,
+				SwapID:      swapId,
+				FromChainID: chainId,
+				ToChainID:   chainId,
 			},
-			From:  mpcAddress,
-			Extra: &tokens.AllExtras{},
+			From: mpcAddress,
+			Extra: &tokens.AllExtras{
+				RawTx: txdata,
+			},
 		}
 		if signTx, _, err := b.MPCSignTransaction(rawTransaction, args); err != nil {
 			return "", err
@@ -96,22 +107,38 @@ func (b *Bridge) SignAggregateTx(swapId string, rawTx interface{}) (string, erro
 }
 
 func (b *Bridge) AggregateTx() (txHash string, err error) {
-	// sdk not support burn
-	return "", errors.New("no need to Aggregate")
-	// mpcAddress := b.GetRouterContract("")
-	// swapId := fmt.Sprintf("doAggregateJob_%d", time.Now().Unix())
-	// utxo, err := b.QueryUtxoOnChain(mpcAddress)
-	// if err != nil {
-	// 	return "", err
-	// }
-	// rawTransaction, err := b.BuildAggregateTx(swapId, utxo)
-	// if err != nil {
-	// 	return "", err
-	// }
-	// txhash, err := b.SignAggregateTx(swapId, rawTransaction)
-	// if err != nil {
-	// 	return "", err
-	// }
-	// log.Info("CardanoAggregateTx", "txHash", txhash, "success", true)
-	// return txhash, nil
+	mpcAddress := b.GetRouterContract("")
+	swapId := fmt.Sprintf("doAggregateJob_%d", time.Now().Unix())
+	utxo, err := b.QueryUtxoOnChain(mpcAddress)
+	if err != nil {
+		return "", err
+	}
+	rawTransaction, err := b.BuildAggregateTx(swapId, utxo)
+	if err != nil {
+		return "", err
+	}
+	txhash, err := b.SignAggregateTx(swapId, rawTransaction)
+	if err != nil {
+		return "", err
+	}
+	log.Info("CardanoAggregateTx", "txHash", txhash, "success", true)
+	return txhash, nil
+}
+
+func (b *Bridge) VerifyAggregate(msgHash []string, args *tokens.BuildTxArgs) error {
+	if args == nil || args.Extra == nil || len(args.Extra.RawTx) == 0 {
+		return errors.New("invalid aggregate args")
+	}
+	var rawtx RawTransaction
+	err := json.Unmarshal(args.Extra.RawTx, &rawtx)
+	if err != nil {
+		return err
+	}
+	routerMpc := b.GetRouterContract("")
+	for acc := range rawtx.TxOuts {
+		if !strings.EqualFold(acc, routerMpc) {
+			return errors.New("invalid aggregate receiver")
+		}
+	}
+	return nil
 }
