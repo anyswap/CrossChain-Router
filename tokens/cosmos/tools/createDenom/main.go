@@ -183,7 +183,7 @@ func initAll() {
 func initFlags() {
 	flag.StringVar(&paramConfigFile, "config", "", "config file to init mpc and gateway")
 	flag.StringVar(&paramChainID, "chainID", "", "chain id")
-	flag.StringVar(&paramPrefix, "prefix", "sei", "bech32 prefix for account")
+	flag.StringVar(&paramPrefix, "prefix", "inj", "bech32 prefix for account")
 	flag.StringVar(&paramSender, "sender", "", "token creater")
 	flag.StringVar(&paramDenom, "denom", "", "token denom")
 	flag.StringVar(&paramMemo, "memo", "", "transaction memo")

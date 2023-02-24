@@ -25,7 +25,7 @@ var (
 	paramPrivateKey string
 	paramMemo       string
 	paramGasLimit   = uint64(200000)
-	paramFee        = "1usei"
+	paramFee        string
 	paramSequence   uint64
 	paramUseGrpc    bool
 
@@ -120,9 +120,9 @@ func BuildTx() (*cosmos.BuildRawTx, error) {
 }
 
 func initFlags() {
-	flag.StringVar(&paramURLs, "url", "https://sei-testnet-rpc.allthatnode.com:1317", "urls (comma separated)")
+	flag.StringVar(&paramURLs, "url", "https://testnet.tm.injective.network:443", "urls (comma separated)")
 	flag.StringVar(&paramChainID, "chainID", "", "chain id")
-	flag.StringVar(&paramPrefix, "prefix", "sei", "bech32 prefix for account")
+	flag.StringVar(&paramPrefix, "prefix", "inj", "bech32 prefix for account")
 	flag.StringVar(&paramSender, "sender", "", "sender address")
 	flag.StringVar(&paramTo, "to", "", "to address")
 	flag.StringVar(&paramDenom, "denom", "", "denom")

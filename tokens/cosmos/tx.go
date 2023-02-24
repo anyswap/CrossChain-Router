@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"strings"
 
+	tokenfactoryTypes "github.com/InjectiveLabs/sdk-go/chain/tokenfactory/types"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
@@ -16,7 +17,6 @@ import (
 	signingTypes "github.com/cosmos/cosmos-sdk/types/tx/signing"
 	"github.com/cosmos/cosmos-sdk/x/auth/signing"
 	bankTypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	tokenfactoryTypes "github.com/sei-protocol/sei-chain/x/tokenfactory/types"
 )
 
 func (b *Bridge) NewSignModeHandler() signing.SignModeHandler {
