@@ -122,6 +122,7 @@ func (b *Bridge) getTxOutputs(swapInfo *tokens.SwapTxInfo, allowUnstable bool) (
 }
 
 func (b *Bridge) checkTxStatus(txres *Transaction, allowUnstable bool) error {
+	// TODO what's ValidContract mean?
 	if !txres.ValidContract {
 		return tokens.ErrTxIsNotValidated
 	}

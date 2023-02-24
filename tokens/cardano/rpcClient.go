@@ -264,17 +264,7 @@ func (b *BlockfrostNode) GetTransactionMetadataByHash(txHash string) (*[]blockfr
 	return &txm, err
 }
 
-func (b *BlockfrostNode) GetUtxosByAddress(url, address string) (*[]Output, error) {
-	request := &client.Request{}
-	request.Params = fmt.Sprintf(QueryOutputs, address)
-	request.ID = int(time.Now().UnixNano())
-	request.Timeout = rpcTimeout
-	var result OutputsResult
-	if err := client.CardanoPostRequest(url, request, &result); err != nil {
-		return nil, err
-	}
-	if len(result.Outputs) == 0 {
-		return nil, tokens.ErrOutputLength
-	}
-	return &result.Outputs, nil
+func (b *BlockfrostNode) GetTransactionUtxoByHash(txHash string) (*blockfrost.TransactionUTXOs, error) {
+	utxos, err := b.client.TransactionUTXOs(context.Background(), txHash)
+	return &utxos, err
 }

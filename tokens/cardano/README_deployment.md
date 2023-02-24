@@ -36,6 +36,15 @@ go run tokens/cardano/tools/mintToken/main.go -h
 ### 9. send swapout tx
 go run tokens/cardano/tools/sendTransaction/main.go -h
 
+### 10.tools
+
+- go run tokens/cardano/tools/mintToken/main.go -h
+- go run tokens/cardano/tools/pubKeyToAddr/main.go -h
+- go run tokens/cardano/tools/newWallet/main.go -h
+- go run tokens/cardano/tools/newToken/main.go -h
+- go run tokens/cardano/tools/queryUtxos/main.go -h
+- go run tokens/cardano/tools/sendTransaction/main.go -h
+
 # DevOps
 #### run cardano node
 

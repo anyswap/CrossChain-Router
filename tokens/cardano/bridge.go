@@ -3,8 +3,10 @@ package cardano
 import (
 	"crypto/ed25519"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"math/big"
+	"strconv"
 	"sync"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -127,16 +129,87 @@ func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
 
 // GetTransactionByHash call eth_getTransactionByHash
 func (b *Bridge) GetTransactionByHash(txHash string) (*Transaction, error) {
-	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
-	for _, url := range urls {
-		result, err := GetTransactionByHash(url, txHash)
-		if err == nil {
-			return result, nil
+	useAPI, _ := strconv.ParseBool(params.GetCustom(b.ChainConfig.ChainID, "UseAPI"))
+	if useAPI {
+		txt, err := b.RpcClient.(*BlockfrostNode).GetTransactionByHash(txHash)
+		if err != nil {
+			return nil, err
 		}
-	}
-	return nil, tokens.ErrTxNotFound
+		txMetadata, err := b.RpcClient.(*BlockfrostNode).GetTransactionMetadataByHash(txHash)
+		if err != nil {
+			return nil, err
+		}
+		utxos, err := b.RpcClient.(*BlockfrostNode).GetTransactionUtxoByHash(txHash)
+		if err != nil {
+			return nil, err
+		}
 
-	// b.RpcClient.(*BlockfrostNode).GetTransactionByHash(txHash)
+		metadata := []Metadata{}
+		for _, md := range *txMetadata {
+			tmp, _ := json.Marshal(md.JsonMetadata)
+			var mv MetadataValue
+			json.Unmarshal(tmp, &mv)
+			metadata = append(metadata, Metadata{
+				Key:   md.Label,
+				Value: mv,
+			})
+		}
+
+		input := []Input{}
+		for _, v := range utxos.Inputs {
+			details, _ := json.Marshal(v.Amount)
+			input = append(input, Input{
+				Address: v.Address,
+				Value:   string(details),
+			})
+		}
+		output := []Output{}
+		for _, v := range utxos.Outputs {
+			ts := []Token{}
+			var value string
+			for _, a := range v.Amount {
+				if a.Unit == AdaAsset {
+					value = a.Quantity
+					continue
+				}
+				ts = append(ts, Token{
+					Asset: Asset{
+						PolicyId:  a.Unit[:56],
+						AssetName: a.Unit[56:],
+					},
+					Quantity: a.Quantity,
+				})
+			}
+
+			output = append(output, Output{
+				Address: v.Address,
+				Value:   value,
+				Tokens:  ts,
+			})
+		}
+
+		tx := &Transaction{
+			Block: Block{
+				SlotNo: uint64(txt.Slot),
+				Number: uint64(txt.BlockHeight),
+			},
+			Hash:     txt.Hash,
+			Metadata: metadata,
+			Inputs:   input,
+			Outputs:  output,
+		}
+		return tx, nil
+	} else {
+		urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+		for _, url := range urls {
+			result, err := GetTransactionByHash(url, txHash)
+			if err == nil {
+				return result, nil
+			}
+		}
+		return nil, tokens.ErrTxNotFound
+	}
+
 }
 
 // GetTransactionByHash call eth_getTransactionByHash
