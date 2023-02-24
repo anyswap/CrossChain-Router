@@ -197,7 +197,7 @@ func (b *Bridge) calcMaxFee() uint64 {
 func (b *Bridge) CreateRawTx(rawTransaction *RawTransaction, mpcAddr string) (*cardanosdk.Tx, error) {
 	txBuilder, err := b.genTxBuilder(mpcAddr, rawTransaction, &cardanosdk.AuxiliaryData{
 		Metadata: cardanosdk.Metadata{
-			0: map[string]interface{}{
+			SwapInMetadataKey: map[string]interface{}{
 				"SwapId": rawTransaction.SwapId,
 			},
 		},
@@ -289,8 +289,14 @@ func (b *Bridge) genTxBuilder(mpcAddr string, rawTransaction *RawTransaction, da
 				return nil, err
 			}
 			p := cardanosdk.NewPolicyIDFromHash(common.Hex2Bytes(tmp[0]))
-			assetValue.MultiAsset.Set(cardanosdk.NewPolicyIDFromHash(common.Hex2Bytes(tmp[0])), cardanosdk.NewAssets().Set(cardanosdk.NewAssetName(string(common.Hex2Bytes(tmp[1]))), cardanosdk.BigNum(value.Uint64())))
-			log.Info("TxInsAssets", "origin assetkey", assetkey, "policy", p.String(), "assetName", cardanosdk.NewAssetName(string(common.Hex2Bytes(tmp[1]))).String(), "amount", value.Uint64())
+			an := cardanosdk.NewAssetName(string(common.Hex2Bytes(tmp[1])))
+			av := cardanosdk.BigNum(value.Uint64())
+			if assetValue.MultiAsset.Get(p) == nil {
+				assetValue.MultiAsset.Set(p, cardanosdk.NewAssets().Set(an, av))
+			} else {
+				assetValue.MultiAsset.Get(p).Set(an, av)
+			}
+			log.Info("TxInsAssets", "origin assetkey", assetkey, "policy", p.String(), "assetName", an.String(), "amount", value.Uint64())
 		}
 
 		log.Info("AddTxInsAssets", "txHash", txHash.String(), "TxIndex", utxoKey.TxIndex, "assetValue", assetValue.Coin)
@@ -325,8 +331,14 @@ func (b *Bridge) genTxBuilder(mpcAddr string, rawTransaction *RawTransaction, da
 				return nil, err
 			}
 			p := cardanosdk.NewPolicyIDFromHash(common.Hex2Bytes(tmp[0]))
-			outValue.MultiAsset.Set(cardanosdk.NewPolicyIDFromHash(common.Hex2Bytes(tmp[0])), cardanosdk.NewAssets().Set(cardanosdk.NewAssetName(string(common.Hex2Bytes(tmp[1]))), cardanosdk.BigNum(value.Uint64())))
-			log.Info("TxOutAssets", "origin assetkey", asset, "policy", p.String(), "assetName", cardanosdk.NewAssetName(string(common.Hex2Bytes(tmp[1]))).String(), "amount", value.Uint64())
+			an := cardanosdk.NewAssetName(string(common.Hex2Bytes(tmp[1])))
+			av := cardanosdk.BigNum(value.Uint64())
+			if outValue.MultiAsset.Get(p) == nil {
+				outValue.MultiAsset.Set(p, cardanosdk.NewAssets().Set(an, av))
+			} else {
+				outValue.MultiAsset.Get(p).Set(an, av)
+			}
+			log.Info("TxOutAssets", "origin assetkey", asset, "policy", p.String(), "assetName", an.String(), "amount", value.Uint64())
 		}
 		log.Info("AddTxOutAssets", "receiver", receiver.String(), "ada", adaAmount.Uint64())
 	}
