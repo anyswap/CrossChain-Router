@@ -201,6 +201,7 @@ func (b *Bridge) parseTokenInfo(swapInfo *tokens.SwapTxInfo, tokenInfo *Token, m
 	swapInfo.ERC20SwapInfo.TokenID = tokenCfg.TokenID
 
 	swapInfo.To = metadata.Value.Bind
+	swapInfo.TxTo = b.GetRouterContract("")
 	return nil
 }
 
