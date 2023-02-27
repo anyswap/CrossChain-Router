@@ -96,10 +96,11 @@ func (b *Bridge) BuildTx(swapId, receiver, assetId string, amount *big.Int, utxo
 	txIns := []UtxoKey{}
 	txInsAssets := []AssetsMap{}
 
-	adaRequired := new(big.Int).SetUint64(b.calcMaxFee())
+	// max tx size fee + output min ada
+	adaRequired := new(big.Int).SetUint64(b.calcMaxFee() + FixAdaAmount.Uint64())
 	if assetId == AdaAsset {
 		if amount.Cmp(FixAdaAmount) < 0 {
-			return nil, tokens.ErrAdaSwapOutAmount
+			return nil, fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, "ada not enough, below "+FixAdaAmount.String())
 		}
 		adaRequired.Add(adaRequired, amount)
 	} else {
@@ -124,12 +125,15 @@ func (b *Bridge) BuildTx(swapId, receiver, assetId string, amount *big.Int, utxo
 				break
 			}
 		} else {
-			if allAssetsMap[assetId] > amount.Uint64() {
+			if allAssetsMap[assetId] > amount.Uint64() && allAssetsMap[AdaAsset] > adaRequired.Uint64() {
 				break
 			}
 		}
-
 	}
+	if allAssetsMap[AdaAsset] <= adaRequired.Uint64() {
+		return nil, fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, "ada not enough, below "+FixAdaAmount.String())
+	}
+
 	pparams, err := b.RpcClient.ProtocolParams()
 	if err != nil {
 		return nil, err
