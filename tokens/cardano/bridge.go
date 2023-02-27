@@ -146,16 +146,18 @@ func (b *Bridge) GetTransactionByHash(txHash string) (*Transaction, error) {
 
 		metadata := []Metadata{}
 		for _, md := range *txMetadata {
-			tmp, _ := json.Marshal(md.JsonMetadata)
-			var mv MetadataValue
-			err = json.Unmarshal(tmp, &mv)
-			if err != nil {
-				return nil, err
+			if md.Label == MetadataKey {
+				tmp, _ := json.Marshal(md.JsonMetadata)
+				var mv MetadataValue
+				err = json.Unmarshal(tmp, &mv)
+				if err != nil {
+					return nil, err
+				}
+				metadata = append(metadata, Metadata{
+					Key:   md.Label,
+					Value: mv,
+				})
 			}
-			metadata = append(metadata, Metadata{
-				Key:   md.Label,
-				Value: mv,
-			})
 		}
 
 		input := []Input{}
@@ -196,10 +198,11 @@ func (b *Bridge) GetTransactionByHash(txHash string) (*Transaction, error) {
 				SlotNo: uint64(txt.Slot),
 				Number: uint64(txt.BlockHeight),
 			},
-			Hash:     txt.Hash,
-			Metadata: metadata,
-			Inputs:   input,
-			Outputs:  output,
+			Hash:          txt.Hash,
+			Metadata:      metadata,
+			Inputs:        input,
+			Outputs:       output,
+			ValidContract: true,
 		}
 		return tx, nil
 	} else {

@@ -109,6 +109,7 @@ func (b *Bridge) getTxOutputs(swapInfo *tokens.SwapTxInfo, allowUnstable bool) (
 			if statusErr != nil {
 				return nil, nil, statusErr
 			}
+			swapInfo.Height = txres.Block.Number // Height
 			for index, metadata := range txres.Metadata {
 				if metadata.Key == MetadataKey {
 					if len(txres.Inputs) > 0 {
