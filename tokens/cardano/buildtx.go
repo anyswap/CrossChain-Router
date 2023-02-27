@@ -168,7 +168,7 @@ func (b *Bridge) BuildTx(swapId, receiver, assetId string, amount *big.Int, utxo
 			assetName := string(common.Hex2Bytes(policy[1]))
 			_, _, policyId := b.GetAssetPolicy(assetName)
 			if policy[0] != policyId.String() {
-				return nil, tokens.ErrTokenBalancesNotEnough
+				return nil, fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, assetId+" not enough")
 			} else {
 				rawTransaction.Mint = map[string]string{
 					assetName: fmt.Sprint(amount.Uint64() - allAssetsMap[assetId]),
