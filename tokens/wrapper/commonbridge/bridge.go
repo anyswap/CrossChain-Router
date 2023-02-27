@@ -39,5 +39,5 @@ func (b *Bridge) GetBalance(account string) (*big.Int, error) {
 
 // InitRouterInfo init router info
 func (b *Bridge) InitRouterInfo(routerContract, routerVersion string) (err error) {
-	return b.Bridge.InitRouterInfo(routerContract, routerVersion)
+	return b.Bridge.InitRouterInfo(b.ChainConfig.ChainID, routerContract, routerVersion)
 }

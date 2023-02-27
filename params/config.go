@@ -1322,3 +1322,13 @@ func GetAttestationServer() string {
 	}
 	return ""
 }
+
+// IsWrapperGateway is wrapper gateway
+func IsWrapperGateway(chainID string) bool {
+	if routerConfig.GatewayConfigs == nil ||
+		routerConfig.GatewayConfigs.WrapperGateways == nil {
+		return false
+	}
+	wrapperCfg, exist := routerConfig.GatewayConfigs.WrapperGateways[chainID]
+	return exist && wrapperCfg != nil && wrapperCfg.RPCAddress != ""
+}

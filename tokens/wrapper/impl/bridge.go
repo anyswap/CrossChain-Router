@@ -1,15 +1,19 @@
 package impl
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
+	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
+
+var errForbiddenMethod = errors.New("forbidden method")
 
 // Bridge bridge
 type Bridge struct {
@@ -25,7 +29,7 @@ func NewCrossChainBridge(cfg *params.WrapperConfig) *Bridge {
 
 func (b *Bridge) callService(result interface{}, method string, params ...interface{}) error {
 	callMethod := "bridge." + method
-	err := client.RPCPostWithTimeout(b.RPCTimeout, &result, b.RPCAddress, callMethod, nil)
+	err := client.RPCPostWithTimeout(b.RPCTimeout, &result, b.RPCAddress, callMethod, params...)
 	if err != nil {
 		log.Error(fmt.Sprintf("call %v failed", method), "err", err)
 	} else {
@@ -36,14 +40,37 @@ func (b *Bridge) callService(result interface{}, method string, params ...interf
 
 // InitAfterConfig init variables (ie. extra members) after loading config
 func (b *Bridge) InitAfterConfig() {
-	var result interface{}
-	_ = b.callService(&result, "InitAfterConfig")
 }
 
 // InitRouterInfo init router info
-func (b *Bridge) InitRouterInfo(routerContract, routerVersion string) (err error) {
-	var result interface{}
-	return b.callService(&result, "InitRouterInfo")
+func (b *Bridge) InitRouterInfo(chainID, routerContract, routerVersion string) (err error) {
+	if routerContract == "" {
+		return nil
+	}
+	log.Info(fmt.Sprintf("[%5v] start init router info", chainID), "routerContract", routerContract)
+	routerMPC, err := b.GetMPCAddress(routerContract)
+	if err != nil {
+		log.Warn("get router mpc address failed", "chainID", chainID, "routerContract", routerContract, "err", err)
+		return err
+	}
+	if routerMPC == "" {
+		log.Warn("get router mpc address return an empty address", "chainID", chainID, "routerContract", routerContract, "routerMPC", routerMPC)
+		return fmt.Errorf("empty router mpc address of router contract %v on chain %v", routerContract, chainID)
+	}
+	log.Info("get router mpc address success", "chainID", chainID, "routerContract", routerContract, "routerMPC", routerMPC)
+
+	router.SetRouterInfo(
+		routerContract,
+		chainID,
+		&router.SwapRouterInfo{
+			RouterMPC: routerMPC,
+		},
+	)
+
+	log.Info(fmt.Sprintf("[%5v] init router info success", chainID),
+		"routerContract", routerContract, "routerMPC", routerMPC)
+
+	return nil
 }
 
 type RegisterSwapResult struct {
@@ -54,16 +81,24 @@ type RegisterSwapResult struct {
 // RegisterSwap register swap.
 // used in `RegisterRouterSwap` server rpc.
 func (b *Bridge) RegisterSwap(txHash string, args *tokens.RegisterArgs) ([]*tokens.SwapTxInfo, []error) {
-	var result *RegisterSwapResult
-	_ = b.callService(&result, "RegisterSwap", txHash, args)
+	var result RegisterSwapResult
+	err := b.callService(&result, "RegisterSwap", txHash, args)
+	if err != nil {
+		swapinfo := &tokens.SwapTxInfo{
+			SwapType: args.SwapType,
+			Hash:     txHash,
+			LogIndex: args.LogIndex,
+		}
+		return []*tokens.SwapTxInfo{swapinfo}, []error{err}
+	}
 	return result.SwapTxInfos, result.Errs
 }
 
 // VerifyTransaction verify swap tx is valid and success on chain with needed confirmations.
 func (b *Bridge) VerifyTransaction(txHash string, args *tokens.VerifyArgs) (*tokens.SwapTxInfo, error) {
-	var result *tokens.SwapTxInfo
+	var result tokens.SwapTxInfo
 	err := b.callService(&result, "VerifyTransaction", txHash, args)
-	return result, err
+	return &result, err
 }
 
 // BuildRawTransaction build tx with specified args.
@@ -89,8 +124,8 @@ type SignTxResult struct {
 
 // MPCSignTransaction mpc sign tx.
 func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs) (signedTx interface{}, txHash string, err error) {
-	var result *SignTxResult
-	err = b.callService(&result, "MPCSignTransaction", txHash, args)
+	var result SignTxResult
+	err = b.callService(&result, "MPCSignTransaction", rawTx, args)
 	return result.SignedTx, result.TxHash, err
 }
 
@@ -125,8 +160,7 @@ func (b *Bridge) GetLatestBlockNumber() (number uint64, err error) {
 // GetLatestBlockNumberOf get latest block number of specified url.
 // used in `AdjustGatewayOrder` function.
 func (b *Bridge) GetLatestBlockNumberOf(url string) (number uint64, err error) {
-	err = b.callService(&number, "GetLatestBlockNumberOf", url)
-	return number, err
+	return 0, errForbiddenMethod
 }
 
 // GetBalance get balance is used for checking budgets to prevent DOS attacking
@@ -147,4 +181,16 @@ func (b *Bridge) IsValidAddress(address string) bool {
 func (b *Bridge) PublicKeyToAddress(pubKey string) (address string, err error) {
 	err = b.callService(&address, "PublicKeyToAddress", pubKey)
 	return address, err
+}
+
+// GetMPCAddress get mpc address of router contract
+func (b *Bridge) GetMPCAddress(routerContract string) (address string, err error) {
+	err = b.callService(&address, "GetMPCAddress", routerContract)
+	return address, err
+}
+
+// GetPoolNonce get pool nonce
+func (b *Bridge) GetPoolNonce(address, height string) (nonce uint64, err error) {
+	err = b.callService(&nonce, "GetPoolNonce", address, height)
+	return nonce, err
 }

@@ -17,6 +17,9 @@ import (
 
 var (
 	routerInfoIsLoaded = new(sync.Map) // key is chainID and router contract address
+
+	// IsWrapperMode is wrapper mode
+	IsWrapperMode bool
 )
 
 func getRouterInfoLoadedKey(chainID, routerContract string) string {

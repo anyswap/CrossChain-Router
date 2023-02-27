@@ -7,6 +7,7 @@ import (
 
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tools"
@@ -20,6 +21,9 @@ var (
 
 // AdjustGatewayOrder adjust gateway order once
 func AdjustGatewayOrder(bridge tokens.IBridge, chainID string) {
+	if IsWrapperMode {
+		return
+	}
 	// use block number as weight
 	var weightedAPIs tools.WeightedStringSlice
 	gateway := bridge.GetGatewayConfig()
@@ -43,6 +47,7 @@ func AdjustGatewayOrder(bridge tokens.IBridge, chainID string) {
 		maxHeight, _ = bridge.GetLatestBlockNumber()
 	}
 	if maxHeight > 0 {
+		log.Info("update latest block number", "chainID", chainID, "height", maxHeight)
 		router.CachedLatestBlockNumber.Store(chainID, maxHeight)
 	}
 	if len(weightedAPIs) > 0 {
@@ -69,7 +74,7 @@ func adjustGatewayOrder(bridge tokens.IBridge, chainID string) {
 
 		AdjustGatewayOrder(bridge, chainID)
 
-		if adjustCount%3 == 0 {
+		if adjustCount%3 == 0 && !params.IsWrapperGateway(chainID) {
 			log.Info(fmt.Sprintf("adjust gateways of chain %v", chainID), "result", bridge.GetGatewayConfig().WeightedAPIs)
 		}
 	}

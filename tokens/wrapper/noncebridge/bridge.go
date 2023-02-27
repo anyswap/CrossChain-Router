@@ -12,6 +12,8 @@ import (
 var (
 	// ensure Bridge impl tokens.CrossChainBridge
 	_ tokens.IBridge = &Bridge{}
+	// ensure Bridge impl tokens.NonceSetter
+	_ tokens.NonceSetter = &Bridge{}
 )
 
 // Bridge bridge
@@ -40,5 +42,10 @@ func (b *Bridge) GetBalance(account string) (*big.Int, error) {
 
 // InitRouterInfo init router info
 func (b *Bridge) InitRouterInfo(routerContract, routerVersion string) (err error) {
-	return b.Bridge.InitRouterInfo(routerContract, routerVersion)
+	return b.Bridge.InitRouterInfo(b.ChainConfig.ChainID, routerContract, routerVersion)
+}
+
+// GetPoolNonce get pool nonce
+func (b *Bridge) GetPoolNonce(address, height string) (uint64, error) {
+	return b.Bridge.GetPoolNonce(address, height)
 }
