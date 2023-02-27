@@ -89,10 +89,12 @@ func (b *Bridge) verifySwapoutTx(txHash string, _ int, allowUnstable bool) (*tok
 			return swapInfo, errf
 		}
 
-		if h < uint64(txres.TransactionWithMetaData.LedgerSequence)+b.GetChainConfig().Confirmations {
+		txHeight := uint64(txres.TransactionWithMetaData.LedgerSequence)
+
+		if h < txHeight+b.GetChainConfig().Confirmations {
 			return swapInfo, tokens.ErrTxNotStable
 		}
-		if h < b.ChainConfig.InitialHeight {
+		if txHeight < b.ChainConfig.InitialHeight {
 			return swapInfo, tokens.ErrTxBeforeInitialHeight
 		}
 	}
@@ -178,9 +180,19 @@ func (b *Bridge) checkToken(token *tokens.TokenConfig, txmeta *data.TransactionW
 	return nil
 }
 
+func getTargetMemo(memoStr string) (memo string) {
+	index := strings.LastIndex(memoStr, "||")
+	if index == -1 {
+		memo = memoStr
+	} else {
+		memo = memoStr[index+2:]
+	}
+	return strings.TrimSpace(memo)
+}
+
 func parseSwapMemos(swapInfo *tokens.SwapTxInfo, memos data.Memos) bool {
 	for _, memo := range memos {
-		memoStr := strings.TrimSpace(string(memo.Memo.MemoData.Bytes()))
+		memoStr := getTargetMemo(string(memo.Memo.MemoData.Bytes()))
 		parts := strings.Split(memoStr, ":")
 		if len(parts) < 2 {
 			continue

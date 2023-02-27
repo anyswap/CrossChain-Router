@@ -15,8 +15,9 @@ import (
 )
 
 var (
-	defaultFee     int64 = 10
-	accountReserve       = big.NewInt(10000000)
+	defaultFee       int64  = 10
+	accountReserve          = big.NewInt(10000000)
+	tfPartialPayment uint32 = 0x00020000
 )
 
 // BuildRawTransaction build raw tx
@@ -104,10 +105,16 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 	}
 
 	ripplePubKey := ImportPublicKey(common.FromHex(mpcPubkey))
-	memo := fmt.Sprintf("%v:%v:%v", args.FromChainID, args.SwapID, args.LogIndex)
+	memo := args.GetUniqueSwapIdentifier()
+
+	flags := uint32(0)
+	if token.ContractVersion == uint64(tfPartialPayment) {
+		flags = uint32(tfPartialPayment)
+	}
+
 	return NewUnsignedPaymentTransaction(
 		ripplePubKey, nil, uint32(*extra.Sequence),
-		receiver, toTag, amt.String(), *extra.Fee, memo, "", 0)
+		receiver, toTag, amt.String(), *extra.Fee, memo, "", flags)
 }
 
 func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken string) (receiver string, destTag *uint32, amount *big.Int, err error) {

@@ -72,6 +72,7 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 	mpcConfig := mpc.GetMPCConfig(b.UseFastMPC)
 	keyID, rsvs, err := mpcConfig.DoSignOneEC(mpcPubkey, msgHash.String(), msgContext)
 	if err != nil {
+		log.Info(logPrefix+"failed", "keyID", keyID, "txid", txid, "err", err)
 		return nil, "", err
 	}
 	log.Info(logPrefix+"finished", "keyID", keyID, "txid", txid, "msghash", msgHash.String())

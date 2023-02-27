@@ -284,9 +284,7 @@ func (ni *NodeInfo) getUsableSignGroupIndexes() []int {
 	defer ni.signGroupsLock.RUnlock()
 
 	groupIndexes := make([]int, len(ni.usableSignGroupIndexes))
-	for i, groupInd := range ni.usableSignGroupIndexes {
-		groupIndexes[i] = groupInd
-	}
+	copy(groupIndexes, ni.usableSignGroupIndexes)
 
 	return groupIndexes
 }
@@ -300,6 +298,13 @@ func (ni *NodeInfo) deleteSignGroup(groupIndex int) {
 		if groupInd == groupIndex {
 			ni.usableSignGroupIndexes = append(ni.usableSignGroupIndexes[:i], ni.usableSignGroupIndexes[i+1:]...)
 			return
+		}
+	}
+
+	if len(ni.usableSignGroupIndexes) == 0 { // reinit to all origins
+		ni.usableSignGroupIndexes = make([]int, len(ni.originSignGroups))
+		for i := range ni.originSignGroups {
+			ni.usableSignGroupIndexes[i] = i
 		}
 	}
 }
@@ -363,6 +368,25 @@ func (c *Config) initSelfEnode() {
 		log.Error("can't get enode info", "rpcAddr", c.defaultMPCNode.mpcRPCAddress, "err", err)
 		time.Sleep(10 * time.Second)
 	}
+}
+
+// GetEnodeID get enode id (get rid of prefix and suffix)
+func GetEnodeID(enode string) string {
+	startIndex := strings.Index(enode, "enode://")
+	endIndex := strings.Index(enode, "@")
+	if startIndex == -1 || endIndex == -1 {
+		return ""
+	}
+	return strings.ToLower(enode[startIndex+8 : endIndex])
+}
+
+// GetEnodeIDs get enode ids
+func GetEnodeIDs(enodes []string) []string {
+	res := make([]string, len(enodes))
+	for i, enode := range enodes {
+		res[i] = GetEnodeID(enode)
+	}
+	return res
 }
 
 func isEnodeExistIn(enode string, enodes []string) bool {

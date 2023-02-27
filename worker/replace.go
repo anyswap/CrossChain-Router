@@ -41,21 +41,6 @@ func StartReplaceJob() {
 		return
 	}
 
-	allChainIDs := router.AllChainIDs
-
-	// init all replace swap task queue
-	for _, toChainID := range allChainIDs {
-		if _, exist := replaceTaskQueues[toChainID.String()]; !exist {
-			replaceTaskQueues[toChainID.String()] = fifo.NewQueue()
-		}
-	}
-
-	// start comsumers
-	for _, toChainID := range allChainIDs {
-		mongodb.MgoWaitGroup.Add(1)
-		go startReplaceConsumer(toChainID.String())
-	}
-
 	// start producer
 	go startReplaceProducer()
 }
@@ -74,6 +59,10 @@ func startReplaceProducer() {
 			if utils.IsCleanuping() {
 				logWorker("replace", "stop router swap replace job")
 				return
+			}
+
+			if !router.IsNonceSupported(swap.ToChainID) {
+				continue
 			}
 
 			if replaceTasksInQueue.Contains(swap.Key) {
@@ -118,10 +107,22 @@ func dispatchSwapResultToReplace(res *mongodb.MgoSwapResult) error {
 	if res.SwapTx != "" && getSepTimeInFind(waitTimeToReplace) < res.Timestamp {
 		return nil
 	}
+	if !router.IsNonceSupported(res.ToChainID) {
+		return nil
+	}
 
-	taskQueue, exist := replaceTaskQueues[res.ToChainID]
+	chainID := res.ToChainID
+	taskQueue, exist := replaceTaskQueues[chainID]
 	if !exist {
-		return fmt.Errorf("no replace task queue for chainID '%v'", res.ToChainID)
+		bridge := router.GetBridgeByChainID(chainID)
+		if bridge == nil {
+			return tokens.ErrNoBridgeForChainID
+		}
+		// init replace task queue and start consumer routine
+		taskQueue = fifo.NewQueue()
+		replaceTaskQueues[chainID] = taskQueue
+		mongodb.MgoWaitGroup.Add(1)
+		go startReplaceConsumer(chainID)
 	}
 
 	logWorker("replace", "dispatch replace router swap task", "fromChainID", res.FromChainID, "toChainID", res.ToChainID, "txid", res.TxID, "logIndex", res.LogIndex, "value", res.SwapValue, "swapNonce", res.SwapNonce, "queue", taskQueue.Len())
@@ -203,6 +204,9 @@ func startReplaceConsumer(chainID string) {
 
 // ReplaceRouterSwap api
 func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int, isManual bool) error {
+	if !router.IsNonceSupported(res.ToChainID) {
+		return tokens.ErrNonceNotSupport
+	}
 	swap, err := verifyReplaceSwap(res, isManual)
 	if err != nil {
 		return err
@@ -284,6 +288,9 @@ func signAndSendReplaceTx(resBridge tokens.IBridge, rawTx interface{}, args *tok
 	txid := res.TxID
 	logIndex := res.LogIndex
 
+	cacheKey := mongodb.GetRouterSwapKey(fromChainID, txid, logIndex)
+	disagreeRecords.Delete(cacheKey)
+
 	err = mongodb.UpdateRouterOldSwapTxs(fromChainID, txid, logIndex, txHash)
 	if err != nil {
 		return
@@ -304,6 +311,17 @@ func verifyReplaceSwap(res *mongodb.MgoSwapResult, isManual bool) (*mongodb.MgoS
 	if err != nil {
 		return nil, err
 	}
+	if isBlacked(swap) {
+		logWorkerWarn("replace", "swap is in black list", "txid", res.TxID, "logIndex", res.LogIndex, "fromChainID", res.FromChainID, "toChainID", res.ToChainID, "token", res.GetToken(), "tokenID", res.GetTokenID())
+		err = tokens.ErrSwapInBlacklist
+		_ = mongodb.UpdateRouterSwapStatus(res.FromChainID, res.TxID, res.LogIndex, mongodb.SwapInBlacklist, now(), err.Error())
+		_ = mongodb.UpdateRouterSwapResultStatus(res.FromChainID, res.TxID, res.LogIndex, mongodb.SwapInBlacklist, now(), err.Error())
+		return nil, err
+	}
+	if swap.Status != mongodb.TxProcessed {
+		return nil, fmt.Errorf("cannot replace swap with status not equal to 'TxProcessed'")
+	}
+
 	if res.SwapTx == "" && !params.IsParallelSwapEnabled() {
 		return nil, errors.New("swap without swaptx")
 	}
@@ -352,7 +370,7 @@ func checkIfSwapNonceHasPassed(bridge tokens.IBridge, res *mongodb.MgoSwapResult
 			iden = "[stable]"
 		}
 		fromChainID, txid, logIndex := res.FromChainID, res.TxID, res.LogIndex
-		noncePassedInterval := params.GetNoncePassedConfirmInterval(res.FromChainID)
+		noncePassedInterval := params.GetNoncePassedConfirmInterval(res.ToChainID)
 		if noncePassedInterval == 0 {
 			noncePassedInterval = treatAsNoncePassedInterval
 		}

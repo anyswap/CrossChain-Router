@@ -2,7 +2,7 @@
 Identifier = "routerswap#20210326"
 # router swap type (eg. erc20swap, nftswap, anycallswap)
 SwapType = "erc20swap"
-# default subtype is empty. anycall has subtype of 'curve'
+# anycall has subtype of v5 (curve) and v6 (hundred)
 SwapSubType = ""
 
 # chain id black list of string array
@@ -11,6 +11,10 @@ ChainIDBlackList = []
 TokenIDBlackList = []
 # account black list of string array
 AccountBlackList = []
+# token id black list on chain
+[TokenIDBlackListOnChain]
+43114 = []
+25    = []
 
 # router sever config (server only)
 [Server]
@@ -39,8 +43,6 @@ PlusGasPricePercentage = 10
 MaxPlusGasPricePercentage = 100
 # maximum gas price flunct percentage
 MaxGasPriceFluctPercent = 10
-# swap deadline offset for trading
-SwapDeadlineOffset = 36000
 # apecify auto swap nonce enabled chainids
 AutoSwapNonceEnabledChains = ["25"]
 
@@ -57,10 +59,21 @@ AutoSwapNonceEnabledChains = ["25"]
 [Server.SendTxLoopInterval]
 43114 = 10
 25    = 10
+# default gas fee (string type)
+#[Server.DefaultFee]
+#1007961752911 = "6250"
 # default gas limit. key is chainID. if not set, use 90000 as default.
 [Server.DefaultGasLimit]
 4     = 90000
 46688 = 90000
+# config maximum gas limit. key is chainID.
+[Server.MaxGasLimit]
+4     = 200000
+46688 = 90000
+# config maximum token gas limit. key is chainID. the last part (USDC here) is tokenID.
+[Server.MaxTokenGasLimit.USDC]
+4     = 2000000
+46688 = 900000
 # use fixed gas price (no adjust). key is chainID.
 [Server.FixedGasPrice]
 4     = "1000000001"
@@ -88,7 +101,7 @@ MaxGasFeeCap         = "10000000000"
 [Server.MongoDB]
 # DBURLs is prefered if exists. forbids set both DBURL and DBURLs.
 #DBURL = "localhost:27017,localhost:12345"
-#DBURLs = ["localhost:27017", "localhost:12345"]
+DBURLs = ["localhost:27017", "localhost:12345"]
 DBName = "databasename"
 UserName = "username"
 Password = "password"
@@ -108,10 +121,12 @@ MaxRequestsLimit = 10
 ServerAPIAddress = "http://127.0.0.1:11556/rpc"
 # don't check server connection
 NoCheckServerConnection = false
+# check gas token balance
+CheckGasTokenBalance = false
 
 [Extra]
-# is swap trade enabled
-EnableSwapTrade = false
+# usdc attestation server
+AttestationServer = ""
 # is swap with permit enabled
 EnableSwapWithPermit = false
 # force call anySwapInAuto
@@ -124,6 +139,8 @@ EnableParallelSwap = false
 UsePendingBalance = false
 # dont panic in init router
 DontPanicInInitRouter = false
+# dont check in init router (quick loading)
+DontCheckInInitRouter = false
 # apecify dynamic fee tx enabled chainids
 DynamicFeeTxEnabledChains = ["3"]
 # enable check tx block hash for security reason
@@ -134,7 +151,13 @@ EnableCheckTxBlockIndexChains = ["1", "56"]
 DisableUseFromChainIDInReceiptChains = ["1666600000"]
 # chains use fast mpc
 UseFastMPCChains = ["1001313161554"]
+# check token balance
+CheckTokenBalanceEnabledChains = ["1"]
+DontCheckBalanceTokenIDs = ["USDC", "MIM"]
+DontCheckTotalSupplyTokenIDs = ["USDC", "MIM"]
 DontCheckReceivedTokenIDs = ["USDC", "MIM"]
+# ignore apps that does not support anaycall fallback
+IgnoreAnycallFallbackAppIDs = ["xxxxxxxxxxx"]
 # allow call into router from contract's constructor
 AllowCallByConstructor = false
 # allow call into router from contract
@@ -177,6 +200,24 @@ MIM  = ["0x2222222222222222222222222222222222222222"]
 4 = [
 	"0x1111111111111111111111111111111111111111111111111111111111111111"
 ]
+# the last key is chainID
+[Extra.LocalChainConfig.2025]
+EstimatedGasMustBePositive = true
+
+[Extra.LocalChainConfig.86]
+SmallestGasPriceUnit = 1000000000
+
+[Extra.LocalChainConfig.25]
+ForbidParallelLoading = true
+ForbidSwapoutTokenIDs = ["USDC", "USDT"]
+BigValueDiscount = 50
+
+[Extra.LocalChainConfig.1007961752911]
+FeeReceiverOnDestChain = "xxxxxx"
+ChargeFeeOnDestChain.1000005788241 = ["XXX"]
+
+[Extra.SpecialFlags]
+key = "value"
 
 
 # OnChain config
@@ -198,6 +239,9 @@ APIAddress = ["http://127.0.0.1:8711", "http://127.0.0.1:8722"]
 [GatewaysExt]
 4     = ["http://127.0.0.1:6000"]
 46688 = ["http://127.0.0.1:8000"]
+
+#[GRPCGateways]
+#1007961752911 = ["XXXXXX"]
 
 # FastMPC config
 #[FastMPC]

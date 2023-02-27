@@ -120,6 +120,10 @@ func (b *Bridge) verifyNFTSwapTx(txHash string, logIndex int, allowUnstable bool
 		return swapInfo, err
 	}
 
+	if params.IsSwapoutForbidden(b.ChainConfig.ChainID, swapInfo.NFTSwapInfo.TokenID) {
+		return swapInfo, tokens.ErrSwapoutForbidden
+	}
+
 	if !allowUnstable {
 		log.Info("verify nft swap tx stable pass", "identifier", params.GetIdentifier(),
 			"from", swapInfo.From, "to", swapInfo.To, "txid", txHash, "logIndex", logIndex,
@@ -134,6 +138,10 @@ func (b *Bridge) verifyNFTSwapTx(txHash string, logIndex int, allowUnstable bool
 }
 
 func (b *Bridge) verifyNFTSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPCLog) (err error) {
+	if rlog == nil || len(rlog.Topics) == 0 {
+		return tokens.ErrSwapoutLogNotFound
+	}
+
 	swapInfo.To = rlog.Address.LowerHex() // To
 
 	logTopic := rlog.Topics[0].Bytes()
@@ -171,6 +179,7 @@ func (b *Bridge) verifyNFTSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types.RPC
 		return tokens.ErrMissRouterInfo
 	}
 	if !common.IsEqualIgnoreCase(rlog.Address.LowerHex(), routerContract) {
+		log.Warn("tx to address mismatch", "have", rlog.Address.LowerHex(), "want", routerContract, "chainID", b.ChainConfig.ChainID, "txid", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "err", tokens.ErrTxWithWrongContract)
 		return tokens.ErrTxWithWrongContract
 	}
 	return nil
@@ -222,7 +231,11 @@ func (b *Bridge) parseNFT721SwapoutWithDataTxLog(swapInfo *tokens.SwapTxInfo, rl
 	swapInfo.Bind = common.BytesToAddress(logTopics[3].Bytes()).LowerHex()
 	swapInfo.Value = big.NewInt(0)
 	nftSwapInfo.IDs = []*big.Int{common.GetBigInt(logData, 0, 32)}
-	swapInfo.FromChainID = common.GetBigInt(logData, 32, 32)
+	if params.IsUseFromChainIDInReceiptDisabled(b.ChainConfig.ChainID) {
+		swapInfo.FromChainID = b.ChainConfig.GetChainID()
+	} else {
+		swapInfo.FromChainID = common.GetBigInt(logData, 32, 32)
+	}
 	swapInfo.ToChainID = common.GetBigInt(logData, 64, 32)
 	nftSwapInfo.Data, err = abicoder.ParseBytesInData(logData, 96)
 	if err != nil {
@@ -318,6 +331,9 @@ func (b *Bridge) checkNFTSwapInfo(swapInfo *tokens.SwapTxInfo) error {
 	if swapInfo.FromChainID.String() != b.ChainConfig.ChainID {
 		log.Error("nft swap tx with mismatched fromChainID in receipt", "txid", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "fromChainID", swapInfo.FromChainID, "toChainID", swapInfo.ToChainID, "chainID", b.ChainConfig.ChainID)
 		return tokens.ErrFromChainIDMismatch
+	}
+	if swapInfo.FromChainID.Cmp(swapInfo.ToChainID) == 0 {
+		return tokens.ErrSameFromAndToChainID
 	}
 	nftSwapInfo := swapInfo.NFTSwapInfo
 	dstBridge := router.GetBridgeByChainID(swapInfo.ToChainID.String())

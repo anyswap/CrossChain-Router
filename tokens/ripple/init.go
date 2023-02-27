@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
-	"github.com/anyswap/CrossChain-Router/v3/mongodb"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/ripple/rubblelabs/ripple/data"
@@ -20,11 +19,6 @@ var (
 // ripple token address format is "XRP" or "Currency/Issuser"
 func convertToAsset(tokenAddr string) (*data.Asset, error) {
 	return data.NewAsset(tokenAddr)
-}
-
-// SetGatewayConfig set gateway config
-func (b *Bridge) SetGatewayConfig(gatewayCfg *tokens.GatewayConfig) {
-	b.CrossChainBridgeBase.SetGatewayConfig(gatewayCfg)
 }
 
 // SetTokenConfig set token config
@@ -80,7 +74,7 @@ func (b *Bridge) VerifyTokenConfig(tokenCfg *tokens.TokenConfig) error {
 }
 
 // InitRouterInfo init router info (in ripple routerContract is routerMPC)
-func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
+func (b *Bridge) InitRouterInfo(routerContract, routerVersion string) (err error) {
 	chainID := b.ChainConfig.ChainID
 	log.Info(fmt.Sprintf("[%5v] start init router info", chainID), "routerContract", routerContract)
 	routerMPC := routerContract // in ripple routerMPC is routerContract
@@ -109,17 +103,6 @@ func (b *Bridge) InitRouterInfo(routerContract string) (err error) {
 
 	log.Info(fmt.Sprintf("[%5v] init router info success", chainID),
 		"routerContract", routerContract, "routerMPC", routerMPC)
-
-	if mongodb.HasClient() {
-		var nextSwapNonce uint64
-		for i := 0; i < 3; i++ {
-			nextSwapNonce, err = mongodb.FindNextSwapNonce(chainID, routerMPC)
-			if err == nil {
-				break
-			}
-		}
-		b.InitSwapNonce(b, routerMPC, nextSwapNonce)
-	}
 
 	return nil
 }

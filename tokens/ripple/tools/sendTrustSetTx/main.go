@@ -142,7 +142,7 @@ func initConfig() {
 	} else {
 		mpcConfig = mpc.InitConfig(config.MPC, true)
 	}
-	log.Info("init config finished")
+	log.Info("init config finished", "IsFastMPC", mpcConfig.IsFastMPC)
 }
 
 func initBridge() {

@@ -53,14 +53,9 @@ func GetServerInfo() *ServerInfo {
 func GetOracleInfo() map[string]*OracleInfo {
 	result := make(map[string]*OracleInfo, 4)
 	oraclesInfo.Range(func(k, v interface{}) bool {
-		enode := k.(string)
-		startIndex := strings.Index(enode, "enode://")
-		endIndex := strings.Index(enode, "@")
-		if startIndex != -1 && endIndex != -1 {
-			info := v.(*OracleInfo)
-			enodeID := enode[startIndex+8 : endIndex]
-			result[strings.ToLower(enodeID)] = info
-		}
+		enodeID := k.(string)
+		info := v.(*OracleInfo)
+		result[enodeID] = info
 		return true
 	})
 	return result
@@ -73,21 +68,29 @@ func GetStatusInfo(status string) (map[string]interface{}, error) {
 
 // ReportOracleInfo report oracle info
 func ReportOracleInfo(oracle string, info *OracleInfo) error {
+	oracleID := mpc.GetEnodeID(oracle)
+	if oracleID == "" {
+		return newRPCError(-32000, "empty oracle enode")
+	}
 	mpcConfig := mpc.GetMPCConfig(false)
+	seflEnodeID := mpc.GetEnodeID(mpcConfig.GetSelfEnode())
+	allEnodeIDs := mpc.GetEnodeIDs(mpcConfig.GetAllEnodes())
 	var exist bool
-	for _, enode := range mpcConfig.GetAllEnodes() {
-		if strings.EqualFold(oracle, enode) {
-			if !strings.EqualFold(oracle, mpcConfig.GetSelfEnode()) {
+	for _, enodeID := range allEnodeIDs {
+		if strings.EqualFold(oracleID, enodeID) {
+			// ignore server itself
+			if !strings.EqualFold(oracleID, seflEnodeID) {
 				exist = true
 			}
 			break
 		}
 	}
 	if !exist {
-		return newRPCError(-32000, "wrong oracle info")
+		log.Warn("unknown oracle enode", "oracle", oracleID, "enodes", allEnodeIDs)
+		return newRPCError(-32000, "unknown oracle enode")
 	}
 
-	key := strings.ToLower(oracle)
+	key := strings.ToLower(oracleID)
 	if val, exist := oraclesInfo.Load(key); exist {
 		oldInfo := val.(*OracleInfo)
 		oldTime := oldInfo.HeartbeatTimestamp
@@ -115,7 +118,8 @@ func RegisterRouterSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, e
 	if err != nil {
 		return nil, err
 	}
-	bridge := router.GetBridgeByChainID(chainID.String())
+	fromChainID = chainID.String()
+	bridge := router.GetBridgeByChainID(fromChainID)
 	if bridge == nil {
 		return nil, newRPCInternalError(tokens.ErrNoBridgeForChainID)
 	}
@@ -159,6 +163,9 @@ func RegisterRouterSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, e
 				result[-1-logIndex] = "verify error: blacklist"
 			}
 			err = addMgoSwap(swapInfo, newStatus, memo)
+			if err != nil {
+				result[logIndex] = "db error"
+			}
 		case verifyErr == nil:
 			switch {
 			case oldSwap.Status == mongodb.TxWithBigValue && router.IsBigValueSwap(swapInfo):
@@ -170,6 +177,7 @@ func RegisterRouterSwap(fromChainID, txid, logIndexStr string) (*MapIntResult, e
 				log.Info("[register] update swap info and status", "chainid", fromChainID, "txid", txid, "logIndex", logIndexStr, "oldStatus", oldSwap.Status, "newStatus", newStatus, "swapinfo", mgoSwapInfo)
 				err = mongodb.UpdateRouterSwapInfoAndStatus(fromChainID, txid, logIndex, &mgoSwapInfo, newStatus, time.Now().Unix(), memo)
 				worker.DeleteCachedVerifyingSwap(oldSwap.Key)
+				result[logIndex] = "retry registered"
 			}
 		default:
 			result[logIndex] = "already registered: " + memo
@@ -240,6 +248,16 @@ func GetRouterSwap(fromChainID, txid, logindexStr string) (*SwapInfo, error) {
 		return ConvertMgoSwapToSwapInfo(register), nil
 	}
 	return nil, mongodb.ErrSwapNotFound
+}
+
+// GetRouterSwaps impl
+func GetRouterSwaps(fromChainID, txid string) ([]*SwapInfo, error) {
+	result, _ := mongodb.FindRouterSwapResultsOfTx(fromChainID, txid)
+	res := make([]*SwapInfo, len(result))
+	for i, item := range result {
+		res[i] = ConvertMgoSwapResultToSwapInfo(item)
+	}
+	return res, nil
 }
 
 // GetRouterSwapHistory impl

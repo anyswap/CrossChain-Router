@@ -16,10 +16,10 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/eth/abicoder"
 
-	ethclient "github.com/jowenshaw/gethclient"
-	ethcommon "github.com/jowenshaw/gethclient/common"
-	ethtypes "github.com/jowenshaw/gethclient/types"
-	"github.com/jowenshaw/gethclient/types/ethereum"
+	"github.com/ethereum/go-ethereum"
+	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	ethclient "github.com/ethereum/go-ethereum/ethclient"
 )
 
 var (
@@ -80,15 +80,19 @@ func CallOnchainContract(data hexutil.Bytes, blockNumber string) (result []byte,
 		To:   &routerConfigContract,
 		Data: data,
 	}
+LOOP:
 	for _, cli := range routerConfigClients {
 		result, err = cli.CallContract(routerConfigCtx, msg, nil)
 		if err != nil && IsIniting {
-			log.Warn("call onchain contract failed", "contract", routerConfigContract, "data", data, "err", err)
 			for i := 0; i < RetryRPCCountInInit; i++ {
 				if result, err = cli.CallContract(routerConfigCtx, msg, nil); err == nil {
 					return result, nil
 				}
-				log.Warn("call onchain contract failed", "err", err)
+				if strings.Contains(err.Error(), "revert") ||
+					strings.Contains(err.Error(), "VM execution error") {
+					break LOOP
+				}
+				log.Warn("retry call onchain router config contract failed", "contract", routerConfigContract, "times", i+1, "err", err)
 				time.Sleep(RetryRPCIntervalInInit)
 			}
 		}
@@ -96,7 +100,7 @@ func CallOnchainContract(data hexutil.Bytes, blockNumber string) (result []byte,
 			return result, nil
 		}
 	}
-	log.Debug("call onchain contract error", "contract", routerConfigContract.String(), "data", data, "err", err)
+	log.Warn("call onchain router config contract error", "contract", routerConfigContract.String(), "data", data, "err", err)
 	return nil, err
 }
 
@@ -161,7 +165,7 @@ func parseChainConfig(data []byte) (config *tokens.ChainConfig, err error) {
 	if err != nil {
 		return nil, abicoder.ErrParseDataError
 	}
-	routerContract, err := abicoder.ParseStringInData(data, 32)
+	routerContractStr, err := abicoder.ParseStringInData(data, 32)
 	if err != nil {
 		return nil, abicoder.ErrParseDataError
 	}
@@ -171,9 +175,14 @@ func parseChainConfig(data []byte) (config *tokens.ChainConfig, err error) {
 	if err != nil {
 		return nil, abicoder.ErrParseDataError
 	}
+	if extra == `""` {
+		extra = ""
+	}
+	routerContract, routerVersion := ParseRouterContractConfig(routerContractStr)
 	config = &tokens.ChainConfig{
 		BlockChain:     blockChain,
 		RouterContract: routerContract,
+		RouterVersion:  routerVersion,
 		Confirmations:  confirmations,
 		InitialHeight:  initialHeight,
 		Extra:          extra,
@@ -215,7 +224,7 @@ func parseTokenConfig(data []byte) (config *tokens.TokenConfig, err error) {
 		return nil, abicoder.ErrParseDataError
 	}
 	contractVersion := common.GetBigInt(data, 64, 32).Uint64()
-	routerContract, err := abicoder.ParseStringInData(data, 96)
+	routerContractStr, err := abicoder.ParseStringInData(data, 96)
 	if err != nil {
 		return nil, abicoder.ErrParseDataError
 	}
@@ -223,12 +232,16 @@ func parseTokenConfig(data []byte) (config *tokens.TokenConfig, err error) {
 	if err != nil {
 		return nil, abicoder.ErrParseDataError
 	}
-
+	if extra == `""` {
+		extra = ""
+	}
+	routerContract, routerVersion := ParseRouterContractConfig(routerContractStr)
 	config = &tokens.TokenConfig{
 		Decimals:        decimals,
 		ContractAddress: contractAddress,
 		ContractVersion: contractVersion,
 		RouterContract:  routerContract,
+		RouterVersion:   routerVersion,
 		Extra:           extra,
 	}
 	return config, err
@@ -329,7 +342,11 @@ func GetCustomConfig(chainID *big.Int, key string) (string, error) {
 	if len(res) == 0 {
 		return "", nil
 	}
-	return abicoder.ParseStringInData(res, 0)
+	custom, err := abicoder.ParseStringInData(res, 0)
+	if custom == `""` {
+		custom = ""
+	}
+	return custom, err
 }
 
 // GetExtraConfig abi
@@ -343,7 +360,11 @@ func GetExtraConfig(key string) (string, error) {
 	if len(res) == 0 {
 		return "", nil
 	}
-	return abicoder.ParseStringInData(res, 0)
+	extra, err := abicoder.ParseStringInData(res, 0)
+	if extra == `""` {
+		extra = ""
+	}
+	return extra, err
 }
 
 // GetMPCPubkey abi
@@ -352,17 +373,21 @@ func GetMPCPubkey(mpcAddress string) (pubkey string, err error) {
 	data := abicoder.PackDataWithFuncHash(funcHash, mpcAddress)
 	res, err := CallOnchainContract(data, "latest")
 	if err != nil {
-		if common.IsHexAddress(mpcAddress) && strings.ToLower(mpcAddress) == mpcAddress {
-			mixAddress := common.HexToAddress(mpcAddress).Hex()
-			data = abicoder.PackDataWithFuncHash(funcHash, mixAddress)
-			res, err = CallOnchainContract(data, "latest")
-			if err == nil {
-				return abicoder.ParseStringInData(res, 0)
-			}
+		if !common.IsHexAddress(mpcAddress) || strings.ToLower(mpcAddress) != mpcAddress {
+			return "", err
 		}
-		return "", err
+		mixAddress := common.HexToAddress(mpcAddress).Hex()
+		data = abicoder.PackDataWithFuncHash(funcHash, mixAddress)
+		res, err = CallOnchainContract(data, "latest")
+		if err != nil {
+			return "", err
+		}
 	}
-	return abicoder.ParseStringInData(res, 0)
+	pubkey, err = abicoder.ParseStringInData(res, 0)
+	if pubkey == `""` {
+		pubkey = ""
+	}
+	return pubkey, err
 }
 
 // IsChainIDExist abi
@@ -586,6 +611,9 @@ func parseChainConfig2(data []byte) (*ChainConfigInContract, error) {
 	if err != nil {
 		return nil, abicoder.ErrParseDataError
 	}
+	if extra == `""` {
+		extra = ""
+	}
 
 	return &ChainConfigInContract{
 		ChainID:        chainID,
@@ -668,6 +696,9 @@ func parseTokenConfig2(data []byte) (*TokenConfigInContract, error) {
 	extra, err := abicoder.ParseStringInData(data, 160)
 	if err != nil {
 		return nil, abicoder.ErrParseDataError
+	}
+	if extra == `""` {
+		extra = ""
 	}
 
 	return &TokenConfigInContract{

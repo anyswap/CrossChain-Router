@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/didip/tollbooth/v6"
+	"github.com/didip/tollbooth/v6/libstring"
 	"github.com/didip/tollbooth/v6/limiter"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -45,12 +46,17 @@ func StartAPIServer() {
 		)
 	}
 
-	log.Info("JSON RPC service listen and serving", "port", apiPort, "allowedOrigins", allowedOrigins)
+	log.Info("JSON RPC service listen and serving start", "port", apiPort, "allowedOrigins", allowedOrigins)
 	lmt := tollbooth.NewLimiter(float64(maxRequestsLimit),
 		&limiter.ExpirableOptions{
 			DefaultExpirationTTL: 600 * time.Second,
 		},
 	)
+	lmt.SetOnLimitReached(func(w http.ResponseWriter, r *http.Request) {
+		remoteIP := libstring.RemoteIP(lmt.GetIPLookups(), lmt.GetForwardedForIndexFromBehind(), r)
+		remoteIP = libstring.CanonicalizeIP(remoteIP)
+		log.Warnf("rpc limit reached: %v\n", remoteIP)
+	})
 	handler := tollbooth.LimitHandler(lmt, handlers.CORS(corsOptions...)(router))
 	svr := http.Server{
 		Addr:         fmt.Sprintf(":%v", apiPort),
@@ -61,12 +67,14 @@ func StartAPIServer() {
 	go func() {
 		if err := svr.ListenAndServe(); err != nil {
 			if errors.Is(err, http.ErrServerClosed) && utils.IsCleanuping() {
+				log.Error("ListenAndServe error", "err", err)
 				return
 			}
-			log.Fatal("ListenAndServe error", "err", err)
+			log.Fatal("ListenAndServe failed", "err", err)
 		}
 	}()
 
+	log.Info("JSON RPC service listen and serving finish", "port", apiPort)
 	utils.TopWaitGroup.Add(1)
 	go utils.WaitAndCleanup(func() { doCleanup(&svr) })
 }
@@ -127,6 +135,7 @@ func initRouterSwapRouter(r *mux.Router) {
 	r.HandleFunc("/statusinfo", restapi.StatusInfoHandler).Methods("GET")
 	r.HandleFunc("/swap/register/{chainid}/{txid}", restapi.RegisterRouterSwapHandler).Methods("POST")
 	r.HandleFunc("/swap/status/{chainid}/{txid}", restapi.GetRouterSwapHandler).Methods("GET")
+	r.HandleFunc("/swap/status/{chainid}/{txid}/all", restapi.GetRouterSwapsHandler).Methods("GET")
 	r.HandleFunc("/swap/history/{chainid}/{address}", restapi.GetRouterSwapHistoryHandler).Methods("GET")
 
 	r.HandleFunc("/allchainids", restapi.GetAllChainIDsHandler).Methods("GET")

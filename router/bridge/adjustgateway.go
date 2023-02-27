@@ -2,6 +2,7 @@ package bridge
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
@@ -12,41 +13,10 @@ import (
 )
 
 var (
-	adjustCount    = 0
 	adjustInterval = 60 // seconds
+
+	adjustGatewayChains = new(sync.Map)
 )
-
-// StartAdjustGatewayOrderJob adjust gateway order job
-func StartAdjustGatewayOrderJob() {
-	log.Info("star adjust gateway order job")
-
-	go doAdjustGatewayOrderJob()
-}
-
-func doAdjustGatewayOrderJob() {
-	for {
-		for _, chainID := range router.AllChainIDs {
-			if utils.IsCleanuping() {
-				return
-			}
-			adjustGatewayOrder(chainID.String())
-		}
-		for i := 0; i < adjustInterval; i++ {
-			if utils.IsCleanuping() {
-				return
-			}
-			time.Sleep(1 * time.Second)
-		}
-		adjustCount++
-	}
-}
-
-func adjustGatewayOrder(chainID string) {
-	bridge := router.GetBridgeByChainID(chainID)
-	if bridge != nil {
-		AdjustGatewayOrder(bridge, chainID)
-	}
-}
 
 // AdjustGatewayOrder adjust gateway order once
 func AdjustGatewayOrder(bridge tokens.IBridge, chainID string) {
@@ -56,16 +26,51 @@ func AdjustGatewayOrder(bridge tokens.IBridge, chainID string) {
 	if gateway == nil {
 		return
 	}
+	var maxHeight uint64
 	length := len(gateway.APIAddress)
 	for i := length; i > 0; i-- { // query in reverse order
+		if utils.IsCleanuping() {
+			return
+		}
 		apiAddress := gateway.APIAddress[i-1]
 		height, _ := bridge.GetLatestBlockNumberOf(apiAddress)
 		weightedAPIs = weightedAPIs.Add(apiAddress, height)
+		if height > maxHeight {
+			maxHeight = height
+		}
 	}
-	weightedAPIs.Reverse() // reverse as iter in reverse order in the above
-	weightedAPIs = weightedAPIs.Sort()
-	gateway.APIAddress = weightedAPIs.GetStrings()
-	if adjustCount%3 == 0 {
-		log.Info(fmt.Sprintf("adjust gateways of chain %v", chainID), "result", weightedAPIs)
+	if length == 0 { // update for bridges only use grpc apis
+		maxHeight, _ = bridge.GetLatestBlockNumber()
+	}
+	if maxHeight > 0 {
+		router.CachedLatestBlockNumber.Store(chainID, maxHeight)
+	}
+	if len(weightedAPIs) > 0 {
+		weightedAPIs.Reverse() // reverse as iter in reverse order in the above
+		weightedAPIs = weightedAPIs.Sort()
+		gateway.APIAddress = weightedAPIs.GetStrings()
+		gateway.WeightedAPIs = weightedAPIs
+	}
+
+	if _, exist := adjustGatewayChains.Load(chainID); !exist {
+		adjustGatewayChains.Store(chainID, struct{}{})
+		go adjustGatewayOrder(bridge, chainID)
+	}
+}
+
+func adjustGatewayOrder(bridge tokens.IBridge, chainID string) {
+	for adjustCount := 0; ; adjustCount++ {
+		for i := 0; i < adjustInterval; i++ {
+			if utils.IsCleanuping() {
+				return
+			}
+			time.Sleep(1 * time.Second)
+		}
+
+		AdjustGatewayOrder(bridge, chainID)
+
+		if adjustCount%3 == 0 {
+			log.Info(fmt.Sprintf("adjust gateways of chain %v", chainID), "result", bridge.GetGatewayConfig().WeightedAPIs)
+		}
 	}
 }

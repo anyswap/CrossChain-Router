@@ -12,6 +12,7 @@ func ConvertMgoSwapToSwapInfo(ms *mongodb.MgoSwap) *SwapInfo {
 		SwapType:    ms.SwapType,
 		TxID:        ms.TxID,
 		TxTo:        ms.TxTo,
+		TxHeight:    ms.TxHeight,
 		From:        ms.From,
 		Bind:        ms.Bind,
 		Value:       ms.Value,
@@ -40,12 +41,9 @@ func ConvertMgoSwapsToSwapInfos(msSlice []*mongodb.MgoSwap) []*SwapInfo {
 func ConvertMgoSwapResultToSwapInfo(mr *mongodb.MgoSwapResult) *SwapInfo {
 	var confirmations uint64
 	if mr.SwapHeight != 0 {
-		resBridge := router.GetBridgeByChainID(mr.ToChainID)
-		if resBridge != nil {
-			latest, _ := resBridge.GetLatestBlockNumber()
-			if latest > mr.SwapHeight {
-				confirmations = latest - mr.SwapHeight
-			}
+		latest := router.GetCachedLatestBlockNumber(mr.ToChainID)
+		if latest > mr.SwapHeight {
+			confirmations = latest - mr.SwapHeight
 		}
 	}
 	return &SwapInfo{
@@ -93,6 +91,7 @@ func ConvertChainConfig(c *tokens.ChainConfig) *ChainConfig {
 		ChainID:        c.ChainID,
 		BlockChain:     c.BlockChain,
 		RouterContract: c.RouterContract,
+		RouterVersion:  c.RouterVersion,
 		Confirmations:  c.Confirmations,
 		InitialHeight:  c.InitialHeight,
 	}
@@ -109,6 +108,7 @@ func ConvertTokenConfig(c *tokens.TokenConfig) *TokenConfig {
 		ContractAddress: c.ContractAddress,
 		ContractVersion: c.ContractVersion,
 		RouterContract:  c.RouterContract,
+		RouterVersion:   c.RouterVersion,
 		Underlying:      c.GetUnderlying(),
 	}
 }
