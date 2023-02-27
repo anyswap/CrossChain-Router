@@ -16,6 +16,7 @@ import (
 )
 
 // BuildRawTransaction build raw tx
+//
 //nolint:funlen,gocyclo // ok
 func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{}, err error) {
 	if !params.IsTestMode && args.ToChainID.String() != b.ChainConfig.ChainID {
@@ -139,9 +140,9 @@ func (b *Bridge) setExtraArgs(args *tokens.BuildTxArgs) *tokens.AllExtras {
 		extra.Fee = &fee
 	}
 
-	if extra.Deadline == nil {
-		maxTime := txnbuild.NewTimeout(300).MaxTime
-		extra.Deadline = &maxTime
+	if extra.Sequence == nil {
+		maxTime := uint64(txnbuild.NewTimeout(txTimeout).MaxTime)
+		extra.Sequence = &maxTime
 	}
 
 	return extra
@@ -161,7 +162,7 @@ func NewUnsignedPaymentTransaction(args *tokens.BuildTxArgs,
 			SourceAccount:        from,
 			IncrementSequenceNum: true,
 			BaseFee:              baseFee,
-			Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewTimebounds(0, *args.Extra.Deadline)},
+			Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewTimebounds(0, int64(*args.Extra.Sequence))},
 			Memo:                 memo,
 			Operations: []txnbuild.Operation{
 				&txnbuild.Payment{
@@ -182,7 +183,7 @@ func NewUnsignedPaymentTransaction(args *tokens.BuildTxArgs,
 	}
 	log.Info("Build unsigned payment tx success",
 		"destination", dest, "amount", amt, "memo", memo,
-		"fee", baseFee, "deadline", *args.Extra.Deadline,
+		"fee", baseFee, "Sequence", *args.Extra.Sequence,
 		"signing hash", hash)
 
 	return tx, nil

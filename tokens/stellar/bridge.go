@@ -26,6 +26,8 @@ var (
 	rpcQueryLimit    = uint(200)
 	rpcRetryTimes    = 3
 	rpcRetryInterval = 1 * time.Second
+
+	txTimeout = int64(300)
 )
 
 const (
