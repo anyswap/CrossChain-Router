@@ -17,6 +17,7 @@ https://blockfrost.io/  to get api key
 APIKey = "api key" # blockfrost APIKEY
 AssetPolicyKey = "policy seed" # Policykey seed
 AppendName = "true"  #config whether the policy is the same for all asset, policy is same if set `false`
+UseAPI = "false"  #config whether use the blockfrost api to query tx or tip .etc
 ```
 
 ### 5. genMpcAddr

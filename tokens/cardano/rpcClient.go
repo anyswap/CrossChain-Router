@@ -56,13 +56,17 @@ func GetUtxosByAddress(url, address string) (*[]Output, error) {
 	return &result.Outputs, nil
 }
 
-// func GetLatestBlockNumber() (uint64, error) {
-// 	if res, err := queryTipCmd(); err != nil {
-// 		return 0, err
-// 	} else {
-// 		return res.Block, nil
-// 	}
-// }
+func GetCardanoTip(url string) (*TipResponse, error) {
+	request := &client.Request{}
+	request.Params = QueryTIPAndProtocolParams
+	request.ID = int(time.Now().UnixNano())
+	request.Timeout = rpcTimeout
+	var result TipResponse
+	if err := client.CardanoPostRequest(url, request, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
 
 // func queryTipCmd() (*Tip, error) {
 // 	if execRes, err := ExecCmd(QueryTipCmd, " "); err != nil {

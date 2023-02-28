@@ -134,11 +134,11 @@ func (b *Bridge) BuildTx(swapId, receiver, assetId string, amount *big.Int, utxo
 		return nil, fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, "ada not enough, below "+FixAdaAmount.String())
 	}
 
-	pparams, err := b.RpcClient.ProtocolParams()
-	if err != nil {
-		return nil, err
-	}
-	nodeTip, err := b.RpcClient.Tip()
+	// pparams, err := b.RpcClient.ProtocolParams()
+	// if err != nil {
+	// 	return nil, err
+	// }
+	nodeTip, err := b.GetTip()
 	if err != nil {
 		return nil, err
 	}
@@ -149,10 +149,10 @@ func (b *Bridge) BuildTx(swapId, receiver, assetId string, amount *big.Int, utxo
 		TxInsAssets:      txInsAssets,
 		TxIndex:          uint64(0),
 		Slot:             nodeTip.Slot,
-		CoinsPerUTXOWord: uint64(pparams.CoinsPerUTXOWord),
-		KeyDeposit:       uint64(pparams.KeyDeposit),
-		MinFeeA:          uint64(pparams.MinFeeA),
-		MinFeeB:          uint64(pparams.MinFeeB),
+		CoinsPerUTXOWord: uint64(b.ProtocolParams.CoinsPerUTXOWord),
+		KeyDeposit:       uint64(b.ProtocolParams.KeyDeposit),
+		MinFeeA:          uint64(b.ProtocolParams.MinFeeA),
+		MinFeeB:          uint64(b.ProtocolParams.MinFeeB),
 	}
 	rawTransaction.TxOuts[receiver] = map[string]string{}
 	routerMpc := b.GetRouterContract("")
@@ -512,7 +512,12 @@ func (b *Bridge) GetTransactionChainingMap(assetName string, amount *big.Int) (m
 }
 
 func (b *Bridge) QueryUtxoOnChain(address string) (map[UtxoKey]AssetsMap, error) {
-	return b.QueryUtxoByAPI(address)
+	useAPI, _ := strconv.ParseBool(params.GetCustom(b.ChainConfig.ChainID, "UseAPI"))
+	if useAPI {
+		return b.QueryUtxoByAPI(address)
+	} else {
+		return b.QueryUtxoByGQL(address)
+	}
 }
 
 func (b *Bridge) QueryUtxoByGQL(address string) (map[UtxoKey]AssetsMap, error) {

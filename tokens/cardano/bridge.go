@@ -92,28 +92,86 @@ func GetStubChainID(network string) *big.Int {
 func (b *Bridge) InitAfterConfig() {
 	chainId := b.GetChainConfig().GetChainID()
 	apiKey := params.GetCustom(b.ChainConfig.ChainID, "APIKey")
-	if chainId.Cmp(GetStubChainID(mainnetNetWork)) == 0 {
-		b.RpcClient = NewNode(cardanosdk.Mainnet, CardanoMainNet, apiKey)
-	} else {
-		b.RpcClient = NewNode(cardanosdk.Testnet, CardanoPreProd, apiKey)
+	if apiKey != "" {
+		if chainId.Cmp(GetStubChainID(mainnetNetWork)) == 0 {
+			b.RpcClient = NewNode(cardanosdk.Mainnet, CardanoMainNet, apiKey)
+		} else {
+			b.RpcClient = NewNode(cardanosdk.Testnet, CardanoPreProd, apiKey)
+		}
+		protocolParams, err := b.RpcClient.ProtocolParams()
+		if err != nil {
+			panic(err)
+		}
+		b.ProtocolParams = protocolParams
 	}
+}
 
-	protocolParams, err := b.RpcClient.ProtocolParams()
-	if err != nil {
-		panic(err)
+func (b *Bridge) GetTip() (tip *cardanosdk.NodeTip, err error) {
+	useAPI, _ := strconv.ParseBool(params.GetCustom(b.ChainConfig.ChainID, "UseAPI"))
+	if useAPI {
+		if b.RpcClient == nil {
+			return nil, nil
+		}
+		return b.RpcClient.Tip()
+	} else {
+		urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+		for _, url := range urls {
+			result, err := GetCardanoTip(url)
+			if err == nil {
+				b.flushProtocolParams(result)
+				return &cardanosdk.NodeTip{
+					Block: result.Cardano.Tip.BlockNumber,
+					Epoch: result.Cardano.Tip.Epoch.Number,
+					Slot:  result.Cardano.Tip.SlotNo,
+				}, nil
+			}
+		}
+		return nil, tokens.ErrTxNotFound
 	}
-	b.ProtocolParams = protocolParams
 }
 
 // GetLatestBlockNumber gets latest block number
 func (b *Bridge) GetLatestBlockNumber() (num uint64, err error) {
-	if b.RpcClient == nil {
-		return 0, nil
+	useAPI := false
+	if b.ChainConfig != nil {
+		useAPI, _ = strconv.ParseBool(params.GetCustom(b.ChainConfig.ChainID, "UseAPI"))
 	}
-	if tip, err := b.RpcClient.Tip(); err == nil {
-		return tip.Block, nil
+	if useAPI {
+		if b.RpcClient == nil {
+			return 0, nil
+		}
+		if tip, err := b.RpcClient.Tip(); err == nil {
+			protocolParams, err := b.RpcClient.ProtocolParams()
+			if err != nil {
+				b.ProtocolParams = protocolParams
+			}
+			return tip.Block, nil
+		} else {
+			return 0, err
+		}
 	} else {
-		return 0, err
+		urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+		for _, url := range urls {
+			result, err := GetCardanoTip(url)
+			if err == nil {
+				b.flushProtocolParams(result)
+				return result.Cardano.Tip.BlockNumber, nil
+			}
+		}
+		return 0, tokens.ErrTxNotFound
+	}
+}
+
+func (b *Bridge) flushProtocolParams(result *TipResponse) {
+	b.ProtocolParams = &cardanosdk.ProtocolParams{
+		CoinsPerUTXOWord: cardanosdk.Coin(result.Cardano.Tip.Epoch.ProtocolParams.CoinsPerUtxoByte),
+		KeyDeposit:       cardanosdk.Coin(result.Cardano.Tip.Epoch.ProtocolParams.KeyDeposit),
+		MaxBlockBodySize: uint(result.Cardano.Tip.Epoch.ProtocolParams.MaxBlockBodySize),
+		MaxTxExUnits:     result.Cardano.Tip.Epoch.ProtocolParams.MaxBlockExMem,
+		MaxTxSize:        uint(result.Cardano.Tip.Epoch.ProtocolParams.MaxTxSize),
+		MinFeeA:          cardanosdk.Coin(result.Cardano.Tip.Epoch.ProtocolParams.MinFeeA),
+		MinFeeB:          cardanosdk.Coin(result.Cardano.Tip.Epoch.ProtocolParams.MinFeeB),
+		MinPoolCost:      cardanosdk.Coin(result.Cardano.Tip.Epoch.ProtocolParams.MinPoolCost),
 	}
 }
 

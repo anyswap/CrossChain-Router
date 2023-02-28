@@ -15,11 +15,7 @@ import (
 func (b *Bridge) BuildAggregateTx(swapId string, utxos map[UtxoKey]AssetsMap) (*RawTransaction, error) {
 	log.Infof("BuildAggregateTx:\nswapId:%+v\nutxos:%+v\n", swapId, utxos)
 	routerMpc := b.GetRouterContract("")
-	pparams, err := b.RpcClient.ProtocolParams()
-	if err != nil {
-		return nil, err
-	}
-	nodeTip, err := b.RpcClient.Tip()
+	nodeTip, err := b.GetTip()
 	if err != nil {
 		return nil, err
 	}
@@ -30,10 +26,10 @@ func (b *Bridge) BuildAggregateTx(swapId string, utxos map[UtxoKey]AssetsMap) (*
 		TxIns:            []UtxoKey{},
 		TxInsAssets:      []AssetsMap{},
 		Slot:             nodeTip.Slot,
-		CoinsPerUTXOWord: uint64(pparams.CoinsPerUTXOWord),
-		KeyDeposit:       uint64(pparams.KeyDeposit),
-		MinFeeA:          uint64(pparams.MinFeeA),
-		MinFeeB:          uint64(pparams.MinFeeB),
+		CoinsPerUTXOWord: uint64(b.ProtocolParams.CoinsPerUTXOWord),
+		KeyDeposit:       uint64(b.ProtocolParams.KeyDeposit),
+		MinFeeA:          uint64(b.ProtocolParams.MinFeeA),
+		MinFeeB:          uint64(b.ProtocolParams.MinFeeB),
 	}
 	allAssetsMap := map[string]uint64{}
 	for utxoKey, assetsMap := range utxos {

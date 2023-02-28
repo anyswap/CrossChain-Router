@@ -107,3 +107,35 @@ type SignedTransaction struct {
 	AssetsMap AssetsMap      `json:"assetsMap"`
 	Tx        *cardanosdk.Tx `json:"-"`
 }
+
+type TipResponse struct {
+	Cardano NodeTip `json:"cardano"`
+}
+
+type NodeTip struct {
+	Tip TipInfo `json:"tip"`
+}
+
+type TipInfo struct {
+	BlockNumber uint64 `json:"number"`
+	Epoch       Epoch  `json:"epoch"`
+	SlotNo      uint64 `json:"slotNo"`
+}
+
+type Epoch struct {
+	Number         uint64         `json:"number"`
+	ProtocolParams ProtocolParams `json:"protocolParams"`
+}
+
+type ProtocolParams struct {
+	CoinsPerUtxoByte uint64 `json:"coinsPerUtxoByte"`
+	KeyDeposit       uint64 `json:"keyDeposit"`
+	MaxBlockBodySize uint64 `json:"maxBlockBodySize"`
+	MaxBlockExMem    string `json:"maxBlockExMem"`
+	MaxTxSize        uint64 `json:"maxTxSize"`
+	MaxValSize       string `json:"maxValSize"`
+	MinFeeA          uint64 `json:"minFeeA"`
+	MinFeeB          uint64 `json:"minFeeB"`
+	MinPoolCost      uint64 `json:"minPoolCost"`
+	MinUTxOValue     uint64 `json:"minUTxOValue"`
+}
