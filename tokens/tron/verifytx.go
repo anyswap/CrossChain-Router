@@ -23,6 +23,7 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 	status = &tokens.TxStatus{}
 
 	status.Receipt = txInfo
+	status.Failed = !txInfo.IsStatusOk()
 	status.BlockHeight = txInfo.BlockNumber
 	status.BlockTime = txInfo.BlockTimeStamp
 	status.BlockHash = txInfo.TxID

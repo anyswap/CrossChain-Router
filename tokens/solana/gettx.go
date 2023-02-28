@@ -39,6 +39,7 @@ func (b *Bridge) GetTransactionStatus(txHash string) (*tokens.TxStatus, error) {
 	}
 
 	txStatus.Receipt = txm
+	txStatus.Failed = !txm.IsStatusOk()
 	return &txStatus, nil
 }
 

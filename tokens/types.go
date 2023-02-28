@@ -148,16 +148,12 @@ type SwapTxInfo struct {
 
 // TxStatus struct
 type TxStatus struct {
-	Receipt       interface{} `json:"receipt,omitempty"`
+	Receipt       interface{} `json:"-"`
 	Confirmations uint64      `json:"confirmations"`
 	BlockHeight   uint64      `json:"block_height"`
-	BlockHash     string      `json:"block_hash"`
+	BlockHash     string      `json:"block_hash,omitempty"`
 	BlockTime     uint64      `json:"block_time,omitempty"`
-}
-
-// StatusInterface interface
-type StatusInterface interface {
-	IsStatusOk() bool
+	Failed        bool        `json:"failed,omitempty"`
 }
 
 // IsSwapTxOnChain is tx onchain
@@ -167,15 +163,7 @@ func (s *TxStatus) IsSwapTxOnChain() bool {
 
 // IsSwapTxOnChainAndFailed to make failed of swaptx
 func (s *TxStatus) IsSwapTxOnChainAndFailed() bool {
-	if !s.IsSwapTxOnChain() {
-		return false // not on chain
-	}
-	if status, ok := s.Receipt.(StatusInterface); ok {
-		if !status.IsStatusOk() {
-			return true
-		}
-	}
-	return false
+	return s.IsSwapTxOnChain() && s.Failed
 }
 
 // VerifyArgs struct

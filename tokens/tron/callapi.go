@@ -326,8 +326,7 @@ func (b *Bridge) GetTransactionLog(txHash string) ([]*types.RPCLog, error) {
 	if err != nil {
 		return nil, err
 	}
-	status, ok := txInfo.Receipt["result"].(string)
-	if !ok || status != "SUCCESS" || txInfo.Result == "FAILED" {
+	if !txInfo.IsStatusOk() {
 		return nil, errors.New("tx status is not success")
 	}
 	return txInfo.Log.toRPCLog(), nil

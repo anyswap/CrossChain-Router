@@ -20,6 +20,7 @@ func (b *Bridge) GetTransactionStatus(txHash string) (*tokens.TxStatus, error) {
 	var txStatus tokens.TxStatus
 
 	txStatus.Receipt = txr
+	txStatus.Failed = !txr.IsStatusOk()
 	txStatus.BlockHeight = txr.BlockNumber.ToInt().Uint64()
 	txStatus.BlockHash = txr.BlockHash.String()
 
