@@ -13,7 +13,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
-var errForbiddenMethod = errors.New("forbidden method")
+var errForbiddenMethod = errors.New("forbidden wrapper method")
 
 // Bridge bridge
 type Bridge struct {
@@ -71,11 +71,6 @@ func (b *Bridge) InitRouterInfo(chainID, routerContract, routerVersion string) (
 		"routerContract", routerContract, "routerMPC", routerMPC)
 
 	return nil
-}
-
-type RegisterSwapResult struct {
-	SwapTxInfos []*tokens.SwapTxInfo
-	Errs        []error
 }
 
 // RegisterSwap register swap.
@@ -137,8 +132,7 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error
 
 // GetTransaction get tx by hash.
 func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
-	err = b.callService(&tx, "GetTransaction", txHash)
-	return tx, err
+	return nil, errForbiddenMethod
 }
 
 // GetTransactionStatus get tx status by hash.
