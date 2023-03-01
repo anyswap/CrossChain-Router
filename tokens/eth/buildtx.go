@@ -209,6 +209,17 @@ func (b *Bridge) setDefaults(args *tokens.BuildTxArgs) (err error) {
 		extra.GasTipCap = nil
 		extra.GasFeeCap = nil
 	}
+	if extra.Gas == nil && b.IsSapphireChain() {
+		esGasLimit, errf := b.EstimateGas(args.From, args.To, args.Value, *args.Input)
+		if errf != nil {
+			log.Error(fmt.Sprintf("build %s tx estimate gas failed", args.SwapType.String()),
+				"swapID", args.SwapID, "from", args.From, "to", args.To,
+				"value", args.Value, "data", *args.Input, "err", errf)
+			return fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, tokens.ErrEstimateGasFailed)
+		}
+		extra.Gas = new(uint64)
+		*extra.Gas = esGasLimit
+	}
 	if extra.Gas == nil {
 		esGasLimit, errf := b.EstimateGas(args.From, args.To, args.Value, *args.Input)
 		if errf != nil {

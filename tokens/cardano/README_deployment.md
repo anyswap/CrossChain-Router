@@ -17,6 +17,7 @@ https://blockfrost.io/  to get api key
 APIKey = "api key" # blockfrost APIKEY
 AssetPolicyKey = "policy seed" # Policykey seed
 AppendName = "true"  #config whether the policy is the same for all asset, policy is same if set `false`
+UseAPI = "false"  #config whether use the blockfrost api to query tx or tip .etc
 ```
 
 ### 5. genMpcAddr
@@ -35,6 +36,15 @@ go run tokens/cardano/tools/mintToken/main.go -h
 
 ### 9. send swapout tx
 go run tokens/cardano/tools/sendTransaction/main.go -h
+
+### 10.tools
+
+- go run tokens/cardano/tools/mintToken/main.go -h
+- go run tokens/cardano/tools/pubKeyToAddr/main.go -h
+- go run tokens/cardano/tools/newWallet/main.go -h
+- go run tokens/cardano/tools/newToken/main.go -h
+- go run tokens/cardano/tools/queryUtxos/main.go -h
+- go run tokens/cardano/tools/sendTransaction/main.go -h
 
 # DevOps
 #### run cardano node

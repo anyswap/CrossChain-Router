@@ -10,7 +10,8 @@ import (
 )
 
 const (
-	MetadataKey = "123"
+	MetadataKey       = "123"
+	SwapInMetadataKey = "223"
 )
 
 // VerifyMsgHash verify msg hash
@@ -108,6 +109,7 @@ func (b *Bridge) getTxOutputs(swapInfo *tokens.SwapTxInfo, allowUnstable bool) (
 			if statusErr != nil {
 				return nil, nil, statusErr
 			}
+			swapInfo.Height = txres.Block.Number // Height
 			for index, metadata := range txres.Metadata {
 				if metadata.Key == MetadataKey {
 					if len(txres.Inputs) > 0 {
@@ -122,6 +124,7 @@ func (b *Bridge) getTxOutputs(swapInfo *tokens.SwapTxInfo, allowUnstable bool) (
 }
 
 func (b *Bridge) checkTxStatus(txres *Transaction, allowUnstable bool) error {
+	// TODO what's ValidContract mean?
 	if !txres.ValidContract {
 		return tokens.ErrTxIsNotValidated
 	}
@@ -198,6 +201,7 @@ func (b *Bridge) parseTokenInfo(swapInfo *tokens.SwapTxInfo, tokenInfo *Token, m
 	swapInfo.ERC20SwapInfo.TokenID = tokenCfg.TokenID
 
 	swapInfo.To = metadata.Value.Bind
+	swapInfo.TxTo = b.GetRouterContract("")
 	return nil
 }
 

@@ -63,8 +63,7 @@ func main() {
 	}
 	args := &tokens.BuildTxArgs{
 		SwapArgs: tokens.SwapArgs{
-			Identifier: tokens.AggregateIdentifier,
-			SwapID:     swapId,
+			SwapID: swapId,
 		},
 		From:  paramFrom,
 		Extra: &tokens.AllExtras{},
@@ -172,7 +171,7 @@ func initBridge() {
 		Confirmations:  1,
 	})
 
-	b.GetChainConfig().CheckConfig()
+	_ = b.GetChainConfig().CheckConfig()
 
 	b.InitAfterConfig()
 

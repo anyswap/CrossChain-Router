@@ -416,10 +416,8 @@ func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash st
 		return "", err
 	}
 	routerMPC := sender.Hex()
-	log.Info("debug sapphire SendSignedTransaction 1111", "routerMPC", routerMPC)
 
 	sign := func(digest [32]byte) (sig []byte, err error) {
-		log.Info("debug sapphire SendSignedTransaction MPC sign 1111", "digest", fmt.Sprintf("%x", digest))
 		defer func() {
 			if r := recover(); r != nil {
 				err = fmt.Errorf("sign error: %v", r)
@@ -427,7 +425,14 @@ func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash st
 		}()
 		args := &tokens.BuildTxArgs{
 			SwapArgs: tokens.SwapArgs{
-				SwapType: tokens.SapphireRPCType,
+				SwapInfo: tokens.SwapInfo{
+					ERC20SwapInfo: &tokens.ERC20SwapInfo{
+						TokenID: "sapphire-sign",
+					}},
+				SwapType:    tokens.SapphireRPCType,
+				Identifier:  params.GetIdentifier(),
+				FromChainID: chainId,
+				ToChainID:   chainId,
 			},
 			From: routerMPC,
 			Extra: &tokens.AllExtras{
@@ -438,47 +443,38 @@ func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash st
 		msgContext := string(jsondata)
 		mpcConfig := mpc.GetMPCConfig(b.UseFastMPC)
 		mpcPubkey := router.GetMPCPublicKey(routerMPC)
-		log.Info("debug sapphire SendSignedTransaction MPC sign 2222", "mpcPubkey", mpcPubkey)
 		_, rsvs, err := mpcConfig.DoSignOneEC(mpcPubkey, common.ToHex(digest[:]), msgContext)
-		log.Info("debug sapphire SendSignedTransaction MPC sign 3333", "rsvs", rsvs, "err", err)
 		if err != nil {
+			log.Error("sign sapphire failed", "err", err)
 			return nil, err
 		}
-		log.Info("debug sapphire SendSignedTransaction MPC sign 4444", "rsvs", rsvs)
 
 		return common.FromHex(rsvs[0]), nil
 	}
 
 	cipher, err := sapphire.NewCipher(chainId.Uint64())
 	if err != nil {
-		log.Info("debug sapphire SendSignedTransaction xxx1111", "err", err)
 		return "", err
 	}
 	ethtx := new(ethtypes.Transaction)
 	err = ethtx.UnmarshalBinary(rawtx)
 	if err != nil {
-		log.Info("debug sapphire SendSignedTransaction xxx2222", "err", err)
 		return "", err
 	}
 	packedTx, err := sapphire.PackTx(*ethtx, cipher)
 	if err != nil {
-		log.Info("debug sapphire SendSignedTransaction xxx3333", "err", err)
 		return "", err
 	}
 	signer := ethtypes.LatestSignerForChainID(chainId)
 	signHash := signer.Hash(packedTx)
-	log.Info("debug sapphire SendSignedTransaction 111122", "signHash", signHash)
 	signature, err := sign(([32]byte)(signHash))
 	if err != nil {
-		log.Info("debug sapphire SendSignedTransaction xxx4444", "err", err)
 		return "", err
 	}
-	log.Info("debug sapphire SendSignedTransaction 2222", "signature", signature)
 	if len(signature) != crypto.SignatureLength {
 		return "", errors.New("wrong signature length")
 	}
 	signedTx, err := packedTx.WithSignature(signer, signature)
-	log.Info("debug sapphire SendSignedTransaction 3333", "signedTx", signedTx)
 	if err != nil {
 		return "", err
 	}
@@ -499,12 +495,10 @@ func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash st
 	}
 
 	hexData := hexutil.Encode(data)
-	log.Info("debug sapphire SendSignedTransaction 4444", "hexData", hexData)
 
 	for _, url := range b.AllGatewayURLs {
 		var result string
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_sendRawTransaction", hexData)
-		log.Info("debug sapphire SendSignedTransaction rpc post", "err", err)
 		if err == nil {
 			return signedTx.Hash().Hex(), nil
 		}

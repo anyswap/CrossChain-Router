@@ -34,8 +34,11 @@ var (
 	// CalcMinFeeCmd               = "cardano-cli transaction calculate-min-fee --tx-body-file %s --tx-in-count %d --tx-out-count %d --witness-count 1 --protocol-params-file txDb/config/protocol.json " + NetWork
 	// CalcTxIdCmd                 = "cardano-cli transaction txid --tx-body-file %s"
 	// QueryTipCmd                 = "cardano-cli query tip " + NetWork
-	QueryTransaction            = "{transactions(where: { hash: { _eq: \"%s\"}}) {block {number epochNo slotNo}hash metadata{key value} inputs(order_by:{sourceTxHash:asc}){address value} outputs(order_by:{index:asc}){address index tokens{ asset{policyId assetName}quantity}value}validContract}}"
-	QueryOutputs                = "{utxos(where: { address: { _eq: \"%s\"}}) {txHash index tokens {asset {policyId assetName} quantity} value}}"
+	QueryTransaction = "{transactions(where: { hash: { _eq: \"%s\"}}) {block {number epochNo slotNo}hash metadata{key value} inputs(order_by:{sourceTxHash:asc}){address value} outputs(order_by:{index:asc}){address index tokens{ asset{policyId assetName}quantity}value}validContract}}"
+	QueryOutputs     = "{utxos(where: { address: { _eq: \"%s\"}}) {txHash index tokens {asset {policyId assetName} quantity} value}}"
+
+	QueryTIPAndProtocolParams = "{ cardano { tip { number slotNo epoch { number protocolParams { coinsPerUtxoByte keyDeposit maxBlockBodySize maxBlockExMem maxTxSize maxValSize minFeeA minFeeB minPoolCost minUTxOValue} } } } }"
+
 	TransactionChaining         = &TransactionChainingMap{InputKey: UtxoKey{}, AssetsMap: make(map[string]string)}
 	TransactionChainingKeyCache = &TransactionChainingKey{SpentUtxoMap: make(map[UtxoKey]bool), SpentUtxoListGropByTxHash: make(map[string]*[]UtxoKey)}
 )
