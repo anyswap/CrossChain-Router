@@ -135,9 +135,9 @@ type SwapTxInfo struct {
 	SwapType    SwapType `json:"swaptype"`
 	Hash        string   `json:"hash"`
 	Height      uint64   `json:"height"`
-	Timestamp   uint64   `json:"timestamp"`
+	Timestamp   uint64   `json:"timestamp,omitempty"`
 	From        string   `json:"from"`
-	TxTo        string   `json:"txto"`
+	TxTo        string   `json:"txto,omitempty"`
 	To          string   `json:"to"`
 	Bind        string   `json:"bind"`
 	Value       *big.Int `json:"value"`
