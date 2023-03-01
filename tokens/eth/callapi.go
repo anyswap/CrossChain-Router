@@ -758,7 +758,8 @@ func (b *Bridge) EstimateGas(from, to string, value *big.Int, data []byte) (uint
 func (b *Bridge) EstimateGasSapphire(from, to string, value *big.Int, data []byte) (uint64, error) {
 	// they didnt implement this function:
 	// https://github.com/oasisprotocol/sapphire-paratime/blob/main/clients/go/compat.go#L232
-	return sapphire.DefaultGasLimit, nil
+	//return sapphire.DefaultGasLimit, nil
+	return 500000, nil
 }
 
 // GetContractLogs get contract logs
