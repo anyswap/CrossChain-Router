@@ -234,6 +234,7 @@ func FindRouterSwapsWithStatus(status SwapStatus, septime int64) ([]*MgoSwap, er
 }
 
 // FindRouterSwapsWithToChainIDAndStatus find router swap with toChainID and status in the past septime
+//
 //nolint:dupl // allow duplicate
 func FindRouterSwapsWithToChainIDAndStatus(toChainID string, status SwapStatus, septime int64) ([]*MgoSwap, error) {
 	qtime := bson.M{"timestamp": bson.M{"$gte": septime}}
@@ -258,6 +259,7 @@ func FindRouterSwapsWithToChainIDAndStatus(toChainID string, status SwapStatus, 
 }
 
 // FindRouterSwapsWithChainIDAndStatus find router swap with chainid and status in the past septime
+//
 //nolint:dupl // allow duplicate
 func FindRouterSwapsWithChainIDAndStatus(fromChainID string, status SwapStatus, septime int64) ([]*MgoSwap, error) {
 	query := getStatusQueryWithChainID(fromChainID, status, septime)
@@ -519,6 +521,7 @@ func FindRouterSwapResultsWithStatus(status SwapStatus, septime int64) ([]*MgoSw
 }
 
 // FindRouterSwapResultsWithChainIDAndStatus find router swap result with chainid and status in the past septime
+//
 //nolint:dupl // allow duplicate
 func FindRouterSwapResultsWithChainIDAndStatus(fromChainID string, status SwapStatus, septime int64) ([]*MgoSwapResult, error) {
 	query := getStatusQueryWithChainID(fromChainID, status, septime)
@@ -630,6 +633,7 @@ func getStatusesFromStr(status string) (registerStatuses, resultStatuses []SwapS
 }
 
 // FindRouterSwapResults find router swap results with chainid and address
+//
 //nolint:gocyclo // allow long method
 func FindRouterSwapResults(fromChainID, address string, offset, limit int, status string) ([]*MgoSwapResult, error) {
 	var queries []bson.M
@@ -704,6 +708,7 @@ func FindRouterSwapResults(fromChainID, address string, offset, limit int, statu
 }
 
 // UpdateRouterSwapResult update router swap result
+//
 //nolint:gocyclo // ok
 func UpdateRouterSwapResult(fromChainID, txid string, logindex int, items *SwapResultUpdateItems) error {
 	updateResultLock.Lock()
@@ -745,6 +750,9 @@ func UpdateRouterSwapResult(fromChainID, txid string, logindex int, items *SwapR
 		updates["memo"] = items.Memo
 	} else if items.Status == MatchTxNotStable {
 		updates["memo"] = ""
+	}
+	if items.TTL != 0 {
+		updates["ttl"] = items.TTL
 	}
 	if items.SwapNonce != 0 || items.Status == MatchTxNotStable {
 		err = checkRouterSwapResultUpdate(swapRes, items.SwapNonce)

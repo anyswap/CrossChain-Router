@@ -70,3 +70,9 @@ type NonceSetter interface {
 	AllocateNonce(args *BuildTxArgs) (nonce uint64, err error)
 	RecycleSwapNonce(sender string, nonce uint64)
 }
+
+type ReSwapable interface {
+	SetTxTimeout(args *BuildTxArgs, txTimeout *uint64)
+	GetCurrentThreshold() (*uint64, error)
+	IsTxTimeout(txValue, currentValue *uint64) bool
+}

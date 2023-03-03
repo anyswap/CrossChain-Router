@@ -21,8 +21,8 @@ import (
 var (
 	// ensure Bridge impl tokens.CrossChainBridge
 	_ tokens.IBridge = &Bridge{}
-	// ensure Bridge impl tokens.NonceSetter
-	_ tokens.NonceSetter = &Bridge{}
+	// ensure Bridge impl tokens.ReSwapableBridge
+	_ tokens.ReSwapable = &Bridge{}
 
 	supportedChainIDs     = make(map[string]bool)
 	supportedChainIDsInit sync.Once
@@ -36,7 +36,8 @@ const (
 
 // Bridge block bridge inherit from btc bridge
 type Bridge struct {
-	*base.NonceSetterBase
+	*tokens.CrossChainBridgeBase
+	*base.ReSwapableBridgeBase
 	RPCClientTimeout int
 	RpcClient        cardanosdk.Node
 	FakePrikey       crypto.PrvKey
@@ -52,9 +53,10 @@ func NewCrossChainBridge() *Bridge {
 		panic(err)
 	}
 	instance := &Bridge{
-		NonceSetterBase:  base.NewNonceSetterBase(),
-		RPCClientTimeout: 60,
-		FakePrikey:       fakePrikey,
+		CrossChainBridgeBase: tokens.NewCrossChainBridgeBase(),
+		ReSwapableBridgeBase: &base.ReSwapableBridgeBase{},
+		RPCClientTimeout:     60,
+		FakePrikey:           fakePrikey,
 	}
 	BridgeInstance = instance
 
@@ -314,4 +316,11 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 		}
 	}
 	return status, nil
+}
+func (b *Bridge) GetCurrentThreshold() (*uint64, error) {
+	tip, err := b.GetTip()
+	if err != nil {
+		return nil, err
+	}
+	return &tip.Slot, nil
 }

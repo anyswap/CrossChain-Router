@@ -49,6 +49,7 @@ const (
 	NoUnderlyingToken SwapStatus = 21
 	TxMaybeUnsafe     SwapStatus = 22
 	SwapoutForbidden  SwapStatus = 23
+	TxNeedReswap      SwapStatus = 24
 
 	KeepStatus SwapStatus = 255
 	Reswapping SwapStatus = 256

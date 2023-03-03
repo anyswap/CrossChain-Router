@@ -164,7 +164,18 @@ func processRouterSwapStable(swap *mongodb.MgoSwapResult) (err error) {
 		if swap.SwapHeight != 0 {
 			return nil
 		}
-		return checkIfSwapNonceHasPassed(resBridge, swap, false)
+
+		if router.IsReswapSupported(swap.ToChainID) {
+			err := checkIfTxTimeout(resBridge, swap)
+			if err == nil {
+				return nil
+			}
+		}
+
+		if router.IsNonceSupported(swap.ToChainID) {
+			return checkIfSwapNonceHasPassed(resBridge, swap, false)
+		}
+
 	}
 
 	if swap.SwapHeight != 0 {

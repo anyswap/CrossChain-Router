@@ -79,6 +79,9 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 					return nil, err
 				}
 
+				txout := uint64(rawTransaction.Slot + TxTimeOut)
+				b.ReSwapableBridgeBase.SetTxTimeout(args, &txout)
+
 				if rawBytes, err := json.Marshal(rawTransaction); err != nil {
 					return nil, err
 				} else {
@@ -433,21 +436,21 @@ func (b *Bridge) GetPoolNonce(address, _height string) (uint64, error) {
 func (b *Bridge) GetSeq(args *tokens.BuildTxArgs) (nonceptr *uint64, err error) {
 	var nonce uint64
 
-	if params.IsParallelSwapEnabled() {
-		nonce, err = b.AllocateNonce(args)
-		return &nonce, err
-	}
+	// if params.IsParallelSwapEnabled() {
+	// 	nonce, err = b.AllocateNonce(args)
+	// 	return &nonce, err
+	// }
 
-	if params.IsAutoSwapNonceEnabled(b.ChainConfig.ChainID) { // increase automatically
-		nonce = b.GetSwapNonce(args.From)
-		return &nonce, nil
-	}
+	// if params.IsAutoSwapNonceEnabled(b.ChainConfig.ChainID) { // increase automatically
+	// 	nonce = b.GetSwapNonce(args.From)
+	// 	return &nonce, nil
+	// }
 
 	nonce, err = b.GetPoolNonce(args.From, "pending")
 	if err != nil {
 		return nil, err
 	}
-	nonce = b.AdjustNonce(args.From, nonce)
+	// nonce = b.AdjustNonce(args.From, nonce)
 	return &nonce, nil
 }
 
