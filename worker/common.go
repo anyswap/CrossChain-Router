@@ -1,10 +1,12 @@
 package worker
 
 import (
+	"math/big"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
 	"github.com/anyswap/CrossChain-Router/v3/params"
+	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
@@ -280,4 +282,40 @@ func needRetrySendTx(err error) bool {
 		return false
 	}
 	return true
+}
+
+func assignSwapValueAndFee(args *tokens.BuildTxArgs) error {
+	erc20SwapInfo := args.ERC20SwapInfo
+	if erc20SwapInfo == nil {
+		return nil
+	}
+	fromBridge := router.GetBridgeByChainID(args.FromChainID.String())
+	if fromBridge == nil {
+		return tokens.ErrNoBridgeForChainID
+	}
+	fromTokenCfg := fromBridge.GetTokenConfig(erc20SwapInfo.Token)
+	if fromTokenCfg == nil {
+		return tokens.ErrMissTokenConfig
+	}
+	multichainToken := router.GetCachedMultichainToken(erc20SwapInfo.TokenID, args.ToChainID.String())
+	if multichainToken == "" {
+		return tokens.ErrMissTokenConfig
+	}
+	toBridge := router.GetBridgeByChainID(args.ToChainID.String())
+	if toBridge == nil {
+		return tokens.ErrNoBridgeForChainID
+	}
+	toTokenCfg := toBridge.GetTokenConfig(multichainToken)
+	if toTokenCfg == nil {
+		return tokens.ErrMissTokenConfig
+	}
+	args.SwapValue = tokens.CalcSwapValue(erc20SwapInfo.TokenID, args.FromChainID.String(), args.ToChainID.String(), args.OriginValue, fromTokenCfg.Decimals, toTokenCfg.Decimals, args.OriginFrom, args.OriginTxTo)
+	if args.OriginValue != nil {
+		totalAmount := tokens.ConvertTokenValue(args.OriginValue, fromTokenCfg.Decimals, toTokenCfg.Decimals)
+		if args.Extra == nil {
+			args.Extra = &tokens.AllExtras{}
+		}
+		args.Extra.BridgeFee = new(big.Int).Sub(totalAmount, args.SwapValue)
+	}
+	return nil
 }

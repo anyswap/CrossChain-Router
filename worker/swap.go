@@ -193,6 +193,7 @@ func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
 	if err != nil {
 		return err
 	}
+	assignSwapValueAndFee(args)
 
 	return dispatchSwapTask(args)
 }
