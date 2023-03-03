@@ -350,10 +350,6 @@ func checkAndUpdateProcessSwapTaskCache(key string) error {
 
 //nolint:funlen,gocyclo // ok
 func doSwap(args *tokens.BuildTxArgs) (err error) {
-	if params.IsParallelSwapEnabled() {
-		return doSwapParallel(args)
-	}
-
 	fromChainID := args.FromChainID.String()
 	toChainID := args.ToChainID.String()
 	txid := args.SwapID
@@ -454,92 +450,6 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 			"txHash", txHash, "swapNonce", swapTxNonce, "timespent", time.Since(start).String())
 	}
 	logWorker("doSwap", "finish to process", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "value", originValue)
-	return err
-}
-
-func doSwapParallel(args *tokens.BuildTxArgs) (err error) {
-	fromChainID := args.FromChainID.String()
-	toChainID := args.ToChainID.String()
-	txid := args.SwapID
-	logIndex := args.LogIndex
-	originValue := args.OriginValue
-
-	cacheKey := mongodb.GetRouterSwapKey(fromChainID, txid, logIndex)
-	err = checkAndUpdateProcessSwapTaskCache(cacheKey)
-	if err != nil {
-		return err
-	}
-	logWorker("doSwap", "add swap cache", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "value", originValue)
-	isCachedSwapProcessed := false
-	defer func() {
-		if !isCachedSwapProcessed {
-			logWorkerError("doSwap", "delete swap cache", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "value", originValue)
-			cachedSwapTasks.Remove(cacheKey)
-		}
-	}()
-
-	logWorker("doSwap", "start to process", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "value", originValue)
-
-	resBridge := router.GetBridgeByChainID(toChainID)
-	if resBridge == nil {
-		return tokens.ErrNoBridgeForChainID
-	}
-
-	rawTx, err := resBridge.BuildRawTransaction(args)
-	if err != nil {
-		logWorkerError("doSwap", "build tx failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex)
-		if errors.Is(err, tokens.ErrBuildTxErrorAndDelay) {
-			_ = updateSwapMemo(fromChainID, txid, logIndex, err.Error())
-		}
-		return err
-	}
-
-	isCachedSwapProcessed = true
-	go func() {
-		_ = signAndSendTx(rawTx, args)
-	}()
-	return nil
-}
-
-func signAndSendTx(rawTx interface{}, args *tokens.BuildTxArgs) error {
-	fromChainID := args.FromChainID.String()
-	toChainID := args.ToChainID.String()
-	txid := args.SwapID
-	logIndex := args.LogIndex
-	swapTxNonce := args.GetTxNonce()
-	resBridge := router.GetBridgeByChainID(toChainID)
-
-	start := time.Now()
-	signedTx, txHash, err := resBridge.MPCSignTransaction(rawTx, args)
-	if err != nil {
-		logWorkerError("doSwap", "sign tx failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "swapNonce", swapTxNonce, "timespent", time.Since(start).String())
-		if errors.Is(err, mpc.ErrGetSignStatusHasDisagree) {
-			reverifySwap(args)
-		}
-		return err
-	}
-	logWorker("doSwap", "sign tx success", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "swapNonce", swapTxNonce, "timespent", time.Since(start).String())
-
-	cacheKey := mongodb.GetRouterSwapKey(fromChainID, txid, logIndex)
-	disagreeRecords.Delete(cacheKey)
-
-	// update database before sending transaction
-	addSwapHistory(fromChainID, txid, logIndex, txHash)
-	_ = updateSwapTx(fromChainID, txid, logIndex, txHash)
-
-	start = time.Now()
-	sentTxHash, err := sendSignedTransaction(resBridge, signedTx, args)
-	if err == nil && txHash != sentTxHash {
-		logWorkerError("doSwap", "send tx success but with different hash", errSendTxWithDiffHash,
-			"fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex,
-			"txHash", txHash, "sentTxHash", sentTxHash, "swapNonce", swapTxNonce,
-			"timespent", time.Since(start).String())
-		_ = mongodb.UpdateRouterOldSwapTxs(fromChainID, txid, logIndex, sentTxHash)
-	} else if err == nil {
-		logWorker("doSwap", "send tx success",
-			"fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex,
-			"txHash", txHash, "swapNonce", swapTxNonce, "timespent", time.Since(start).String())
-	}
 	return err
 }
 

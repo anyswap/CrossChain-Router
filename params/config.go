@@ -168,7 +168,6 @@ type ExtraConfig struct {
 	EnableSwapWithPermit  bool `toml:",omitempty" json:",omitempty"`
 	ForceAnySwapInAuto    bool `toml:",omitempty" json:",omitempty"`
 	IsNFTSwapWithData     bool `toml:",omitempty" json:",omitempty"`
-	EnableParallelSwap    bool `toml:",omitempty" json:",omitempty"`
 	UsePendingBalance     bool `toml:",omitempty" json:",omitempty"`
 	DontPanicInInitRouter bool `toml:",omitempty" json:",omitempty"`
 	DontCheckInInitRouter bool `toml:",omitempty" json:",omitempty"`
@@ -331,11 +330,6 @@ func IsSwapWithPermitEnabled() bool {
 // IsForceAnySwapInAuto is forcely call anySwapinAuto
 func IsForceAnySwapInAuto() bool {
 	return GetExtraConfig() != nil && GetExtraConfig().ForceAnySwapInAuto
-}
-
-// IsParallelSwapEnabled is parallel swap enabled
-func IsParallelSwapEnabled() bool {
-	return GetExtraConfig() != nil && GetExtraConfig().EnableParallelSwap
 }
 
 // IsFixedGasPrice is fixed gas price of specified chain

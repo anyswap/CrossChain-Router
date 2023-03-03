@@ -290,64 +290,6 @@ func AddRouterSwapResult(mr *MgoSwapResult) error {
 	return mgoError(err)
 }
 
-// AllocateRouterSwapNonce allocate swap nonce (for parallel signing)
-func AllocateRouterSwapNonce(args *tokens.BuildTxArgs, nonceptr *uint64, isRecycleNonce bool) (swapnonce uint64, err error) {
-	updateResultLock.Lock()
-	defer updateResultLock.Unlock()
-
-	fromChainID := args.FromChainID.String()
-	txid := args.SwapID
-	logindex := args.LogIndex
-
-	swapnonce = *nonceptr
-	if isRecycleNonce && swapnonce == 0 {
-		return 0, errors.New("swap nonce is alreay recycled")
-	}
-
-	swapRes, err := FindRouterSwapResult(fromChainID, txid, logindex)
-	if err != nil {
-		return 0, err
-	}
-
-	err = checkRouterSwapResultUpdate(swapRes, swapnonce)
-	if err != nil {
-		return 0, err
-	}
-
-	key := GetRouterSwapKey(fromChainID, txid, logindex)
-	nowTime := time.Now().Unix()
-
-	resUpdates := bson.M{
-		"mpc":       args.From,
-		"status":    MatchTxNotStable,
-		"swapnonce": swapnonce,
-		"timestamp": nowTime,
-	}
-	if args.SwapValue != nil {
-		resUpdates["swapvalue"] = args.SwapValue.String()
-	}
-	_, err = collRouterSwapResult.UpdateByID(clientCtx, key, bson.M{"$set": resUpdates})
-	if err != nil {
-		log.Warn("mongodb allocate swap nonce failed", "chainid", fromChainID, "txid", txid, "logindex", logindex, "swapnonce", swapnonce, "err", err)
-		return 0, mgoError(err)
-	}
-
-	log.Info("mongodb allocate swap nonce success", "chainid", fromChainID, "txid", txid, "logindex", logindex, "swapnonce", swapnonce)
-
-	statusUpdates := bson.M{"status": TxProcessed, "timestamp": nowTime}
-	_, errf := collRouterSwap.UpdateByID(clientCtx, key, bson.M{"$set": statusUpdates})
-	if errf != nil {
-		log.Warn("mongodb update swap status to TxProcessed failed", "chainid", fromChainID, "txid", txid, "logindex", logindex, "swapnonce", swapnonce, "err", errf)
-	}
-
-	if isRecycleNonce {
-		*nonceptr = 0
-	} else {
-		*nonceptr++
-	}
-	return swapnonce, nil
-}
-
 // UpdateRouterSwapResultStatus update router swap result status
 func UpdateRouterSwapResultStatus(fromChainID, txid string, logindex int, status SwapStatus, timestamp int64, memo string) error {
 	updateResultLock.Lock()

@@ -218,11 +218,9 @@ SENDTX_LOOP:
 		return txHash, err
 	}
 
-	if !params.IsParallelSwapEnabled() {
-		nonceSetter, ok := bridge.(tokens.NonceSetter)
-		if ok && nonceSetter != nil {
-			nonceSetter.SetNonce(args.From, swapTxNonce+1)
-		}
+	nonceSetter, ok := bridge.(tokens.NonceSetter)
+	if ok && nonceSetter != nil {
+		nonceSetter.SetNonce(args.From, swapTxNonce+1)
 	}
 
 	if params.GetRouterServerConfig().SendTxLoopCount[args.ToChainID.String()] >= 0 {

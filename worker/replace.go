@@ -22,7 +22,6 @@ var (
 
 	treatAsNoncePassedInterval = int64(600) // seconds
 	defWaitTimeToReplace       = int64(300) // seconds
-	defMaxReplaceCount         = 20
 
 	replaceTaskQueues   = make(map[string]*fifo.Queue) // key is toChainID
 	replaceTasksInQueue = mapset.NewSet()
@@ -93,16 +92,8 @@ func findRouterSwapResultToReplace() ([]*mongodb.MgoSwapResult, error) {
 
 func dispatchSwapResultToReplace(res *mongodb.MgoSwapResult) error {
 	waitTimeToReplace := serverCfg.WaitTimeToReplace
-	maxReplaceCount := serverCfg.MaxReplaceCount
 	if waitTimeToReplace == 0 {
 		waitTimeToReplace = defWaitTimeToReplace
-	}
-	if maxReplaceCount == 0 {
-		maxReplaceCount = defMaxReplaceCount
-	}
-	if len(res.OldSwapTxs) > maxReplaceCount {
-		checkAndRecycleSwapNonce(res)
-		return nil
 	}
 	if res.SwapTx != "" && getSepTimeInFind(waitTimeToReplace) < res.Timestamp {
 		return nil
@@ -131,29 +122,6 @@ func dispatchSwapResultToReplace(res *mongodb.MgoSwapResult) error {
 	replaceTasksInQueue.Add(res.Key)
 
 	return nil
-}
-
-func checkAndRecycleSwapNonce(res *mongodb.MgoSwapResult) {
-	if !params.IsParallelSwapEnabled() {
-		return
-	}
-	_, err := verifyReplaceSwap(res, false)
-	if err != nil {
-		return
-	}
-	resBridge := router.GetBridgeByChainID(res.ToChainID)
-	if resBridge == nil {
-		return
-	}
-	nonceSetter, ok := resBridge.(tokens.NonceSetter)
-	if !ok {
-		return
-	}
-	if res.SwapNonce == 0 || res.MPC == "" {
-		return
-	}
-	logWorker("recycle swap nonce", "swap", res)
-	nonceSetter.RecycleSwapNonce(res.MPC, res.SwapNonce)
 }
 
 func startReplaceConsumer(chainID string) {
@@ -322,7 +290,7 @@ func verifyReplaceSwap(res *mongodb.MgoSwapResult, isManual bool) (*mongodb.MgoS
 		return nil, fmt.Errorf("cannot replace swap with status not equal to 'TxProcessed'")
 	}
 
-	if res.SwapTx == "" && !params.IsParallelSwapEnabled() {
+	if res.SwapTx == "" {
 		return nil, errors.New("swap without swaptx")
 	}
 	if res.SwapNonce == 0 && !isManual {

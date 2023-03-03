@@ -433,11 +433,6 @@ func (b *Bridge) GetPoolNonce(address, _height string) (uint64, error) {
 func (b *Bridge) GetSeq(args *tokens.BuildTxArgs) (nonceptr *uint64, err error) {
 	var nonce uint64
 
-	if params.IsParallelSwapEnabled() {
-		nonce, err = b.AllocateNonce(args)
-		return &nonce, err
-	}
-
 	if params.IsAutoSwapNonceEnabled(b.ChainConfig.ChainID) { // increase automatically
 		nonce = b.GetSwapNonce(args.From)
 		return &nonce, nil

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
-	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/ripple/rubblelabs/ripple/data"
@@ -48,9 +47,7 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error
 		time.Sleep(rpcRetryInterval)
 	}
 	if success {
-		if !params.IsParallelSwapEnabled() {
-			b.SetNonce(tx.GetBase().Account.String(), uint64(tx.GetBase().Sequence)+1)
-		}
+		b.SetNonce(tx.GetBase().Account.String(), uint64(tx.GetBase().Sequence)+1)
 		return txHash, nil
 	}
 	return "", err

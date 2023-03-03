@@ -391,11 +391,6 @@ func (b *Bridge) adjustSwapGasPrice(args *tokens.BuildTxArgs, oldGasPrice *big.I
 func (b *Bridge) getAccountNonce(args *tokens.BuildTxArgs) (nonceptr *uint64, err error) {
 	var nonce uint64
 
-	if params.IsParallelSwapEnabled() {
-		nonce, err = b.AllocateNonce(args)
-		return &nonce, err
-	}
-
 	res, err := b.getPoolNonce(args)
 	if err != nil {
 		return nil, err

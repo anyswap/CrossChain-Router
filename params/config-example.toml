@@ -133,8 +133,6 @@ EnableSwapWithPermit = false
 ForceAnySwapInAuto = false
 # for nft swap, add data in swapout log and swapin argument
 IsNFTSwapWithData = false
-# enalbe parallel swap
-EnableParallelSwap = false
 # use pending balace to prevent sending tx under not enough balance situation
 UsePendingBalance = false
 # dont panic in init router

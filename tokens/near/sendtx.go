@@ -2,7 +2,6 @@ package near
 
 import (
 	"github.com/anyswap/CrossChain-Router/v3/log"
-	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/near/borsh-go"
 )
@@ -17,11 +16,10 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error
 	txHash, err = b.BroadcastTxCommit(buf)
 	if err != nil {
 		return "", err
-	} else if !params.IsParallelSwapEnabled() {
-		sender := signTx.Transaction.SignerID
-		nonce := signTx.Transaction.Nonce
-		b.SetNonce(sender, nonce+1)
 	}
+	sender := signTx.Transaction.SignerID
+	nonce := signTx.Transaction.Nonce
+	b.SetNonce(sender, nonce+1)
 	return txHash, nil
 }
 

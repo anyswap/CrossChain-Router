@@ -258,11 +258,6 @@ func (b *Bridge) getMaxFee() string {
 func (b *Bridge) getAccountNonce(args *tokens.BuildTxArgs) (nonceptr *uint64, err error) {
 	var nonce uint64
 
-	if params.IsParallelSwapEnabled() {
-		nonce, err = b.AllocateNonce(args)
-		return &nonce, err
-	}
-
 	res, err := b.GetPoolNonce(args.From, "")
 	if err != nil {
 		return nil, err

@@ -1,38 +1,25 @@
 package base
 
 import (
-	"errors"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
-	"github.com/anyswap/CrossChain-Router/v3/mongodb"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
 var (
 	retryRPCCount    = 3
 	retryRPCInterval = 1 * time.Second
-
-	recycleAckInterval = int64(300) // seconds
-
-	errRecycleNotAcked = errors.New("recycle timestamp does not pass ack interval")
 )
-
-type recycleNonceRecord struct {
-	nonce     uint64
-	timestamp int64
-}
 
 // NonceSetterBase base nonce setter
 type NonceSetterBase struct {
 	*tokens.CrossChainBridgeBase
-	swapNonce    map[string]*uint64             // key is sender address
-	recycleNonce map[string]*recycleNonceRecord // key is sender address
+	swapNonce map[string]*uint64 // key is sender address
 
-	swapNonceLock        sync.RWMutex
-	recycleSwapNonceLock sync.RWMutex
+	swapNonceLock sync.RWMutex
 }
 
 // NewNonceSetterBase new base nonce setter
@@ -40,7 +27,6 @@ func NewNonceSetterBase() *NonceSetterBase {
 	return &NonceSetterBase{
 		CrossChainBridgeBase: tokens.NewCrossChainBridgeBase(),
 		swapNonce:            make(map[string]*uint64),
-		recycleNonce:         make(map[string]*recycleNonceRecord),
 	}
 }
 
@@ -125,55 +111,5 @@ func (b *NonceSetterBase) SetNonce(address string, value uint64) {
 			chainID = b.ChainConfig.ChainID
 		}
 		log.Info("set next nonce", "chainID", chainID, "account", account, "old", old, "new", value)
-	}
-}
-
-// AllocateNonce allocate nonce
-func (b *NonceSetterBase) AllocateNonce(args *tokens.BuildTxArgs) (nonce uint64, err error) {
-	if nonce, err = b.TryAllocateRecycleNonce(args, recycleAckInterval); err == nil {
-		return nonce, nil
-	}
-
-	b.swapNonceLock.Lock()
-	defer b.swapNonceLock.Unlock()
-
-	account := strings.ToLower(args.From)
-	allocNonce, exist := b.swapNonce[account]
-	if !exist {
-		initNonce := uint64(0)
-		allocNonce = &initNonce
-		b.swapNonce[account] = allocNonce
-	}
-	return mongodb.AllocateRouterSwapNonce(args, allocNonce, false)
-}
-
-// TryAllocateRecycleNonce try allocate recycle swap nonce
-func (b *NonceSetterBase) TryAllocateRecycleNonce(args *tokens.BuildTxArgs, lifetime int64) (nonce uint64, err error) {
-	b.recycleSwapNonceLock.RLock()
-	defer b.recycleSwapNonceLock.RUnlock()
-
-	account := strings.ToLower(args.From)
-	rec, exist := b.recycleNonce[account]
-	if !exist || time.Now().Unix()-rec.timestamp < lifetime {
-		return 0, errRecycleNotAcked
-	}
-	return mongodb.AllocateRouterSwapNonce(args, &rec.nonce, true)
-}
-
-// RecycleSwapNonce recycle swap nonce
-func (b *NonceSetterBase) RecycleSwapNonce(sender string, nonce uint64) {
-	b.recycleSwapNonceLock.Lock()
-	defer b.recycleSwapNonceLock.Unlock()
-
-	account := strings.ToLower(sender)
-	rec, exist := b.recycleNonce[account]
-	if !exist {
-		b.recycleNonce[account] = &recycleNonceRecord{
-			nonce:     nonce,
-			timestamp: time.Now().Unix(),
-		}
-	} else if rec.nonce == 0 || nonce < rec.nonce {
-		rec.nonce = nonce
-		rec.timestamp = time.Now().Unix()
 	}
 }
