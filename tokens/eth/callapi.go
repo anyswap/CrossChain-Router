@@ -243,10 +243,11 @@ func (b *Bridge) checkTxBlockHash(blockNumber *big.Int, blockHash common.Hash) e
 func (b *Bridge) GetPoolNonce(address, height string) (mdPoolNonce uint64, err error) {
 	start := time.Now()
 	allPoolNonces := make([]uint64, 0, 10)
-	account := common.HexToAddress(address)
+	accountAddr := common.HexToAddress(address)
+	account := accountAddr.LowerHex()
 	for _, url := range b.AllGatewayURLs {
 		var result hexutil.Uint64
-		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_getTransactionCount", account, height)
+		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_getTransactionCount", accountAddr, height)
 		if err == nil {
 			allPoolNonces = append(allPoolNonces, uint64(result))
 			log.Info("call eth_getTransactionCount success", "chainID", b.ChainConfig.ChainID, "url", url, "account", account, "nonce", uint64(result))
