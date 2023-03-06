@@ -197,6 +197,10 @@ func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
 	if err != nil {
 		return err
 	}
+	err = assignSwapNonce(args)
+	if err != nil {
+		return err
+	}
 
 	return dispatchSwapTask(args)
 }

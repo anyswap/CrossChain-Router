@@ -376,3 +376,44 @@ func assignSwapValueAndFee(args *tokens.BuildTxArgs) error {
 	}
 	return nil
 }
+
+func assignSwapNonce(args *tokens.BuildTxArgs) (err error) {
+	toChainID := args.ToChainID.String()
+	toBridge := router.GetBridgeByChainID(toChainID)
+	if toBridge == nil {
+		return tokens.ErrNoBridgeForChainID
+	}
+
+	nonceSetter, ok := toBridge.(tokens.NonceSetter)
+	if !ok || nonceSetter == nil {
+		return nil
+	}
+
+	var nonce uint64
+
+	if params.IsAutoSwapNonceEnabled(toChainID) { // increase automatically
+		nonce = nonceSetter.GetSwapNonce(args.From)
+		args.SetTxNonce(nonce)
+		return nil
+	}
+
+	getPoolNonceBlockNumberOpt := "pending" // latest or pending
+	if params.IsAutoSwapNonceEnabled(toChainID) {
+		getPoolNonceBlockNumberOpt = "latest"
+	}
+
+	for i := 0; i < 3; i++ {
+		nonce, err = nonceSetter.GetPoolNonce(args.From, getPoolNonceBlockNumberOpt)
+		if err == nil {
+			break
+		}
+		sleepSeconds(1)
+	}
+	if err != nil {
+		return err
+	}
+
+	nonce = nonceSetter.AdjustNonce(args.From, nonce)
+	args.SetTxNonce(nonce)
+	return nil
+}
