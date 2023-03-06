@@ -221,10 +221,7 @@ func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int, isManual b
 		OriginTxTo:  swap.TxTo,
 		OriginValue: biValue,
 		Extra: &tokens.AllExtras{
-			EthExtra: &tokens.EthExtraArgs{
-				GasPrice: gasPrice,
-				Nonce:    &nonce,
-			},
+			GasPrice:   gasPrice,
 			Sequence:   &nonce,
 			ReplaceNum: replaceNum,
 		},

@@ -81,7 +81,7 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 		to        = common.HexToAddress(args.To)
 		value     = args.Value
 		input     = *args.Input
-		extra     = args.Extra.EthExtra
+		extra     = args.Extra
 		gasLimit  = *extra.Gas
 		gasPrice  = extra.GasPrice
 		gasTipCap = extra.GasTipCap
@@ -120,14 +120,14 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 
 	// assign nonce immediately before construct tx
 	// esp. for parallel signing, this can prevent nonce hole
-	if extra.Nonce == nil { // server logic
-		extra.Nonce, err = b.getAccountNonce(args)
+	if extra.Sequence == nil { // server logic
+		extra.Sequence, err = b.getAccountNonce(args)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	nonce := *extra.Nonce
+	nonce := *extra.Sequence
 
 	key := strings.ToLower(fmt.Sprintf("%v:%v", b.ChainConfig.ChainID, args.From))
 	cached := cachedNonce[key]
@@ -173,20 +173,14 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 	return rawTx, nil
 }
 
-func getOrInitEthExtra(args *tokens.BuildTxArgs) *tokens.EthExtraArgs {
-	if args.Extra == nil {
-		args.Extra = &tokens.AllExtras{EthExtra: &tokens.EthExtraArgs{}}
-	} else if args.Extra.EthExtra == nil {
-		args.Extra.EthExtra = &tokens.EthExtraArgs{}
-	}
-	return args.Extra.EthExtra
-}
-
 func (b *Bridge) setDefaults(args *tokens.BuildTxArgs) (err error) {
 	if args.Value == nil {
 		args.Value = new(big.Int)
 	}
-	extra := getOrInitEthExtra(args)
+	if args.Extra == nil {
+		args.Extra = &tokens.AllExtras{}
+	}
+	extra := args.Extra
 	if params.IsDynamicFeeTxEnabled(b.ChainConfig.ChainID) {
 		if extra.GasTipCap == nil {
 			extra.GasTipCap, err = b.getGasTipCap(args)

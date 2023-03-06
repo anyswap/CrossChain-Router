@@ -123,7 +123,6 @@ func (b *Bridge) SetExtraArgs(args *tokens.BuildTxArgs, tokenCfg *tokens.TokenCo
 		args.Extra = &tokens.AllExtras{}
 	}
 	extra := args.Extra
-	extra.EthExtra = nil // clear this which may be set in replace job
 	if extra.Sequence == nil {
 		sequence, err := b.getAccountNonce(args)
 		if err != nil {
