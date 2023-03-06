@@ -319,3 +319,11 @@ func IsNonceSupported(chainID string) bool {
 	}
 	return false
 }
+
+func IsReswapSupported(chainID string) bool {
+	if bridge := GetBridgeByChainID(chainID); bridge != nil {
+		_, ok := bridge.(tokens.ReSwapable)
+		return ok
+	}
+	return false
+}

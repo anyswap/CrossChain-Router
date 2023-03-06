@@ -16,6 +16,7 @@ type MatchTx struct {
 	SwapTime   uint64
 	SwapValue  string
 	SwapNonce  uint64
+	TTL        uint64
 }
 
 // AddInitialSwapResult add initial result
@@ -78,6 +79,9 @@ func updateRouterSwapResult(fromChainID, txid string, logIndex int, mtx *MatchTx
 		if mtx.SwapTx != "" {
 			updates.SwapTx = mtx.SwapTx
 		}
+	}
+	if mtx.TTL > 0 {
+		updates.TTL = mtx.TTL
 	}
 	err = mongodb.UpdateRouterSwapResult(fromChainID, txid, logIndex, updates)
 	if err != nil {
