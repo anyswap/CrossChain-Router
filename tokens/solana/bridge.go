@@ -7,6 +7,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/base"
 	routerprog "github.com/anyswap/CrossChain-Router/v3/tokens/solana/programs/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/solana/types"
 )
@@ -14,6 +15,8 @@ import (
 var (
 	// ensure Bridge impl tokens.CrossChainBridge
 	_ tokens.IBridge = &Bridge{}
+	// ensure Bridge impl tokens.ReSwapableBridge
+	_ tokens.ReSwapable = &Bridge{}
 
 	routerPDASeeds = [][]byte{[]byte("Router")}
 )
@@ -21,12 +24,14 @@ var (
 // Bridge solana bridge
 type Bridge struct {
 	*tokens.CrossChainBridgeBase
+	*base.ReSwapableBridgeBase
 }
 
 // NewCrossChainBridge new bridge
 func NewCrossChainBridge() *Bridge {
 	return &Bridge{
 		CrossChainBridgeBase: tokens.NewCrossChainBridgeBase(),
+		ReSwapableBridgeBase: &base.ReSwapableBridgeBase{},
 	}
 }
 
@@ -148,4 +153,13 @@ func (b *Bridge) GetTxBlockInfo(txHash string) (blockHeight, blockTime uint64) {
 		return 0, 0
 	}
 	return txStatus.BlockHeight, txStatus.BlockTime
+}
+
+func (b *Bridge) GetCurrentThreshold() (*uint64, error) {
+	tip, err := b.GetBlockHeight()
+	if err != nil {
+		return nil, err
+	}
+	tip += b.GetChainConfig().Confirmations
+	return &tip, nil
 }
