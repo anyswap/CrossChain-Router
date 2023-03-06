@@ -284,6 +284,63 @@ func needRetrySendTx(err error) bool {
 	return true
 }
 
+func checkSwapInfo(swapInfo *tokens.SwapTxInfo) error {
+	fromBridge := router.GetBridgeByChainID(swapInfo.FromChainID.String())
+	if fromBridge == nil {
+		return tokens.ErrNoBridgeForChainID
+	}
+
+	toBridge := router.GetBridgeByChainID(swapInfo.ToChainID.String())
+	if toBridge == nil {
+		return tokens.ErrNoBridgeForChainID
+	}
+
+	if swapInfo.FromChainID.String() != fromBridge.GetChainConfig().ChainID {
+		return tokens.ErrFromChainIDMismatch
+	}
+
+	if swapInfo.FromChainID.Cmp(swapInfo.ToChainID) == 0 {
+		return tokens.ErrSameFromAndToChainID
+	}
+
+	if strings.EqualFold(swapInfo.From, swapInfo.To) {
+		return tokens.ErrTxWithWrongSender
+	}
+
+	erc20SwapInfo := swapInfo.ERC20SwapInfo
+	if erc20SwapInfo == nil {
+		return nil
+	}
+
+	fromTokenCfg := fromBridge.GetTokenConfig(erc20SwapInfo.Token)
+	if fromTokenCfg == nil {
+		return tokens.ErrMissTokenConfig
+	}
+
+	if fromTokenCfg == nil || erc20SwapInfo.TokenID == "" {
+		return tokens.ErrMissTokenConfig
+	}
+
+	multichainToken := router.GetCachedMultichainToken(erc20SwapInfo.TokenID, swapInfo.ToChainID.String())
+	if multichainToken == "" {
+		return tokens.ErrMissTokenConfig
+	}
+
+	toTokenCfg := toBridge.GetTokenConfig(multichainToken)
+	if toTokenCfg == nil {
+		return tokens.ErrMissTokenConfig
+	}
+
+	if !tokens.CheckTokenSwapValue(swapInfo, fromTokenCfg.Decimals, toTokenCfg.Decimals) {
+		return tokens.ErrTxWithWrongValue
+	}
+
+	if !toBridge.IsValidAddress(swapInfo.Bind) {
+		return tokens.ErrWrongBindAddress
+	}
+	return nil
+}
+
 func assignSwapValueAndFee(args *tokens.BuildTxArgs) error {
 	erc20SwapInfo := args.ERC20SwapInfo
 	if erc20SwapInfo == nil {

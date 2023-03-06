@@ -233,6 +233,10 @@ func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int, isManual b
 	if err != nil {
 		return err
 	}
+	err = assignSwapValueAndFee(args)
+	if err != nil {
+		return err
+	}
 	rawTx, err := resBridge.BuildRawTransaction(args)
 	if err != nil {
 		logWorkerError("replaceSwap", "build tx failed", err, "chainID", res.ToChainID, "txid", txid, "logIndex", res.LogIndex)

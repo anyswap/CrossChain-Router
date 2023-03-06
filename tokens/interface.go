@@ -55,6 +55,7 @@ type IBridge interface {
 // NonceSetter interface (for eth-like)
 type NonceSetter interface {
 	InitSwapNonce(br NonceSetter, address string, nonce uint64)
+	GetSwapNonce(address string) uint64
 
 	// sequential
 	GetPoolNonce(address, height string) (uint64, error)
