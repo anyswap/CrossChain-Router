@@ -8,6 +8,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
+	"github.com/anyswap/CrossChain-Router/v3/mpc"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
@@ -16,15 +17,12 @@ import (
 )
 
 var (
-	maxReswapSwapLifetime = int64(600)
-
 	reswapTaskQueues   = make(map[string]*fifo.Queue) // key is toChainID
 	reswapTasksInQueue = mapset.NewSet()
 )
 
 // StartreswapJob reswap job
 func StartReswapJob() {
-	logWorker("reswap", "start router reswap job")
 	serverCfg = params.GetRouterServerConfig()
 	if serverCfg == nil {
 		logWorker("reswap", "stop reswap job as no router server config exist")
@@ -76,7 +74,7 @@ func startReswapProducer() {
 }
 
 func findRouterSwapResultToreswap() ([]*mongodb.MgoSwapResult, error) {
-	septime := getSepTimeInFind(maxReswapSwapLifetime)
+	septime := getSepTimeInFind(maxReplaceSwapLifetime)
 	return mongodb.FindRouterSwapResultsWithStatus(mongodb.TxNeedReswap, septime)
 }
 
@@ -171,74 +169,91 @@ func reswapRouterSwap(res *mongodb.MgoSwapResult, isManual bool) error {
 	}
 
 	logWorker("reswapSwap", "process task", "swap", res)
-	_ = mongodb.UpdateRouterSwapResultStatus(res.FromChainID, res.TxID, res.LogIndex, mongodb.TxNotSwapped, now(), "reswap")
 
-	// _ = updateSwapTimestamp(res.FromChainID, res.TxID, res.LogIndex)
-	// resBridge := router.GetBridgeByChainID(res.ToChainID)
-	// biFromChainID, biToChainID, biValue, err := getFromToChainIDAndValue(res.FromChainID, res.ToChainID, res.Value)
-	// if err != nil {
-	// 	return err
-	// }
-	// txid := res.TxID
-	// args := &tokens.BuildTxArgs{
-	// 	SwapArgs: tokens.SwapArgs{
-	// 		Identifier:  params.GetIdentifier(),
-	// 		SwapID:      txid,
-	// 		SwapType:    tokens.SwapType(res.SwapType),
-	// 		Bind:        res.Bind,
-	// 		LogIndex:    res.LogIndex,
-	// 		FromChainID: biFromChainID,
-	// 		ToChainID:   biToChainID,
-	// 	},
-	// 	From:        res.MPC,
-	// 	OriginFrom:  swap.From,
-	// 	OriginTxTo:  swap.TxTo,
-	// 	OriginValue: biValue,
-	// 	Extra:       &tokens.AllExtras{},
-	// }
-	// args.SwapInfo, err = mongodb.ConvertFromSwapInfo(&swap.SwapInfo)
-	// if err != nil {
-	// 	return err
-	// }
-	// rawTx, err := resBridge.BuildRawTransaction(args)
-	// if err != nil {
-	// 	logWorkerError("reswapSwap", "build tx failed", err, "chainID", res.ToChainID, "txid", txid, "logIndex", res.LogIndex)
-	// 	return err
-	// }
-	// go signAndSendreswapTx(resBridge, rawTx, args, res)
+	_ = updateSwapTimestamp(res.FromChainID, res.TxID, res.LogIndex)
+	resBridge := router.GetBridgeByChainID(res.ToChainID)
+	biFromChainID, biToChainID, biValue, err := getFromToChainIDAndValue(res.FromChainID, res.ToChainID, res.Value)
+	if err != nil {
+		return err
+	}
+	txid := res.TxID
+	args := &tokens.BuildTxArgs{
+		SwapArgs: tokens.SwapArgs{
+			Identifier:  params.GetIdentifier(),
+			SwapID:      txid,
+			SwapType:    tokens.SwapType(res.SwapType),
+			Bind:        res.Bind,
+			LogIndex:    res.LogIndex,
+			FromChainID: biFromChainID,
+			ToChainID:   biToChainID,
+		},
+		From:        res.MPC,
+		OriginFrom:  swap.From,
+		OriginTxTo:  swap.TxTo,
+		OriginValue: biValue,
+		Extra:       &tokens.AllExtras{},
+	}
+	args.SwapInfo, err = mongodb.ConvertFromSwapInfo(&swap.SwapInfo)
+	if err != nil {
+		return err
+	}
+	rawTx, err := resBridge.BuildRawTransaction(args)
+	if err != nil {
+		logWorkerError("reswapSwap", "build tx failed", err, "chainID", res.ToChainID, "txid", txid, "logIndex", res.LogIndex)
+		return err
+	}
+	go signAndSendReswapTx(resBridge, rawTx, args, res)
 	return nil
 }
 
-// func signAndSendreswapTx(resBridge tokens.IBridge, rawTx interface{}, args *tokens.BuildTxArgs, res *mongodb.MgoSwapResult) {
-// 	signedTx, txHash, err := resBridge.MPCSignTransaction(rawTx, args)
-// 	if err != nil {
-// 		logWorkerError("reswapSwap", "mpc sign tx failed", err, "fromChainID", res.FromChainID, "toChainID", res.ToChainID, "txid", res.TxID, "nonce", res.SwapNonce, "logIndex", res.LogIndex)
-// 		if errors.Is(err, mpc.ErrGetSignStatusHasDisagree) {
-// 			reverifySwap(args)
-// 		}
-// 		return
-// 	}
+func signAndSendReswapTx(resBridge tokens.IBridge, rawTx interface{}, args *tokens.BuildTxArgs, res *mongodb.MgoSwapResult) {
+	signedTx, txHash, err := resBridge.MPCSignTransaction(rawTx, args)
+	if err != nil {
+		logWorkerError("reswapSwap", "mpc sign tx failed", err, "fromChainID", res.FromChainID, "toChainID", res.ToChainID, "txid", res.TxID, "nonce", res.SwapNonce, "logIndex", res.LogIndex)
+		if errors.Is(err, mpc.ErrGetSignStatusHasDisagree) {
+			reverifySwap(args)
+		}
+		return
+	}
 
-// 	fromChainID := res.FromChainID
-// 	txid := res.TxID
-// 	logIndex := res.LogIndex
+	fromChainID := res.FromChainID
+	txid := res.TxID
+	logIndex := res.LogIndex
 
-// 	cacheKey := mongodb.GetRouterSwapKey(fromChainID, txid, logIndex)
-// 	disagreeRecords.Delete(cacheKey)
+	cacheKey := mongodb.GetRouterSwapKey(fromChainID, txid, logIndex)
+	disagreeRecords.Delete(cacheKey)
 
-// 	err = mongodb.UpdateRouterOldSwapTxs(fromChainID, txid, logIndex, txHash)
-// 	if err != nil {
-// 		return
-// 	}
+	// update database before sending transaction
+	addSwapHistory(fromChainID, txid, logIndex, txHash)
 
-// 	sentTxHash, err := sendSignedTransaction(resBridge, signedTx, args)
-// 	if err == nil && txHash != sentTxHash {
-// 		logWorkerError("reswapSwap", "send tx success but with different hash", errSendTxWithDiffHash,
-// 			"fromChainID", fromChainID, "toChainID", res.ToChainID, "txid", txid, "nonce", res.SwapNonce,
-// 			"logIndex", logIndex, "txHash", txHash, "sentTxHash", sentTxHash)
-// 		_ = mongodb.UpdateRouterOldSwapTxs(fromChainID, txid, logIndex, sentTxHash)
-// 	}
-// }
+	err = mongodb.UpdateRouterOldSwapTxs(fromChainID, txid, logIndex, txHash)
+	if err != nil {
+		return
+	}
+
+	matchTx := &MatchTx{
+		SwapTx:    txHash,
+		SwapNonce: 0,
+		SwapValue: args.SwapValue.String(),
+		MPC:       args.From,
+		TTL:       *args.Extra.TTL,
+	}
+
+	err = updateRouterSwapResult(fromChainID, txid, logIndex, matchTx)
+	if err != nil {
+		logWorkerError("doSwap", "update router swap result failed", err, "fromChainID", fromChainID, "txid", txid, "logIndex", logIndex, "ttl", *args.Extra.TTL)
+		return
+	}
+
+	sentTxHash, err := sendSignedTransaction(resBridge, signedTx, args)
+	if err == nil && txHash != sentTxHash {
+		logWorkerError("reswapSwap", "send tx success but with different hash", errSendTxWithDiffHash,
+			"fromChainID", fromChainID, "toChainID", res.ToChainID, "txid", txid, "nonce", res.SwapNonce,
+			"logIndex", logIndex, "txHash", txHash, "sentTxHash", sentTxHash)
+		_ = mongodb.UpdateRouterOldSwapTxs(fromChainID, txid, logIndex, sentTxHash)
+	}
+
+}
 
 func verifyReswapSwap(res *mongodb.MgoSwapResult, isManual bool) (*mongodb.MgoSwap, error) {
 	fromChainID, txid, logIndex := res.FromChainID, res.TxID, res.LogIndex
@@ -263,10 +278,14 @@ func verifyReswapSwap(res *mongodb.MgoSwapResult, isManual bool) (*mongodb.MgoSw
 	if resBridge == nil {
 		return nil, tokens.ErrNoBridgeForChainID
 	}
+	txStatus, _ := resBridge.GetTransactionStatus(res.SwapTx)
+	if txStatus != nil && txStatus.BlockHeight > 0 {
+		return nil, errors.New("swap tx existed ")
+	}
 	return swap, nil
 }
 
-func checkIfTxTimeout(bridge tokens.IBridge, res *mongodb.MgoSwapResult) error {
+func reswapIfTimeout(bridge tokens.IBridge, res *mongodb.MgoSwapResult) error {
 	b, ok := bridge.(tokens.ReSwapable)
 	if !ok {
 		return nil
@@ -276,7 +295,8 @@ func checkIfTxTimeout(bridge tokens.IBridge, res *mongodb.MgoSwapResult) error {
 		return err
 	}
 	if b.IsTxTimeout(&res.TTL, threshold) {
-		return nil
+		err := mongodb.UpdateRouterSwapResultStatus(res.FromChainID, res.TxID, res.LogIndex, mongodb.TxNeedReswap, now(), fmt.Sprintf("ttl:%d current:%d", *threshold, res.TTL))
+		return err
 	}
 	return errors.New("reswap check tx not Timeout yet")
 }

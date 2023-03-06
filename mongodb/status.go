@@ -60,7 +60,7 @@ func (status SwapStatus) IsResultStatus() bool {
 	switch status {
 	case MatchTxEmpty, MatchTxNotStable, MatchTxStable,
 		MatchTxFailed, Reswapping, ManualMakeFail,
-		SwapoutForbidden:
+		SwapoutForbidden, TxNeedReswap:
 		return true
 	default:
 		return false

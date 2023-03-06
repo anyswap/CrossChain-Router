@@ -11,7 +11,7 @@ import (
 
 const (
 	AdaAsset  = "lovelace"
-	TxTimeOut = 1 // 60 * 10
+	TxTimeOut = 60 * 10
 )
 
 var (

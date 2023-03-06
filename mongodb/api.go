@@ -404,7 +404,9 @@ func UpdateRouterOldSwapTxs(fromChainID, txid string, logindex int, swapTx strin
 	updateSet := bson.M{
 		"timestamp": time.Now().Unix(),
 	}
-	if swapRes.Status != MatchTxStable {
+	if swapRes.Status == TxNeedReswap {
+		updateSet["swaptx"] = ""
+	} else if swapRes.Status != MatchTxStable {
 		updateSet["swaptx"] = swapTx
 	} else {
 		log.Warn("UpdateRouterOldSwapTxs ignore update swap tx with stable status", "fromChainID", fromChainID, "txid", txid, "logindex", logindex, "ignored", swapTx, "swaptx", swapRes.SwapTx, "swapnonce", swapRes.SwapNonce)
