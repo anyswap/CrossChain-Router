@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/base"
@@ -31,7 +33,7 @@ type Bridge struct {
 func NewCrossChainBridge() *Bridge {
 	return &Bridge{
 		CrossChainBridgeBase: tokens.NewCrossChainBridgeBase(),
-		ReSwapableBridgeBase: &base.ReSwapableBridgeBase{},
+		ReSwapableBridgeBase: base.NewReSwapableBridgeBase(),
 	}
 }
 
@@ -58,6 +60,19 @@ func (b *Bridge) checkTokenMinter(routerPDA string, tokenCfg *tokens.TokenConfig
 }
 
 // ####### NEW IMPLEMENT ###########################################
+func (b *Bridge) InitAfterConfig() {
+	reswapMaxAmountRateStr := params.GetCustom(b.ChainConfig.ChainID, "ReswapMaxAmountRate")
+	if reswapMaxAmountRateStr != "" {
+		reswapMaxAmountRate, err := common.GetUint64FromStr(reswapMaxAmountRateStr)
+		if err != nil {
+			log.Error("cardano ReswapMaxAmountRate config failed", "err", err)
+		}
+		if reswapMaxAmountRate > 0 {
+			b.ReSwapableBridgeBase.SetReswapMaxValueRate(reswapMaxAmountRate)
+		}
+	}
+}
+
 // SetGatewayConfig set gateway config
 func (b *Bridge) SetGatewayConfig(gatewayCfg *tokens.GatewayConfig) {
 	b.CrossChainBridgeBase.SetGatewayConfig(gatewayCfg)
@@ -160,6 +175,6 @@ func (b *Bridge) GetCurrentThreshold() (*uint64, error) {
 	if err != nil {
 		return nil, err
 	}
-	tip += b.GetChainConfig().Confirmations
+	tip -= b.GetChainConfig().Confirmations
 	return &tip, nil
 }

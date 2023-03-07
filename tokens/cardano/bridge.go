@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
@@ -54,7 +55,7 @@ func NewCrossChainBridge() *Bridge {
 	}
 	instance := &Bridge{
 		CrossChainBridgeBase: tokens.NewCrossChainBridgeBase(),
-		ReSwapableBridgeBase: &base.ReSwapableBridgeBase{},
+		ReSwapableBridgeBase: base.NewReSwapableBridgeBase(),
 		RPCClientTimeout:     60,
 		FakePrikey:           fakePrikey,
 	}
@@ -105,6 +106,28 @@ func (b *Bridge) InitAfterConfig() {
 			panic(err)
 		}
 		b.ProtocolParams = protocolParams
+	}
+
+	timeoutStr := params.GetCustom(b.ChainConfig.ChainID, "TxTimeout")
+	if timeoutStr != "" {
+		timeout, err := common.GetUint64FromStr(timeoutStr)
+		if err != nil {
+			log.Error("cardano TxTimeout config failed", "err", err)
+		}
+		if timeout > 0 {
+			b.ReSwapableBridgeBase.SetTimeoutConfig(timeout)
+		}
+	}
+
+	reswapMaxAmountRateStr := params.GetCustom(b.ChainConfig.ChainID, "ReswapMaxAmountRate")
+	if reswapMaxAmountRateStr != "" {
+		reswapMaxAmountRate, err := common.GetUint64FromStr(reswapMaxAmountRateStr)
+		if err != nil {
+			log.Error("cardano ReswapMaxAmountRate config failed", "err", err)
+		}
+		if reswapMaxAmountRate > 0 {
+			b.ReSwapableBridgeBase.SetReswapMaxValueRate(reswapMaxAmountRate)
+		}
 	}
 }
 
@@ -322,5 +345,6 @@ func (b *Bridge) GetCurrentThreshold() (*uint64, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &tip.Slot, nil
+	t := tip.Slot - b.GetChainConfig().Confirmations
+	return &t, nil
 }

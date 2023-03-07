@@ -79,7 +79,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 					return nil, err
 				}
 
-				txout := uint64(rawTransaction.Slot + TxTimeOut)
+				txout := uint64(rawTransaction.Slot + b.ReSwapableBridgeBase.GetTimeoutConfig())
 				b.ReSwapableBridgeBase.SetTxTimeout(args, &txout)
 
 				if rawBytes, err := json.Marshal(rawTransaction); err != nil {
@@ -375,7 +375,7 @@ func (b *Bridge) genTxBuilder(mpcAddr string, rawTransaction *RawTransaction, da
 	if txOut != nil {
 		txBuilder.AddOutputs(txOut)
 	}
-	txBuilder.SetTTL(rawTransaction.Slot + TxTimeOut)
+	txBuilder.SetTTL(rawTransaction.Slot + b.ReSwapableBridgeBase.GetTimeoutConfig())
 	txBuilder.AddChangeIfNeeded(mpc)
 	txBuilder.Sign(b.FakePrikey)
 	if data != nil {
