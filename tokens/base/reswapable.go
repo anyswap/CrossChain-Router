@@ -3,7 +3,6 @@ package base
 import (
 	"math/big"
 
-	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
@@ -42,11 +41,11 @@ func (b *ReSwapableBridgeBase) SetTxTimeout(args *tokens.BuildTxArgs, txTimeout 
 	}
 	swapInfo := args.ERC20SwapInfo
 	tokenID := swapInfo.TokenID
-	if params.IsInBigValueWhitelist(tokenID, args.From) ||
-		params.IsInBigValueWhitelist(tokenID, args.To) {
-		args.Extra.TTL = txTimeout
-		return
-	}
+	// if params.IsInBigValueWhitelist(tokenID, args.From) ||
+	// 	params.IsInBigValueWhitelist(tokenID, args.To) {
+	// 	args.Extra.TTL = txTimeout
+	// 	return
+	// }
 	bridge := router.GetBridgeByChainID(args.FromChainID.String())
 	if bridge == nil {
 		return
