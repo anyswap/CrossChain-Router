@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
@@ -89,6 +90,18 @@ func (b *Bridge) InitWS() {
 			continue
 		}
 		go ws.Run()
+		for i := 0; i < 30; i++ {
+			time.Sleep(1 * time.Second)
+			if !ws.IsClose {
+				break
+			}
+		}
+		if ws.IsClose {
+			log.Warn("reef websocket connect error", "chainid", b.ChainConfig.ChainID, "endpoint", wsnode)
+			continue
+		} else {
+			log.Info("session connect success", "remote", wsnode)
+		}
 		b.WS = append(b.WS, ws)
 	}
 }

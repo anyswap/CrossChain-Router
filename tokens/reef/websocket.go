@@ -47,7 +47,6 @@ type Syncer interface {
 }
 
 func NewWebSocket(_endpoint string) (*WebSocket, error) {
-	log.Info("new remote session", "remote", _endpoint)
 	conn, _, err := websocket.DefaultDialer.Dial(_endpoint, nil)
 	if err != nil {
 		log.Fatal("Error connecting to Websocket Server", "err", err)
@@ -129,7 +128,7 @@ func (r *WebSocket) Run() {
 		r.Read(inbound)
 	}()
 	go func() {
-		time.Sleep(2 * time.Second)
+		time.Sleep(1 * time.Second)
 		if err := r.InitConn(); err != nil {
 			log.Info(r.endpoint+" InitConn", "err", err.Error())
 		}
