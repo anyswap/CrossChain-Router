@@ -15,7 +15,7 @@ type ReSwapableBridgeBase struct {
 // NewNonceSetterBase new base nonce setter
 func NewReSwapableBridgeBase() *ReSwapableBridgeBase {
 	return &ReSwapableBridgeBase{
-		reswapMaxValue: uint64(1),
+		reswapMaxValue: uint64(0),
 		txTimeout:      uint64(60 * 10),
 	}
 }
@@ -37,6 +37,9 @@ func (b *ReSwapableBridgeBase) SetTxTimeout(args *tokens.BuildTxArgs, txTimeout 
 		return
 	}
 	if args.Extra.TTL != nil {
+		return
+	}
+	if b.reswapMaxValue == 0 {
 		return
 	}
 	swapInfo := args.ERC20SwapInfo
