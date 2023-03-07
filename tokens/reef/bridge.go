@@ -67,6 +67,17 @@ func (b *Bridge) InitAfterConfig() {
 		}
 	}
 
+	if len(b.WS) == 0 {
+		b.InitWS()
+	}
+	jspath := params.GetCustom(b.ChainConfig.ChainID, "jspath")
+	if jspath == "" {
+		panic(fmt.Errorf("%s not config jspath", b.ChainConfig.ChainID))
+	}
+	InstallJSModules(jspath, b.AllGatewayURLs[0])
+}
+
+func (b *Bridge) InitWS() {
 	wsnodes := strings.Split(params.GetCustom(b.ChainConfig.ChainID, "ws"), ",")
 	if len(wsnodes) <= 0 {
 		panic(fmt.Errorf("%s not config ws endpoint", b.ChainConfig.ChainID))
@@ -80,11 +91,6 @@ func (b *Bridge) InitAfterConfig() {
 		go ws.Run()
 		b.WS = append(b.WS, ws)
 	}
-	jspath := params.GetCustom(b.ChainConfig.ChainID, "jspath")
-	if jspath == "" {
-		panic(fmt.Errorf("%s not config jspath", b.ChainConfig.ChainID))
-	}
-	InstallJSModules(jspath, b.AllGatewayURLs[0])
 }
 
 // SupportsChainID supports chainID

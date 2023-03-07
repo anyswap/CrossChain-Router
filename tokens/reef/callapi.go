@@ -85,6 +85,9 @@ LOOP:
 }
 
 func (b *Bridge) QueryEvmAddress(ss58address string) (addr *common.Address, err error) {
+	if len(b.WS) == 0 {
+		b.InitWS()
+	}
 	for _, ws := range b.WS {
 		addr, err = ws.QueryEvmAddress(ss58address)
 		if err != nil {
