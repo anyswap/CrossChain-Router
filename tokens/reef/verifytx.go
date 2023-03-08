@@ -1,6 +1,7 @@
 package reef
 
 import (
+	"strings"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -99,4 +100,25 @@ func (b *Bridge) VerifyTransaction(txHash string, args *tokens.VerifyArgs) (*tok
 	default:
 		return nil, tokens.ErrSwapTypeNotSupported
 	}
+}
+
+// VerifyMsgHash verify msg hash
+func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) (err error) {
+	tx, ok := rawTx.(*ReefTransaction)
+	if !ok {
+		return tokens.ErrWrongRawTx
+	}
+	if len(msgHashes) < 1 {
+		return tokens.ErrWrongCountOfMsgHashes
+	}
+	script_param := tx.buildScriptParam()
+	msgHash, err := BuildSigningMessage(script_param)
+	if err != nil {
+		return err
+	}
+	if !strings.EqualFold(msgHash, msgHashes[0]) {
+		log.Error("message hash mismatch", "want", msgHash, "have", msgHashes[0])
+		return tokens.ErrMsgHashMismatch
+	}
+	return nil
 }

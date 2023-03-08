@@ -100,7 +100,7 @@ func (b *Bridge) InitWS() {
 			log.Warn("reef websocket connect error", "chainid", b.ChainConfig.ChainID, "endpoint", wsnode)
 			continue
 		} else {
-			log.Info("session connect success", "remote", wsnode)
+			log.Info("session connect success", "chainid", b.ChainConfig.ChainID, "endpoint", wsnode)
 		}
 		b.WS = append(b.WS, ws)
 	}
