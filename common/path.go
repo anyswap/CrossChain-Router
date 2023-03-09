@@ -34,12 +34,34 @@ func MustRunBashCommand(cwd, cmdStr string) []string {
 	output, err := cmd.CombinedOutput()
 	outputStr := strings.TrimSuffix(string(output), "\n")
 	if err != nil {
-		fmt.Println(outputStr)
-		log.Fatalf("run command %v (cwd='%v') failed. error is '%v'", cmdStr, cwd, err)
+		log.Println(outputStr)
+		log.Printf("run command %v (cwd='%v') failed. error is '%v'", cmdStr, cwd, err)
+		return []string{}
 	} else {
 		log.Printf("run command %v (cwd='%v') success.\n%v", cmdStr, cwd, outputStr)
+		return strings.Split(outputStr, "\n")
 	}
-	return strings.Split(outputStr, "\n")
+}
+
+func MustRunBashCommandWithEnv(cwd, cmdStr string, env map[string]string) []string {
+	for k, v := range env {
+		err := os.Setenv(k, v)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+	}
+	cmd := exec.Command("bash", "-c", cmdStr)
+	cmd.Dir = cwd
+	output, err := cmd.CombinedOutput()
+	outputStr := strings.TrimSuffix(string(output), "\n")
+	if err != nil {
+		log.Println(outputStr)
+		log.Printf("run command %v (cwd='%v') failed. error is '%v'", cmdStr, cwd, err)
+		return []string{}
+	} else {
+		log.Printf("run command %v (cwd='%v') success.\n%v", cmdStr, cwd, outputStr)
+		return strings.Split(outputStr, "\n")
+	}
 }
 
 // MakeName creates a node name that follows the ethereum convention

@@ -98,7 +98,7 @@ func (b *Bridge) GetLatestBlockNumber() (maxHeight uint64, err error) {
 	gateway := b.GatewayConfig
 	var height uint64
 	for _, url := range gateway.APIAddress {
-		height, err = b.GetLatestBlockNumberOf(url)
+		height, err = b.EvmContractBridge.GetLatestBlockNumberOf(url)
 		if height > maxHeight && err == nil {
 			maxHeight = height
 		}
@@ -125,7 +125,7 @@ func (b *Bridge) GetBlockByNumber(number *big.Int) (*types.RPCBlock, error) {
 
 // GetTransaction impl
 func (b *Bridge) GetTransaction(txHash string) (interface{}, error) {
-	return b.GetTransactionByHash(txHash)
+	return b.EvmContractBridge.GetTransactionByHash(txHash)
 }
 
 // GetTransactionByHash call eth_getTransactionByHash
