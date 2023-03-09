@@ -83,8 +83,7 @@ type CrossChainBridgeBase struct {
 	GatewayConfig  *GatewayConfig
 	TokenConfigMap *sync.Map // key is token address
 
-	UseFastMPC     bool
-	AllGatewayURLs []string
+	UseFastMPC bool
 }
 
 // NewCrossChainBridgeBase new base bridge
@@ -118,10 +117,26 @@ func (b *CrossChainBridgeBase) SetChainConfig(chainCfg *ChainConfig) {
 
 // SetGatewayConfig set gateway config
 func (b *CrossChainBridgeBase) SetGatewayConfig(gatewayCfg *GatewayConfig) {
-	b.GatewayConfig = gatewayCfg
-	if len(gatewayCfg.APIAddress) > 0 {
-		b.AllGatewayURLs = append(gatewayCfg.APIAddress, gatewayCfg.APIAddressExt...)
+	if gatewayCfg != nil {
+		allURLs := gatewayCfg.APIAddress
+		if allURLs == nil {
+			allURLs = make([]string, 0)
+		}
+		allURLs = append(allURLs, gatewayCfg.APIAddressExt...)
+		existURLs := make(map[string]struct{})
+		// get rid of duplicate urls
+		for _, url := range allURLs {
+			if _, exist := existURLs[url]; exist {
+				continue
+			}
+			existURLs[url] = struct{}{}
+			gatewayCfg.AllGatewayURLs = append(gatewayCfg.AllGatewayURLs, url)
+		}
+		log.Debugf("AllGatewayURLs are %v", gatewayCfg.AllGatewayURLs)
+		gatewayCfg.OriginAllGatewayURLs = make([]string, len(gatewayCfg.AllGatewayURLs))
+		copy(gatewayCfg.OriginAllGatewayURLs, gatewayCfg.AllGatewayURLs)
 	}
+	b.GatewayConfig = gatewayCfg
 }
 
 // SetTokenConfig set token config

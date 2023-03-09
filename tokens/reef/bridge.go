@@ -53,7 +53,7 @@ func NewCrossChainBridge() *Bridge {
 
 // InitAfterConfig init variables (ie. extra members) after loading config
 func (b *Bridge) InitAfterConfig() {
-	for _, url := range b.AllGatewayURLs {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		api, err := gsrpc.NewSubstrateAPI(url)
 		if err != nil {
 			panic(err)
@@ -75,7 +75,7 @@ func (b *Bridge) InitAfterConfig() {
 	if jspath == "" {
 		panic(fmt.Errorf("%s not config jspath", b.ChainConfig.ChainID))
 	}
-	InstallJSModules(jspath, b.AllGatewayURLs[0])
+	InstallJSModules(jspath, b.GatewayConfig.AllGatewayURLs[0])
 }
 
 func (b *Bridge) InitWS() {
