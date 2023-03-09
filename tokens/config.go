@@ -59,6 +59,10 @@ type GatewayConfig struct {
 
 	// internal usage
 	WeightedAPIs tools.WeightedStringSlice `toml:"-" json:"-"`
+
+	// adjust gateway related
+	OriginAllGatewayURLs []string `toml:"-" json:"-"`
+	AllGatewayURLs       []string `toml:"-" json:"-"`
 }
 
 // CheckConfig check chain config
