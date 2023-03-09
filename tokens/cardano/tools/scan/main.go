@@ -9,11 +9,11 @@ import (
 )
 
 const (
-	url         = "https://graphql-api.mainnet.dandelion.link/"
-	key         = "123"
-	limit       = "20"
-	mpcAddr     = "addr1q88k2pae3l2n9kngjazxhj26yqht09645g8jdvyz4jfy0mxknshwg6haqqt9xmz2klhtgv89d5yzl2q9l0m5x4pt4ldqvrjmul"
-	QueryMethod = "{transactions(limit:%s order_by:{block:{slotNo:desc}}where:{metadata:{ key :{_eq:\"%s\"}}}){block{number slotNo} hash metadata{key value} outputs{address} validContract}}"
+	url = "https://graphql-api.mainnet.dandelion.link/"
+	key = "123"
+	// limit       = "20"
+	mpcAddr = "addr1q88k2pae3l2n9kngjazxhj26yqht09645g8jdvyz4jfy0mxknshwg6haqqt9xmz2klhtgv89d5yzl2q9l0m5x4pt4ldqvrjmul"
+	// QueryMethod = "{transactions(limit:%s order_by:{block:{slotNo:desc}}where:{metadata:{ key :{_eq:\"%s\"}}}){block{number slotNo} hash metadata{key value} outputs{address} validContract}}"
 
 	QueryMethod2 = "{transactions(where:{block:{ number :{_eq: %d }} metadata:{ key :{_eq:\"%s\"}} }){block{number slotNo} hash metadata{key value} outputs{address} validContract}}"
 
