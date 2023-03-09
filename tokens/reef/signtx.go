@@ -97,12 +97,12 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 	}
 
 	rsv := rsvs[0]
-	log.Trace(logPrefix+"get rsv signature success", "keyID", keyID, "txid", txid, "rsv", rsv)
 	signature := common.FromHex(rsv)
-	if len(signature) != crypto.SignatureLength {
-		log.Error("wrong signature length", "keyID", keyID, "txid", txid, "have", len(signature), "want", crypto.SignatureLength)
-		return nil, "", errors.New("wrong signature length")
-	}
+	log.Info(logPrefix+"get rsv signature success", "keyID", keyID, "txid", txid, "rsv", signature)
+	// if len(signature) != crypto.SignatureLength {
+	// 	log.Error("wrong signature length", "keyID", keyID, "txid", txid, "have", len(signature), "want", crypto.SignatureLength)
+	// 	return nil, "", errors.New("wrong signature length")
+	// }
 
 	tx.Signature = &rsv
 
