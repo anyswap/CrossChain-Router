@@ -6,7 +6,6 @@ import (
 	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
-	"github.com/anyswap/CrossChain-Router/v3/tools"
 )
 
 // token version boundaries
@@ -68,7 +67,7 @@ type GatewayConfig struct {
 	GRPCAPIAddress     []string `json:",omitempty"`
 
 	// internal usage
-	WeightedAPIs tools.WeightedStringSlice `toml:"-" json:"-"`
+	AdjustContext interface{} `toml:"-" json:"-"`
 
 	// adjust gateway related
 	OriginAllGatewayURLs []string `toml:"-" json:"-"`
