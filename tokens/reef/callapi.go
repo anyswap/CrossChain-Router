@@ -142,3 +142,19 @@ func (b *Bridge) GetTransactionByHash(txHash string) (tx *types.RPCTransaction, 
 	}
 	return tx, err
 }
+
+func (b *Bridge) GetPoolNonce(reefAddress, _height string) (nonce uint64, err error) {
+	if len(b.WS) == 0 {
+		b.InitWS()
+	}
+	for _, ws := range b.WS {
+		account, err := ws.QueryAccountByReefAddr(reefAddress)
+		if err != nil {
+			log.Warn("QueryEvmAddress", "err", err)
+		}
+		if account != nil {
+			return account.Nonce, nil
+		}
+	}
+	return nonce, err
+}

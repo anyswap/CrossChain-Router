@@ -64,7 +64,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, err
 	}
 
-	err = b.setDefaults(args, signInfo)
+	err = b.setDefaults(args, signInfo, mpcReefAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +155,7 @@ func getOrInitEthExtra(args *tokens.BuildTxArgs) *tokens.EthExtraArgs {
 	return args.Extra.EthExtra
 }
 
-func (b *Bridge) setDefaults(args *tokens.BuildTxArgs, signInfo []string) (err error) {
+func (b *Bridge) setDefaults(args *tokens.BuildTxArgs, signInfo []string, mpcReefAddr string) (err error) {
 	if args.Value == nil {
 		args.Value = new(big.Int)
 	}
@@ -176,6 +176,7 @@ func (b *Bridge) setDefaults(args *tokens.BuildTxArgs, signInfo []string) (err e
 		if err != nil {
 			return err
 		}
+		b.AdjustNonce(mpcReefAddr, *extra.Nonce)
 	}
 	if args.Extra.BlockHash == nil {
 		args.Extra.BlockHash = &signInfo[2]
@@ -221,10 +222,3 @@ func (b *Bridge) checkCoinBalance(reefAddr string, needValue *big.Int) (err erro
 	}
 	return err
 }
-
-// 0105 8400
-// 62c48aa955218081a6e168b8808d641fd9994ea226d9d572383d03bd1fdad747 // 公钥
-// 01f29e45be8d0db72aa3ae5115960fc1f30274b7f95145294c2406943c90c0f66f0d8937f19b1fa43cbb5f66e7b22d244c6787fc07cefb95b62e2ff5f6c2f28a80 // 签名
-// 0503b5020015006e0aa801aa5b971eceb1dad8d7cb9237a18617fd9102
-// 825bb13c5f31dac7618ccf2df75e0f5c458603d7a3ee2acb48d977ee41da3e562d7a90f60000000000000000000000003a641961cefa97052ec7f283c408cab9682f540a00000000000000000000000064e55a52425993d2b059cb398ec860c0339bcd01000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000001691 // input
-// 00000000000000000000000000000000fb8317000000000000000000

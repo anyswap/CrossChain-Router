@@ -21,5 +21,6 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error
 	if !strings.EqualFold(*tx.TxHash, txHash) {
 		return "", fmt.Errorf("txhash dismatch txHash %s sendTx %s", *tx.TxHash, txHash)
 	}
+	b.SetNonce(*tx.ReefAddress, *tx.AccountNonce+1)
 	return txHash, nil
 }
