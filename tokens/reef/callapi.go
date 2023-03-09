@@ -59,7 +59,7 @@ func (b *Bridge) CallContract(contract string, data hexutil.Bytes, blockNumber s
 	}
 	var err error
 LOOP:
-	for _, url := range b.AllGatewayURLs {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		var result string
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "evm_call", reqArgs)
 		if err != nil && router.IsIniting {
