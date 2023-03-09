@@ -39,7 +39,6 @@ require (
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/tendermint/tendermint v0.34.23
 	github.com/urfave/cli/v2 v2.23.7
-	github.com/vedhavyas/go-subkey v1.0.2
 	go.mongodb.org/mongo-driver v1.11.1
 	golang.org/x/crypto v0.3.0
 	google.golang.org/grpc v1.51.0
@@ -172,6 +171,7 @@ require (
 	github.com/tidwall/pretty v1.0.2 // indirect
 	github.com/tklauser/go-sysconf v0.3.5 // indirect
 	github.com/tklauser/numcpus v0.2.2 // indirect
+	github.com/vedhavyas/go-subkey v1.0.2 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.1 // indirect
