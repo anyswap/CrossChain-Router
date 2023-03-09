@@ -31,7 +31,7 @@ func KsmGetBlockConfirmations(b EvmBridge, receipt *types.RPCTxReceipt) (uint64,
 // KsmGetFinalizedBlockNumber call chain_getFinalizedHead and chain_getHeader
 func KsmGetFinalizedBlockNumber(b EvmBridge) (latest uint64, err error) {
 	gateway := b.GetGatewayConfig()
-	urls := append(gateway.APIAddress, gateway.APIAddressExt...)
+	urls := gateway.AllGatewayURLs
 	blockHash, err := KsmGetFinalizedHead(urls)
 	if err != nil {
 		return 0, err
