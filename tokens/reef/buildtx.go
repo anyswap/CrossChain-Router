@@ -122,7 +122,7 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs, mpcEvmAddr, mpcReefAddr strin
 		GasLimit:     &gasLimit,
 		StorageGas:   &gasPrice,
 		BlockHash:    args.Extra.BlockHash,
-		BlockNumber:  args.Extra.Sequence,
+		BlockNumber:  args.Extra.BlockNumber,
 	}
 
 	ctx := []interface{}{
@@ -176,9 +176,9 @@ func (b *Bridge) setDefaults(args *tokens.BuildTxArgs, signInfo []string, mpcRee
 		args.Extra.BlockHash = &signInfo[2]
 	}
 
-	if args.Extra.Sequence == nil {
-		args.Extra.Sequence = new(uint64)
-		*args.Extra.Sequence, err = strconv.ParseUint(signInfo[3], 10, 64)
+	if args.Extra.BlockNumber == nil {
+		args.Extra.BlockNumber = new(uint64)
+		*args.Extra.BlockNumber, err = strconv.ParseUint(signInfo[3], 10, 64)
 		if err != nil {
 			return err
 		}
