@@ -43,9 +43,9 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 
 	if !params.IsDynamicFeeTxEnabled(b.ChainConfig.ChainID) {
 		gasPrice, errt := b.getGasPrice(args)
-		if errt == nil && args.Extra.EthExtra.GasPrice.Cmp(gasPrice) < 0 {
-			log.Info(b.ChainConfig.BlockChain+" MPCSignTransaction update gas price", "txid", args.SwapID, "oldGasPrice", args.Extra.EthExtra.GasPrice, "newGasPrice", gasPrice)
-			args.Extra.EthExtra.GasPrice = gasPrice
+		if errt == nil && args.Extra.GasPrice.Cmp(gasPrice) < 0 {
+			log.Info(b.ChainConfig.BlockChain+" MPCSignTransaction update gas price", "txid", args.SwapID, "oldGasPrice", args.Extra.GasPrice, "newGasPrice", gasPrice)
+			args.Extra.GasPrice = gasPrice
 			tx.SetGasPrice(gasPrice)
 		}
 	}
