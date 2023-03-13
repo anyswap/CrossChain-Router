@@ -434,6 +434,35 @@ func UpdateRouterOldSwapTxs(fromChainID, txid string, logindex int, swapTx strin
 	return mgoError(err)
 }
 
+func UpdateRouterSwapProof(fromChainID, txid string, logindex int, proofID, proof string) error {
+	updateResultLock.Lock()
+	defer updateResultLock.Unlock()
+
+	swapRes, err := FindRouterSwapResult(fromChainID, txid, logindex)
+	if err != nil {
+		return err
+	}
+
+	if swapRes.Proof != "" {
+		return ErrForbidUpdateProof
+	}
+
+	updates := bson.M{
+		"proofID":   proofID,
+		"proof":     proof,
+		"timestamp": time.Now().Unix(),
+	}
+
+	key := GetRouterSwapKey(fromChainID, txid, logindex)
+	_, err = collRouterSwapResult.UpdateByID(clientCtx, key, bson.M{"$set": updates})
+	if err == nil {
+		log.Info("UpdateRouterSwapProof success", "fromChainID", fromChainID, "txid", txid, "logIndex", logindex, "proofID", proofID)
+	} else {
+		log.Error("UpdateRouterSwapProof failed", "fromChainID", fromChainID, "txid", txid, "logIndex", logindex, "proofID", proofID, "err", err)
+	}
+	return mgoError(err)
+}
+
 // FindRouterSwapResult find router swap result
 func FindRouterSwapResult(fromChainID, txid string, logindex int) (*MgoSwapResult, error) {
 	key := GetRouterSwapKey(fromChainID, txid, logindex)

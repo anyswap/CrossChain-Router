@@ -196,6 +196,16 @@ func (b *CrossChainBridgeBase) GetRouterVersion(token string) string {
 	return b.ChainConfig.RouterVersion
 }
 
+// CalcProofID calc proofID
+func (b *CrossChainBridgeBase) CalcProofID(args *BuildTxArgs) (string, error) {
+	return "", ErrNotImplemented
+}
+
+// GenerateProof generate proof
+func (b *CrossChainBridgeBase) GenerateProof(proofID string, args *BuildTxArgs) (string, error) {
+	return "", ErrNotImplemented
+}
+
 // SetSwapConfigs set swap configs
 func SetSwapConfigs(swapCfgs *sync.Map) {
 	swapConfigMap = swapCfgs

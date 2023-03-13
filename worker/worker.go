@@ -3,6 +3,7 @@ package worker
 import (
 	"time"
 
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router/bridge"
 )
 
@@ -30,6 +31,10 @@ func StartRouterSwapWork(isServer bool) {
 
 	StartStableJob()
 	time.Sleep(interval)
+
+	if params.UseProofSign() {
+		return
+	}
 
 	StartReplaceJob()
 	time.Sleep(interval)

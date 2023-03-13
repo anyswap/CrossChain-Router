@@ -70,6 +70,8 @@ func ConvertMgoSwapResultToSwapInfo(mr *mongodb.MgoSwapResult) *SwapInfo {
 		Memo:          mr.Memo,
 		ReplaceCount:  len(mr.OldSwapTxs),
 		Confirmations: confirmations,
+		ProofID:       mr.ProofID,
+		Proof:         mr.Proof,
 	}
 }
 

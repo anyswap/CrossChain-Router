@@ -104,6 +104,8 @@ type MgoSwapResult struct {
 	Memo        string     `bson:"memo" json:",omitempty"`
 	MPC         string     `bson:"mpc"`
 	TTL         uint64     `bson:"ttl"`
+	ProofID     string     `bson:"proofID"`
+	Proof       string     `bson:"proof"`
 }
 
 // MgoUsedRValue security enhancement

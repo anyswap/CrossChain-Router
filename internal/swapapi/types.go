@@ -50,6 +50,8 @@ type SwapInfo struct {
 	Memo          string             `json:"memo,omitempty"`
 	ReplaceCount  int                `json:"replaceCount,omitempty"`
 	Confirmations uint64             `json:"confirmations"`
+	ProofID       string             `json:"proofID,omitempty"`
+	Proof         string             `json:"proof,omitempty"`
 }
 
 // ChainConfig rpc type
