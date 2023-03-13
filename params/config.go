@@ -165,6 +165,7 @@ type ExtraConfig struct {
 	UsePendingBalance     bool `toml:",omitempty" json:",omitempty"`
 	DontPanicInInitRouter bool `toml:",omitempty" json:",omitempty"`
 	DontCheckInInitRouter bool `toml:",omitempty" json:",omitempty"`
+	UseProofSign          bool `toml:",omitempty" json:",omitempty"`
 
 	MinReserveFee    map[string]uint64 `toml:",omitempty" json:",omitempty"`
 	BaseFeePercent   map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID
@@ -1309,6 +1310,11 @@ func IsSwapoutForbidden(chainID, tokenID string) bool {
 // DontCheckInInitRouter do not check in init router
 func DontCheckInInitRouter() bool {
 	return GetExtraConfig() != nil && GetExtraConfig().DontCheckInInitRouter
+}
+
+// UseProofSign use proof sign
+func UseProofSign() bool {
+	return GetExtraConfig() != nil && GetExtraConfig().UseProofSign
 }
 
 // FeeReceiverOnDestChain fee receiver on dest chain

@@ -127,6 +127,8 @@ CheckGasTokenBalance = false
 [Extra]
 # usdc attestation server
 AttestationServer = ""
+# use proof sign
+UseProofSign = false
 # is swap with permit enabled
 EnableSwapWithPermit = false
 # force call anySwapInAuto
