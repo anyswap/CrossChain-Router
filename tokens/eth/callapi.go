@@ -56,6 +56,11 @@ func (b *Bridge) IsSapphireChain() bool {
 	return chainId == "23294" || chainId == "23295"
 }
 
+func (b *Bridge) IsZKSync() bool {
+	chainId := b.ChainConfig.ChainID
+	return chainId == "280"
+}
+
 // GetBlockConfirmations some chain may override this method
 func (b *Bridge) GetBlockConfirmations(receipt *types.RPCTxReceipt) (uint64, error) {
 	if b.ChainConfig != nil {

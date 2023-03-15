@@ -1,6 +1,8 @@
 package eth
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -8,6 +10,8 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/types"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/signer/core/apitypes"
+	"github.com/zksync-sdk/zksync2-go"
 )
 
 // GetTransactionStatus impl
@@ -39,6 +43,9 @@ func (b *Bridge) GetTransactionStatus(txHash string) (*tokens.TxStatus, error) {
 
 // VerifyMsgHash verify msg hash
 func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) error {
+	if b.IsZKSync() {
+		return b.verifyZKSyncMsgHash(rawTx, msgHashes)
+	}
 	if b.IsSapphireChain() {
 		rawSapphire, ok := rawTx.(*SapphireRPCTx)
 		if ok {
@@ -69,6 +76,38 @@ func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) error {
 	sigHash := signer.Hash(tx)
 	if sigHash.String() != msgHash {
 		log.Trace("message hash mismatch", "want", msgHash, "have", sigHash.String())
+		return tokens.ErrMsgHashMismatch
+	}
+	return nil
+}
+
+func (b *Bridge) verifyZKSyncMsgHash(rawTx interface{}, msgHashes []string) error {
+	tx, ok := rawTx.(*zksync2.Transaction712)
+	if !ok {
+		return tokens.ErrWrongRawTx
+	}
+	if len(msgHashes) < 1 {
+		return tokens.ErrWrongCountOfMsgHashes
+	}
+	msgHash := msgHashes[0]
+
+	domain := zksync2.DefaultEip712Domain(280)
+	typedData := apitypes.TypedData{
+		Types: apitypes.Types{
+			tx.GetEIP712Type():     tx.GetEIP712Types(),
+			domain.GetEIP712Type(): domain.GetEIP712Types(),
+		},
+		PrimaryType: tx.GetEIP712Type(),
+		Domain:      domain.GetEIP712Domain(),
+		Message:     tx.GetEIP712Message(),
+	}
+	hash, err := HashTypedData(typedData)
+	if err != nil {
+		return err
+	}
+
+	if !strings.EqualFold(fmt.Sprintf("0x%x", hash), msgHash) {
+		log.Trace("message hash mismatch", "want", msgHash, "have", fmt.Sprintf("0x", hash))
 		return tokens.ErrMsgHashMismatch
 	}
 	return nil

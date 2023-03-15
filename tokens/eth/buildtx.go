@@ -13,6 +13,8 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/types"
+	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/zksync-sdk/zksync2-go"
 )
 
 var (
@@ -137,7 +139,30 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 	}
 	cachedNonce[key] = nonce
 
-	if isDynamicFeeTx {
+	if b.IsZKSync() {
+		chainId, _ := new(big.Int).SetString(b.ChainConfig.ChainID, 0)
+		tx := zksync2.CreateFunctionCallTransaction(
+			ethcommon.HexToAddress(args.From),
+			ethcommon.HexToAddress(to.Hex()),
+			big.NewInt(0),
+			big.NewInt(0),
+			value,
+			[]byte(input),
+			nil, nil,
+		)
+		rawTx = zksync2.NewTransaction712(
+			chainId,
+			big.NewInt(int64(nonce)),
+			big.NewInt(int64(gasLimit)),
+			ethcommon.HexToAddress(to.Hex()),
+			value,
+			input,
+			big.NewInt(100000000), // TODO: Estimate correct one
+			gasPrice,
+			ethcommon.HexToAddress(args.From),
+			tx.Eip712Meta,
+		)
+	} else if isDynamicFeeTx {
 		rawTx = types.NewDynamicFeeTx(b.SignerChainID, nonce, &to, value, gasLimit, gasTipCap, gasFeeCap, input, nil)
 	} else {
 		rawTx = types.NewTransaction(nonce, to, value, gasLimit, gasPrice, input)
