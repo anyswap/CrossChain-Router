@@ -108,8 +108,8 @@ func (b *Bridge) verifyZKSyncMsgHash(rawTx interface{}, msgHashes []string) erro
 		return err
 	}
 
-	if !strings.EqualFold(fmt.Sprintf("0x%x", hash), msgHash) {
-		log.Trace("message hash mismatch", "want", msgHash, "have", fmt.Sprintf("0x%x", hash))
+	if !strings.EqualFold(fmt.Sprintf("%x", hash), msgHash) {
+		log.Trace("message hash mismatch", "want", msgHash, "have", fmt.Sprintf("%x", hash))
 		return tokens.ErrMsgHashMismatch
 	}
 	return nil
