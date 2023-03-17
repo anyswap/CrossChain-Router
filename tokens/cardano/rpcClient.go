@@ -68,18 +68,6 @@ func GetCardanoTip(url string) (*TipResponse, error) {
 	return &result, nil
 }
 
-// func queryTipCmd() (*Tip, error) {
-// 	if execRes, err := ExecCmd(QueryTipCmd, " "); err != nil {
-// 		return nil, err
-// 	} else {
-// 		var tip Tip
-// 		if err := json.Unmarshal([]byte(execRes), &tip); err != nil {
-// 			return nil, err
-// 		}
-// 		return &tip, nil
-// 	}
-// }
-
 // BlockfrostNode implements Node using the blockfrost API.
 type BlockfrostNode struct {
 	client    blockfrost.APIClient
