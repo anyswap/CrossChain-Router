@@ -39,6 +39,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/tendermint/tendermint v0.34.23
 	github.com/urfave/cli/v2 v2.23.7
+	github.com/zksync-sdk/zksync2-go v0.0.0-20230313172442-06a0c45dcf48
 	go.mongodb.org/mongo-driver v1.11.1
 	golang.org/x/crypto v0.3.0
 	google.golang.org/grpc v1.51.0
@@ -180,7 +181,6 @@ require (
 	github.com/xdg-go/stringprep v1.0.3 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20181117223130-1be2e3e5546d // indirect
-	github.com/zksync-sdk/zksync2-go v0.0.0-20230313172442-06a0c45dcf48 // indirect
 	github.com/zondax/hid v0.9.0 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
 	go.opencensus.io v0.24.0 // indirect

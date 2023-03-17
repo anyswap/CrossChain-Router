@@ -402,56 +402,13 @@ func (b *Bridge) GetAssetPolicy(name string) (crypto.XPrvKey, cardanosdk.NativeS
 	return policyKey, policyScript, policyID
 }
 
-// func CalcMinFee(rawTransaction *RawTransaction) (string, error) {
-// 	txBodyPath := RawPath + rawTransaction.OutFile + RawSuffix
-// 	cmdString := fmt.Sprintf(CalcMinFeeCmd, txBodyPath, len(rawTransaction.TxIns), len(rawTransaction.TxOuts))
-// 	if execRes, err := ExecCmd(cmdString, " "); err != nil {
-// 		return "", err
-// 	} else {
-// 		return execRes, nil
-// 	}
-// }
-
 func (b *Bridge) initExtra(args *tokens.BuildTxArgs) (extra *tokens.AllExtras, err error) {
 	extra = args.Extra
 	if extra == nil {
 		extra = &tokens.AllExtras{}
 		args.Extra = extra
 	}
-	if extra.Sequence == nil {
-		extra.Sequence, err = b.GetSeq(args)
-		if err != nil {
-			return nil, err
-		}
-	}
 	return extra, nil
-}
-
-// GetPoolNonce impl NonceSetter interface
-func (b *Bridge) GetPoolNonce(address, _height string) (uint64, error) {
-	return 0, nil
-}
-
-// GetSeq returns account tx sequence
-func (b *Bridge) GetSeq(args *tokens.BuildTxArgs) (nonceptr *uint64, err error) {
-	var nonce uint64
-
-	// if params.IsParallelSwapEnabled() {
-	// 	nonce, err = b.AllocateNonce(args)
-	// 	return &nonce, err
-	// }
-
-	// if params.IsAutoSwapNonceEnabled(b.ChainConfig.ChainID) { // increase automatically
-	// 	nonce = b.GetSwapNonce(args.From)
-	// 	return &nonce, nil
-	// }
-
-	nonce, err = b.GetPoolNonce(args.From, "pending")
-	if err != nil {
-		return nil, err
-	}
-	// nonce = b.AdjustNonce(args.From, nonce)
-	return &nonce, nil
 }
 
 func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken string) (receiver string, amount *big.Int, err error) {
