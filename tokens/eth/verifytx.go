@@ -2,6 +2,7 @@ package eth
 
 import (
 	"fmt"
+	"math/big"
 	"strings"
 	"time"
 
@@ -91,7 +92,8 @@ func (b *Bridge) verifyZKSyncMsgHash(rawTx interface{}, msgHashes []string) erro
 	}
 	msgHash := msgHashes[0]
 
-	domain := zksync2.DefaultEip712Domain(280)
+	chainid, _ := new(big.Int).SetString(b.ChainConfig.ChainID, 0)
+	domain := zksync2.DefaultEip712Domain(chainid.Int64())
 	typedData := apitypes.TypedData{
 		Types: apitypes.Types{
 			tx.GetEIP712Type():     tx.GetEIP712Types(),
