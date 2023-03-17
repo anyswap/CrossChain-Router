@@ -58,7 +58,7 @@ func (b *Bridge) IsSapphireChain() bool {
 
 func (b *Bridge) IsZKSync() bool {
 	chainId := b.ChainConfig.ChainID
-	return chainId == "280"
+	return chainId == "280" || chainId == "324"
 }
 
 // GetBlockConfirmations some chain may override this method
