@@ -71,6 +71,10 @@ func HashTypedData(data apitypes.TypedData) ([]byte, error) {
 	return prefixedDataHash, nil
 }
 
+type SignedZKSyncTx struct {
+	Raw []byte
+}
+
 func (b *Bridge) MPCSignZkSyncTransaction(rawTx interface{}, args *tokens.BuildTxArgs) (signTx interface{}, txHash string, err error) {
 	tx, err := b.verifyZkSyncTransactionReceiver(rawTx, args.GetTokenID())
 	if err != nil {
@@ -137,9 +141,13 @@ func (b *Bridge) MPCSignZkSyncTransaction(rawTx interface{}, args *tokens.BuildT
 		sig[64] += 27
 	}
 
-	signedTx, err := tx.RLPValues(sig)
+	signedRawTx, err := tx.RLPValues(sig)
 	if err != nil {
 		return nil, "", err
+	}
+
+	signedTx := &SignedZKSyncTx{
+		Raw: signedRawTx,
 	}
 
 	digest := []byte{}

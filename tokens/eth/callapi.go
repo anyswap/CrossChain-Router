@@ -384,6 +384,39 @@ func (b *Bridge) SendSignedTransaction(tx *types.Transaction) (txHash string, er
 	return "", wrapRPCQueryError(err, "eth_sendRawTransaction")
 }
 
+func (b *Bridge) SendSignedZKSyncTransaction(data []byte) (txHash string, err error) {
+	log.Info("call eth_sendRawTransaction start")
+	hexData := common.ToHex(data)
+	urlCount := len(b.GatewayConfig.AllGatewayURLs)
+	ch := make(chan *sendTxResult, urlCount)
+	wg := new(sync.WaitGroup)
+	wg.Add(urlCount)
+	go func(hash string, count int, start time.Time) {
+		defer func() {
+			if err := recover(); err != nil {
+				const size = 4096
+				buf := make([]byte, size)
+				buf = buf[:runtime.Stack(buf, false)]
+				log.Errorf("call eth_sendRawTransaction crashed: %v\n%s", err, buf)
+			}
+		}()
+		wg.Wait()
+		close(ch)
+		log.Info("call eth_sendRawTransaction finished", "txHash", hash, "count", count, "timespent", time.Since(start).String())
+	}("", urlCount, time.Now())
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
+		go b.sendRawTransaction(wg, hexData, url, ch)
+	}
+	for i := 0; i < urlCount; i++ {
+		res := <-ch
+		txHash, err = res.txHash, res.err
+		if err == nil && txHash != "" {
+			return txHash, nil
+		}
+	}
+	return "", wrapRPCQueryError(err, "eth_sendRawTransaction")
+}
+
 func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash string, err error) {
 	chainId := b.ChainConfig.GetChainID()
 	rawtx, err := tx.MarshalBinary()
