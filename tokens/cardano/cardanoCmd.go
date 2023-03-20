@@ -1,12 +1,7 @@
 package cardano
 
 import (
-	"bytes"
 	"math/big"
-	"os/exec"
-	"strings"
-
-	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
 const (
@@ -40,30 +35,4 @@ func ClearTransactionChainingKeyCache(txhash string) {
 		}
 		delete(TransactionChainingKeyCache.SpentUtxoListGropByTxHash, txhash)
 	}
-}
-
-func ExecCmd(cmdStr, space string) (string, error) {
-	if err := checkIllegal(cmdStr); err != nil {
-		return "", err
-	}
-	list := strings.Split(cmdStr, space)
-	cmd := exec.Command(list[0], list[1:]...)
-	var cmdOut bytes.Buffer
-	var cmdErr bytes.Buffer
-	cmd.Stdout = &cmdOut
-	cmd.Stderr = &cmdErr
-	if err := cmd.Run(); err != nil {
-		return "", err
-	} else {
-		return cmdOut.String(), nil
-	}
-}
-
-func checkIllegal(cmdName string) error {
-	if strings.Contains(cmdName, "&") || strings.Contains(cmdName, "|") || strings.Contains(cmdName, ";") ||
-		strings.Contains(cmdName, "$") || strings.Contains(cmdName, "'") || strings.Contains(cmdName, "`") ||
-		strings.Contains(cmdName, "(") || strings.Contains(cmdName, ")") || strings.Contains(cmdName, "\"") {
-		return tokens.ErrCmdArgVerify
-	}
-	return nil
 }

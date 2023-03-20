@@ -77,7 +77,7 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs, mpcEvmAddr, mpcReefAddr strin
 		to       = args.To
 		value    = args.Value
 		input    = *args.Input
-		extra    = args.Extra.EthExtra
+		extra    = args.Extra
 		gasLimit = *extra.Gas
 		gasPrice = extra.GasPrice.Uint64()
 
@@ -105,11 +105,11 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs, mpcEvmAddr, mpcReefAddr strin
 
 	// assign nonce immediately before construct tx
 	// esp. for parallel signing, this can prevent nonce hole
-	if extra.Nonce == nil { // server logic
+	if extra.Sequence == nil { // server logic
 		return nil, fmt.Errorf("reef buildTx nonce is empty")
 	}
 
-	nonce := *extra.Nonce
+	nonce := *extra.Sequence
 
 	rawTx = &ReefTransaction{
 		To:           &to,
@@ -117,12 +117,12 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs, mpcEvmAddr, mpcReefAddr strin
 		EvmAddress:   &mpcEvmAddr,
 		ReefAddress:  &mpcReefAddr,
 		Data:         &input,
-		AccountNonce: extra.Nonce,
+		AccountNonce: extra.Sequence,
 		Amount:       value,
 		GasLimit:     &gasLimit,
 		StorageGas:   &gasPrice,
 		BlockHash:    args.Extra.BlockHash,
-		BlockNumber:  args.Extra.Sequence,
+		BlockNumber:  args.Extra.BlockNumber,
 	}
 
 	ctx := []interface{}{
@@ -146,20 +146,14 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs, mpcEvmAddr, mpcReefAddr strin
 	return rawTx, nil
 }
 
-func getOrInitEthExtra(args *tokens.BuildTxArgs) *tokens.EthExtraArgs {
-	if args.Extra == nil {
-		args.Extra = &tokens.AllExtras{EthExtra: &tokens.EthExtraArgs{}}
-	} else if args.Extra.EthExtra == nil {
-		args.Extra.EthExtra = &tokens.EthExtraArgs{}
-	}
-	return args.Extra.EthExtra
-}
-
 func (b *Bridge) setDefaults(args *tokens.BuildTxArgs, signInfo []string, mpcReefAddr string) (err error) {
 	if args.Value == nil {
 		args.Value = new(big.Int)
 	}
-	extra := getOrInitEthExtra(args)
+	if args.Extra == nil {
+		args.Extra = &tokens.AllExtras{}
+	}
+	extra := args.Extra
 	if extra.GasPrice == nil {
 		extra.GasPrice, _ = new(big.Int).SetString(signInfo[1], 10)
 	}
@@ -170,21 +164,21 @@ func (b *Bridge) setDefaults(args *tokens.BuildTxArgs, signInfo []string, mpcRee
 			return err
 		}
 	}
-	if extra.Nonce == nil {
-		extra.Nonce = new(uint64)
-		*extra.Nonce, err = strconv.ParseUint(signInfo[4], 10, 64)
+	if extra.Sequence == nil {
+		extra.Sequence = new(uint64)
+		*extra.Sequence, err = strconv.ParseUint(signInfo[4], 10, 64)
 		if err != nil {
 			return err
 		}
-		b.AdjustNonce(mpcReefAddr, *extra.Nonce)
+		b.AdjustNonce(mpcReefAddr, *extra.Sequence)
 	}
 	if args.Extra.BlockHash == nil {
 		args.Extra.BlockHash = &signInfo[2]
 	}
 
-	if args.Extra.Sequence == nil {
-		args.Extra.Sequence = new(uint64)
-		*args.Extra.Sequence, err = strconv.ParseUint(signInfo[3], 10, 64)
+	if args.Extra.BlockNumber == nil {
+		args.Extra.BlockNumber = new(uint64)
+		*args.Extra.BlockNumber, err = strconv.ParseUint(signInfo[3], 10, 64)
 		if err != nil {
 			return err
 		}

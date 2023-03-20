@@ -109,7 +109,7 @@ func (b *Bridge) InitWS() {
 // SupportsChainID supports chainID
 func SupportsChainID(chainID *big.Int) bool {
 	supportedChainIDsInit.Do(func() {
-		supportedChainIDs[GetStubChainID(mainnetNetWork).String()] = true
+		supportedChainIDs["13939"] = true
 		supportedChainIDs[GetStubChainID(testnetNetWork).String()] = true
 		supportedChainIDs[GetStubChainID(devnetNetWork).String()] = true
 	})

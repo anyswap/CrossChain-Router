@@ -13,6 +13,8 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/types"
+	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/zksync-sdk/zksync2-go"
 )
 
 var (
@@ -81,7 +83,7 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 		to        = common.HexToAddress(args.To)
 		value     = args.Value
 		input     = *args.Input
-		extra     = args.Extra.EthExtra
+		extra     = args.Extra
 		gasLimit  = *extra.Gas
 		gasPrice  = extra.GasPrice
 		gasTipCap = extra.GasTipCap
@@ -120,14 +122,14 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 
 	// assign nonce immediately before construct tx
 	// esp. for parallel signing, this can prevent nonce hole
-	if extra.Nonce == nil { // server logic
-		extra.Nonce, err = b.getAccountNonce(args)
+	if extra.Sequence == nil { // server logic
+		extra.Sequence, err = b.getAccountNonce(args)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	nonce := *extra.Nonce
+	nonce := *extra.Sequence
 
 	key := strings.ToLower(fmt.Sprintf("%v:%v", b.ChainConfig.ChainID, args.From))
 	cached := cachedNonce[key]
@@ -137,7 +139,30 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 	}
 	cachedNonce[key] = nonce
 
-	if isDynamicFeeTx {
+	if b.IsZKSync() {
+		chainId, _ := new(big.Int).SetString(b.ChainConfig.ChainID, 0)
+		tx := zksync2.CreateFunctionCallTransaction(
+			ethcommon.HexToAddress(args.From),
+			ethcommon.HexToAddress(to.Hex()),
+			big.NewInt(0),
+			big.NewInt(0),
+			value,
+			[]byte(input),
+			nil, nil,
+		)
+		rawTx = zksync2.NewTransaction712(
+			chainId,
+			big.NewInt(int64(nonce)),
+			big.NewInt(int64(gasLimit)),
+			ethcommon.HexToAddress(to.Hex()),
+			value,
+			input,
+			big.NewInt(100000000), // TODO: Estimate correct one
+			gasPrice,
+			ethcommon.HexToAddress(args.From),
+			tx.Eip712Meta,
+		)
+	} else if isDynamicFeeTx {
 		rawTx = types.NewDynamicFeeTx(b.SignerChainID, nonce, &to, value, gasLimit, gasTipCap, gasFeeCap, input, nil)
 	} else {
 		rawTx = types.NewTransaction(nonce, to, value, gasLimit, gasPrice, input)
@@ -173,20 +198,14 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 	return rawTx, nil
 }
 
-func getOrInitEthExtra(args *tokens.BuildTxArgs) *tokens.EthExtraArgs {
-	if args.Extra == nil {
-		args.Extra = &tokens.AllExtras{EthExtra: &tokens.EthExtraArgs{}}
-	} else if args.Extra.EthExtra == nil {
-		args.Extra.EthExtra = &tokens.EthExtraArgs{}
-	}
-	return args.Extra.EthExtra
-}
-
 func (b *Bridge) setDefaults(args *tokens.BuildTxArgs) (err error) {
 	if args.Value == nil {
 		args.Value = new(big.Int)
 	}
-	extra := getOrInitEthExtra(args)
+	if args.Extra == nil {
+		args.Extra = &tokens.AllExtras{}
+	}
+	extra := args.Extra
 	if params.IsDynamicFeeTxEnabled(b.ChainConfig.ChainID) {
 		if extra.GasTipCap == nil {
 			extra.GasTipCap, err = b.getGasTipCap(args)
