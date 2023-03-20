@@ -186,6 +186,19 @@ func initAll() {
 }
 
 func initFlags() {
+	flag.Usage = func() {
+		fmt.Fprintln(flag.CommandLine.Output(),
+			`Usage:
+this command support two ways to sign tx
+1. use private key
+	use paramters: privateKey, url, grpc
+2. use mpc
+	use parameters: config
+
+Parameters:`)
+		flag.PrintDefaults()
+	}
+
 	flag.StringVar(&paramURLs, "url", "", "urls (comma separated)")
 	flag.StringVar(&paramConfigFile, "config", "", "config file to init mpc and gateway")
 	flag.StringVar(&paramChainID, "chainID", "", "chain id")
