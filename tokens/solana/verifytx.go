@@ -20,7 +20,8 @@ var (
 	// Program log: SwapoutBurn 0xdce8e16a5b685b7713436b4adf4ffd66bd0387d8 6qieHYFuMqTF7jbxXk2Wu3kZZD8rKMDTPEhe9ki4G4bK 1000000000 666
 	// Program log: SwapoutTransfer 0xdce8e16a5b685b7713436b4adf4ffd66bd0387d8 6qieHYFuMqTF7jbxXk2Wu3kZZD8rKMDTPEhe9ki4G4bK 1000000000 666
 	// Program log: SwapoutNative 0xdce8e16a5b685b7713436b4adf4ffd66bd0387d8 native 1000000000 666
-	swapoutLogPattern         = regexp.MustCompile(`^Program log: (Swapout\w+) (\w+) (\w+) (\d+) (\d+)$`)
+	// Program log: SwapoutTransfer 02-06.near EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v 11097600 1001313161554
+	swapoutLogPattern         = regexp.MustCompile(`^Program log: (Swapout\w+) (.+) (\w+) (\d+) (\d+)$`)
 	firstProgramInvokePattern = regexp.MustCompile(`^Program (\w+) invoke \[1]`)
 	swapoutInstructionPrefix  = "Program log: Instruction: Swapout"
 	swapoutLogPrefix          = "Program log: Swapout"
