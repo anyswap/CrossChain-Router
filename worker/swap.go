@@ -320,22 +320,38 @@ func startSwapConsumer(chainID string) {
 			continue
 		}
 		logWorker("doSwap", "process router swap start", "args", args)
-		ctx := []interface{}{"fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex}
-		err := doSwap(args)
+		var err error
 		switch {
-		case err == nil:
-			logWorker("doSwap", "process router swap success", ctx...)
-		case errors.Is(err, errAlreadySwapped),
-			errors.Is(err, tokens.ErrNoBridgeForChainID):
-			ctx = append(ctx, "err", err)
-			logWorkerTrace("doSwap", "process router swap failed", ctx...)
+		case params.IsParallelSwapEnabled():
+			err = doSwapParallel(args)
+		case params.UseProofSign():
+			go func() {
+				err := doSwapWithProof(args)
+				doAfterProcess(args, err)
+			}()
+			continue
 		default:
-			logWorkerError("doSwap", "process router swap failed", err, ctx...)
+			err = doSwap(args)
 		}
-
-		cacheKey := mongodb.GetRouterSwapKey(args.FromChainID.String(), args.SwapID, args.LogIndex)
-		swapTasksInQueue.Remove(cacheKey)
+		doAfterProcess(args, err)
 	}
+}
+
+func doAfterProcess(args *tokens.BuildTxArgs, err error) {
+	ctx := []interface{}{"fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex}
+	switch {
+	case err == nil:
+		logWorker("doSwap", "process router swap success", ctx...)
+	case errors.Is(err, errAlreadySwapped),
+		errors.Is(err, tokens.ErrNoBridgeForChainID):
+		ctx = append(ctx, "err", err)
+		logWorkerTrace("doSwap", "process router swap failed", ctx...)
+	default:
+		logWorkerError("doSwap", "process router swap failed", err, ctx...)
+	}
+
+	cacheKey := mongodb.GetRouterSwapKey(args.FromChainID.String(), args.SwapID, args.LogIndex)
+	swapTasksInQueue.Remove(cacheKey)
 }
 
 func checkAndUpdateProcessSwapTaskCache(key string) error {
@@ -351,13 +367,6 @@ func checkAndUpdateProcessSwapTaskCache(key string) error {
 
 //nolint:funlen,gocyclo // ok
 func doSwap(args *tokens.BuildTxArgs) (err error) {
-	if params.IsParallelSwapEnabled() {
-		return doSwapParallel(args)
-	}
-	if params.UseProofSign() {
-		return doSwapWithProof(args)
-	}
-
 	fromChainID := args.FromChainID.String()
 	toChainID := args.ToChainID.String()
 	txid := args.SwapID
