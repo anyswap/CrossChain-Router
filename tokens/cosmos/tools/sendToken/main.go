@@ -1,53 +1,66 @@
 package main
 
 import (
+	"errors"
 	"flag"
+	"fmt"
 	"math/big"
 	"strconv"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/mpc"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/cosmos"
+	"github.com/anyswap/CrossChain-Router/v3/tools/crypto"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
 var (
 	paramURLs       string
+	paramConfigFile string
 	paramChainID    string
 	paramPrefix     string
 	paramSender     string
 	paramTo         string
 	paramDenom      string
 	paramAmount     uint64
-	paramPublicKey  string
-	paramPrivateKey string
 	paramMemo       string
 	paramGasLimit   = uint64(200000)
 	paramFee        = "1usei"
 	paramSequence   uint64
+	paramPublicKey  string
+	paramPrivateKey string
 	paramUseGrpc    bool
 
 	chainID = big.NewInt(0)
 	bridge  = cosmos.NewCrossChainBridge()
+
+	mpcConfig *mpc.Config
 )
 
 func main() {
-	initFlags()
-	initBridge()
-
+	initAll()
 	if rawTx, err := BuildTx(); err != nil {
 		log.Fatalf("BuildTx err:%+v", err)
 	} else {
-		if signedTx, txHash, err := bridge.SignTransactionWithPrivateKey(rawTx, paramPrivateKey); err != nil {
-			log.Fatalf("SignTransactionWithPrivateKey err:%+v", err)
-		} else {
-			if txHashFromSend, err := bridge.SendTransaction(signedTx); err != nil {
-				log.Fatalf("SendTransaction err:%+v", err)
-			} else {
-				log.Printf("txhash: %+s txHashFromSend: %+s", txHash, txHashFromSend)
+		var signedTx interface{}
+		var txHash string
+		if paramPrivateKey != "" {
+			if signedTx, txHash, err = bridge.SignTransactionWithPrivateKey(rawTx, paramPrivateKey); err != nil {
+				log.Fatalf("SignTransactionWithPrivateKey err:%+v", err)
 			}
+		} else {
+			if signedTx, txHash, err = MPCSignTransaction(rawTx, paramPublicKey); err != nil {
+				log.Fatalf("MPCSignTransaction err:%+v", err)
+			}
+		}
+		if txHashFromSend, err := bridge.SendTransaction(signedTx); err != nil {
+			log.Fatalf("SendTransaction err:%+v", err)
+		} else {
+			log.Printf("txhash: %+s txHashFromSend: %+s", txHash, txHashFromSend)
 		}
 	}
 }
@@ -88,7 +101,6 @@ func BuildTx() (*cosmos.BuildRawTx, error) {
 		if err := txBuilder.SetMsgs(sendMsg); err != nil {
 			log.Fatalf("SetMsgs error:%+v", err)
 		}
-
 		txBuilder.SetMemo(paramMemo)
 		if fee, err := cosmos.ParseCoinsFee(*extra.Fee); err != nil {
 			log.Fatalf("ParseCoinsFee error:%+v", err)
@@ -119,8 +131,63 @@ func BuildTx() (*cosmos.BuildRawTx, error) {
 	}
 }
 
+func MPCSignTransaction(tx *cosmos.BuildRawTx, publicKey string) (signedTx interface{}, txHash string, err error) {
+	mpcPubkey := publicKey
+	pubKey, err := cosmos.PubKeyFromStr(mpcPubkey)
+	if err != nil {
+		return nil, txHash, err
+	}
+	if signBytes, err := bridge.GetSignBytes(tx); err != nil {
+		return nil, "", err
+	} else {
+		msgHash := fmt.Sprintf("%X", cosmos.Sha256Sum(signBytes))
+		if keyID, rsvs, err := mpcConfig.DoSignOneEC(mpcPubkey, msgHash, ""); err != nil {
+			return nil, "", err
+		} else {
+			if len(rsvs) != 1 {
+				log.Warn("get sign status require one rsv but return many",
+					"rsvs", len(rsvs), "keyID", keyID)
+				return nil, "", errors.New("get sign status require one rsv but return many")
+			}
+
+			rsv := rsvs[0]
+			signature := common.FromHex(rsv)
+
+			if len(signature) == crypto.SignatureLength {
+				signature = signature[:crypto.SignatureLength-1]
+			}
+
+			if len(signature) != crypto.SignatureLength-1 {
+				log.Error("wrong signature length", "keyID", keyID, "have", len(signature), "want", crypto.SignatureLength)
+				return nil, "", errors.New("wrong signature length")
+			}
+
+			if !pubKey.VerifySignature(signBytes, signature) {
+				log.Error("verify signature failed", "signBytes", common.ToHex(signBytes), "signature", signature)
+				return nil, "", errors.New("wrong signature")
+			}
+
+			sequence := tx.Sequence
+			sig := cosmos.BuildSignatures(pubKey, sequence, signature)
+			txBuilder := tx.TxBuilder
+			if err := txBuilder.SetSignatures(sig); err != nil {
+				return nil, "", err
+			}
+
+			return bridge.GetSignTx(txBuilder.GetTx())
+		}
+	}
+}
+
+func initAll() {
+	initFlags()
+	initConfig()
+	initBridge()
+}
+
 func initFlags() {
-	flag.StringVar(&paramURLs, "url", "https://sei-testnet-rpc.allthatnode.com:1317", "urls (comma separated)")
+	flag.StringVar(&paramURLs, "url", "", "urls (comma separated)")
+	flag.StringVar(&paramConfigFile, "config", "", "config file to init mpc and gateway")
 	flag.StringVar(&paramChainID, "chainID", "", "chain id")
 	flag.StringVar(&paramPrefix, "prefix", "sei", "bech32 prefix for account")
 	flag.StringVar(&paramSender, "sender", "", "sender address")
@@ -145,17 +212,46 @@ func initFlags() {
 		chainID = cid
 	}
 
-	log.Info("init flags finished", "useGrpc", paramUseGrpc)
+	log.Info("init flags finished")
+}
+
+func initConfig() {
+	if paramConfigFile == "" {
+		return
+	}
+
+	config := params.LoadRouterConfig(paramConfigFile, true, false)
+	if config.FastMPC != nil {
+		mpcConfig = mpc.InitConfig(config.FastMPC, true)
+	} else {
+		mpcConfig = mpc.InitConfig(config.MPC, true)
+	}
+	log.Info("init config finished", "IsFastMPC", mpcConfig.IsFastMPC)
 }
 
 func initBridge() {
-	gateway := &tokens.GatewayConfig{}
-	if paramUseGrpc {
-		gateway.GRPCAPIAddress = strings.Split(paramURLs, ",")
+	if paramConfigFile != "" {
+		cfg := params.GetRouterConfig()
+		apiAddrs := cfg.Gateways[chainID.String()]
+		apiAddrsExt := cfg.GatewaysExt[chainID.String()]
+		grpcAPIs := cfg.GRPCGateways[chainID.String()]
+		bridge.SetGatewayConfig(&tokens.GatewayConfig{
+			APIAddress:     apiAddrs,
+			APIAddressExt:  apiAddrsExt,
+			GRPCAPIAddress: grpcAPIs,
+		})
+		log.Info("use config file", "config", paramConfigFile)
 	} else {
-		gateway.APIAddress = strings.Split(paramURLs, ",")
+		gateway := &tokens.GatewayConfig{}
+		if paramUseGrpc {
+			gateway.GRPCAPIAddress = strings.Split(paramURLs, ",")
+		} else {
+			gateway.APIAddress = strings.Split(paramURLs, ",")
+		}
+		bridge.SetGatewayConfig(gateway)
+		log.Info("use direct urls", "paramURLs", paramURLs, "paramUseGrpc", paramUseGrpc)
 	}
-	bridge.SetGatewayConfig(gateway)
+	log.Infof("gateway config is %v", common.ToJSONString(bridge.GetGatewayConfig(), false))
 	bridge.SetChainConfig(&tokens.ChainConfig{
 		ChainID: chainID.String(),
 	})
