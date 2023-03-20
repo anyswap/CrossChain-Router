@@ -10,34 +10,47 @@ import (
 )
 
 const (
-	NetWork       = "--mainnet" // for testnet, use "--testnet-magic 1"
-	MPCPolicyId   = "f73d0275b986a17537f0dfa94060313f922ac1d7a81aec677fa3bdbe"
-	RawPath       = "txDb/raw/"
-	AdaAsset      = "lovelace"
-	RawSuffix     = ".raw"
-	WitnessPath   = "txDb/witness/"
-	WitnessSuffix = ".witness"
-	WitnessType   = "TxWitness AlonzoEra"
-	SignedPath    = "txDb/signed/"
-	SignedSuffix  = ".signed"
+	// NetWork = "--mainnet" // for testnet, use "--testnet-magic 1"
+	// MPCPolicyId   = "f73d0275b986a17537f0dfa94060313f922ac1d7a81aec677fa3bdbe"
+	// RawPath       = "txDb/raw/"
+	AdaAsset  = "lovelace"
+	TxTimeOut = 60 * 10
+	// RawSuffix     = ".raw"
+	// WitnessPath   = "txDb/witness/"
+	// WitnessSuffix = ".witness"
+	// WitnessType   = "TxWitness AlonzoEra"
+	// SignedPath   = "txDb/signed/"
+	// SignedSuffix = ".signed"
 )
 
 var (
-	FixAdaAmount                = big.NewInt(1500000)
-	DefaultAdaAmount            = big.NewInt(2000000)
-	AddressInfoCmd              = "cardano-cli address info --address %s"
-	AssembleCmd                 = "cardano-cli transaction assemble --tx-body-file %s --witness-file %s --out-file %s"
-	SubmitCmd                   = "cardano-cli transaction submit --tx-file %s " + NetWork
-	BuildRawTxWithoutMintCmd    = "cardano-cli  transaction  build-raw  --fee  %s%s%s  --out-file  %s"
-	BuildRawTxWithMintCmd       = "cardano-cli  transaction  build-raw  --fee  %s%s%s%s  --out-file  %s  --mint-script-file  txDb/policy/policy.script"
-	CalcMinFeeCmd               = "cardano-cli transaction calculate-min-fee --tx-body-file %s --tx-in-count %d --tx-out-count %d --witness-count 1 --protocol-params-file txDb/config/protocol.json " + NetWork
-	CalcTxIdCmd                 = "cardano-cli transaction txid --tx-body-file %s"
-	QueryTipCmd                 = "cardano-cli query tip " + NetWork
-	QueryTransaction            = "{transactions(where: { hash: { _eq: \"%s\"}}) {block {number epochNo slotNo}hash metadata{key value} inputs(order_by:{sourceTxHash:asc}){address value} outputs(order_by:{index:asc}){address index tokens{ asset{policyId assetName}quantity}value}validContract}}"
-	QueryOutputs                = "{utxos(where: { address: { _eq: \"%s\"}}) {txHash index tokens {asset {policyId assetName} quantity} value}}"
+	FixAdaAmount     = big.NewInt(1500000)
+	DefaultAdaAmount = big.NewInt(2000000)
+	// AddressInfoCmd              = "cardano-cli address info --address %s"
+	// AssembleCmd                 = "cardano-cli transaction assemble --tx-body-file %s --witness-file %s --out-file %s"
+	// SubmitCmd                   = "cardano-cli transaction submit --tx-file %s " + NetWork
+	// BuildRawTxWithoutMintCmd    = "cardano-cli  transaction  build-raw  --fee  %s%s%s  --out-file  %s"
+	// BuildRawTxWithMintCmd       = "cardano-cli  transaction  build-raw  --fee  %s%s%s%s  --out-file  %s  --mint-script-file  txDb/policy/policy.script"
+	// CalcMinFeeCmd               = "cardano-cli transaction calculate-min-fee --tx-body-file %s --tx-in-count %d --tx-out-count %d --witness-count 1 --protocol-params-file txDb/config/protocol.json " + NetWork
+	// CalcTxIdCmd                 = "cardano-cli transaction txid --tx-body-file %s"
+	// QueryTipCmd                 = "cardano-cli query tip " + NetWork
+	QueryTransaction = "{transactions(where: { hash: { _eq: \"%s\"}}) {block {number epochNo slotNo}hash metadata{key value} inputs(order_by:{sourceTxHash:asc}){address value} outputs(order_by:{index:asc}){address index tokens{ asset{policyId assetName}quantity}value}validContract}}"
+	QueryOutputs     = "{utxos(where: { address: { _eq: \"%s\"}}) {txHash index tokens {asset {policyId assetName} quantity} value}}"
+
+	QueryTIPAndProtocolParams = "{ cardano { tip { number slotNo epoch { number protocolParams { coinsPerUtxoByte keyDeposit maxBlockBodySize maxBlockExMem maxTxSize maxValSize minFeeA minFeeB minPoolCost minUTxOValue} } } } }"
+
 	TransactionChaining         = &TransactionChainingMap{InputKey: UtxoKey{}, AssetsMap: make(map[string]string)}
 	TransactionChainingKeyCache = &TransactionChainingKey{SpentUtxoMap: make(map[UtxoKey]bool), SpentUtxoListGropByTxHash: make(map[string]*[]UtxoKey)}
 )
+
+//	func AddTransactionChainingKeyCache(txhash string, txIns *map[UtxoKey]AssetsMap) {
+//		arrTxIns := []UtxoKey{}
+//		for inputKey, _ := range *txIns {
+//			TransactionChainingKeyCache.SpentUtxoMap[inputKey] = true
+//			arrTxIns = append(arrTxIns, inputKey)
+//		}
+//		TransactionChainingKeyCache.SpentUtxoListGropByTxHash[txhash] = &arrTxIns
+//	}
 
 func AddTransactionChainingKeyCache(txhash string, txIns *[]UtxoKey) {
 	for _, inputKey := range *txIns {

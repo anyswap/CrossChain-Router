@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
@@ -21,8 +22,19 @@ var (
 	cachedNonce = make(map[string]uint64)
 )
 
+type SapphireRPCTx struct {
+	Raw    hexutil.Bytes
+	Sender string
+}
+
 // BuildRawTransaction build raw tx
 func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{}, err error) {
+	if b.IsSapphireChain() && args.SwapType == tokens.SapphireRPCType {
+		return &SapphireRPCTx{
+			Raw:    args.Extra.RawTx,
+			Sender: args.From,
+		}, nil
+	}
 	if !params.IsTestMode && args.ToChainID.String() != b.ChainConfig.ChainID {
 		return nil, tokens.ErrToChainIDMismatch
 	}
@@ -136,6 +148,7 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 		"fromChainID", args.FromChainID, "toChainID", args.ToChainID,
 		"from", args.From, "to", to.String(), "bind", args.Bind, "nonce", nonce,
 		"gasLimit", gasLimit, "replaceNum", args.GetReplaceNum(),
+		"bridgeFee", args.Extra.BridgeFee,
 	}
 	if gasTipCap != nil || gasFeeCap != nil {
 		ctx = append(ctx, "gasTipCap", gasTipCap, "gasFeeCap", gasFeeCap)
@@ -195,6 +208,17 @@ func (b *Bridge) setDefaults(args *tokens.BuildTxArgs) (err error) {
 		}
 		extra.GasTipCap = nil
 		extra.GasFeeCap = nil
+	}
+	if extra.Gas == nil && b.IsSapphireChain() {
+		esGasLimit, errf := b.EstimateGas(args.From, args.To, args.Value, *args.Input)
+		if errf != nil {
+			log.Error(fmt.Sprintf("build %s tx estimate gas failed", args.SwapType.String()),
+				"swapID", args.SwapID, "from", args.From, "to", args.To,
+				"value", args.Value, "data", *args.Input, "err", errf)
+			return fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, tokens.ErrEstimateGasFailed)
+		}
+		extra.Gas = new(uint64)
+		*extra.Gas = esGasLimit
 	}
 	if extra.Gas == nil {
 		esGasLimit, errf := b.EstimateGas(args.From, args.To, args.Value, *args.Input)

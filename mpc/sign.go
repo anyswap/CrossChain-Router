@@ -29,6 +29,7 @@ var (
 	errRValueIsUsed         = errors.New("r value is already used")
 	errWrongSignatureLength = errors.New("wrong signature length")
 	errNoUsableSignGroups   = errors.New("no usable sign groups")
+	errEmptyKeyID           = errors.New("empty keyID")
 )
 
 func (c *Config) pingMPCNode(nodeInfo *NodeInfo) (err error) {
@@ -139,6 +140,9 @@ func (c *Config) doSignImpl(mpcNode *NodeInfo, signGroupIndex int, signType, sig
 	keyID, err = c.Sign(rawTX, rpcAddr)
 	if err != nil {
 		return "", nil, err
+	}
+	if keyID == "" {
+		return "", nil, errEmptyKeyID
 	}
 
 	rsvs, err = c.getSignResult(keyID, rpcAddr)

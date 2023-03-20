@@ -209,6 +209,7 @@ func process(opts map[string]string) error {
 		OriginFrom:  swapInfo.From,
 		OriginTxTo:  swapInfo.TxTo,
 		OriginValue: swapInfo.Value,
+		Extra:       &tokens.AllExtras{},
 	}
 	rawTx, err := bridge.BuildRawTransaction(args)
 	if err != nil {

@@ -370,6 +370,25 @@ func (c *Config) initSelfEnode() {
 	}
 }
 
+// GetEnodeID get enode id (get rid of prefix and suffix)
+func GetEnodeID(enode string) string {
+	startIndex := strings.Index(enode, "enode://")
+	endIndex := strings.Index(enode, "@")
+	if startIndex == -1 || endIndex == -1 {
+		return ""
+	}
+	return strings.ToLower(enode[startIndex+8 : endIndex])
+}
+
+// GetEnodeIDs get enode ids
+func GetEnodeIDs(enodes []string) []string {
+	res := make([]string, len(enodes))
+	for i, enode := range enodes {
+		res[i] = GetEnodeID(enode)
+	}
+	return res
+}
+
 func isEnodeExistIn(enode string, enodes []string) bool {
 	sepIndex := strings.Index(enode, "@")
 	if sepIndex == -1 {

@@ -39,13 +39,18 @@ func AdjustGatewayOrder(bridge tokens.IBridge, chainID string) {
 			maxHeight = height
 		}
 	}
+	if length == 0 { // update for bridges only use grpc apis
+		maxHeight, _ = bridge.GetLatestBlockNumber()
+	}
 	if maxHeight > 0 {
 		router.CachedLatestBlockNumber.Store(chainID, maxHeight)
 	}
-	weightedAPIs.Reverse() // reverse as iter in reverse order in the above
-	weightedAPIs = weightedAPIs.Sort()
-	gateway.APIAddress = weightedAPIs.GetStrings()
-	gateway.WeightedAPIs = weightedAPIs
+	if len(weightedAPIs) > 0 {
+		weightedAPIs.Reverse() // reverse as iter in reverse order in the above
+		weightedAPIs = weightedAPIs.Sort()
+		gateway.APIAddress = weightedAPIs.GetStrings()
+		gateway.WeightedAPIs = weightedAPIs
+	}
 
 	if _, exist := adjustGatewayChains.Load(chainID); !exist {
 		adjustGatewayChains.Store(chainID, struct{}{})

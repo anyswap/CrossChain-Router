@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -72,13 +73,22 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		} else {
 			memo := args.GetUniqueSwapIdentifier()
 			mpcPubkey := router.GetMPCPublicKey(args.From)
-			if txBuilder, err := b.BuildTx(args.From, receiver, multichainToken, memo, mpcPubkey, amount, extra); err != nil {
+			if txBuilder, err := b.BuildTx(args, receiver, multichainToken, memo, mpcPubkey, amount); err != nil {
 				return nil, err
 			} else {
 				accountNumber, err := b.GetAccountNum(args.From)
 				if err != nil {
 					return nil, err
 				}
+				log.Info(fmt.Sprintf("build %s raw tx", args.SwapType.String()),
+					"identifier", args.Identifier, "swapID", args.SwapID,
+					"fromChainID", args.FromChainID, "toChainID", args.ToChainID,
+					"from", args.From, "receiver", receiver,
+					"accountNumber", accountNumber, "sequence", *extra.Sequence,
+					"gasLimit", *extra.Gas, "replaceNum", args.GetReplaceNum(),
+					"originValue", args.OriginValue, "swapValue", args.SwapValue,
+					"gasFee", *extra.Fee, "bridgeFee", extra.BridgeFee,
+				)
 				return &BuildRawTx{
 					TxBuilder:     txBuilder,
 					AccountNumber: accountNumber,
@@ -90,7 +100,6 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 }
 
 func (b *Bridge) initExtra(args *tokens.BuildTxArgs) (extra *tokens.AllExtras, err error) {
-	denom := b.Denom
 	extra = args.Extra
 	if extra == nil {
 		extra = &tokens.AllExtras{}
@@ -105,10 +114,28 @@ func (b *Bridge) initExtra(args *tokens.BuildTxArgs) (extra *tokens.AllExtras, e
 		extra.Gas = &DefaultGasLimit
 	}
 	if extra.Fee == nil {
-		fee := DefaultFee + denom
+		fee := b.getDefaultFee()
 		extra.Fee = &fee
 	}
 	return extra, nil
+}
+
+func (b *Bridge) getDefaultFee() string {
+	fee := DefaultFee
+	serverCfg := params.GetRouterServerConfig()
+	if serverCfg != nil {
+		if cfgFee, exist := serverCfg.DefaultFee[b.ChainConfig.ChainID]; exist {
+			fee = cfgFee
+		}
+	}
+	if is_numeric(fee) {
+		fee += b.Denom
+	}
+	return fee
+}
+
+func is_numeric(word string) bool {
+	return regexp.MustCompile(`.\d`).MatchString(word)
 }
 
 // GetPoolNonce impl NonceSetter interface
@@ -196,5 +223,7 @@ func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken 
 		return receiver, amount, tokens.ErrMissTokenConfig
 	}
 	amount = tokens.CalcSwapValue(erc20SwapInfo.TokenID, args.FromChainID.String(), b.ChainConfig.ChainID, args.OriginValue, fromTokenCfg.Decimals, toTokenCfg.Decimals, args.OriginFrom, args.OriginTxTo)
+	totalAmount := tokens.ConvertTokenValue(args.OriginValue, fromTokenCfg.Decimals, toTokenCfg.Decimals)
+	args.Extra.BridgeFee = new(big.Int).Sub(totalAmount, amount)
 	return receiver, amount, err
 }

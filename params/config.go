@@ -103,6 +103,7 @@ type RouterServerConfig struct {
 	SendTxLoopCount            map[string]int    `toml:",omitempty" json:",omitempty"` // key is chain ID
 	SendTxLoopInterval         map[string]int    `toml:",omitempty" json:",omitempty"` // key is chain ID
 
+	DefaultFee       map[string]string            `toml:",omitempty" json:",omitempty"` // key is chain ID
 	DefaultGasLimit  map[string]uint64            `toml:",omitempty" json:",omitempty"` // key is chain ID
 	MaxGasLimit      map[string]uint64            `toml:",omitempty" json:",omitempty"` // key is chain ID
 	MaxTokenGasLimit map[string]map[string]uint64 `toml:",omitempty" json:",omitempty"` // key is tokenID,chainID
@@ -142,6 +143,7 @@ type GatewayConfigs struct {
 	GatewaysExt      map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	EVMGatewaysExt   map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	FinalizeGateways map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+	GRPCGateways     map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 }
 
 // Blacklists black lists
@@ -192,6 +194,8 @@ type ExtraConfig struct {
 	LocalChainConfig map[string]*LocalChainConfig `toml:",omitempty" json:",omitempty"` // key is chain ID
 
 	SpecialFlags map[string]string `toml:",omitempty" json:",omitempty"`
+
+	AttestationServer string `toml:",omitempty" json:",omitempty"`
 }
 
 // LocalChainConfig local chain config
@@ -201,6 +205,10 @@ type LocalChainConfig struct {
 	SmallestGasPriceUnit       uint64   `toml:",omitempty" json:",omitempty"`
 	ForbidSwapoutTokenIDs      []string `toml:",omitempty" json:",omitempty"`
 	BigValueDiscount           uint64   `toml:",omitempty" json:",omitempty"`
+
+	// chainID -> tokenids
+	ChargeFeeOnDestChain   map[string][]string `toml:",omitempty" json:",omitempty"`
+	FeeReceiverOnDestChain string              `toml:",omitempty" json:",omitempty"`
 
 	forbidSwapoutTokenIDMap map[string]struct{}
 
@@ -1277,4 +1285,32 @@ func IsSwapoutForbidden(chainID, tokenID string) bool {
 // DontCheckInInitRouter do not check in init router
 func DontCheckInInitRouter() bool {
 	return GetExtraConfig() != nil && GetExtraConfig().DontCheckInInitRouter
+}
+
+// FeeReceiverOnDestChain fee receiver on dest chain
+func FeeReceiverOnDestChain(toChainID string) string {
+	c := GetLocalChainConfig(toChainID)
+	return c.FeeReceiverOnDestChain
+}
+
+// ChargeFeeOnDestChain charge fee on dest chain
+func ChargeFeeOnDestChain(tokenID, fromChainID, toChainID string) bool {
+	c := GetLocalChainConfig(toChainID)
+	if c.ChargeFeeOnDestChain == nil {
+		return false
+	}
+	for _, tid := range c.ChargeFeeOnDestChain[fromChainID] {
+		if strings.EqualFold(tid, tokenID) {
+			return true
+		}
+	}
+	return false
+}
+
+// GetAttestationServer get attestation server
+func GetAttestationServer() string {
+	if GetExtraConfig() != nil {
+		return GetExtraConfig().AttestationServer
+	}
+	return ""
 }

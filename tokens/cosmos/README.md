@@ -50,6 +50,12 @@ for example,
     # sei
     sei:usei
 
+    # coreum
+    devcore:ducore
+
+    # osmosis
+    osmo:uosmo
+
 2) tokenConfig
 
 for meta coin,

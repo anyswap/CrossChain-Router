@@ -9,7 +9,7 @@ import (
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	cryptoTypes "github.com/cosmos/cosmos-sdk/crypto/types"
-	"github.com/cosmos/cosmos-sdk/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/bech32"
 )
 
@@ -28,9 +28,9 @@ func (b *Bridge) VerifyPubKey(address, pubkey string) error {
 }
 
 func IsValidAddress(prefix, address string) bool {
-	if bz, err := types.GetFromBech32(address, prefix); err == nil {
-		if err = types.VerifyAddressFormat(bz); err == nil {
-			accAddress := types.AccAddress(bz)
+	if bz, err := sdk.GetFromBech32(address, prefix); err == nil {
+		if err = sdk.VerifyAddressFormat(bz); err == nil {
+			accAddress := sdk.AccAddress(bz)
 			if bech32Addr, err := bech32.ConvertAndEncode(prefix, accAddress); err == nil && bech32Addr == address {
 				return true
 			}
@@ -47,7 +47,7 @@ func PublicKeyToAddress(prefix, pubKeyHex string) (string, error) {
 	if pk, err := PubKeyFromStr(pubKeyHex); err != nil {
 		return "", err
 	} else {
-		if accAddress, err := types.AccAddressFromHex(pk.Address().String()); err != nil {
+		if accAddress, err := sdk.AccAddressFromHex(pk.Address().String()); err != nil {
 			return "", err
 		} else {
 			if bech32Addr, err := bech32.ConvertAndEncode(prefix, accAddress); err == nil {

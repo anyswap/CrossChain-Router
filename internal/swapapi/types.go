@@ -57,6 +57,7 @@ type ChainConfig struct {
 	ChainID        string
 	BlockChain     string
 	RouterContract string
+	RouterVersion  string `json:",omitempty"`
 	Confirmations  uint64
 	InitialHeight  uint64
 }
@@ -68,6 +69,7 @@ type TokenConfig struct {
 	ContractAddress string
 	ContractVersion uint64
 	RouterContract  string
+	RouterVersion   string `json:",omitempty"`
 	Underlying      string
 }
 

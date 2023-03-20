@@ -17,7 +17,10 @@ const (
 	ERC20SwapType
 	NFTSwapType
 	AnyCallSwapType
+
+	// special flags, do not use in register
 	ERC20SwapTypeMixPool
+	SapphireRPCType
 
 	MaxValidSwapType
 )
@@ -50,6 +53,8 @@ func (s SwapType) String() string {
 		return "anycallswap"
 	case ERC20SwapTypeMixPool:
 		return "mixpool"
+	case SapphireRPCType:
+		return "sapphireRPCType"
 	default:
 		return "unknownswap"
 	}
@@ -85,11 +90,14 @@ type AnyCallSwapInfo struct {
 	CallFrom string        `json:"callFrom"`
 	CallTo   string        `json:"callTo"`
 	CallData hexutil.Bytes `json:"callData"`
-	Fallback string        `json:"fallback"`
+	Fallback string        `json:"fallback,omitempty"`
 	Flags    string        `json:"flags,omitempty"`
 	AppID    string        `json:"appid,omitempty"`
 	Nonce    string        `json:"nonce,omitempty"`
 	ExtData  hexutil.Bytes `json:"extdata,omitempty"`
+
+	Message     hexutil.Bytes `json:"message,omitempty"`
+	Attestation hexutil.Bytes `json:"attestation,omitempty"`
 }
 
 // SwapInfo struct
@@ -144,7 +152,7 @@ type TxStatus struct {
 	Confirmations uint64      `json:"confirmations"`
 	BlockHeight   uint64      `json:"block_height"`
 	BlockHash     string      `json:"block_hash"`
-	BlockTime     uint64      `json:"block_time"`
+	BlockTime     uint64      `json:"block_time,omitempty"`
 }
 
 // StatusInterface interface
@@ -221,6 +229,9 @@ type AllExtras struct {
 	Gas        *uint64       `json:"gas,omitempty"`
 	RawTx      hexutil.Bytes `json:"rawTx,omitempty"`
 	BlockHash  *string       `json:"blockHash,omitempty"`
+
+	// calculated value
+	BridgeFee *big.Int `json:"bridgeFee,omitempty"`
 }
 
 // EthExtraArgs struct
@@ -242,9 +253,16 @@ func (args *BuildTxArgs) GetReplaceNum() uint64 {
 
 // GetExtraArgs get extra args
 func (args *BuildTxArgs) GetExtraArgs() *BuildTxArgs {
+	swapArgs := args.SwapArgs
+	if swapArgs.SwapInfo.AnyCallSwapInfo != nil {
+		// message should be retrieved from receipt logs
+		anycallInfo := *swapArgs.SwapInfo.AnyCallSwapInfo
+		anycallInfo.Message = nil
+		swapArgs.SwapInfo.AnyCallSwapInfo = &anycallInfo
+	}
 	return &BuildTxArgs{
 		From:     args.From,
-		SwapArgs: args.SwapArgs,
+		SwapArgs: swapArgs,
 		Extra:    args.Extra,
 	}
 }

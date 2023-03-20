@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strconv"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -12,6 +13,8 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	cardanosdk "github.com/echovl/cardano-go"
+	"github.com/echovl/cardano-go/crypto"
 )
 
 // BuildRawTransaction build raw tx
@@ -71,46 +74,16 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 				return nil, err
 			} else {
 				swapId := fmt.Sprintf("%s-%d", args.SwapID, args.LogIndex)
-				if rawTransaction, err := b.BuildTx(swapId, receiver, multichainToken, amount, utxos); err != nil {
+				rawTransaction, err := b.BuildTx(swapId, receiver, multichainToken, amount, utxos)
+				if err != nil {
+					return nil, err
+				}
+
+				if rawBytes, err := json.Marshal(rawTransaction); err != nil {
 					return nil, err
 				} else {
-					if err := CreateRawTx(rawTransaction, routerMPC); err != nil {
-						return nil, err
-					} else {
-						if minFee, err := CalcMinFee(rawTransaction); err != nil {
-							return nil, err
-						} else {
-							if feeList := strings.Split(minFee, " "); len(feeList) != 2 {
-								return nil, errors.New("feeList length not match")
-							} else {
-								rawTransaction.Fee = feeList[0]
-								if adaAmount, err := common.GetBigIntFromStr(rawTransaction.TxOuts[args.From][AdaAsset]); err != nil {
-									return nil, err
-								} else {
-									if feeAmount, err := common.GetBigIntFromStr(feeList[0]); err != nil {
-										return nil, err
-									} else {
-										returnAmount := adaAmount.Sub(adaAmount, feeAmount)
-										if returnAmount.Cmp(FixAdaAmount) < 0 {
-											return nil, errors.New("return value less than min value")
-										} else {
-											rawTransaction.TxOuts[args.From][AdaAsset] = returnAmount.String()
-											if err := CreateRawTx(rawTransaction, routerMPC); err != nil {
-												return nil, err
-											} else {
-												if rawBytes, err := json.Marshal(rawTransaction); err != nil {
-													return nil, err
-												} else {
-													extra.RawTx = rawBytes
-													return rawTransaction, nil
-												}
-											}
-										}
-									}
-								}
-							}
-						}
-					}
+					extra.RawTx = rawBytes
+					return rawTransaction, nil
 				}
 			}
 		}
@@ -118,52 +91,95 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 }
 
 func (b *Bridge) BuildTx(swapId, receiver, assetId string, amount *big.Int, utxos map[UtxoKey]AssetsMap) (*RawTransaction, error) {
-	log.Infof("build Tx:\nreceiver:%+v\nassetId:%+v\namount:%+v\nutxos:%+v\n", receiver, assetId, amount, utxos)
-	routerMpc := b.GetRouterContract("")
-	rawTransaction := &RawTransaction{
-		Fee:     "0",
-		OutFile: swapId,
-		TxOuts:  make(map[string]AssetsMap),
-		TxIns:   []UtxoKey{},
+	log.Infof("Cardano BuildTx:\nreceiver:%+v\nassetId:%+v\namount:%+v\nutxos:%+v\n", receiver, assetId, amount, utxos)
+
+	txIns := []UtxoKey{}
+	txInsAssets := []AssetsMap{}
+
+	// max tx size fee + output min ada
+	adaRequired := new(big.Int).SetUint64(b.calcMaxFee() + FixAdaAmount.Uint64())
+	if assetId == AdaAsset {
+		if amount.Cmp(FixAdaAmount) < 0 {
+			return nil, fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, "ada not enough, below "+FixAdaAmount.String())
+		}
+		adaRequired.Add(adaRequired, amount)
+	} else {
+		adaRequired.Add(adaRequired, FixAdaAmount)
 	}
+
 	allAssetsMap := map[string]uint64{}
 	for utxoKey, assetsMap := range utxos {
-		rawTransaction.TxIns = append(rawTransaction.TxIns, utxoKey)
 		for asset, assetAmount := range assetsMap {
-			if value, err := common.GetBigIntFromStr(assetAmount); err != nil {
+			value, err := common.GetBigIntFromStr(assetAmount)
+			if err != nil {
+				log.Info("[Cardano]GetBigIntFromStr", "txhash", utxoKey.TxHash, "index", utxoKey.TxIndex, "err", err)
 				return nil, err
-			} else {
-				allAssetsMap[asset] += value.Uint64()
+			}
+			allAssetsMap[asset] += value.Uint64()
+		}
+
+		txIns = append(txIns, utxoKey)
+		txInsAssets = append(txInsAssets, assetsMap)
+		if assetId == AdaAsset {
+			if allAssetsMap[assetId] > adaRequired.Uint64() {
+				break
+			}
+		} else {
+			if allAssetsMap[assetId] > amount.Uint64() && allAssetsMap[AdaAsset] > adaRequired.Uint64() {
+				break
 			}
 		}
 	}
+	if allAssetsMap[AdaAsset] <= adaRequired.Uint64() {
+		return nil, fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, "ada not enough, below "+FixAdaAmount.String())
+	}
 
+	// pparams, err := b.RpcClient.ProtocolParams()
+	// if err != nil {
+	// 	return nil, err
+	// }
+	nodeTip, err := b.GetTip()
+	if err != nil {
+		return nil, err
+	}
+	rawTransaction := &RawTransaction{
+		SwapId:           swapId,
+		TxOuts:           make(map[string]AssetsMap),
+		TxIns:            txIns,
+		TxInsAssets:      txInsAssets,
+		TxIndex:          uint64(0),
+		Slot:             nodeTip.Slot,
+		CoinsPerUTXOWord: uint64(b.ProtocolParams.CoinsPerUTXOWord),
+		KeyDeposit:       uint64(b.ProtocolParams.KeyDeposit),
+		MinFeeA:          uint64(b.ProtocolParams.MinFeeA),
+		MinFeeB:          uint64(b.ProtocolParams.MinFeeB),
+	}
 	rawTransaction.TxOuts[receiver] = map[string]string{}
+	routerMpc := b.GetRouterContract("")
 	rawTransaction.TxOuts[routerMpc] = map[string]string{}
 	var adaAmount *big.Int
 	if assetId == AdaAsset {
 		adaAmount = amount
 	} else {
 		adaAmount = FixAdaAmount
-		policyId := strings.Split(assetId, ".")[0]
 		if allAssetsMap[assetId] >= amount.Uint64() {
 			rawTransaction.TxOuts[receiver][assetId] = amount.String()
 			if allAssetsMap[assetId] > amount.Uint64() {
 				rawTransaction.TxOuts[routerMpc][assetId] = fmt.Sprint((allAssetsMap[assetId] - amount.Uint64()))
 			}
 		} else {
-			if policyId != MPCPolicyId {
-				return nil, tokens.ErrTokenBalancesNotEnough
+			policy := strings.Split(assetId, ".")
+			assetName := string(common.Hex2Bytes(policy[1]))
+			_, _, policyId := b.GetAssetPolicy(assetName)
+			if policy[0] != policyId.String() {
+				return nil, fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, assetId+" not enough")
 			} else {
 				rawTransaction.Mint = map[string]string{
-					assetId: fmt.Sprint(amount.Uint64() - allAssetsMap[assetId]),
+					assetName: fmt.Sprint(amount.Uint64() - allAssetsMap[assetId]),
 				}
 				rawTransaction.TxOuts[receiver][assetId] = amount.String()
 			}
 		}
-	}
-	if adaAmount.Cmp(FixAdaAmount) < 0 {
-		return nil, tokens.ErrAdaSwapOutAmount
 	}
 	rawTransaction.TxOuts[receiver][AdaAsset] = adaAmount.String()
 	if allAssetsMap[AdaAsset] > adaAmount.Uint64() {
@@ -174,57 +190,224 @@ func (b *Bridge) BuildTx(swapId, receiver, assetId string, amount *big.Int, utxo
 			rawTransaction.TxOuts[routerMpc][assetIdWithName] = fmt.Sprint(assetAmount)
 		}
 	}
+
 	return rawTransaction, nil
 }
 
-func CreateRawTx(rawTransaction *RawTransaction, mpcAddr string) error {
-	cmdString := ""
-	inputString := ""
-	for _, utxoKey := range rawTransaction.TxIns {
-		inputString = fmt.Sprintf("%s  --tx-in  %s#%d", inputString, strings.TrimSpace(utxoKey.TxHash), utxoKey.TxIndex)
-	}
-	outputString := ""
-	if len(rawTransaction.TxOuts) > 2 {
-		return tokens.ErrOutputLength
-	}
-	tempIndex := uint64(0)
-	for address, assets := range rawTransaction.TxOuts {
-		if address == mpcAddr {
-			rawTransaction.TxIndex = tempIndex
-		} else {
-			tempIndex++
-		}
-		outputString = fmt.Sprintf("%s  --tx-out  %s+%s", outputString, strings.TrimSpace(address), strings.TrimSpace(assets[AdaAsset]))
-		for asset, amount := range assets {
-			if asset != AdaAsset {
-				outputString = fmt.Sprintf("%s+%s %s", outputString, strings.TrimSpace(amount), strings.TrimSpace(asset))
-			}
-		}
-	}
-	if rawTransaction.Mint != nil {
-		mintString := ""
-		for asset, amount := range rawTransaction.Mint {
-			mintString = fmt.Sprintf("%s  --mint=%s %s", mintString, strings.TrimSpace(amount), strings.TrimSpace(asset))
-		}
-		cmdString = fmt.Sprintf(BuildRawTxWithMintCmd, rawTransaction.Fee, inputString, outputString, mintString, RawPath+rawTransaction.OutFile+RawSuffix)
-	} else {
-		cmdString = fmt.Sprintf(BuildRawTxWithoutMintCmd, rawTransaction.Fee, inputString, outputString, RawPath+rawTransaction.OutFile+RawSuffix)
-	}
-	if _, err := ExecCmd(cmdString, "  "); err != nil {
-		return err
-	}
-	return nil
+func (b *Bridge) calcMaxFee() uint64 {
+	return uint64(b.ProtocolParams.MinFeeA)*uint64(b.ProtocolParams.MaxTxSize) + uint64(b.ProtocolParams.MinFeeB)
 }
 
-func CalcMinFee(rawTransaction *RawTransaction) (string, error) {
-	txBodyPath := RawPath + rawTransaction.OutFile + RawSuffix
-	cmdString := fmt.Sprintf(CalcMinFeeCmd, txBodyPath, len(rawTransaction.TxIns), len(rawTransaction.TxOuts))
-	if execRes, err := ExecCmd(cmdString, " "); err != nil {
-		return "", err
-	} else {
-		return execRes, nil
+func (b *Bridge) CreateRawTx(rawTransaction *RawTransaction, mpcAddr string) (*cardanosdk.Tx, error) {
+	// label, _ := strconv.Atoi(SwapInMetadataKey)
+	// txBuilder, err := b.genTxBuilder(mpcAddr, rawTransaction, &cardanosdk.AuxiliaryData{
+	// 	Metadata: cardanosdk.Metadata{
+	// 		uint(label): map[string]interface{}{
+	// 			"SwapId": rawTransaction.SwapId,
+	// 		},
+	// 	},
+	// })
+	txBuilder, err := b.genTxBuilder(mpcAddr, rawTransaction, nil)
+	if err != nil {
+		return nil, err
 	}
+
+	tx, err := buildTxAndAdjustRestAda(txBuilder, rawTransaction, mpcAddr)
+	if err != nil {
+		return nil, err
+	}
+	return tx, nil
 }
+
+func (b *Bridge) CreateSwapoutRawTx(rawTransaction *RawTransaction, mpcAddr, bind, toChainId string) (*cardanosdk.Tx, error) {
+	swapKey, _ := strconv.Atoi(MetadataKey)
+
+	var data *cardanosdk.AuxiliaryData
+	if bind != "" {
+		data = &cardanosdk.AuxiliaryData{
+			Metadata: cardanosdk.Metadata{
+				uint(swapKey): map[string]interface{}{
+					"bind":      bind,
+					"toChainId": toChainId,
+				},
+			},
+		}
+	}
+
+	txBuilder, err := b.genTxBuilder(mpcAddr, rawTransaction, data)
+	if err != nil {
+		return nil, err
+	}
+
+	tx, err := buildTxAndAdjustRestAda(txBuilder, rawTransaction, mpcAddr)
+	if err != nil {
+		return nil, err
+	}
+	return tx, nil
+}
+
+func buildTxAndAdjustRestAda(txBuilder *cardanosdk.TxBuilder, rawTransaction *RawTransaction, mpcAddr string) (*cardanosdk.Tx, error) {
+	tx, err := txBuilder.Build()
+	if err != nil {
+		return nil, err
+	}
+	txhash, err := tx.Hash()
+	if err != nil {
+		return nil, err
+	}
+
+	amount, err := strconv.ParseUint(rawTransaction.TxOuts[mpcAddr][AdaAsset], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	rawTransaction.TxOuts[mpcAddr][AdaAsset] = fmt.Sprint((amount - uint64(tx.Body.Fee)))
+	log.Info("[Cardano]RawTx", "txhash", txhash.String(), "rest[ADA]", rawTransaction.TxOuts[mpcAddr][AdaAsset])
+	return tx, nil
+}
+
+func (b *Bridge) genTxBuilder(mpcAddr string, rawTransaction *RawTransaction, data *cardanosdk.AuxiliaryData) (*cardanosdk.TxBuilder, error) {
+	mpc, _ := cardanosdk.NewAddress(mpcAddr)
+	txBuilder := cardanosdk.NewTxBuilder(&cardanosdk.ProtocolParams{
+		CoinsPerUTXOWord: cardanosdk.Coin(rawTransaction.CoinsPerUTXOWord),
+		KeyDeposit:       cardanosdk.Coin(rawTransaction.KeyDeposit),
+		MinFeeA:          cardanosdk.Coin(rawTransaction.MinFeeA),
+		MinFeeB:          cardanosdk.Coin(rawTransaction.MinFeeB),
+	})
+	inputs := []*cardanosdk.TxInput{}
+	for index, utxoKey := range rawTransaction.TxIns {
+		txHash, err := cardanosdk.NewHash32(strings.TrimSpace(utxoKey.TxHash))
+		if err != nil {
+			return nil, err
+		}
+		adaAmount, err := common.GetBigIntFromStr(rawTransaction.TxInsAssets[index][AdaAsset])
+		if err != nil {
+			return nil, err
+		}
+		assetValue := cardanosdk.NewValue(cardanosdk.Coin(adaAmount.Uint64()))
+		for assetkey, assetAmount := range rawTransaction.TxInsAssets[index] {
+			if assetkey == AdaAsset {
+				continue
+			}
+			tmp := strings.Split(assetkey, ".")
+
+			value, err := common.GetBigIntFromStr(assetAmount)
+			if err != nil {
+				return nil, err
+			}
+			p := cardanosdk.NewPolicyIDFromHash(common.Hex2Bytes(tmp[0]))
+			an := cardanosdk.NewAssetName(string(common.Hex2Bytes(tmp[1])))
+			av := cardanosdk.BigNum(value.Uint64())
+			if assetValue.MultiAsset.Get(p) == nil {
+				assetValue.MultiAsset.Set(p, cardanosdk.NewAssets().Set(an, av))
+			} else {
+				assetValue.MultiAsset.Get(p).Set(an, av)
+			}
+			log.Info("TxInsAssets", "origin assetkey", assetkey, "policy", p.String(), "assetName", an.String(), "amount", value.Uint64())
+		}
+
+		log.Info("AddTxInsAssets", "txHash", txHash.String(), "TxIndex", utxoKey.TxIndex, "assetValue", assetValue.Coin)
+		inputs = append(inputs, cardanosdk.NewTxInput(txHash, uint(utxoKey.TxIndex), assetValue))
+	}
+	if len(rawTransaction.TxOuts) > 2 {
+		return nil, tokens.ErrOutputLength
+	}
+	var txOut *cardanosdk.TxOutput
+	for address, assets := range rawTransaction.TxOuts {
+		if address == mpcAddr {
+			continue
+		}
+		receiver, err := cardanosdk.NewAddress(strings.TrimSpace(address))
+		if err != nil {
+			return nil, err
+		}
+		adaAmount, err := common.GetBigIntFromStr(assets[AdaAsset])
+		if err != nil {
+			return nil, err
+		}
+		outValue := cardanosdk.NewValue(cardanosdk.Coin(adaAmount.Uint64()))
+		txOut = cardanosdk.NewTxOutput(receiver, outValue)
+		for asset, amount := range assets {
+			if asset == AdaAsset {
+				continue
+			}
+			tmp := strings.Split(asset, ".")
+
+			value, err := common.GetBigIntFromStr(amount)
+			if err != nil {
+				return nil, err
+			}
+			p := cardanosdk.NewPolicyIDFromHash(common.Hex2Bytes(tmp[0]))
+			an := cardanosdk.NewAssetName(string(common.Hex2Bytes(tmp[1])))
+			av := cardanosdk.BigNum(value.Uint64())
+			if outValue.MultiAsset.Get(p) == nil {
+				outValue.MultiAsset.Set(p, cardanosdk.NewAssets().Set(an, av))
+			} else {
+				outValue.MultiAsset.Get(p).Set(an, av)
+			}
+			log.Info("TxOutAssets", "origin assetkey", asset, "policy", p.String(), "assetName", an.String(), "amount", value.Uint64())
+		}
+		log.Info("AddTxOutAssets", "receiver", receiver.String(), "ada", adaAmount.Uint64())
+	}
+	if rawTransaction.Mint != nil {
+		for assetNameStr, amount := range rawTransaction.Mint {
+			mintAmount, err := common.GetBigIntFromStr(amount)
+			if err != nil {
+				return nil, err
+			}
+			policyKey, policyScript, policyID := b.GetAssetPolicy(assetNameStr)
+			assetName := cardanosdk.NewAssetName(assetNameStr)
+			newAsset := cardanosdk.NewMint().
+				Set(
+					policyID,
+					cardanosdk.NewMintAssets().
+						Set(assetName, mintAmount),
+				)
+			txBuilder.AddNativeScript(policyScript)
+			txBuilder.Mint(newAsset)
+			txBuilder.Sign(policyKey.PrvKey())
+		}
+	}
+
+	txBuilder.AddInputs(inputs...)
+	if txOut != nil {
+		txBuilder.AddOutputs(txOut)
+	}
+	txBuilder.SetTTL(rawTransaction.Slot + TxTimeOut)
+	txBuilder.AddChangeIfNeeded(mpc)
+	txBuilder.Sign(b.FakePrikey)
+	if data != nil {
+		txBuilder.AddAuxiliaryData(data)
+	}
+	return txBuilder, nil
+}
+
+func (b *Bridge) GetAssetPolicy(name string) (crypto.XPrvKey, cardanosdk.NativeScript, cardanosdk.PolicyID) {
+	assetPolicy := params.GetCustom(b.ChainConfig.ChainID, "AssetPolicyKey")
+	isAppendName, _ := strconv.ParseBool(params.GetCustom(b.ChainConfig.ChainID, "AppendName"))
+	if isAppendName {
+		assetPolicy = assetPolicy + name
+	}
+	policyKey := crypto.NewXPrvKeyFromEntropy([]byte(assetPolicy), "")
+	policyScript, err := cardanosdk.NewScriptPubKey(policyKey.PubKey())
+	if err != nil {
+		panic(err)
+	}
+	policyID, err := cardanosdk.NewPolicyID(policyScript)
+	if err != nil {
+		panic(err)
+	}
+	return policyKey, policyScript, policyID
+}
+
+// func CalcMinFee(rawTransaction *RawTransaction) (string, error) {
+// 	txBodyPath := RawPath + rawTransaction.OutFile + RawSuffix
+// 	cmdString := fmt.Sprintf(CalcMinFeeCmd, txBodyPath, len(rawTransaction.TxIns), len(rawTransaction.TxOuts))
+// 	if execRes, err := ExecCmd(cmdString, " "); err != nil {
+// 		return "", err
+// 	} else {
+// 		return execRes, nil
+// 	}
+// }
 
 func (b *Bridge) initExtra(args *tokens.BuildTxArgs) (extra *tokens.AllExtras, err error) {
 	extra = args.Extra
@@ -308,12 +491,19 @@ func (b *Bridge) GetTransactionChainingMap(assetName string, amount *big.Int) (m
 		if balance, err := common.GetBigIntFromStr(assetBalance); err != nil {
 			return nil, err
 		} else {
+			maxfee := big.NewInt(0).SetUint64(b.calcMaxFee())
 			if assetName == AdaAsset {
-				needAmount.Add(needAmount, DefaultAdaAmount)
+				needAmount.Add(needAmount, maxfee)
+			} else {
+				ada, err := common.GetBigIntFromStr(TransactionChaining.AssetsMap[AdaAsset])
+				if err != nil || ada.Cmp(maxfee) < 0 {
+					return nil, err
+				}
 			}
 			if balance.Cmp(needAmount) >= 0 {
 				utxoKey := UtxoKey{TxHash: TransactionChaining.InputKey.TxHash, TxIndex: TransactionChaining.InputKey.TxIndex}
 				utxos[utxoKey] = TransactionChaining.AssetsMap
+				log.Info("Cardano UseTransactionChainingUtxo", "TxHash", TransactionChaining.InputKey.TxHash, "TxIndex", TransactionChaining.InputKey.TxIndex)
 				return utxos, nil
 			}
 		}
@@ -322,6 +512,15 @@ func (b *Bridge) GetTransactionChainingMap(assetName string, amount *big.Int) (m
 }
 
 func (b *Bridge) QueryUtxoOnChain(address string) (map[UtxoKey]AssetsMap, error) {
+	useAPI, _ := strconv.ParseBool(params.GetCustom(b.ChainConfig.ChainID, "UseAPI"))
+	if useAPI {
+		return b.QueryUtxoByAPI(address)
+	} else {
+		return b.QueryUtxoByGQL(address)
+	}
+}
+
+func (b *Bridge) QueryUtxoByGQL(address string) (map[UtxoKey]AssetsMap, error) {
 	utxos := make(map[UtxoKey]AssetsMap)
 	if outputs, err := b.GetUtxosByAddress(address); err != nil {
 		return nil, err
@@ -333,6 +532,64 @@ func (b *Bridge) QueryUtxoOnChain(address string) (map[UtxoKey]AssetsMap, error)
 				utxos[utxoKey][AdaAsset] = output.Value
 				for _, token := range output.Tokens {
 					utxos[utxoKey][token.Asset.PolicyId+"."+token.Asset.AssetName] = token.Quantity
+				}
+			}
+		}
+		return utxos, nil
+	}
+}
+
+func (b *Bridge) QueryUtxoByAPI(address string) (map[UtxoKey]AssetsMap, error) {
+	utxos := make(map[UtxoKey]AssetsMap)
+	addr, _ := cardanosdk.NewAddress(address)
+	outputs, err := b.RpcClient.UTxOs(addr)
+	if err != nil {
+		return nil, err
+	}
+	for _, output := range outputs {
+		utxoKey := UtxoKey{TxHash: output.TxHash.String(), TxIndex: output.Index}
+		if !TransactionChainingKeyCache.SpentUtxoMap[utxoKey] {
+			utxos[utxoKey] = make(AssetsMap)
+			utxos[utxoKey][AdaAsset] = strconv.FormatUint(uint64(output.Amount.Coin), 10)
+			for _, policyID := range output.Amount.MultiAsset.Keys() {
+				for _, assetName := range output.Amount.MultiAsset.Get(policyID).Keys() {
+					utxos[utxoKey][policyID.String()+"."+common.Bytes2Hex(assetName.Bytes())] = strconv.FormatUint(uint64(output.Amount.MultiAsset.Get(policyID).Get(assetName)), 10)
+				}
+			}
+		}
+	}
+	return utxos, nil
+}
+
+func (b *Bridge) QueryUtxoOnChainByAsset(address string, asset string) (map[UtxoKey]AssetsMap, error) {
+	utxos := make(map[UtxoKey]AssetsMap)
+	if outputs, err := b.GetUtxosByAddress(address); err != nil {
+		return nil, err
+	} else {
+		for _, output := range *outputs {
+			utxoKey := UtxoKey{TxHash: output.TxHash, TxIndex: output.Index}
+			if !TransactionChainingKeyCache.SpentUtxoMap[utxoKey] {
+				if asset == AdaAsset {
+					utxos[utxoKey] = make(AssetsMap)
+					utxos[utxoKey][AdaAsset] = output.Value
+					for _, token := range output.Tokens {
+						utxos[utxoKey][token.Asset.PolicyId+"."+token.Asset.AssetName] = token.Quantity
+					}
+				} else {
+					found := false
+					for _, token := range output.Tokens {
+						if token.Asset.PolicyId+"."+token.Asset.AssetName == asset {
+							found = true
+							break
+						}
+					}
+					if found {
+						utxos[utxoKey] = make(AssetsMap)
+						utxos[utxoKey][AdaAsset] = output.Value
+						for _, token := range output.Tokens {
+							utxos[utxoKey][token.Asset.PolicyId+"."+token.Asset.AssetName] = token.Quantity
+						}
+					}
 				}
 			}
 		}

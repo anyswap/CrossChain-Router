@@ -3,6 +3,7 @@ package eth
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"math/big"
 	"strings"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
+	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/eth/abicoder"
 	"github.com/anyswap/CrossChain-Router/v3/types"
@@ -33,6 +35,9 @@ var (
 	// v7 LogAnyCall(address,string,bytes,uint256,uint256,string,uint256,bytes)
 	LogAnyCallV7Topic2 = common.FromHex("0x36850177870d3e3dca07a29dcdc3994356392b81c60f537c1696468b1a01e61d")
 	AnyExecV7FuncHash  = common.FromHex("0xd7328bad")
+
+	// anycall usdc
+	LogMessageSentTopic = common.FromHex("0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036")
 
 	defMinReserveBudget = big.NewInt(1e16)
 )
@@ -141,6 +146,15 @@ func (b *Bridge) verifyAnyCallSwapTx(txHash string, logIndex int, allowUnstable 
 	err = b.verifyAnyCallSwapTxLog(swapInfo, receipt.Logs[logIndex])
 	if err != nil {
 		return swapInfo, err
+	}
+
+	anycallSwapInfo := swapInfo.AnyCallSwapInfo
+	isUsdcAnycall := len(anycallSwapInfo.ExtData) == 4 && bytes.Equal(anycallSwapInfo.ExtData, []byte("usdc"))
+	if isUsdcAnycall {
+		err = b.findMessageSentInfo(swapInfo, receipt.Logs, logIndex, allowUnstable)
+		if err != nil {
+			return swapInfo, err
+		}
 	}
 
 	err = b.checkAnyCallSwapInfo(swapInfo)
@@ -362,6 +376,39 @@ func (b *Bridge) checkAnyCallSwapInfo(swapInfo *tokens.SwapTxInfo) error {
 	return nil
 }
 
+func (b *Bridge) findMessageSentInfo(swapInfo *tokens.SwapTxInfo, logs []*types.RPCLog, logIndex int, allowUnstable bool) error {
+	for i := logIndex - 1; i >= 0; i-- {
+		rlog := logs[i]
+		logTopics := rlog.Topics
+		if len(logTopics) == 1 && bytes.Equal(logTopics[0].Bytes(), LogMessageSentTopic) {
+			anycallSwapInfo := swapInfo.SwapInfo.AnyCallSwapInfo
+			if anycallSwapInfo == nil {
+				return errors.New("anycall without swapinfo")
+			}
+			messageBytes, err := abicoder.ParseBytesInData(*rlog.Data, 0)
+			if err != nil {
+				return err
+			}
+			anycallSwapInfo.Message = messageBytes
+			messageHash := common.Keccak256Hash(messageBytes)
+			log.Info("find message sent info success", "txHash", swapInfo.Hash, "logIndex", logIndex, "msgIndex", i, "message", common.ToHex(messageBytes), "messageHash", messageHash.String())
+
+			// only the swap server need get attestation
+			if params.IsSwapServer && !allowUnstable {
+				var attestation *USDCAttestation
+				attestation, err = GetUSDCAttestation(messageHash)
+				if err != nil {
+					return fmt.Errorf("%w. %v %v", tokens.ErrGetAttestationFailed, messageHash.String(), err)
+				}
+				anycallSwapInfo.Attestation = attestation.Attestation
+				log.Info("get attestation success", "txHash", swapInfo.Hash, "logIndex", logIndex, "msgHash", messageHash.String(), "attestation", attestation.Attestation, "status", attestation.Status)
+			}
+			return nil
+		}
+	}
+	return tokens.ErrMessageSentNotFound
+}
+
 func (b *Bridge) buildAnyCallSwapTxInput(args *tokens.BuildTxArgs) (err error) {
 	if b.ChainConfig.ChainID != args.ToChainID.String() {
 		return errors.New("anycall to chainId mismatch")
@@ -377,6 +424,17 @@ func (b *Bridge) buildAnyCallSwapTxInput(args *tokens.BuildTxArgs) (err error) {
 		return err
 	}
 
+	callData := anycallSwapInfo.CallData
+	if len(anycallSwapInfo.Attestation) > 0 {
+		// format is (bytes _calldata, string _swapid, bytes _message, bytes _attestation)
+		callData = abicoder.PackData(
+			callData,
+			args.GetUniqueSwapIdentifier(),
+			anycallSwapInfo.Message,
+			anycallSwapInfo.Attestation,
+		)
+	}
+
 	var input []byte
 	switch params.GetSwapSubType() {
 	case tokens.AnycallSubTypeV7:
@@ -390,7 +448,7 @@ func (b *Bridge) buildAnyCallSwapTxInput(args *tokens.BuildTxArgs) (err error) {
 		}
 		input = abicoder.PackDataWithFuncHash(funcHash,
 			common.HexToAddress(anycallSwapInfo.CallTo),
-			anycallSwapInfo.CallData,
+			callData,
 			anycallSwapInfo.AppID,
 			common.HexToHash(args.SwapID),
 			common.HexToAddress(anycallSwapInfo.CallFrom),
@@ -433,6 +491,27 @@ func (b *Bridge) buildAnyCallSwapTxInput(args *tokens.BuildTxArgs) (err error) {
 
 	routerContract := b.GetRouterContract("")
 	args.To = routerContract // to
+	args.SwapValue = big.NewInt(0)
 
 	return nil
+}
+
+// USDCAttestation usdc attestation
+type USDCAttestation struct {
+	Attestation hexutil.Bytes `json:"attestation"`
+	Status      string        `json:"status"`
+}
+
+// GetUSDCAttestation get usdc attestation
+func GetUSDCAttestation(messageHash common.Hash) (*USDCAttestation, error) {
+	attestationURL := strings.TrimSuffix(params.GetAttestationServer(), "/")
+	if attestationURL == "" {
+		return nil, tokens.ErrNoAttestationServer
+	}
+
+	url := fmt.Sprintf("%v/attestations/%v", attestationURL, messageHash.String())
+
+	var res *USDCAttestation
+	err := client.RPCGetWithTimeout(&res, url, 60)
+	return res, err
 }

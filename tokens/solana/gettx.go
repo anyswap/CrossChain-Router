@@ -20,8 +20,7 @@ func (b *Bridge) GetTransactionStatus(txHash string) (*tokens.TxStatus, error) {
 	}
 
 	var txStatus tokens.TxStatus
-	// TODO The first message.header.numRequiredSignatures public keys must sign the transaction.
-	// txStatus.Sender = txm.Transaction.Message.AccountKeys[0].String()
+
 	txStatus.BlockHeight = uint64(txm.Slot)
 	txStatus.BlockHash = txm.Transaction.Message.RecentBlockhash.String()
 	txStatus.BlockTime = uint64(txm.BlockTime)
@@ -39,7 +38,7 @@ func (b *Bridge) GetTransactionStatus(txHash string) (*tokens.TxStatus, error) {
 		}
 	}
 
-	txStatus.Receipt = txm.Meta
+	txStatus.Receipt = txm
 	return &txStatus, nil
 }
 
@@ -78,7 +77,6 @@ func (b *Bridge) getTransactionMeta(swapInfo *tokens.SwapTxInfo, allowUnstable b
 		return nil, tokens.ErrTxBeforeInitialHeight
 	}
 
-	// swapInfo.From = txStatus.Sender         // From
 	swapInfo.Height = txStatus.BlockHeight  // Height
 	swapInfo.Timestamp = txStatus.BlockTime // Timestamp
 
@@ -86,10 +84,15 @@ func (b *Bridge) getTransactionMeta(swapInfo *tokens.SwapTxInfo, allowUnstable b
 		return nil, tokens.ErrTxNotStable
 	}
 
-	txm, ok := txStatus.Receipt.(*types.TransactionMeta)
+	txm, ok := txStatus.Receipt.(*types.TransactionWithMeta)
 	if !ok || !txm.IsStatusOk() {
-		return txm, tokens.ErrTxWithWrongStatus
+		return nil, tokens.ErrTxWithWrongStatus
 	}
 
-	return txm, nil
+	if txm.Transaction == nil || len(txm.Transaction.Message.AccountKeys) == 0 {
+		return nil, tokens.ErrTxWithoutSigner
+	}
+	swapInfo.From = txm.Transaction.Message.AccountKeys[0].String()
+
+	return txm.Meta, nil
 }

@@ -1,5 +1,7 @@
 package cardano
 
+import cardanosdk "github.com/echovl/cardano-go"
+
 type TransactionChainingMap struct {
 	InputKey  UtxoKey   `json:"inputKey"`
 	AssetsMap AssetsMap `json:"assetsMap"`
@@ -81,20 +83,59 @@ type MetadataValue struct {
 type AssetsMap map[string]string
 
 type RawTransaction struct {
-	Fee     string               `json:"fee"`
-	TxIns   []UtxoKey            `json:"txIns"`
-	TxOuts  map[string]AssetsMap `json:"txOuts"`
-	Mint    AssetsMap            `json:"mint"`
-	TxIndex uint64               `json:"txIndex"`
-	OutFile string               `json:"outFile"`
+	// Fee string `json:"fee"`
+	TxIns            []UtxoKey            `json:"txIns"`
+	TxInsAssets      []AssetsMap          `json:"txInsAssets"`
+	TxOuts           map[string]AssetsMap `json:"txOuts"`
+	Mint             AssetsMap            `json:"mint"`
+	TxIndex          uint64               `json:"txIndex"`
+	SwapId           string               `json:"swapId"`
+	KeyDeposit       uint64               `json:"keyDeposit"`
+	CoinsPerUTXOWord uint64               `json:"coinsPerUTXOWord"`
+	MinFeeA          uint64               `json:"minFeeA"`
+	MinFeeB          uint64               `json:"minFeeB"`
+	Slot             uint64               `json:"slot"`
 }
 
 func (*RawTransaction) ProtoMessage() {}
 
 type SignedTransaction struct {
-	FilePath  string    `json:"filePath"`
-	TxIns     []UtxoKey `json:"txIns"`
-	TxHash    string    `json:"txHash"`
-	TxIndex   uint64    `json:"txIndex"`
-	AssetsMap AssetsMap `json:"assetsMap"`
+	FilePath  string         `json:"filePath"`
+	TxIns     []UtxoKey      `json:"txIns"`
+	TxHash    string         `json:"txHash"`
+	TxIndex   uint64         `json:"txIndex"`
+	AssetsMap AssetsMap      `json:"assetsMap"`
+	Tx        *cardanosdk.Tx `json:"-"`
+}
+
+type TipResponse struct {
+	Cardano NodeTip `json:"cardano"`
+}
+
+type NodeTip struct {
+	Tip TipInfo `json:"tip"`
+}
+
+type TipInfo struct {
+	BlockNumber uint64 `json:"number"`
+	Epoch       Epoch  `json:"epoch"`
+	SlotNo      uint64 `json:"slotNo"`
+}
+
+type Epoch struct {
+	Number         uint64         `json:"number"`
+	ProtocolParams ProtocolParams `json:"protocolParams"`
+}
+
+type ProtocolParams struct {
+	CoinsPerUtxoByte uint64 `json:"coinsPerUtxoByte"`
+	KeyDeposit       uint64 `json:"keyDeposit"`
+	MaxBlockBodySize uint64 `json:"maxBlockBodySize"`
+	MaxBlockExMem    string `json:"maxBlockExMem"`
+	MaxTxSize        uint64 `json:"maxTxSize"`
+	MaxValSize       string `json:"maxValSize"`
+	MinFeeA          uint64 `json:"minFeeA"`
+	MinFeeB          uint64 `json:"minFeeB"`
+	MinPoolCost      uint64 `json:"minPoolCost"`
+	MinUTxOValue     uint64 `json:"minUTxOValue"`
 }

@@ -76,6 +76,11 @@ var (
 	ErrOutputIndexSort        = errors.New("output not order by index asc")
 	ErrCmdArgVerify           = errors.New("cmd args verify fails")
 	ErrAggregateTx            = errors.New("aggregate tx fails")
+	ErrNilSwapValue           = errors.New("swap value is nil")
+	ErrMessageSentNotFound    = errors.New("message sent not found")
+	ErrNoAttestationServer    = errors.New("no attesttation server")
+	ErrGetAttestationFailed   = errors.New("get attesttation failed")
+	ErrTxWithoutSigner        = errors.New("tx without signer")
 )
 
 // errors should register in router swap
