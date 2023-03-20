@@ -29,7 +29,7 @@ var (
 	paramAmount     uint64
 	paramMemo       string
 	paramGasLimit   = uint64(200000)
-	paramFee        = "1usei"
+	paramFee        string
 	paramSequence   uint64
 	paramPublicKey  string
 	paramPrivateKey string
@@ -202,14 +202,14 @@ Parameters:`)
 	flag.StringVar(&paramURLs, "url", "", "urls (comma separated)")
 	flag.StringVar(&paramConfigFile, "config", "", "config file to init mpc and gateway")
 	flag.StringVar(&paramChainID, "chainID", "", "chain id")
-	flag.StringVar(&paramPrefix, "prefix", "sei", "bech32 prefix for account")
+	flag.StringVar(&paramPrefix, "prefix", "", "bech32 prefix for account")
 	flag.StringVar(&paramSender, "sender", "", "sender address")
 	flag.StringVar(&paramTo, "to", "", "to address")
 	flag.StringVar(&paramDenom, "denom", "", "denom")
 	flag.Uint64Var(&paramAmount, "amount", paramAmount, "mint amount")
 	flag.Uint64Var(&paramGasLimit, "gasLimit", paramGasLimit, "gas limit")
 	flag.Uint64Var(&paramSequence, "sequence", paramSequence, "sequence number")
-	flag.StringVar(&paramFee, "fee", paramFee, "tx fee")
+	flag.StringVar(&paramFee, "fee", "", "tx fee")
 	flag.StringVar(&paramPublicKey, "publicKey", "", "public Key")
 	flag.StringVar(&paramPrivateKey, "privateKey", "", "private key")
 	flag.StringVar(&paramMemo, "memo", "", "tx memo")
@@ -223,6 +223,25 @@ Parameters:`)
 			log.Fatal("wrong param chainID", "err", err)
 		}
 		chainID = cid
+	}
+
+	if paramPrefix == "" {
+		log.Fatal("must cofig -prefix")
+	}
+	if paramDenom == "" {
+		log.Fatal("must cofig -denom")
+	}
+	if paramFee == "" {
+		log.Fatal("must cofig -fee")
+	}
+	if paramSender == "" || paramTo == "" {
+		log.Fatal("must cofig -sender and -to")
+	}
+	if paramPublicKey == "" {
+		log.Fatal("must cofig -publicKey")
+	}
+	if paramPrivateKey == "" || paramConfigFile == "" {
+		log.Fatal("must cofig -privateKey or -config")
 	}
 
 	log.Info("init flags finished")
