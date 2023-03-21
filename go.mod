@@ -27,6 +27,8 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/rpc v1.2.0
 	github.com/gorilla/websocket v1.5.0
+	github.com/iotaledger/hive.go v0.0.0-20211011085923-fd2eb0a47bf8
+	github.com/iotaledger/iota.go/v2 v2.0.1
 	github.com/lestrrat-go/file-rotatelogs v2.4.0+incompatible
 	github.com/mr-tron/base58 v1.2.0
 	github.com/near/borsh-go v0.3.1
@@ -74,7 +76,7 @@ require (
 	github.com/decred/dcrd/crypto/blake256 v1.0.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
 	github.com/dfuse-io/logging v0.0.0-20201110202154-26697de88c79 // indirect
-	github.com/dgraph-io/badger/v2 v2.2007.2 // indirect
+	github.com/dgraph-io/badger/v2 v2.2007.3 // indirect
 	github.com/dgraph-io/ristretto v0.1.0 // indirect
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
@@ -113,6 +115,7 @@ require (
 	github.com/hashicorp/yamux v0.0.0-20181012175058-2f1d1f20f75d // indirect
 	github.com/hdevalence/ed25519consensus v0.1.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
+	github.com/iotaledger/iota.go v1.0.0 // indirect
 	github.com/ipfs/go-log/v2 v2.5.1 // indirect
 	github.com/jmhodges/levigo v1.0.0 // indirect
 	github.com/jonboulle/clockwork v0.3.0 // indirect
