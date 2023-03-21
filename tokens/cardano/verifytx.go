@@ -167,6 +167,9 @@ func (b *Bridge) parseTxOutput(output Output, logIndex int) (*Token, error) {
 				}, nil
 			}
 		}
+		if len(output.Tokens) > 1 {
+			return nil, tokens.ErrMpcAddrMissMatch
+		}
 		return &output.Tokens[logIndex-1], nil
 	} else {
 		return nil, tokens.ErrMpcAddrMissMatch
