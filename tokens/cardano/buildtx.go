@@ -94,10 +94,19 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 }
 
 func (b *Bridge) BuildTx(swapId, receiver, assetId string, amount *big.Int, utxos map[UtxoKey]AssetsMap) (*RawTransaction, error) {
-	log.Infof("Cardano BuildTx:\nreceiver:%+v\nassetId:%+v\namount:%+v\nutxos:%+v\n", receiver, assetId, amount, utxos)
+	log.Infof("Cardano BuildTx:\nreceiver:%+v\nassetId:%+v\namount:%+v\nutxos:%+v\nprotocolParams:%+v \n", receiver, assetId, amount, utxos, b.ProtocolParams)
 
 	txIns := []UtxoKey{}
 	txInsAssets := []AssetsMap{}
+
+	nodeTip, err := b.GetTip()
+	if err != nil {
+		return nil, err
+	}
+
+	if b.ProtocolParams == nil || b.calcMaxFee() == 0 {
+		return nil, fmt.Errorf("ProtocolParams is empty")
+	}
 
 	// max tx size fee + output min ada
 	adaRequired := new(big.Int).SetUint64(b.calcMaxFee() + FixAdaAmount.Uint64())
@@ -137,14 +146,6 @@ func (b *Bridge) BuildTx(swapId, receiver, assetId string, amount *big.Int, utxo
 		return nil, fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, "ada not enough, below "+FixAdaAmount.String())
 	}
 
-	// pparams, err := b.RpcClient.ProtocolParams()
-	// if err != nil {
-	// 	return nil, err
-	// }
-	nodeTip, err := b.GetTip()
-	if err != nil {
-		return nil, err
-	}
 	rawTransaction := &RawTransaction{
 		SwapId:           swapId,
 		TxOuts:           make(map[string]AssetsMap),
@@ -194,6 +195,7 @@ func (b *Bridge) BuildTx(swapId, receiver, assetId string, amount *big.Int, utxo
 		}
 	}
 
+	log.Infof("Cardano BuildTx:\nrawTransaction:%+v", rawTransaction)
 	return rawTransaction, nil
 }
 
@@ -264,7 +266,7 @@ func buildTxAndAdjustRestAda(txBuilder *cardanosdk.TxBuilder, rawTransaction *Ra
 		return nil, err
 	}
 	rawTransaction.TxOuts[mpcAddr][AdaAsset] = fmt.Sprint((amount - uint64(tx.Body.Fee)))
-	log.Info("[Cardano]RawTx", "txhash", txhash.String(), "rest[ADA]", rawTransaction.TxOuts[mpcAddr][AdaAsset])
+	log.Info("[Cardano]RawTx", "txhash", txhash.String(), "rest[ADA]", rawTransaction.TxOuts[mpcAddr][AdaAsset], "fee:", uint64(tx.Body.Fee))
 	return tx, nil
 }
 
