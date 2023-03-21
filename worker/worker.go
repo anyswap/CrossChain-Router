@@ -37,8 +37,12 @@ func StartRouterSwapWork(isServer bool) {
 	StartPassBigValueJob()
 	time.Sleep(interval)
 
-	StartAggregateJob()
-	time.Sleep(interval)
+	//StartAggregateJob()
+	//time.Sleep(interval)
 
 	StartCheckFailedSwapJob()
+	time.Sleep(interval)
+
+	StartReswapJob()
+	time.Sleep(interval)
 }

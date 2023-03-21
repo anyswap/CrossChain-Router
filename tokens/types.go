@@ -17,7 +17,10 @@ const (
 	ERC20SwapType
 	NFTSwapType
 	AnyCallSwapType
+
+	// special flags, do not use in register
 	ERC20SwapTypeMixPool
+	SapphireRPCType
 
 	MaxValidSwapType
 )
@@ -50,6 +53,8 @@ func (s SwapType) String() string {
 		return "anycallswap"
 	case ERC20SwapTypeMixPool:
 		return "mixpool"
+	case SapphireRPCType:
+		return "sapphireRPCType"
 	default:
 		return "unknownswap"
 	}
@@ -217,25 +222,18 @@ type BuildTxArgs struct {
 
 // AllExtras struct
 type AllExtras struct {
-	EthExtra   *EthExtraArgs `json:"ethExtra,omitempty"`
-	ReplaceNum uint64        `json:"replaceNum,omitempty"`
-	Sequence   *uint64       `json:"sequence,omitempty"`
-	Fee        *string       `json:"fee,omitempty"`
-	Gas        *uint64       `json:"gas,omitempty"`
-	RawTx      hexutil.Bytes `json:"rawTx,omitempty"`
-	BlockHash  *string       `json:"blockHash,omitempty"`
-
-	// calculated value
-	BridgeFee *big.Int `json:"bridgeFee,omitempty"`
-}
-
-// EthExtraArgs struct
-type EthExtraArgs struct {
-	Gas       *uint64  `json:"gas,omitempty"`
-	GasPrice  *big.Int `json:"gasPrice,omitempty"`
-	GasTipCap *big.Int `json:"gasTipCap,omitempty"`
-	GasFeeCap *big.Int `json:"gasFeeCap,omitempty"`
-	Nonce     *uint64  `json:"nonce,omitempty"`
+	Gas         *uint64       `json:"gas,omitempty"`
+	GasPrice    *big.Int      `json:"gasPrice,omitempty"`
+	GasTipCap   *big.Int      `json:"gasTipCap,omitempty"`
+	GasFeeCap   *big.Int      `json:"gasFeeCap,omitempty"`
+	Sequence    *uint64       `json:"sequence,omitempty"`
+	ReplaceNum  uint64        `json:"replaceNum,omitempty"`
+	Fee         *string       `json:"fee,omitempty"`
+	RawTx       hexutil.Bytes `json:"rawTx,omitempty"`
+	BlockHash   *string       `json:"blockHash,omitempty"`
+	BlockNumber *uint64       `json:"blockNumber,omitempty"`
+	TTL         *uint64       `json:"ttl,omitempty"`
+	BridgeFee   *big.Int      `json:"bridgeFee,omitempty"`
 }
 
 // GetReplaceNum get rplace swap count
@@ -264,16 +262,19 @@ func (args *BuildTxArgs) GetExtraArgs() *BuildTxArgs {
 
 // GetTxNonce get tx nonce
 func (args *BuildTxArgs) GetTxNonce() uint64 {
-	if args.Extra != nil {
-		if args.Extra.EthExtra != nil {
-			if args.Extra.EthExtra.Nonce != nil {
-				return *args.Extra.EthExtra.Nonce
-			}
-		} else if args.Extra.Sequence != nil {
-			return *args.Extra.Sequence
-		}
+	if args.Extra != nil && args.Extra.Sequence != nil {
+		return *args.Extra.Sequence
 	}
 	return 0
+}
+
+// SetTxNonce set tx nonce
+func (args *BuildTxArgs) SetTxNonce(nonce uint64) {
+	if args.Extra != nil {
+		args.Extra.Sequence = &nonce
+	} else {
+		args.Extra = &AllExtras{Sequence: &nonce}
+	}
 }
 
 // GetUniqueSwapIdentifier get unique swap identifier

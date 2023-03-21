@@ -106,6 +106,10 @@ func Bytes2Hex(d []byte) string {
 	return hex.EncodeToString(d)
 }
 
+func Bytes2HexWithPrefix(d []byte) string {
+	return "0x" + hex.EncodeToString(d)
+}
+
 // Hex2Bytes returns the bytes represented by the hexadecimal string str.
 func Hex2Bytes(str string) []byte {
 	h, _ := hex.DecodeString(str)

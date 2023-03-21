@@ -33,20 +33,9 @@ func main() {
 		log.Warnf("transaction:%+v", res)
 	}
 
-	if outputs, err := b.GetUtxosByAddress(paramAddress); err != nil {
+	if utxos, err := b.QueryUtxoByAPI(paramAddress); err != nil {
 		log.Fatal("get outputs by address error", "address", paramAddress, "err", err)
 	} else {
-		log.Warnf("outputs:%+v", outputs)
-		utxos := make(map[cardano.UtxoKey]cardano.AssetsMap)
-		for _, output := range *outputs {
-			utxoKey := cardano.UtxoKey{TxHash: output.TxHash, TxIndex: output.Index}
-			utxos[utxoKey] = make(cardano.AssetsMap)
-
-			utxos[utxoKey][cardano.AdaAsset] = output.Value
-			for _, token := range output.Tokens {
-				utxos[utxoKey][token.Asset.PolicyId+token.Asset.AssetName] = token.Quantity
-			}
-		}
 		log.Warnf("utxos:%+v", utxos)
 	}
 }
@@ -85,7 +74,7 @@ func initBridge() {
 		Confirmations: 1,
 	})
 
-	b.GetChainConfig().CheckConfig()
+	_ = b.GetChainConfig().CheckConfig()
 
 	b.InitAfterConfig()
 

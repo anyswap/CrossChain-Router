@@ -6,7 +6,6 @@ import (
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/btcsuite/btcutil/bech32"
-	"github.com/echovl/cardano-go"
 	cardanosdk "github.com/echovl/cardano-go"
 	"github.com/echovl/cardano-go/crypto"
 )
@@ -40,7 +39,7 @@ func (b *Bridge) PublicKeyToAddress(pubKeyHex string) (string, error) {
 	if b.GetChainConfig().GetChainID().Cmp(GetStubChainID(testnetNetWork)) == 0 {
 		network = cardanosdk.Testnet
 	}
-	enterpriseAddr, err := cardano.NewEnterpriseAddress(network, payment)
+	enterpriseAddr, err := cardanosdk.NewEnterpriseAddress(network, payment)
 	if err != nil {
 		return "", err
 	}

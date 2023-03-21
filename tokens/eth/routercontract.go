@@ -29,7 +29,7 @@ func (b *Bridge) GetPairFor(factory, token0, token1 string) (string, error) {
 	copy(data[:4], faunHash)
 	copy(data[4:36], common.HexToAddress(token0).Hash().Bytes())
 	copy(data[36:68], common.HexToAddress(token1).Hash().Bytes())
-	res, err := b.CallContract(factory, data, "latest")
+	res, err := b.EvmContractBridge.CallContract(factory, data, "latest")
 	if err != nil {
 		return "", err
 	}

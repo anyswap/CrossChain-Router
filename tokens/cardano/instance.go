@@ -14,4 +14,5 @@ type BridgeInterface interface {
 	QueryUtxoOnChain(address string) (map[UtxoKey]AssetsMap, error)
 	BuildAggregateTx(swapId string, utxos map[UtxoKey]AssetsMap) (*RawTransaction, error)
 	AggregateTx() (string, error)
+	VerifyAggregate(msgHash []string, args *tokens.BuildTxArgs) error
 }

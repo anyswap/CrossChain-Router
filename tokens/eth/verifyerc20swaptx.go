@@ -44,7 +44,7 @@ var (
 	}
 )
 
-func (b *Bridge) verifyERC20SwapTx(txHash string, logIndex int, allowUnstable bool) (*tokens.SwapTxInfo, error) {
+func (b *Bridge) VerifyERC20SwapTx(txHash string, logIndex int, allowUnstable bool) (*tokens.SwapTxInfo, error) {
 	swapInfo := &tokens.SwapTxInfo{SwapInfo: tokens.SwapInfo{ERC20SwapInfo: &tokens.ERC20SwapInfo{}}}
 	swapInfo.SwapType = tokens.ERC20SwapType // SwapType
 	swapInfo.Hash = strings.ToLower(txHash)  // Hash
@@ -444,7 +444,7 @@ func (b *Bridge) checkSwapWithPermit(swapInfo *tokens.SwapTxInfo) error {
 	}
 
 	if common.IsEqualIgnoreCase(swapInfo.TxTo, routerContract) {
-		tx, err := b.GetTransactionByHash(swapInfo.Hash)
+		tx, err := b.EvmContractBridge.GetTransactionByHash(swapInfo.Hash)
 		if err != nil {
 			return err
 		}

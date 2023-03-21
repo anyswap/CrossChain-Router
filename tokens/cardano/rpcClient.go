@@ -56,25 +56,17 @@ func GetUtxosByAddress(url, address string) (*[]Output, error) {
 	return &result.Outputs, nil
 }
 
-// func GetLatestBlockNumber() (uint64, error) {
-// 	if res, err := queryTipCmd(); err != nil {
-// 		return 0, err
-// 	} else {
-// 		return res.Block, nil
-// 	}
-// }
-
-// func queryTipCmd() (*Tip, error) {
-// 	if execRes, err := ExecCmd(QueryTipCmd, " "); err != nil {
-// 		return nil, err
-// 	} else {
-// 		var tip Tip
-// 		if err := json.Unmarshal([]byte(execRes), &tip); err != nil {
-// 			return nil, err
-// 		}
-// 		return &tip, nil
-// 	}
-// }
+func GetCardanoTip(url string) (*TipResponse, error) {
+	request := &client.Request{}
+	request.Params = QueryTIPAndProtocolParams
+	request.ID = int(time.Now().UnixNano())
+	request.Timeout = rpcTimeout
+	var result TipResponse
+	if err := client.CardanoPostRequest(url, request, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
 
 // BlockfrostNode implements Node using the blockfrost API.
 type BlockfrostNode struct {
@@ -264,17 +256,7 @@ func (b *BlockfrostNode) GetTransactionMetadataByHash(txHash string) (*[]blockfr
 	return &txm, err
 }
 
-func (b *BlockfrostNode) GetUtxosByAddress(url, address string) (*[]Output, error) {
-	request := &client.Request{}
-	request.Params = fmt.Sprintf(QueryOutputs, address)
-	request.ID = int(time.Now().UnixNano())
-	request.Timeout = rpcTimeout
-	var result OutputsResult
-	if err := client.CardanoPostRequest(url, request, &result); err != nil {
-		return nil, err
-	}
-	if len(result.Outputs) == 0 {
-		return nil, tokens.ErrOutputLength
-	}
-	return &result.Outputs, nil
+func (b *BlockfrostNode) GetTransactionUtxoByHash(txHash string) (*blockfrost.TransactionUTXOs, error) {
+	utxos, err := b.client.TransactionUTXOs(context.Background(), txHash)
+	return &utxos, err
 }
