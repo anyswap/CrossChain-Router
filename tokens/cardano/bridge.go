@@ -252,7 +252,7 @@ func (b *Bridge) GetTransactionByHash(txHash string) (*Transaction, error) {
 			})
 		}
 		output := []Output{}
-		for _, v := range utxos.Outputs {
+		for index, v := range utxos.Outputs {
 			ts := []Token{}
 			var value string
 			for _, a := range v.Amount {
@@ -273,6 +273,7 @@ func (b *Bridge) GetTransactionByHash(txHash string) (*Transaction, error) {
 				Address: v.Address,
 				Value:   value,
 				Tokens:  ts,
+				Index:   uint64(index),
 			})
 		}
 
