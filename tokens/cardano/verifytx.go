@@ -1,10 +1,12 @@
 package cardano
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
@@ -55,23 +57,36 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 	swapInfo.Hash = txHash                            // Hash
 	swapInfo.LogIndex = logIndex                      // LogIndex
 	swapInfo.FromChainID = b.ChainConfig.GetChainID() // FromChainID
+	log.Info("verifySwapoutTx", "txhash:", txHash, "logIndex:", logIndex)
 
 	if outputs, metadata, err := b.getTxOutputs(swapInfo, allowUnstable); err != nil {
 		return swapInfo, err
 	} else {
-		tempIndex := 0
 		outputIndex := 0
 		assetIndex := 0
-		for index, output := range outputs {
-			if index != int(output.Index) {
-				return nil, tokens.ErrOutputIndexSort
+		useAPI, _ := strconv.ParseBool(params.GetCustom(b.ChainConfig.ChainID, "UseAPI"))
+		if useAPI {
+			output := outputs[swapInfo.LogIndex]
+			if output.Address != b.GetChainConfig().RouterContract {
+				return swapInfo, tokens.ErrTxWithWrongContract
 			}
-			if logIndex > tempIndex+len(output.Tokens)+1 {
-				tempIndex += len(output.Tokens) + 1
-			} else {
-				outputIndex = index
-				assetIndex = logIndex - tempIndex - 1
-				break
+			if len(output.Tokens) > 0 {
+				assetIndex = 1
+			}
+			outputIndex = swapInfo.LogIndex
+		} else {
+			tempIndex := 0
+			for index, output := range outputs {
+				if index != int(output.Index) {
+					return nil, tokens.ErrOutputIndexSort
+				}
+				if logIndex > tempIndex+len(output.Tokens)+1 {
+					tempIndex += len(output.Tokens) + 1
+				} else {
+					outputIndex = index
+					assetIndex = logIndex - tempIndex - 1
+					break
+				}
 			}
 		}
 		if tokenInfo, err := b.parseTxOutput(outputs[outputIndex], assetIndex); err != nil {
@@ -94,6 +109,7 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 				return swapInfo, nil
 			}
 		}
+
 	}
 }
 
