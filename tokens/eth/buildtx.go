@@ -31,6 +31,9 @@ type SapphireRPCTx struct {
 
 // BuildRawTransaction build raw tx
 func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{}, err error) {
+	if params.UseProofSign() {
+		return b.CalcProofID(args)
+	}
 	if b.IsSapphireChain() && args.SwapType == tokens.SapphireRPCType {
 		return &SapphireRPCTx{
 			Raw:    args.Extra.RawTx,

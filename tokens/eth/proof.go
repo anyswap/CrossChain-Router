@@ -13,14 +13,26 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tools/crypto"
 )
 
-var (
-	errDontSupportProof = errors.New("don't support proof")
-)
+func (b *Bridge) verifyProofID(rawTx interface{}, msgHashes []string) error {
+	proofID, ok := rawTx.(string)
+	if !ok {
+		return tokens.ErrWrongProofID
+	}
+	if len(msgHashes) < 1 {
+		return tokens.ErrWrongCountOfMsgHashes
+	}
+	msgHash := msgHashes[0]
+	if proofID != msgHash {
+		log.Trace("proofID mismatch", "want", msgHash, "have", proofID)
+		return tokens.ErrProofIDMismatch
+	}
+	return nil
+}
 
 func (b *Bridge) CalcProofID(args *tokens.BuildTxArgs) (string, error) {
 	anycallSwapInfo := args.AnyCallSwapInfo
 	if anycallSwapInfo == nil {
-		return "", errDontSupportProof
+		return "", tokens.ErrDontSupportProof
 	}
 	nonce, err := common.GetBigIntFromStr(anycallSwapInfo.Nonce)
 	if err != nil {

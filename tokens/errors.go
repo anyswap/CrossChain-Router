@@ -96,6 +96,9 @@ var (
 	ErrGetBlockNumberByID     = errors.New("get block number by id error")
 	ErrSendTx                 = errors.New("send tx fails")
 	ErrGetAccount             = errors.New("get account fails")
+	ErrDontSupportProof       = errors.New("don't support proof")
+	ErrWrongProofID           = errors.New("wrong proofID")
+	ErrProofIDMismatch        = errors.New("proofID mismatch")
 )
 
 // errors should register in router swap

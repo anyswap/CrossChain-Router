@@ -8,6 +8,7 @@ import (
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/types"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -44,6 +45,9 @@ func (b *Bridge) GetTransactionStatus(txHash string) (*tokens.TxStatus, error) {
 
 // VerifyMsgHash verify msg hash
 func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) error {
+	if params.UseProofSign() {
+		return b.verifyProofID(rawTx, msgHashes)
+	}
 	if b.IsZKSync() {
 		return b.verifyZKSyncMsgHash(rawTx, msgHashes)
 	}
