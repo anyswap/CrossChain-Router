@@ -106,3 +106,7 @@ func (b *Bridge) GenerateProof(proofID string, args *tokens.BuildTxArgs) (string
 
 	return rsv, nil
 }
+
+func (b *Bridge) SubmitProof(proofID, proof string, args *tokens.BuildTxArgs) (string, error) {
+	return "", nil
+}

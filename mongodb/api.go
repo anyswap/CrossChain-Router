@@ -32,7 +32,8 @@ var (
 
 	maxCountOfResults = int64(1000)
 
-	errInvalidSwap = errors.New("invalid swap fields")
+	errInvalidSwap  = errors.New("invalid swap fields")
+	errInvalidProof = errors.New("invlaid proof")
 )
 
 // GetRouterSwapKey get router swap key
@@ -447,7 +448,12 @@ func UpdateRouterSwapProof(fromChainID, txid string, logindex int, proofID, proo
 		return ErrForbidUpdateProof
 	}
 
+	if proofID == "" || proof == "" {
+		return errInvalidProof
+	}
+
 	updates := bson.M{
+		"status":    ProofPrepared,
 		"proofID":   proofID,
 		"proof":     proof,
 		"timestamp": time.Now().Unix(),

@@ -27,6 +27,9 @@ var (
 
 	maxCheckFailedSwapLifetime       = int64(2 * 24 * 3600)
 	restIntervalInCheckFailedSwapJob = 60 * time.Second
+
+	maxSubmitProofLifetime       = int64(7 * 24 * 3600)
+	restIntervalInSubmitProofJob = 3 * time.Second
 )
 
 func now() int64 {

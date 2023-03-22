@@ -589,7 +589,12 @@ func doSwapWithProof(args *tokens.BuildTxArgs) (err error) {
 	}
 
 	logWorker("doSwap", "finish to process", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "value", originValue)
-	return err
+
+	res, err = mongodb.FindRouterSwapResult(fromChainID, txid, logIndex)
+	if err != nil {
+		return err
+	}
+	return submitProof(res)
 }
 
 func signAndSendTx(rawTx interface{}, args *tokens.BuildTxArgs) error {

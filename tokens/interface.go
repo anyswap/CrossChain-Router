@@ -53,6 +53,7 @@ type IBridge interface {
 
 	CalcProofID(args *BuildTxArgs) (string, error)
 	GenerateProof(proofID string, args *BuildTxArgs) (string, error)
+	SubmitProof(proofID, proof string, args *BuildTxArgs) (string, error)
 }
 
 // ISwapTrade interface

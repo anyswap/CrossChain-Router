@@ -33,6 +33,7 @@ func StartRouterSwapWork(isServer bool) {
 	time.Sleep(interval)
 
 	if params.UseProofSign() {
+		StartSubmitProofJob()
 		return
 	}
 

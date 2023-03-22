@@ -206,6 +206,11 @@ func (b *CrossChainBridgeBase) GenerateProof(proofID string, args *BuildTxArgs) 
 	return "", ErrNotImplemented
 }
 
+// SubmitProof submit proof
+func (b *CrossChainBridgeBase) SubmitProof(proofID, proof string, args *BuildTxArgs) (string, error) {
+	return "", ErrNotImplemented
+}
+
 // SetSwapConfigs set swap configs
 func SetSwapConfigs(swapCfgs *sync.Map) {
 	swapConfigMap = swapCfgs

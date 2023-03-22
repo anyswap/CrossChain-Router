@@ -50,6 +50,7 @@ const (
 	TxMaybeUnsafe     SwapStatus = 22
 	SwapoutForbidden  SwapStatus = 23
 	TxNeedReswap      SwapStatus = 24
+	ProofPrepared     SwapStatus = 25
 
 	KeepStatus SwapStatus = 255
 	Reswapping SwapStatus = 256
@@ -60,7 +61,7 @@ func (status SwapStatus) IsResultStatus() bool {
 	switch status {
 	case MatchTxEmpty, MatchTxNotStable, MatchTxStable,
 		MatchTxFailed, Reswapping, ManualMakeFail,
-		SwapoutForbidden, TxNeedReswap:
+		SwapoutForbidden, TxNeedReswap, ProofPrepared:
 		return true
 	default:
 		return false
@@ -115,6 +116,10 @@ func (status SwapStatus) String() string {
 		return "TxMaybeUnsafe"
 	case SwapoutForbidden:
 		return "SwapoutForbidden"
+	case TxNeedReswap:
+		return "TxNeedReswap"
+	case ProofPrepared:
+		return "ProofPrepared"
 
 	case KeepStatus:
 		return "KeepStatus"
