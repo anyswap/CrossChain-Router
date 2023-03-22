@@ -207,8 +207,8 @@ func (b *CrossChainBridgeBase) GenerateProof(proofID string, args *BuildTxArgs) 
 }
 
 // SubmitProof submit proof
-func (b *CrossChainBridgeBase) SubmitProof(proofID, proof string, args *BuildTxArgs) (string, error) {
-	return "", ErrNotImplemented
+func (b *CrossChainBridgeBase) SubmitProof(proofID, proof string, args *BuildTxArgs) (interface{}, string, error) {
+	return nil, "", ErrNotImplemented
 }
 
 // SetSwapConfigs set swap configs

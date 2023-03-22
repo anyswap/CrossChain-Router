@@ -7,6 +7,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mpc"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/eth/abicoder"
@@ -107,6 +108,32 @@ func (b *Bridge) GenerateProof(proofID string, args *tokens.BuildTxArgs) (string
 	return rsv, nil
 }
 
-func (b *Bridge) SubmitProof(proofID, proof string, args *tokens.BuildTxArgs) (string, error) {
-	return "", nil
+func (b *Bridge) SubmitProof(proofID, proof string, args *tokens.BuildTxArgs) (signedTx interface{}, txHash string, err error) {
+	if !params.IsTestMode && args.ToChainID.String() != b.ChainConfig.ChainID {
+		return nil, "", tokens.ErrToChainIDMismatch
+	}
+
+	switch args.SwapType {
+	case tokens.AnyCallSwapType:
+		err = b.buildAnyCallWithProofTxInput(proofID, proof, args)
+	default:
+		return nil, "", tokens.ErrDontSupportProof
+	}
+
+	if err != nil {
+		return nil, "", err
+	}
+
+	err = b.setDefaults(args)
+	if err != nil {
+		return nil, "", err
+	}
+
+	rawTx, err := b.buildTx(args)
+	if err != nil {
+		return nil, "", err
+	}
+
+	priKey := ""
+	return b.SignTransactionWithPrivateKey(rawTx, priKey)
 }

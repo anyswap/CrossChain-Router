@@ -2,6 +2,7 @@ package worker
 
 import (
 	"errors"
+	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
@@ -91,14 +92,14 @@ func submitProof(swap *mongodb.MgoSwapResult) (err error) {
 	if err != nil {
 		return err
 	}
-	destTx, err := resBridge.SubmitProof(swap.ProofID, swap.Proof, args)
+	signedTx, txHash, err := resBridge.SubmitProof(swap.ProofID, swap.Proof, args)
 	if err != nil {
 		return err
 	}
 
 	updates := &mongodb.SwapResultUpdateItems{
 		Status:    mongodb.MatchTxNotStable,
-		SwapTx:    destTx,
+		SwapTx:    txHash,
 		Timestamp: now(),
 	}
 	err = mongodb.UpdateRouterSwapResult(fromChainID, txid, logIndex, updates)
@@ -107,6 +108,20 @@ func submitProof(swap *mongodb.MgoSwapResult) (err error) {
 		return err
 	}
 
-	logWorker("submitproof", "submit proof success", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "destTx", destTx)
+	logWorker("submitproof", "submit proof success", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "txHash", txHash)
+
+	start := time.Now()
+	sentTxHash, err := sendSignedTransaction(resBridge, signedTx, args)
+	if err == nil && txHash != sentTxHash {
+		logWorkerError("submitproof", "send tx success but with different hash", errSendTxWithDiffHash,
+			"fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex,
+			"txHash", txHash, "sentTxHash", sentTxHash,
+			"timespent", time.Since(start).String())
+		_ = mongodb.UpdateRouterOldSwapTxs(fromChainID, txid, logIndex, sentTxHash)
+	} else if err == nil {
+		logWorker("submitproof", "send tx success",
+			"fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex,
+			"txHash", txHash, "timespent", time.Since(start).String())
+	}
 	return nil
 }

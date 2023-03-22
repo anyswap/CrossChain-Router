@@ -36,6 +36,8 @@ var (
 	LogAnyCallV7Topic2 = common.FromHex("0x36850177870d3e3dca07a29dcdc3994356392b81c60f537c1696468b1a01e61d")
 	AnyExecV7FuncHash  = common.FromHex("0xd7328bad")
 
+	AnyExecV7WithProofFuncHash = common.FromHex("ead8aaf4")
+
 	// anycall usdc
 	LogMessageSentTopic = common.FromHex("0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036")
 
@@ -514,4 +516,49 @@ func GetUSDCAttestation(messageHash common.Hash) (*USDCAttestation, error) {
 	var res *USDCAttestation
 	err := client.RPCGetWithTimeout(&res, url, 60)
 	return res, err
+}
+
+func (b *Bridge) buildAnyCallWithProofTxInput(proofID, proof string, args *tokens.BuildTxArgs) (err error) {
+	if b.ChainConfig.ChainID != args.ToChainID.String() {
+		return errors.New("anycall to chainId mismatch")
+	}
+
+	anycallSwapInfo := args.AnyCallSwapInfo
+	if anycallSwapInfo == nil {
+		return errors.New("build anycall swaptx without swapinfo")
+	}
+
+	var input []byte
+	switch params.GetSwapSubType() {
+	case tokens.AnycallSubTypeV7:
+		nonce, err := common.GetBigIntFromStr(anycallSwapInfo.Nonce)
+		if err != nil {
+			return err
+		}
+		flags, err := common.GetBigIntFromStr(anycallSwapInfo.Flags)
+		if err != nil {
+			return err
+		}
+		input = abicoder.PackDataWithFuncHash(
+			AnyExecV7WithProofFuncHash,
+			common.HexToAddress(anycallSwapInfo.CallTo),
+			anycallSwapInfo.CallData,
+			anycallSwapInfo.AppID,
+			anycallSwapInfo.ExtData,
+			args.LogIndex,
+			common.HexToHash(args.SwapID),
+			common.HexToAddress(anycallSwapInfo.CallFrom),
+			args.FromChainID,
+			nonce,
+			flags,
+		)
+	}
+
+	args.Input = (*hexutil.Bytes)(&input) // input
+
+	routerContract := b.GetRouterContract("")
+	args.To = routerContract // to
+	args.SwapValue = big.NewInt(0)
+
+	return nil
 }
