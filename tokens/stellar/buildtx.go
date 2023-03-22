@@ -3,11 +3,11 @@ package stellar
 import (
 	"errors"
 	"fmt"
-	"math"
 	"math/big"
 	"strconv"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
+	cmath "github.com/anyswap/CrossChain-Router/v3/common/math"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
@@ -77,7 +77,7 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 
 	// check XLM
 	if !b.checkXlmBalanceEnough(fromAccount) {
-		return nil, tokens.ErrMissTokenConfig
+		return nil, tokens.ErrTokenBalanceNotEnough
 	}
 
 	b.setExtraArgs(args)
@@ -99,8 +99,18 @@ func buildMemo(args *tokens.BuildTxArgs) *txnbuild.MemoHash {
 }
 
 func getPaymentAmount(amount *big.Int, token *tokens.TokenConfig) string {
-	value := float64(amount.Int64()) / math.Pow10(int(token.Decimals))
-	return fmt.Sprintf("%.7f", value)
+	decimals := cmath.BigPow(10, int64(token.Decimals))
+	i := new(big.Int).Div(amount, decimals)
+	f := new(big.Int).Sub(amount, new(big.Int).Mul(i, decimals))
+	if f.Int64() > 0 {
+		s := f.String()
+		if len(s) > 7 {
+			s = s[0:7]
+		}
+		return fmt.Sprintf("%s.%s", i.String(), s)
+	} else {
+		return i.String()
+	}
 }
 
 func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken string) (receiver string, amount *big.Int, err error) {

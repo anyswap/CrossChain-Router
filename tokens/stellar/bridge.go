@@ -97,9 +97,11 @@ func (b *Bridge) GetLatestBlockNumber() (num uint64, err error) {
 				err = err1
 				log.Warn("Try get latest block number failed", "error", err1)
 				continue
+			} else {
+				num = uint64(resp.Embedded.Records[0].Sequence)
+				err = nil
+				return
 			}
-			num = uint64(resp.Embedded.Records[0].Sequence)
-			return
 		}
 		time.Sleep(rpcRetryInterval)
 	}
@@ -136,13 +138,13 @@ func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
 				log.Warn("Try get transaction failed", "error", err1)
 				err = err1
 				continue
+			} else {
+				return &resp, nil
 			}
-			tx = &resp
-			return
 		}
 		time.Sleep(rpcRetryInterval)
 	}
-	return
+	return nil, err
 }
 
 // GetTransactionStatus impl
@@ -185,20 +187,22 @@ func (b *Bridge) GetBlockHash(num uint64) (hash string, err error) {
 				err = err1
 				log.Warn("Try get block hash failed", "error", err1)
 				continue
+			} else {
+				hash = resp.Hash
+				err = nil
+				return
 			}
-			hash = resp.Hash
-			return
 		}
 		time.Sleep(rpcRetryInterval)
 	}
 	return
 }
 
-// GetBlockTxids gets glock txids
+// GetBlockTxids gets block txids
 func (b *Bridge) GetBlockTxids(num uint64) (txs []string, err error) {
 	for i := 0; i < rpcRetryTimes; i++ {
-		txs = make([]string, 0)
 		for _, r := range b.Remotes {
+			txs = make([]string, 0)
 			request := horizonclient.TransactionRequest{
 				ForLedger: uint(num),
 				Limit:     rpcQueryLimit,
@@ -220,17 +224,21 @@ func (b *Bridge) GetBlockTxids(num uint64) (txs []string, err error) {
 					if err1 != nil {
 						err = err1
 						log.Warn("Try get block tx ids failed", "error", err1)
-						return
+						break
 					}
 				} else {
 					nextPage = false
 				}
 			}
+			if err != nil {
+				continue
+			}
+			err = nil
 			return
 		}
 		time.Sleep(rpcRetryInterval)
 	}
-	return txs, err
+	return
 }
 
 func isNativeAsset(assetType string) bool {
@@ -287,11 +295,13 @@ func (b *Bridge) GetAccount(address string) (acct *hProtocol.Account, err error)
 		for _, r := range b.Remotes {
 			resp, err1 := r.AccountDetail(destAccountRequest)
 			if err1 != nil {
+				err = err1
 				continue
+			} else {
+				acct = &resp
+				err = nil
+				return
 			}
-			err = err1
-			acct = &resp
-			return
 		}
 		time.Sleep(rpcRetryInterval)
 	}
@@ -315,8 +325,9 @@ func (b *Bridge) GetAsset(code, address string) (acct *hProtocol.AssetStat, err 
 				err = errors.New("asset code/issuer error")
 			} else {
 				acct = &resp.Embedded.Records[0]
+				err = nil
+				return
 			}
-			return
 		}
 		time.Sleep(rpcRetryInterval)
 	}
@@ -325,7 +336,13 @@ func (b *Bridge) GetAsset(code, address string) (acct *hProtocol.AssetStat, err 
 
 // GetFee get fee
 func (b *Bridge) GetFee() int {
-	return txnbuild.MinBaseFee
+	for _, r := range b.Remotes {
+		feestats, err := r.FeeStats()
+		if err == nil {
+			return int(feestats.FeeCharged.P50) * 2
+		}
+	}
+	return txnbuild.MinBaseFee * 10
 }
 
 // GetOperations get operations
@@ -335,8 +352,8 @@ func (b *Bridge) GetOperations(txHash string) (opts []interface{}, err error) {
 		Limit:          rpcQueryLimit,
 	}
 	for i := 0; i < rpcRetryTimes; i++ {
-		opts = make([]interface{}, 0)
 		for _, r := range b.Remotes {
+			opts = make([]interface{}, 0)
 			resp, err1 := r.Operations(req)
 			if err1 != nil {
 				continue
@@ -351,15 +368,18 @@ func (b *Bridge) GetOperations(txHash string) (opts []interface{}, err error) {
 					if err1 != nil {
 						err = err1
 						log.Warn("Try get block tx ids failed", "error", err1)
-						return nil, err
+						break
 					}
 				} else {
 					nextPage = false
 				}
 			}
+			if err != nil {
+				continue
+			}
 			return opts, nil
 		}
 		time.Sleep(rpcRetryInterval)
 	}
-	return opts, err
+	return
 }

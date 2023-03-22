@@ -1,6 +1,7 @@
 package stellar
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -27,9 +28,13 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error
 			}
 			if !resp.Successful {
 				log.Warn("send tx with error result", "result", resp.Successful, "message")
+				err = fmt.Errorf("swapin failed txhash:%s result %v", txHash, resp.Successful)
+				success = false
+			} else {
+				txHash = resp.Hash
+				success = true
 			}
-			txHash = resp.Hash
-			success = true
+			break
 		}
 		if success {
 			break

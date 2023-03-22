@@ -22,23 +22,21 @@ import (
 
 func (b *Bridge) verifyTransactionWithArgs(tx *txnbuild.Transaction, args *tokens.BuildTxArgs) error {
 	opts := tx.Operations()
-	if len(opts) == 0 {
-		return fmt.Errorf("no operation in transaction")
+	if len(opts) != 1 {
+		return fmt.Errorf("error operation size in transaction")
 	}
 
 	checkReceiver := args.Bind
 
-	for i := 0; i < len(opts); i++ {
-		op, ok := opts[i].(*txnbuild.Payment)
-		if !ok {
-			continue
-		}
+	op, ok := opts[0].(*txnbuild.Payment)
+	if !ok {
+		return fmt.Errorf("error operation")
+	}
 
-		to := op.Destination
+	to := op.Destination
 
-		if !strings.EqualFold(to, checkReceiver) {
-			return fmt.Errorf("[sign] verify tx receiver failed")
-		}
+	if !strings.EqualFold(to, checkReceiver) {
+		return fmt.Errorf("[sign] verify tx receiver failed")
 	}
 
 	return nil
