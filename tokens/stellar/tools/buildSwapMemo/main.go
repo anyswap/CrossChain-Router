@@ -9,7 +9,7 @@ import (
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
-	"github.com/stellar/go/txnbuild"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/stellar"
 )
 
 var (
@@ -31,7 +31,6 @@ func main() {
 
 	initFlags()
 
-	rtn := new(txnbuild.MemoHash)
 	chainId, ok := new(big.Int).SetString(paramChainID, 10)
 	if !ok {
 		log.Fatal("paramChainID format error")
@@ -40,22 +39,12 @@ func main() {
 	if paramAddress[:2] == "0x" || paramAddress[:2] == "0X" {
 		paramAddress = paramAddress[2:]
 	}
-	b, err := hex.DecodeString(paramAddress)
+
+	rtn, err := stellar.EncodeMemo(chainId, paramAddress)
 	if err != nil {
-		log.Fatal("paramAddress is not hex string")
+		log.Fatal("genMemo error", err)
 	}
-	c := chainId.Bytes()
-	fmt.Printf("chainId: %v  bytes: %v  \n", chainId, chainId.Bytes())
-	if len(b)+len(c) > 31 {
-		log.Fatal("build memo error")
-	}
-	rtn[0] = byte(len(b))
-	for i := 0; i < len(b); i++ {
-		rtn[i+1] = b[i]
-	}
-	for i := 0; i < len(c); i++ {
-		rtn[32-len(c)+i] = c[i]
-	}
+
 	memo := hex.EncodeToString(rtn[:])
 	fmt.Printf("memobytes: %v\n", rtn)
 	fmt.Printf("memo: %v\n", memo)

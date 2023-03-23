@@ -96,7 +96,7 @@ func (b *Bridge) buildSwapInfoFromOperation(txres *hProtocol.Transaction, op *op
 	erc20SwapInfo.TokenID = token.TokenID
 	swapInfo.SwapInfo = tokens.SwapInfo{ERC20SwapInfo: erc20SwapInfo}
 
-	if success := parseSwapMemos(swapInfo, txres.Memo); !success {
+	if success := checkSwapMemos(swapInfo, txres.Memo); !success {
 		log.Warn("wrong memos", "memos", txres.Memo)
 		return swapInfo, tokens.ErrWrongBindAddress
 	}

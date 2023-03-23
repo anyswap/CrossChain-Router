@@ -2,6 +2,7 @@ package stellar
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
@@ -108,21 +109,14 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 // memo[0] (=len): bind address bytes length
 // memo[1:len+1]: bind address bytes
 // memo[len+1:]:  tochainId big.Int bytes
-func parseSwapMemos(swapInfo *tokens.SwapTxInfo, memoStr string) bool {
+func checkSwapMemos(swapInfo *tokens.SwapTxInfo, memoStr string) bool {
 	if memoStr == "" {
 		return false
 	}
-	memobytes, err := base64.StdEncoding.DecodeString(memoStr)
-	if err != nil || len(memobytes) == 0 {
+	bindStr, bigToChainID := DecodeMemos(memoStr)
+	if bigToChainID == nil || bindStr == "" {
 		return false
 	}
-	addrLen := int(memobytes[0])
-	addEnd := 1 + addrLen
-	if len(memobytes) < addEnd+1 {
-		return false
-	}
-	bindStr := common.ToHex(memobytes[1:addEnd])
-	bigToChainID := new(big.Int).SetBytes(memobytes[addEnd:])
 	dstBridge := router.GetBridgeByChainID(bigToChainID.String())
 	if dstBridge == nil {
 		return false
@@ -133,4 +127,42 @@ func parseSwapMemos(swapInfo *tokens.SwapTxInfo, memoStr string) bool {
 		return true
 	}
 	return false
+}
+
+func DecodeMemos(memoStr string) (string, *big.Int) {
+	memobytes, err := base64.StdEncoding.DecodeString(memoStr)
+	if err != nil || len(memobytes) == 0 {
+		return "", nil
+	}
+	addrLen := int(memobytes[0])
+	addEnd := 1 + addrLen
+	if len(memobytes) < addEnd+1 {
+		return "", nil
+	}
+	bindStr := common.ToHex(memobytes[1:addEnd])
+	bigToChainID := new(big.Int).SetBytes(memobytes[addEnd:])
+	return bindStr, bigToChainID
+}
+
+func EncodeMemo(chainId *big.Int, bindAddr string) (*txnbuild.MemoHash, error) {
+	if common.HasHexPrefix(bindAddr) {
+		bindAddr = bindAddr[2:]
+	}
+	b, err := hex.DecodeString(bindAddr)
+	if err != nil {
+		return nil, err
+	}
+	c := chainId.Bytes()
+	if len(b)+len(c) > 31 {
+		return nil, fmt.Errorf("memo too long,chainID %s addr %s", chainId.String(), bindAddr)
+	}
+	rtn := new(txnbuild.MemoHash)
+	rtn[0] = byte(len(b))
+	for i := 0; i < len(b); i++ {
+		rtn[i+1] = b[i]
+	}
+	for i := 0; i < len(c); i++ {
+		rtn[32-len(c)+i] = c[i]
+	}
+	return rtn, nil
 }

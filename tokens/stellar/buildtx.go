@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
+	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	cmath "github.com/anyswap/CrossChain-Router/v3/common/math"
@@ -103,7 +104,7 @@ func getPaymentAmount(amount *big.Int, token *tokens.TokenConfig) string {
 	i := new(big.Int).Div(amount, decimals)
 	f := new(big.Int).Sub(amount, new(big.Int).Mul(i, decimals))
 	if f.Int64() > 0 {
-		s := f.String()
+		s := strings.TrimSuffix(f.String(), "0")
 		if len(s) > 7 {
 			s = s[0:7]
 		}
