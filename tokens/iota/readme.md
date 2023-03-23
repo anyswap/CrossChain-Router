@@ -33,6 +33,11 @@ iotaAddr: atoi1qz0mvjzjfwt5wcy8j8daw6avh67z77kquwkwzr5fvuu6pfzpjqgz7cptqex
 go run ./tokens/iota/tools/sendTransaction/main.go -n https://api.lb-0.h.chrysalis-devnet.iota.cafe -publicKey ae67243f1d58f57188335adc29a98e856e46c0cc38bd63558d6636fcd0eccc03 -privKey 4023b0cc68bff18b8ae595b3a1f315f925d187b083ffcdee5051a70086bbec0cae67243f1d58f57188335adc29a98e856e46c0cc38bd63558d6636fcd0eccc03 -to atoi1qz0mvjzjfwt5wcy8j8daw6avh67z77kquwkwzr5fvuu6pfzpjqgz7cptqex -index swapOut -data 0x1739648E7C1B23D6Da74177292B36aF7f286f643:4 -value 1000000
 ```
 
+```text
+4) keygen
+go run ./tokens/iota/tools/keygen/main.go
+```
+
 ## deploy step
 
 ```text
