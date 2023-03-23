@@ -57,6 +57,11 @@ func (config *RouterConfig) CheckConfig(isServer bool) (err error) {
 		if err != nil {
 			return err
 		}
+		if isServer &&
+			config.Extra.UseProofSign &&
+			len(config.Server.ProofSubmitters) == 0 {
+			return errors.New("no proof submitters")
+		}
 	}
 
 	if isServer {

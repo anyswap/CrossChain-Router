@@ -16,6 +16,11 @@ AccountBlackList = []
 43114 = []
 25    = []
 
+[[Server.ProofSubmitters]]
+Address = "XXXXXX"
+KeystoreFile = "/home/xxx/submitters/keystore1"
+PasswordFile = "/home/xxx/submitters/password1"
+
 # router sever config (server only)
 [Server]
 # administrators who can do admin work
