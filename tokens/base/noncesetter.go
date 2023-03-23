@@ -25,14 +25,18 @@ type recycleNonceRecord struct {
 	timestamp int64
 }
 
+type nonceLocks struct {
+	swapNonceLock        sync.RWMutex
+	recycleSwapNonceLock sync.RWMutex
+}
+
 // NonceSetterBase base nonce setter
 type NonceSetterBase struct {
 	*tokens.CrossChainBridgeBase
 	swapNonce    map[string]*uint64             // key is sender address
 	recycleNonce map[string]*recycleNonceRecord // key is sender address
 
-	swapNonceLock        sync.RWMutex
-	recycleSwapNonceLock sync.RWMutex
+	locks map[string]*nonceLocks
 }
 
 // NewNonceSetterBase new base nonce setter
@@ -40,16 +44,37 @@ func NewNonceSetterBase() *NonceSetterBase {
 	return &NonceSetterBase{
 		CrossChainBridgeBase: tokens.NewCrossChainBridgeBase(),
 		swapNonce:            make(map[string]*uint64),
-		recycleNonce:         make(map[string]*recycleNonceRecord),
+		locks:                make(map[string]*nonceLocks),
 	}
+}
+
+func (b *NonceSetterBase) GetSwapNonceLock(address string) *sync.RWMutex {
+	account := strings.ToLower(address)
+	lock, exist := b.locks[account]
+	if !exist {
+		lock = &nonceLocks{}
+		b.locks[account] = lock
+	}
+	return &lock.swapNonceLock
+}
+
+func (b *NonceSetterBase) GetRecycleSwapNonceLock(address string) *sync.RWMutex {
+	account := strings.ToLower(address)
+	lock, exist := b.locks[account]
+	if !exist {
+		lock = &nonceLocks{}
+		b.locks[account] = lock
+	}
+	return &lock.recycleSwapNonceLock
 }
 
 // GetSwapNonce get current swap nonce
 func (b *NonceSetterBase) GetSwapNonce(address string) uint64 {
-	b.swapNonceLock.RLock()
-	defer b.swapNonceLock.RUnlock()
-
 	account := strings.ToLower(address)
+	swapNonceLock := b.GetSwapNonceLock(account)
+	swapNonceLock.RLock()
+	defer swapNonceLock.RUnlock()
+
 	if nonceptr, exist := b.swapNonce[account]; exist {
 		return *nonceptr
 	}
@@ -58,10 +83,10 @@ func (b *NonceSetterBase) GetSwapNonce(address string) uint64 {
 
 // AdjustNonce adjust account nonce (eth like chain)
 func (b *NonceSetterBase) AdjustNonce(address string, value uint64) (nonce uint64) {
-	b.swapNonceLock.Lock()
-	defer b.swapNonceLock.Unlock()
-
 	account := strings.ToLower(address)
+	swapNonceLock := b.GetSwapNonceLock(account)
+	swapNonceLock.RLock()
+	defer swapNonceLock.RUnlock()
 
 	var old uint64
 	if nonceptr, exist := b.swapNonce[account]; exist {
@@ -82,8 +107,10 @@ func (b *NonceSetterBase) AdjustNonce(address string, value uint64) (nonce uint6
 
 // InitSwapNonce init swap nonce
 func (b *NonceSetterBase) InitSwapNonce(br tokens.NonceSetter, address string, nonce uint64) {
-	b.swapNonceLock.Lock()
-	defer b.swapNonceLock.Unlock()
+	account := strings.ToLower(address)
+	swapNonceLock := b.GetSwapNonceLock(account)
+	swapNonceLock.RLock()
+	defer swapNonceLock.RUnlock()
 
 	dbNexNonce := nonce
 	for i := 0; i < retryRPCCount; i++ {
@@ -100,16 +127,17 @@ func (b *NonceSetterBase) InitSwapNonce(br tokens.NonceSetter, address string, n
 		}
 		time.Sleep(retryRPCInterval)
 	}
-	b.swapNonce[strings.ToLower(address)] = &nonce
+	b.swapNonce[account] = &nonce
 	log.Info("init swap nonce success", "chainID", b.ChainConfig.ChainID, "account", address, "dbNexNonce", dbNexNonce, "nonce", nonce)
 }
 
 // SetNonce set account nonce (eth like chain)
 func (b *NonceSetterBase) SetNonce(address string, value uint64) {
-	b.swapNonceLock.Lock()
-	defer b.swapNonceLock.Unlock()
-
 	account := strings.ToLower(address)
+	swapNonceLock := b.GetSwapNonceLock(account)
+	swapNonceLock.RLock()
+	defer swapNonceLock.RUnlock()
+
 	var old uint64
 	if nonceptr, exist := b.swapNonce[account]; exist {
 		old = *nonceptr
@@ -134,10 +162,11 @@ func (b *NonceSetterBase) AllocateNonce(args *tokens.BuildTxArgs) (nonce uint64,
 		return nonce, nil
 	}
 
-	b.swapNonceLock.Lock()
-	defer b.swapNonceLock.Unlock()
-
 	account := strings.ToLower(args.From)
+	swapNonceLock := b.GetSwapNonceLock(account)
+	swapNonceLock.RLock()
+	defer swapNonceLock.RUnlock()
+
 	allocNonce, exist := b.swapNonce[account]
 	if !exist {
 		initNonce := uint64(0)
@@ -149,10 +178,11 @@ func (b *NonceSetterBase) AllocateNonce(args *tokens.BuildTxArgs) (nonce uint64,
 
 // TryAllocateRecycleNonce try allocate recycle swap nonce
 func (b *NonceSetterBase) TryAllocateRecycleNonce(args *tokens.BuildTxArgs, lifetime int64) (nonce uint64, err error) {
-	b.recycleSwapNonceLock.RLock()
-	defer b.recycleSwapNonceLock.RUnlock()
-
 	account := strings.ToLower(args.From)
+	recycleSwapNonceLock := b.GetRecycleSwapNonceLock(account)
+	recycleSwapNonceLock.RLock()
+	defer recycleSwapNonceLock.RUnlock()
+
 	rec, exist := b.recycleNonce[account]
 	if !exist || time.Now().Unix()-rec.timestamp < lifetime {
 		return 0, errRecycleNotAcked
@@ -162,10 +192,11 @@ func (b *NonceSetterBase) TryAllocateRecycleNonce(args *tokens.BuildTxArgs, life
 
 // RecycleSwapNonce recycle swap nonce
 func (b *NonceSetterBase) RecycleSwapNonce(sender string, nonce uint64) {
-	b.recycleSwapNonceLock.Lock()
-	defer b.recycleSwapNonceLock.Unlock()
-
 	account := strings.ToLower(sender)
+	recycleSwapNonceLock := b.GetRecycleSwapNonceLock(account)
+	recycleSwapNonceLock.RLock()
+	defer recycleSwapNonceLock.RUnlock()
+
 	rec, exist := b.recycleNonce[account]
 	if !exist {
 		b.recycleNonce[account] = &recycleNonceRecord{
