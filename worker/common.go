@@ -10,7 +10,7 @@ import (
 
 // MatchTx struct
 type MatchTx struct {
-	MPC        string
+	Signer     string
 	SwapTx     string
 	SwapHeight uint64
 	SwapTime   uint64
@@ -68,7 +68,7 @@ func updateRouterSwapResult(fromChainID, txid string, logIndex int, mtx *MatchTx
 		updates.SwapHeight = 0
 		updates.SwapTime = 0
 		if mtx.SwapTx != "" {
-			updates.MPC = mtx.MPC
+			updates.Signer = mtx.Signer
 			updates.SwapTx = mtx.SwapTx
 			updates.Status = mongodb.MatchTxNotStable
 		}

@@ -321,7 +321,7 @@ func AllocateRouterSwapNonce(args *tokens.BuildTxArgs, nonceptr *uint64, isRecyc
 	nowTime := time.Now().Unix()
 
 	resUpdates := bson.M{
-		"mpc":       args.From,
+		"signer":    args.From,
 		"status":    MatchTxNotStable,
 		"swapnonce": swapnonce,
 		"timestamp": nowTime,
@@ -579,9 +579,9 @@ func FindRouterSwapResultsWithChainIDAndStatus(fromChainID string, status SwapSt
 }
 
 // FindNextSwapNonce find next swap nonce
-func FindNextSwapNonce(chainID, mpc string) (uint64, error) {
+func FindNextSwapNonce(chainID, signer string) (uint64, error) {
 	qchainid := bson.M{"toChainID": chainID}
-	qmpc := bson.M{"mpc": bson.M{"$regex": primitive.Regex{Pattern: mpc, Options: "i"}}}
+	qmpc := bson.M{"signer": bson.M{"$regex": primitive.Regex{Pattern: signer, Options: "i"}}}
 	queries := []bson.M{qchainid, qmpc}
 	opts := &options.FindOneOptions{
 		Sort: bson.D{{Key: "swapnonce", Value: -1}},
@@ -592,10 +592,10 @@ func FindNextSwapNonce(chainID, mpc string) (uint64, error) {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return 0, nil
 		}
-		log.Error("FindNextSwapNonce failed", "chainID", chainID, "mpc", mpc, "err", err)
+		log.Error("FindNextSwapNonce failed", "chainID", chainID, "signer", signer, "err", err)
 		return 0, mgoError(err)
 	}
-	log.Info("FindNextSwapNonce success", "chainID", chainID, "mpc", mpc, "nonce", result.SwapNonce)
+	log.Info("FindNextSwapNonce success", "chainID", chainID, "signer", signer, "nonce", result.SwapNonce)
 	return result.SwapNonce + 1, nil
 }
 
@@ -768,8 +768,8 @@ func UpdateRouterSwapResult(fromChainID, txid string, logindex int, items *SwapR
 	if items.Status != KeepStatus {
 		updates["status"] = items.Status
 	}
-	if items.MPC != "" {
-		updates["mpc"] = items.MPC
+	if items.Signer != "" {
+		updates["signer"] = items.Signer
 	}
 	if items.SwapTx != "" {
 		updates["swaptx"] = items.SwapTx
@@ -920,10 +920,10 @@ func RouterAdminReswap(fromChainID, txid string, logIndex int) error {
 
 	nonceSetter, ok := resBridge.(tokens.NonceSetter)
 	if ok {
-		mpcAddress := res.MPC
+		mpcAddress := res.Signer
 		nonce, errf := nonceSetter.GetPoolNonce(mpcAddress, "latest")
 		if errf != nil {
-			log.Warn("get router mpc nonce failed", "address", mpcAddress)
+			log.Warn("get nonce failed", "address", mpcAddress, "err", errf)
 			return errf
 		}
 		if nonce <= res.SwapNonce {

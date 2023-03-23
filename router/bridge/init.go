@@ -498,6 +498,16 @@ func initSwapNonces() {
 			}
 		}
 
+		if params.UseProofSign() {
+			submitters := params.GetProofSubmitters()
+			for _, submitter := range submitters {
+				nextSwapNonce, err := mongodb.FindNextSwapNonce(chainID, submitter.Address)
+				if err == nil {
+					nonceSetter.InitSwapNonce(nonceSetter, submitter.Address, nextSwapNonce)
+				}
+			}
+		}
+
 		return true
 	})
 }

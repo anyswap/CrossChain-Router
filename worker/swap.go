@@ -438,7 +438,7 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 		SwapTx:    txHash,
 		SwapNonce: swapTxNonce,
 		SwapValue: args.SwapValue.String(),
-		MPC:       args.From,
+		Signer:    args.From,
 	}
 	if args.Extra.TTL != nil {
 		matchTx.TTL = *args.Extra.TTL

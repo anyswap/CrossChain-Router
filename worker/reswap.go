@@ -164,7 +164,7 @@ func reswapRouterSwap(res *mongodb.MgoSwapResult, isManual bool) error {
 	if err != nil {
 		return err
 	}
-	if !common.IsEqualIgnoreCase(res.MPC, routerMPC) {
+	if !common.IsEqualIgnoreCase(res.Signer, routerMPC) {
 		return tokens.ErrSenderMismatch
 	}
 
@@ -187,7 +187,7 @@ func reswapRouterSwap(res *mongodb.MgoSwapResult, isManual bool) error {
 			FromChainID: biFromChainID,
 			ToChainID:   biToChainID,
 		},
-		From:        res.MPC,
+		From:        res.Signer,
 		OriginFrom:  swap.From,
 		OriginTxTo:  swap.TxTo,
 		OriginValue: biValue,
@@ -235,7 +235,7 @@ func signAndSendReswapTx(resBridge tokens.IBridge, rawTx interface{}, args *toke
 		SwapTx:    txHash,
 		SwapNonce: 0,
 		SwapValue: args.SwapValue.String(),
-		MPC:       args.From,
+		Signer:    args.From,
 		TTL:       *args.Extra.TTL,
 	}
 

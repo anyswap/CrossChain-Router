@@ -102,7 +102,7 @@ type MgoSwapResult struct {
 	InitTime    int64      `bson:"inittime"`
 	Timestamp   int64      `bson:"timestamp"`
 	Memo        string     `bson:"memo" json:",omitempty"`
-	MPC         string     `bson:"mpc"`
+	Signer      string     `bson:"signer"`
 	TTL         uint64     `bson:"ttl"`
 	ProofID     string     `bson:"proofID"`
 	Proof       string     `bson:"proof"`
@@ -116,7 +116,7 @@ type MgoUsedRValue struct {
 
 // SwapResultUpdateItems swap update items
 type SwapResultUpdateItems struct {
-	MPC        string
+	Signer     string
 	SwapTx     string
 	SwapHeight uint64
 	SwapTime   uint64
