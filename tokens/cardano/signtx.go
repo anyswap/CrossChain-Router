@@ -50,6 +50,7 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 
 		mpcConfig := mpc.GetMPCConfig(b.UseFastMPC)
 		if keyID, rsvs, err := mpcConfig.DoSignOneED(mpcPubkey, signingMsg.String(), msgContext); err != nil {
+			log.Info(logPrefix+"failed", "keyID", keyID, "txid", txid, "err", err)
 			return nil, "", err
 		} else {
 			if len(rsvs) != 1 {
@@ -184,6 +185,7 @@ func (b *Bridge) MPCSignSwapTransaction(rawTx interface{}, args *tokens.BuildTxA
 
 		mpcConfig := mpc.GetMPCConfig(b.UseFastMPC)
 		if keyID, rsvs, err := mpcConfig.DoSignOneED(mpcPubkey, signingMsg.String(), msgContext); err != nil {
+			log.Info(logPrefix+"failed", "keyID", keyID, "txid", txid, "err", err)
 			return nil, "", err
 		} else {
 			if len(rsvs) != 1 {
