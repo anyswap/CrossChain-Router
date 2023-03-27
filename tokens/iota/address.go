@@ -35,10 +35,10 @@ func VerifyMPCPubKey(mpcAddress, mpcPubkey string) error {
 	return errors.New("VerifyMPCPubKey eror")
 }
 
-func Bech32ToEdAddr(bech32 string) (*iotago.Address,error) {
+func Bech32ToEdAddr(bech32 string) (*iotago.Address, error) {
 	if _, edAddr, err := iotago.ParseBech32(bech32); err == nil {
-		return &edAddr,nil
-	}else{
-		return nil,err
+		return &edAddr, nil
+	} else {
+		return nil, err
 	}
 }

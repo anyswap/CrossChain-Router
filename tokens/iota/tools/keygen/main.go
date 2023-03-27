@@ -16,7 +16,7 @@ import (
 
 var (
 	paramNetwork string
-	addrPrefix string
+	addrPrefix   string
 )
 
 func initFlags() {
@@ -24,7 +24,7 @@ func initFlags() {
 	flag.Parse()
 }
 
-func main()  {
+func main() {
 	initFlags()
 
 	network := paramNetwork
