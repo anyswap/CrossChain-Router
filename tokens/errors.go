@@ -65,6 +65,16 @@ var (
 	ErrTokenDecimals          = errors.New("get token decimals error")
 	ErrGetLatestBlockHash     = errors.New("get latest block hash error")
 	ErrTxResultType           = errors.New("tx type is not TransactionResult")
+	ErrGetNodeInfo            = errors.New("err to get node info")
+	ErrPayloadType            = errors.New("payload type error")
+	ErrGetOutPutIDs           = errors.New("get output id error")
+	ErrGetOutPutByID          = errors.New("get output by id error")
+	ErrCommitMessage          = errors.New("commit message error")
+	ErrProofOfWork            = errors.New("proof of work error")
+	ErrBalanceNoKeepAlive     = errors.New("balance can't keep alive")
+	ErrSwapValueTooLess       = errors.New("swap value must bigger than 1000000")
+	ErrCheckBalance           = errors.New("check balance error")
+	ErrInputAndOutputLength   = errors.New("input and output must bigger than one")
 	ErrTxWithWrongAssetLength = errors.New("tx with wrong asset length")
 	ErrOutputLength           = errors.New("output lenght is zero")
 	ErrMpcAddrMissMatch       = errors.New("receiver addr not match mpc addr")
@@ -82,10 +92,8 @@ var (
 	ErrGetAttestationFailed   = errors.New("get attesttation failed")
 	ErrTxWithoutSigner        = errors.New("tx without signer")
 	ErrReswapNotSupport       = errors.New("reswap not support")
-)
 
-// errors should register in router swap
-var (
+	// errors should register in router swap
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")
 	ErrTxWithWrongPath   = errors.New("swap trade tx with wrong path")
 	ErrMissTokenConfig   = errors.New("miss token config")
