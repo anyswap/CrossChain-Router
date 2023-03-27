@@ -50,6 +50,7 @@ var (
 	enableCheckTxBlockIndexChains        = make(map[string]struct{})
 	disableUseFromChainIDInReceiptChains = make(map[string]struct{})
 	useFastMPCChains                     = make(map[string]struct{})
+	increaseNonceWhenSendTxChains        = make(map[string]struct{})
 	dontCheckReceivedTokenIDs            = make(map[string]struct{})
 	dontCheckBalanceTokenIDs             = make(map[string]struct{})
 	dontCheckTotalSupplyTokenIDs         = make(map[string]struct{})
@@ -181,6 +182,7 @@ type ExtraConfig struct {
 	EnableCheckTxBlockIndexChains        []string `toml:",omitempty" json:",omitempty"`
 	DisableUseFromChainIDInReceiptChains []string `toml:",omitempty" json:",omitempty"`
 	UseFastMPCChains                     []string `toml:",omitempty" json:",omitempty"`
+	IncreaseNonceWhenSendTxChains        []string `toml:",omitempty" json:",omitempty"`
 	DontCheckReceivedTokenIDs            []string `toml:",omitempty" json:",omitempty"`
 	DontCheckBalanceTokenIDs             []string `toml:",omitempty" json:",omitempty"`
 	DontCheckTotalSupplyTokenIDs         []string `toml:",omitempty" json:",omitempty"`
@@ -1011,6 +1013,24 @@ func initUseFastMPCChains() {
 // IsUseFastMPC is use fast mpc
 func IsUseFastMPC(chainID string) bool {
 	_, exist := useFastMPCChains[chainID]
+	return exist
+}
+
+func initIncreaseNonceWhenSendTxChains() {
+	if GetExtraConfig() == nil || len(GetExtraConfig().IncreaseNonceWhenSendTxChains) == 0 {
+		return
+	}
+	tempMap := make(map[string]struct{})
+	for _, cid := range GetExtraConfig().IncreaseNonceWhenSendTxChains {
+		tempMap[cid] = struct{}{}
+	}
+	increaseNonceWhenSendTxChains = tempMap
+	log.Info("initIncreaseNonceWhenSendTxChains success", "isReload", IsReload)
+}
+
+// IncreaseNonceWhenSendTx increase nonce before send tx
+func IncreaseNonceWhenSendTx(chainID string) bool {
+	_, exist := increaseNonceWhenSendTxChains[chainID]
 	return exist
 }
 
