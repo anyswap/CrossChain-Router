@@ -465,6 +465,7 @@ func (c *ExtraConfig) CheckConfig() (err error) {
 	initEnableCheckTxBlockIndexChains()
 	initDisableUseFromChainIDInReceiptChains()
 	initUseFastMPCChains()
+	initIncreaseNonceWhenSendTxChains()
 	initDontCheckReceivedTokenIDs()
 	initDontCheckBalanceTokenIDs()
 	initDontCheckTotalSupplyTokenIDs()

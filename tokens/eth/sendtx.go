@@ -40,14 +40,6 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error
 		log.Info("SendTransaction failed", "chainID", chainID, "hash", txHash, "err", err)
 	} else {
 		log.Info("SendTransaction success", "chainID", chainID, "hash", txHash)
-		if !params.IsParallelSwapEnabled() {
-			sender, errt := types.Sender(b.Signer, tx)
-			if errt != nil {
-				log.Error("SendTransaction get sender failed", "chainID", chainID, "tx", txHash, "err", errt)
-				return txHash, errt
-			}
-			b.SetNonce(sender.LowerHex(), tx.Nonce()+1)
-		}
 	}
 	if params.IsDebugMode() {
 		log.Infof("SendTransaction on chain %v, rawtx is %v", chainID, tx.RawStr())

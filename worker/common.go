@@ -217,12 +217,20 @@ SENDTX_LOOP:
 		sleepSeconds(3)
 	}
 
+	increseNonceWhenSendTx := params.IncreaseNonceWhenSendTx(args.ToChainID.String())
+	if increseNonceWhenSendTx && !params.IsParallelSwapEnabled() {
+		nonceSetter, ok := bridge.(tokens.NonceSetter)
+		if ok && nonceSetter != nil {
+			nonceSetter.SetNonce(args.From, swapTxNonce+1)
+		}
+	}
+
 	if err != nil {
 		logWorkerError("sendtx", "send tx failed", err, "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "swapNonce", swapTxNonce, "replaceNum", replaceNum)
 		return txHash, err
 	}
 
-	if !params.IsParallelSwapEnabled() {
+	if !increseNonceWhenSendTx && !params.IsParallelSwapEnabled() {
 		nonceSetter, ok := bridge.(tokens.NonceSetter)
 		if ok && nonceSetter != nil {
 			nonceSetter.SetNonce(args.From, swapTxNonce+1)
