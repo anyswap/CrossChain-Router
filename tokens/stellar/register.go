@@ -2,9 +2,11 @@ package stellar
 
 import (
 	"math/big"
+	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/operations"
@@ -109,5 +111,52 @@ func (b *Bridge) buildSwapInfoFromOperation(txres *hProtocol.Transaction, op *op
 	swapInfo.To = depositAddress
 	swapInfo.From = op.From
 	swapInfo.Value = amt
+
+	err := b.checkSwapoutInfo(swapInfo)
+	if err != nil {
+		return nil, err
+	}
+
 	return swapInfo, nil
+}
+
+func (b *Bridge) checkSwapoutInfo(swapInfo *tokens.SwapTxInfo) error {
+	if strings.EqualFold(swapInfo.From, swapInfo.To) {
+		return tokens.ErrTxWithWrongSender
+	}
+
+	erc20SwapInfo := swapInfo.ERC20SwapInfo
+
+	fromTokenCfg := b.GetTokenConfig(erc20SwapInfo.Token)
+	if fromTokenCfg == nil || erc20SwapInfo.TokenID == "" {
+		return tokens.ErrMissTokenConfig
+	}
+
+	multichainToken := router.GetCachedMultichainToken(erc20SwapInfo.TokenID, swapInfo.ToChainID.String())
+	if multichainToken == "" {
+		log.Warn("get multichain token failed", "tokenID", erc20SwapInfo.TokenID, "chainID", swapInfo.ToChainID, "txid", swapInfo.Hash)
+		return tokens.ErrMissTokenConfig
+	}
+
+	toBridge := router.GetBridgeByChainID(swapInfo.ToChainID.String())
+	if toBridge == nil {
+		return tokens.ErrNoBridgeForChainID
+	}
+
+	toTokenCfg := toBridge.GetTokenConfig(multichainToken)
+	if toTokenCfg == nil {
+		log.Warn("get token config failed", "chainID", swapInfo.ToChainID, "token", multichainToken)
+		return tokens.ErrMissTokenConfig
+	}
+
+	if !tokens.CheckTokenSwapValue(swapInfo, fromTokenCfg.Decimals, toTokenCfg.Decimals) {
+		return tokens.ErrTxWithWrongValue
+	}
+
+	bindAddr := swapInfo.Bind
+	if !toBridge.IsValidAddress(bindAddr) {
+		log.Warn("wrong bind address in swapin", "bind", bindAddr)
+		return tokens.ErrWrongBindAddress
+	}
+	return nil
 }
