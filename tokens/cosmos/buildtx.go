@@ -13,6 +13,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
 var (
@@ -115,7 +116,32 @@ func (b *Bridge) initExtra(args *tokens.BuildTxArgs) (extra *tokens.AllExtras, e
 	}
 	if extra.Fee == nil {
 		fee := b.getDefaultFee()
-		extra.Fee = &fee
+		replaceNum := args.GetReplaceNum()
+		if replaceNum > 0 {
+			serverCfg := params.GetRouterServerConfig()
+			if serverCfg == nil {
+				return nil, fmt.Errorf("no router server config")
+			}
+			coinsFee, err := ParseCoinsFee(fee)
+			if err != nil {
+				return nil, err
+			}
+			coinFee := coinsFee[0].Amount.BigInt()
+			addPercent := serverCfg.PlusGasPricePercentage
+			addPercent += replaceNum * serverCfg.ReplacePlusGasPricePercent
+			if addPercent > serverCfg.MaxPlusGasPricePercentage {
+				addPercent = serverCfg.MaxPlusGasPricePercentage
+			}
+			if addPercent > 0 {
+				coinFee.Mul(coinFee, big.NewInt(int64(100+addPercent)))
+				coinFee.Div(coinFee, big.NewInt(100))
+			}
+			coinsFee[0].Amount = sdk.NewIntFromBigInt(coinFee)
+			adjustFee := coinsFee.String()
+			extra.Fee = &adjustFee
+		} else {
+			extra.Fee = &fee
+		}
 	}
 	return extra, nil
 }
