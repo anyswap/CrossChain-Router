@@ -4,15 +4,24 @@ import (
 	"crypto/ed25519"
 	"encoding/hex"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/stellar/go/strkey"
 )
 
+var rAddressReg = "^[2-7A-Z]{56}$"
+
 // IsValidAddress check address
 func (b *Bridge) IsValidAddress(addr string) bool {
-	_, err := strkey.Decode(strkey.VersionByteAccountID, addr)
+	match, err := regexp.MatchString(rAddressReg, addr)
+	if err != nil {
+		log.Warn("Error occurs when verify address", "error", err)
+		return match
+	}
+	_, err = strkey.Decode(strkey.VersionByteAccountID, addr)
 	return err == nil
 }
 
