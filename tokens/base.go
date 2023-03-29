@@ -111,6 +111,7 @@ func (b *CrossChainBridgeBase) GetBalance(account string) (*big.Int, error) {
 func (b *CrossChainBridgeBase) SetChainConfig(chainCfg *ChainConfig) {
 	b.ChainConfig = chainCfg
 	if params.IsUseFastMPC(chainCfg.ChainID) {
+		log.Info("set chain config use fast mpc", "chainID", chainCfg.ChainID, "chain", chainCfg.BlockChain)
 		b.UseFastMPC = true
 	}
 }
