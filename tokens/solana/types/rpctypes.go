@@ -109,7 +109,7 @@ type TransactionWithMeta struct {
 
 // IsStatusOk in status ok
 func (tx *TransactionWithMeta) IsStatusOk() bool {
-	return tx != nil && tx.Meta != nil && tx.Meta.Err == nil && len(tx.Meta.LogMessages) > 0
+	return tx != nil && tx.Meta != nil && tx.Meta.Err == nil && len(tx.Meta.LogMessages) > 0 && tx.Transaction != nil && len(tx.Transaction.Message.Instructions) > 0
 }
 
 // TransactionParsed tx parsed

@@ -2,15 +2,18 @@ package near
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
+var illegalParam = regexp.MustCompile(`[\s\x00]`)
+
 // IsValidAddress check address
 func (b *Bridge) IsValidAddress(address string) bool {
-	return address != ""
+	return address != "" && !illegalParam.MatchString(address)
 }
 
 func (b *Bridge) GetAccountNonce(account, publicKey string) (uint64, error) {

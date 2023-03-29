@@ -1,12 +1,26 @@
 package solana
 
 import (
+	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/solana/types"
+	"github.com/near/borsh-go"
 )
+
+var illegalParam = regexp.MustCompile(`[\s\x00]`)
+
+// SwapoutParam swapout instruction param
+type SwapoutParam struct {
+	ID        uint64
+	To        string
+	Amount    uint64
+	ToChainID uint64
+}
 
 // GetTransactionStatus impl
 func (b *Bridge) GetTransactionStatus(txHash string) (*tokens.TxStatus, error) {
@@ -89,10 +103,38 @@ func (b *Bridge) getTransactionMeta(swapInfo *tokens.SwapTxInfo, allowUnstable b
 		return nil, tokens.ErrTxWithWrongStatus
 	}
 
+	inData := txm.Transaction.Message.Instructions[0].Data
+	swParam, err := verifySwapoutParam(inData)
+	if err != nil {
+		log.Info("wrong swapout param", "param", swParam, "err", err)
+		return nil, err
+	}
+
 	if txm.Transaction == nil || len(txm.Transaction.Message.AccountKeys) == 0 {
 		return nil, tokens.ErrTxWithoutSigner
 	}
 	swapInfo.From = txm.Transaction.Message.AccountKeys[0].String()
 
 	return txm.Meta, nil
+}
+
+func verifySwapoutParam(data types.Base58) (*SwapoutParam, error) {
+	var swParam SwapoutParam
+	err := borsh.Deserialize(&swParam, data)
+	if err != nil {
+		return nil, err
+	}
+	if swParam.Amount == 0 {
+		return nil, tokens.ErrTxWithZeroValue
+	}
+	toChainID := fmt.Sprintf("%d", swParam.ToChainID)
+	dstBridge := router.GetBridgeByChainID(toChainID)
+	if dstBridge == nil {
+		return nil, tokens.ErrNoBridgeForChainID
+	}
+	if !dstBridge.IsValidAddress(swParam.To) ||
+		illegalParam.MatchString(swParam.To) {
+		return nil, tokens.ErrWrongBindAddress
+	}
+	return &swParam, nil
 }
