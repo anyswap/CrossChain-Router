@@ -366,7 +366,7 @@ func CalcSwapValue(tokenID, fromChainID, toChainID string, value *big.Int, fromD
 
 			if useFixedFee {
 				fixedFee := ConvertTokenValue(feeCfg.MinimumSwapFee, 18, fromDecimals)
-				swapFee.Add(swapFee, fixedFee)
+				swapFee = cmath.BigMax(swapFee, fixedFee)
 			}
 
 			if swapFee.Cmp(minSwapFee) < 0 {
