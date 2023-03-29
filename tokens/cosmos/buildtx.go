@@ -23,6 +23,8 @@ var (
 	DefaultFee              = "500"
 
 	cachedAccountNumberMap = make(map[string]uint64)
+
+	numberPattern = regexp.MustCompile(`^\d+(?:.\d+)?$`)
 )
 
 // BuildRawTransaction build raw tx
@@ -161,7 +163,7 @@ func (b *Bridge) getDefaultFee() string {
 }
 
 func is_numeric(word string) bool {
-	return regexp.MustCompile(`.\d`).MatchString(word)
+	return numberPattern.MatchString(word)
 }
 
 // GetPoolNonce impl NonceSetter interface
