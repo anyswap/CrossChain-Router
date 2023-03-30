@@ -202,11 +202,13 @@ type ExtraConfig struct {
 
 // LocalChainConfig local chain config
 type LocalChainConfig struct {
-	ForbidParallelLoading      bool     `toml:",omitempty" json:",omitempty"`
-	EstimatedGasMustBePositive bool     `toml:",omitempty" json:",omitempty"`
-	SmallestGasPriceUnit       uint64   `toml:",omitempty" json:",omitempty"`
-	ForbidSwapoutTokenIDs      []string `toml:",omitempty" json:",omitempty"`
-	BigValueDiscount           uint64   `toml:",omitempty" json:",omitempty"`
+	ForbidParallelLoading      bool `toml:",omitempty" json:",omitempty"`
+	EstimatedGasMustBePositive bool `toml:",omitempty" json:",omitempty"`
+	IsReswapSupported          bool `toml:",omitempty" json:",omitempty"`
+
+	SmallestGasPriceUnit  uint64   `toml:",omitempty" json:",omitempty"`
+	ForbidSwapoutTokenIDs []string `toml:",omitempty" json:",omitempty"`
+	BigValueDiscount      uint64   `toml:",omitempty" json:",omitempty"`
 
 	// chainID -> tokenids
 	ChargeFeeOnDestChain   map[string][]string `toml:",omitempty" json:",omitempty"`
@@ -754,7 +756,9 @@ func GetLocalChainConfig(chainID string) *LocalChainConfig {
 	if GetExtraConfig() != nil {
 		c := GetExtraConfig().LocalChainConfig[chainID]
 		if c != nil {
-			c.lock = new(sync.Mutex)
+			if c.lock == nil {
+				c.lock = new(sync.Mutex)
+			}
 			return c
 		}
 	}
