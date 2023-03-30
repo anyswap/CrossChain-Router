@@ -93,6 +93,9 @@ var (
 	ErrTxWithoutSigner        = errors.New("tx without signer")
 	ErrReswapNotSupport       = errors.New("reswap not support")
 	ErrTxWithZeroValue        = errors.New("tx with zero value")
+	ErrGetBlockNumberByID     = errors.New("get block number by id error")
+	ErrSendTx                 = errors.New("send tx fails")
+	ErrGetAccount             = errors.New("get account fails")
 )
 
 // errors should register in router swap
