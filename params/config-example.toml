@@ -208,6 +208,7 @@ EstimatedGasMustBePositive = true
 
 [Extra.LocalChainConfig.86]
 SmallestGasPriceUnit = 1000000000
+IsReswapSupported = false
 
 [Extra.LocalChainConfig.25]
 ForbidParallelLoading = true
