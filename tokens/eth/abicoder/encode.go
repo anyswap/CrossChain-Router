@@ -9,6 +9,8 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/log"
 )
 
+type StructData []byte
+
 // PackDataWithFuncHash pack data with func hash
 func PackDataWithFuncHash(funcHash []byte, args ...interface{}) []byte {
 	packData := PackData(args...)
@@ -38,6 +40,10 @@ func PackData(args ...interface{}) []byte {
 			offset := big.NewInt(int64(len(bs)))
 			copy(bs[i*32:], packBigInt(offset))
 			bs = append(bs, packString(v)...)
+		case StructData:
+			offset := big.NewInt(int64(len(bs)))
+			copy(bs[i*32:], packBigInt(offset))
+			bs = append(bs, packStructData(v)...)
 		case []byte:
 			offset := big.NewInt(int64(len(bs)))
 			copy(bs[i*32:], packBigInt(offset))
@@ -105,6 +111,17 @@ func packString(str string) []byte {
 
 	copy(bs[:32], packBigInt(big.NewInt(int64(strLen))))
 	copy(bs[32:], str)
+
+	return bs
+}
+
+func packStructData(data StructData) []byte {
+	bsLen := len(data)
+	paddedLen := (bsLen + 31) / 32 * 32
+
+	bs := make([]byte, paddedLen)
+
+	copy(bs, data)
 
 	return bs
 }

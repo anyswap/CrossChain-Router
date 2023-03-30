@@ -48,6 +48,7 @@ func (b *Bridge) CalcProofID(args *tokens.BuildTxArgs) (string, error) {
 	input := abicoder.PackData(
 		common.HexToAddress(anycallSwapInfo.CallTo),
 		anycallSwapInfo.CallData,
+		anycallSwapInfo.AppID,
 		anycallSwapInfo.ExtData,
 		args.LogIndex,
 		common.HexToAddress(anycallSwapInfo.CallFrom),

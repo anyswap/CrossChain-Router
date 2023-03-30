@@ -539,18 +539,22 @@ func (b *Bridge) buildAnyCallWithProofTxInput(proofID, proof string, args *token
 		if err != nil {
 			return err
 		}
-		input = abicoder.PackDataWithFuncHash(
-			AnyExecV7WithProofFuncHash,
+		argsData := abicoder.PackData(
 			common.HexToAddress(anycallSwapInfo.CallTo),
 			anycallSwapInfo.CallData,
 			anycallSwapInfo.AppID,
 			anycallSwapInfo.ExtData,
 			args.LogIndex,
+		)
+		input = abicoder.PackDataWithFuncHash(
+			AnyExecV7WithProofFuncHash,
+			abicoder.StructData(argsData),
 			common.HexToHash(args.SwapID),
 			common.HexToAddress(anycallSwapInfo.CallFrom),
 			args.FromChainID,
 			nonce,
 			flags,
+			common.FromHex(proof),
 		)
 	}
 
