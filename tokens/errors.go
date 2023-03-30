@@ -92,8 +92,14 @@ var (
 	ErrGetAttestationFailed   = errors.New("get attesttation failed")
 	ErrTxWithoutSigner        = errors.New("tx without signer")
 	ErrReswapNotSupport       = errors.New("reswap not support")
+	ErrTxWithZeroValue        = errors.New("tx with zero value")
+	ErrGetBlockNumberByID     = errors.New("get block number by id error")
+	ErrSendTx                 = errors.New("send tx fails")
+	ErrGetAccount             = errors.New("get account fails")
+)
 
-	// errors should register in router swap
+// errors should register in router swap
+var (
 	ErrTxWithWrongValue  = errors.New("tx with wrong value")
 	ErrTxWithWrongPath   = errors.New("swap trade tx with wrong path")
 	ErrMissTokenConfig   = errors.New("miss token config")

@@ -143,7 +143,6 @@ func (b *Bridge) setExtraArgs(args *tokens.BuildTxArgs) *tokens.AllExtras {
 		args.Extra = &tokens.AllExtras{}
 	}
 	extra := args.Extra
-	extra.EthExtra = nil // clear this which may be set in replace job
 
 	if extra.Fee == nil {
 		feeRes := b.GetFee()

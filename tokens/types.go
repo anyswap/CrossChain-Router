@@ -231,6 +231,7 @@ type AllExtras struct {
 	Fee         *string       `json:"fee,omitempty"`
 	RawTx       hexutil.Bytes `json:"rawTx,omitempty"`
 	BlockHash   *string       `json:"blockHash,omitempty"`
+	BlockID     *string       `json:"blockID,omitempty"`
 	BlockNumber *uint64       `json:"blockNumber,omitempty"`
 	TTL         *uint64       `json:"ttl,omitempty"`
 	BridgeFee   *big.Int      `json:"bridgeFee,omitempty"`
