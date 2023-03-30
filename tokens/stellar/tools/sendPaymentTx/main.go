@@ -51,13 +51,13 @@ func main() {
 	} else {
 		pubkeyAddr, err = stellar.PublicKeyHexToAddress(paramPublicKey)
 		if err != nil {
-			log.Fatal("err", err)
+			log.Fatal("wrong public key", "err", err)
 		}
 	}
 	log.Infof("signer address is %v", pubkeyAddr)
 	account, err := b.GetAccount(pubkeyAddr)
 	if err != nil {
-		log.Fatal("get account err", err)
+		log.Fatal("get account err", "err", err)
 	}
 
 	var asset txnbuild.Asset
@@ -68,15 +68,16 @@ func main() {
 	}
 	_, err = b.GetAsset(asset.GetCode(), asset.GetIssuer())
 	if err != nil {
-		log.Fatal("get asset err", err)
+		log.Fatal("get asset err", "err", err)
 	}
 
 	memo := new(txnbuild.MemoHash)
 	if paramMemo != "" {
-		b, _ := hex.DecodeString(paramMemo)
-		for i := 0; i < len(b); i++ {
-			memo[i] = b[i]
+		b, err := hex.DecodeString(paramMemo)
+		if err != nil {
+			log.Fatal("decode param memo error", "err", err)
 		}
+		copy((*memo)[:], b)
 	}
 	rawTx, err := buildTx(account, asset, paramToAddress, paramAmount, memo)
 	if err != nil {
@@ -90,7 +91,7 @@ func main() {
 	} else {
 		paramPublicKey, err = stellar.FormatPublicKeyToPureHex(paramPublicKey)
 		if err != nil {
-			log.Fatal("err", err)
+			log.Fatal("wrong public key", "err", err)
 		}
 		signedTx, txHash, err = signTx(rawTx, paramPublicKey, b)
 	}
@@ -157,7 +158,7 @@ func initBridge() {
 	stellar.SupportsChainID(chainID)
 	b = stellar.NewCrossChainBridge(paramChainID)
 	if b.NetworkStr == "" {
-		log.Fatal("chain id failed", "err", paramChainID)
+		log.Fatal("new bridge from chain id failed", "chainID", paramChainID)
 	}
 	b.SetGatewayConfig(&tokens.GatewayConfig{
 		APIAddress:    apiAddrs,
