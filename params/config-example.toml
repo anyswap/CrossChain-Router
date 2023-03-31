@@ -37,6 +37,8 @@ ReplacePlusGasPricePercent = 1
 WaitTimeToReplace = 900
 # maximum replace count
 MaxReplaceCount = 20
+# maximum replace distance
+MaxReplaceDistance = 10
 # plus gas price percentage
 PlusGasPricePercentage = 10
 # maximum plus gas price percentage

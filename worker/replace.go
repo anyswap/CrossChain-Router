@@ -23,6 +23,7 @@ var (
 	treatAsNoncePassedInterval = int64(600) // seconds
 	defWaitTimeToReplace       = int64(300) // seconds
 	defMaxReplaceCount         = 20
+	defMaxReplaceDistance      = uint64(10)
 
 	replaceTaskQueues   = make(map[string]*fifo.Queue) // key is toChainID
 	replaceTasksInQueue = mapset.NewSet()
@@ -72,10 +73,8 @@ func startReplaceProducer() {
 
 			err = dispatchSwapResultToReplace(swap)
 			ctx := []interface{}{"fromChainID", swap.FromChainID, "toChainID", swap.ToChainID, "txid", swap.TxID, "logIndex", swap.LogIndex}
-			if err == nil {
-				logWorker("replace", "replace router swap success", ctx...)
-			} else {
-				logWorkerError("replace", "replace router swap error", err, ctx...)
+			if err != nil {
+				logWorkerError("replace", "dispatch replace router swap error", err, ctx...)
 			}
 		}
 		if utils.IsCleanuping() {
@@ -94,11 +93,15 @@ func findRouterSwapResultToReplace() ([]*mongodb.MgoSwapResult, error) {
 func dispatchSwapResultToReplace(res *mongodb.MgoSwapResult) error {
 	waitTimeToReplace := serverCfg.WaitTimeToReplace
 	maxReplaceCount := serverCfg.MaxReplaceCount
+	maxMaxReplaceDistance := serverCfg.MaxReplaceDistance
 	if waitTimeToReplace == 0 {
 		waitTimeToReplace = defWaitTimeToReplace
 	}
 	if maxReplaceCount == 0 {
 		maxReplaceCount = defMaxReplaceCount
+	}
+	if maxMaxReplaceDistance == 0 {
+		maxMaxReplaceDistance = defMaxReplaceDistance
 	}
 	if len(res.OldSwapTxs) > maxReplaceCount {
 		checkAndRecycleSwapNonce(res)
@@ -108,6 +111,23 @@ func dispatchSwapResultToReplace(res *mongodb.MgoSwapResult) error {
 		return nil
 	}
 	if !router.IsNonceSupported(res.ToChainID) {
+		return nil
+	}
+	resBridge := router.GetBridgeByChainID(res.ToChainID)
+	if resBridge == nil {
+		return tokens.ErrNoBridgeForChainID
+	}
+	nonceSetter, ok := resBridge.(tokens.NonceSetter)
+	if !ok {
+		return nil
+	}
+	nonce, err := nonceSetter.GetPoolNonce(res.MPC, "latest")
+	if err != nil {
+		logWorkerTrace("replace: get nonce failed", "account", res.MPC, "fromChainID", res.FromChainID, "toChainID", res.ToChainID, "txid", res.TxID, "logIndex", res.LogIndex, "err", err)
+		return nil
+	}
+	if res.SwapNonce > nonce+maxMaxReplaceDistance {
+		logWorkerTrace("forbid replace swap with too big nonce than latest", "swapNonce", res.SwapNonce, "latestNonce", nonce, "fromChainID", res.FromChainID, "toChainID", res.ToChainID, "txid", res.TxID, "logIndex", res.LogIndex)
 		return nil
 	}
 
