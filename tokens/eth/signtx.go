@@ -81,8 +81,7 @@ func (b *Bridge) MPCSignZkSyncTransaction(rawTx interface{}, args *tokens.BuildT
 		return nil, "", err
 	}
 
-	chainID, _ := b.ChainID()
-	domain := zksync2.DefaultEip712Domain(chainID.Int64())
+	domain := zksync2.DefaultEip712Domain(b.SignerChainID.Int64())
 	typedData := apitypes.TypedData{
 		Types: apitypes.Types{
 			tx.GetEIP712Type():     tx.GetEIP712Types(),
