@@ -95,6 +95,7 @@ type RouterServerConfig struct {
 	ReplacePlusGasPricePercent uint64            `toml:",omitempty" json:",omitempty"`
 	WaitTimeToReplace          int64             `toml:",omitempty" json:",omitempty"` // seconds
 	MaxReplaceCount            int               `toml:",omitempty" json:",omitempty"`
+	MaxReplaceDistance         uint64            `toml:",omitempty" json:",omitempty"`
 	PlusGasPricePercentage     uint64            `toml:",omitempty" json:",omitempty"`
 	MaxPlusGasPricePercentage  uint64            `toml:",omitempty" json:",omitempty"`
 	MaxGasPriceFluctPercent    uint64            `toml:",omitempty" json:",omitempty"`

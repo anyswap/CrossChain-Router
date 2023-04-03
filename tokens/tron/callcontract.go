@@ -156,3 +156,16 @@ func (b *Bridge) IsMinter(contractAddr, minterAddr string) (bool, error) {
 	}
 	return common.GetBigInt(common.FromHex(res), 0, 32).Sign() != 0, nil
 }
+
+// GetExecutionBudget get execution budget
+func (b *Bridge) GetExecutionBudget(contractAddr, account string) (*big.Int, error) {
+	funcHash := common.FromHex("0x74bdda60")
+	data := make([]byte, 36)
+	copy(data[:4], funcHash)
+	copy(data[4:36], common.HexToAddress(account).Hash().Bytes())
+	res, err := b.CallContract(contractAddr, data, "latest")
+	if err != nil {
+		return nil, err
+	}
+	return common.GetBigInt(common.FromHex(res), 0, 32), nil
+}

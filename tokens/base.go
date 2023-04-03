@@ -1,11 +1,9 @@
 package tokens
 
 import (
-	"fmt"
 	"math/big"
 	"strings"
 	"sync"
-	"time"
 
 	cmath "github.com/anyswap/CrossChain-Router/v3/common/math"
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -457,23 +455,4 @@ func ConvertTokenValue(fromValue *big.Int, fromDecimals, toDecimals uint8) *big.
 		return new(big.Int).Div(fromValue, cmath.BigPow(10, int64(fromDecimals-toDecimals)))
 	}
 	return new(big.Int).Mul(fromValue, cmath.BigPow(10, int64(toDecimals-fromDecimals)))
-}
-
-// CheckNativeBalance check native balance
-func CheckNativeBalance(b IBridge, account string, needValue *big.Int) (err error) {
-	var balance *big.Int
-	for i := 0; i < 3; i++ {
-		balance, err = b.GetBalance(account)
-		if err == nil {
-			break
-		}
-		time.Sleep(1 * time.Second)
-	}
-	if err == nil && balance.Cmp(needValue) < 0 {
-		return fmt.Errorf("not enough coin balance. %v is lower than %v needed", balance, needValue)
-	}
-	if err != nil {
-		log.Warn("get balance error", "account", account, "err", err)
-	}
-	return err
 }
