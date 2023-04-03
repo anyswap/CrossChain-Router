@@ -363,7 +363,8 @@ func (b *Bridge) checkAnyCallSwapInfo(swapInfo *tokens.SwapTxInfo) error {
 		return tokens.ErrNoBridgeForChainID
 	}
 	// check budget on dest chain to prvent DOS attack
-	if params.HasMinReserveBudgetConfig() {
+	if isPayFeeOnDest(swapInfo.AnyCallSwapInfo.Flags) &&
+		params.HasMinReserveBudgetConfig() {
 		minReserveBudget := params.GetMinReserveBudget(dstBridge.GetChainConfig().ChainID)
 		if minReserveBudget == nil {
 			minReserveBudget = defMinReserveBudget
@@ -386,6 +387,21 @@ func (b *Bridge) checkAnyCallSwapInfo(swapInfo *tokens.SwapTxInfo) error {
 		}
 	}
 	return nil
+}
+
+func isPayFeeOnDest(flags string) bool {
+	biFlags, _ := common.GetBigIntFromStr(flags)
+	uFlags := biFlags.Uint64()
+	switch params.GetSwapSubType() {
+	case tokens.AnycallSubTypeV7:
+		return uFlags&2 == 2
+	case tokens.AnycallSubTypeV6:
+		return uFlags&2 == 0
+	case tokens.AnycallSubTypeV5, tokens.CurveAnycallSubType:
+		return true
+	default:
+		return false
+	}
 }
 
 func (b *Bridge) findMessageSentInfo(swapInfo *tokens.SwapTxInfo, logs []*types.RPCLog, logIndex int, allowUnstable bool) error {
