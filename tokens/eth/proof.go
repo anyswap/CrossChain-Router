@@ -62,6 +62,12 @@ func (b *Bridge) CalcProofID(args *tokens.BuildTxArgs) (string, error) {
 }
 
 func (b *Bridge) GenerateProof(proofID string, args *tokens.BuildTxArgs) (string, error) {
+	mpcParams := params.GetMPCConfig(b.UseFastMPC)
+	if mpcParams.SignWithPrivateKey {
+		priKey := mpcParams.GetSignerPrivateKey(b.ChainConfig.ChainID)
+		return b.GenerateProofWithPrivateKey(proofID, priKey)
+	}
+
 	mpcPubkey := router.GetMPCPublicKey(args.From)
 	if mpcPubkey == "" {
 		return "", tokens.ErrMissMPCPublicKey
@@ -108,6 +114,25 @@ func (b *Bridge) GenerateProof(proofID string, args *tokens.BuildTxArgs) (string
 		return "", errors.New("verify signature failed")
 	}
 
+	return rsv, nil
+}
+
+func (b *Bridge) GenerateProofWithPrivateKey(proofID, priKey string) (string, error) {
+	signContent := common.FromHex(proofID)
+
+	privKey, err := crypto.ToECDSA(common.FromHex(priKey))
+	if err != nil {
+		return "", err
+	}
+
+	signature, err := crypto.Sign(signContent[:], privKey)
+	if err != nil {
+		return "", err
+	}
+
+	rsv := common.ToHex(signature)
+
+	log.Info(b.ChainConfig.BlockChain+" GenerateProof success", "proofID", proofID)
 	return rsv, nil
 }
 
