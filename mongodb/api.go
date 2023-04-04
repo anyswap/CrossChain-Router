@@ -34,6 +34,7 @@ var (
 
 	errInvalidSwap  = errors.New("invalid swap fields")
 	errInvalidProof = errors.New("invlaid proof")
+	errEmptySwapTx  = errors.New("empty swaptx")
 )
 
 // GetRouterSwapKey get router swap key
@@ -821,6 +822,80 @@ func checkRouterSwapResultUpdate(swapRes *MgoSwapResult, swapnonce uint64) error
 		return ErrForbidUpdateSwapTx
 	}
 	return nil
+}
+
+func UpdateProofSwapResult(fromChainID, txid string, logindex int, items *SwapResultUpdateItems) error {
+	updateResultLock.Lock()
+	defer updateResultLock.Unlock()
+
+	swapTx := items.SwapTx
+	if swapTx == "" {
+		return errEmptySwapTx
+	}
+
+	swapRes, err := FindRouterSwapResult(fromChainID, txid, logindex)
+	if err != nil {
+		return err
+	}
+
+	if swapRes.Status == MatchTxStable {
+		log.Warn("ignore update swap result with stable status", "chainid", fromChainID, "txid", txid, "logindex", logindex, "updates", items, "swaptx", swapRes.SwapTx, "swapnonce", swapRes.SwapNonce)
+		return nil
+	}
+
+	// already exist
+	if strings.EqualFold(swapTx, swapRes.SwapTx) {
+		return nil
+	}
+	for _, oldSwapTx := range swapRes.OldSwapTxs {
+		if strings.EqualFold(swapTx, oldSwapTx) {
+			return nil
+		}
+	}
+
+	updates := bson.M{
+		"timestamp": items.Timestamp,
+	}
+	if items.Signer != "" {
+		updates["signer"] = items.Signer
+	}
+	if items.SwapTx != "" {
+		updates["swaptx"] = items.SwapTx
+	}
+	if items.SwapNonce != 0 {
+		updates["swapnonce"] = items.SwapNonce
+	}
+	if items.SwapHeight != 0 {
+		updates["swapheight"] = items.SwapHeight
+	}
+	if items.SwapTime != 0 {
+		updates["swaptime"] = items.SwapTime
+	}
+	if items.SwapValue != "" {
+		updates["swapvalue"] = items.SwapValue
+	}
+	if items.Memo != "" {
+		updates["memo"] = items.Memo
+	} else if len(swapRes.OldSwapTxs) == 0 {
+		updates["memo"] = ""
+		updates["status"] = MatchTxNotStable
+	}
+	if items.TTL != 0 {
+		updates["ttl"] = items.TTL
+	}
+	allUpdates := bson.M{
+		"$set":  updates,
+		"$push": bson.M{"oldswaptxs": swapTx},
+	}
+
+	key := GetRouterSwapKey(fromChainID, txid, logindex)
+	_, err = collRouterSwapResult.UpdateByID(clientCtx, key, allUpdates)
+	if err == nil {
+		log.Info("mongodb update proof swap result success", "chainid", fromChainID, "txid", txid, "logindex", logindex, "updates", updates)
+	} else {
+		log.Error("mongodb update proof swap result failed", "chainid", fromChainID, "txid", txid, "logindex", logindex, "updates", updates, "err", err)
+	}
+	return mgoError(err)
 }
 
 // AddUsedRValue add used r, if error mean already exist

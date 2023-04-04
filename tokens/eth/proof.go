@@ -3,6 +3,7 @@ package eth
 import (
 	"encoding/json"
 	"errors"
+	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -157,6 +158,7 @@ func (b *Bridge) SubmitProof(proofID, proof string, args *tokens.BuildTxArgs) (s
 
 	submitter := pickSubmitter()
 	args.From = submitter.Address
+	args.SwapValue = big.NewInt(0)
 
 	err = b.setDefaults(args)
 	if err != nil {

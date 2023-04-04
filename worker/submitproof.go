@@ -97,18 +97,21 @@ func submitProof(swap *mongodb.MgoSwapResult) (err error) {
 		return err
 	}
 
+	swapTxNonce := args.GetTxNonce()
 	updates := &mongodb.SwapResultUpdateItems{
-		Status:    mongodb.MatchTxNotStable,
 		SwapTx:    txHash,
+		SwapNonce: swapTxNonce,
+		SwapValue: args.SwapValue.String(),
+		Signer:    args.From,
 		Timestamp: now(),
 	}
-	err = mongodb.UpdateRouterSwapResult(fromChainID, txid, logIndex, updates)
+	err = mongodb.UpdateProofSwapResult(fromChainID, txid, logIndex, updates)
 	if err != nil {
-		logWorkerError("submitproof", "update db status failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex)
+		logWorkerError("submitproof", "update db status failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "signer", args.From, "nonce", swapTxNonce)
 		return err
 	}
 
-	logWorker("submitproof", "submit proof success", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "txHash", txHash)
+	logWorker("submitproof", "submit proof success", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "txHash", txHash, "signer", args.From, "nonce", swapTxNonce)
 
 	start := time.Now()
 	sentTxHash, err := sendSignedTransaction(resBridge, signedTx, args)
