@@ -114,7 +114,10 @@ func (b *Bridge) GenerateProof(proofID string, args *tokens.BuildTxArgs) (string
 		return "", errors.New("verify signature failed")
 	}
 
-	return rsv, nil
+	signature[crypto.SignatureLength-1] += 27
+
+	log.Info(logPrefix+"success", "txid", args.SwapID, "logIndex", args.LogIndex, "proofID", proofID)
+	return common.ToHex(signature), nil
 }
 
 func (b *Bridge) GenerateProofWithPrivateKey(proofID, priKey string) (string, error) {
@@ -130,10 +133,10 @@ func (b *Bridge) GenerateProofWithPrivateKey(proofID, priKey string) (string, er
 		return "", err
 	}
 
-	rsv := common.ToHex(signature)
+	signature[crypto.SignatureLength-1] += 27
 
 	log.Info(b.ChainConfig.BlockChain+" GenerateProof success", "proofID", proofID)
-	return rsv, nil
+	return common.ToHex(signature), nil
 }
 
 func (b *Bridge) SubmitProof(proofID, proof string, args *tokens.BuildTxArgs) (signedTx interface{}, txHash string, err error) {
