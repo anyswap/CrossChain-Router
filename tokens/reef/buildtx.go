@@ -209,7 +209,7 @@ func (b *Bridge) checkCoinBalance(reefAddr string, needValue *big.Int) (err erro
 		time.Sleep(retryRPCInterval)
 	}
 	if err == nil && balance.Cmp(needValue) < 0 {
-		return fmt.Errorf("not enough coin balance. %v < %v", balance, needValue)
+		return fmt.Errorf("%w not enough coin balance. %v < %v", tokens.ErrBuildTxErrorAndDelay, balance, needValue)
 	}
 	if err != nil {
 		log.Warn("get balance error", "sender", reefAddr, "err", err)

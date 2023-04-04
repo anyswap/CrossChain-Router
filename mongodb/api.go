@@ -457,6 +457,7 @@ func UpdateRouterSwapProof(fromChainID, txid string, logindex int, proofID, proo
 		"proofID":   proofID,
 		"proof":     proof,
 		"timestamp": time.Now().Unix(),
+		"memo":      "",
 	}
 
 	key := GetRouterSwapKey(fromChainID, txid, logindex)

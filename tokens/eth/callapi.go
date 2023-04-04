@@ -228,11 +228,11 @@ func (b *Bridge) GetPoolNonce(address, height string) (mdPoolNonce uint64, err e
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_getTransactionCount", account, height)
 		if err == nil {
 			allPoolNonces = append(allPoolNonces, uint64(result))
-			log.Info("call eth_getTransactionCount success", "chainID", b.ChainConfig.ChainID, "url", url, "account", account, "nonce", uint64(result))
+			log.Info("call eth_getTransactionCount success", "chainID", b.ChainConfig.ChainID, "url", url, "account", account.Hex(), "nonce", uint64(result))
 		}
 	}
 	if len(allPoolNonces) == 0 {
-		log.Warn("GetPoolNonce failed", "chainID", b.ChainConfig.ChainID, "account", account, "height", height, "timespent", time.Since(start).String(), "err", err)
+		log.Warn("GetPoolNonce failed", "chainID", b.ChainConfig.ChainID, "account", account.Hex(), "height", height, "timespent", time.Since(start).String(), "err", err)
 		return 0, wrapRPCQueryError(err, "eth_getTransactionCount", account, height)
 	}
 	sort.Slice(allPoolNonces, func(i, j int) bool {
