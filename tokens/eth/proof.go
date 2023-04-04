@@ -145,6 +145,15 @@ func (b *Bridge) SubmitProof(proofID, proof string, args *tokens.BuildTxArgs) (s
 		return nil, "", tokens.ErrToChainIDMismatch
 	}
 
+	routerContract := b.GetRouterContract("")
+	consumed, err := b.IsProofConsumed(routerContract, proofID)
+	if err != nil {
+		return nil, "", err
+	}
+	if consumed {
+		return nil, "", tokens.ErrProofConsumed
+	}
+
 	switch args.SwapType {
 	case tokens.AnyCallSwapType:
 		err = b.buildAnyCallWithProofTxInput(proofID, proof, args)

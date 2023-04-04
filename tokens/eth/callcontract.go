@@ -222,3 +222,16 @@ func (b *Bridge) GetExecutionBudget(contractAddr, account string) (*big.Int, err
 	}
 	return common.GetBigInt(common.FromHex(res), 0, 32), nil
 }
+
+// IsProofConsumed is proof consumed
+func (b *Bridge) IsProofConsumed(contractAddr, proofID string) (bool, error) {
+	funcHash := common.FromHex("0xdfde3fdb")
+	data := make([]byte, 36)
+	copy(data[:4], funcHash)
+	copy(data[4:36], common.HexToHash(proofID).Bytes())
+	res, err := b.EvmContractBridge.CallContract(contractAddr, data, "latest")
+	if err != nil {
+		return false, err
+	}
+	return common.GetBigInt(common.FromHex(res), 0, 32).Sign() != 0, nil
+}

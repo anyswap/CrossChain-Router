@@ -99,6 +99,7 @@ var (
 	ErrDontSupportProof       = errors.New("don't support proof")
 	ErrWrongProofID           = errors.New("wrong proofID")
 	ErrProofIDMismatch        = errors.New("proofID mismatch")
+	ErrProofConsumed          = errors.New("proof consumed")
 )
 
 // errors should register in router swap
