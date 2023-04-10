@@ -214,6 +214,8 @@ type LocalChainConfig struct {
 	ForbidSwapoutTokenIDs []string `toml:",omitempty" json:",omitempty"`
 	BigValueDiscount      uint64   `toml:",omitempty" json:",omitempty"`
 
+	SubmitProofInterval int64 `toml:",omitempty" json:",omitempty"` // seconds
+
 	// chainID -> tokenids
 	ChargeFeeOnDestChain   map[string][]string `toml:",omitempty" json:",omitempty"`
 	FeeReceiverOnDestChain string              `toml:",omitempty" json:",omitempty"`
@@ -1320,6 +1322,11 @@ func DontCheckInInitRouter() bool {
 // UseProofSign use proof sign
 func UseProofSign() bool {
 	return GetExtraConfig() != nil && GetExtraConfig().UseProofSign
+}
+
+// GetSubmitProofInterval get submit proof interval
+func GetSubmitProofInterval(chainID string) int64 {
+	return GetLocalChainConfig(chainID).SubmitProofInterval
 }
 
 // FeeReceiverOnDestChain fee receiver on dest chain
