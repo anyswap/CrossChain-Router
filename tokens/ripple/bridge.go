@@ -83,7 +83,7 @@ func SetRPCRetryTimes(times int) {
 // GetLatestBlockNumber gets latest block number
 // For ripple, GetLatestBlockNumber returns current ledger version
 func (b *Bridge) GetLatestBlockNumber() (num uint64, err error) {
-	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
+	urls := b.GetGatewayConfig().AllGatewayURLs
 	for _, url := range urls {
 		num, err = b.GetLatestBlockNumberOf(url)
 		if err == nil {
@@ -117,7 +117,7 @@ func (b *Bridge) GetTransactionByHash(txHash string) (txRes *websockets.TxResult
 	rpcParams := map[string]interface{}{
 		"transaction": txHash,
 	}
-	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
+	urls := b.GetGatewayConfig().AllGatewayURLs
 	for i := 0; i < rpcRetryTimes; i++ {
 		for _, url := range urls {
 			var res *websockets.TxResult
@@ -182,7 +182,7 @@ func (b *Bridge) GetAccount(address string) (acctRes *websockets.AccountInfoResu
 		"account":      address,
 		"ledger_index": "current",
 	}
-	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
+	urls := b.GetGatewayConfig().AllGatewayURLs
 	for i := 0; i < rpcRetryTimes; i++ {
 		for _, url := range urls {
 			var res *websockets.AccountInfoResult
@@ -204,7 +204,7 @@ func (b *Bridge) GetAccountLine(currency, issuer, accountAddress string) (line *
 		"limit":        400,
 		"ledger_index": "current",
 	}
-	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
+	urls := b.GetGatewayConfig().AllGatewayURLs
 	var acclRes *websockets.AccountLinesResult
 PAGE_LOOP:
 	for {
@@ -244,7 +244,7 @@ PAGE_LOOP:
 // GetFee get fee
 func (b *Bridge) GetFee() (feeRes *websockets.FeeResult, err error) {
 	rpcParams := map[string]interface{}{}
-	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
+	urls := b.GetGatewayConfig().AllGatewayURLs
 	for i := 0; i < rpcRetryTimes; i++ {
 		for _, url := range urls {
 			var res *websockets.FeeResult

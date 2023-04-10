@@ -49,7 +49,7 @@ func (b *Bridge) NewTxOut(amount int64, pkScript []byte) *wire.TxOut {
 }
 
 func (b *Bridge) FindUtxos(addr string) (result []*ElectUtxo, err error) {
-	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	urls := b.GatewayConfig.AllGatewayURLs
 	for _, url := range urls {
 		result, err = FindUtxos(url, addr)
 		if err == nil {
@@ -64,7 +64,7 @@ func (b *Bridge) FindUtxos(addr string) (result []*ElectUtxo, err error) {
 
 // EstimateFeePerKb impl
 func (b *Bridge) EstimateFeePerKb(blocks int) (result int64, err error) {
-	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	urls := b.GatewayConfig.AllGatewayURLs
 	for _, url := range urls {
 		result, err = EstimateFeePerKb(url, blocks)
 		if err == nil {

@@ -112,7 +112,7 @@ func (b *Bridge) SignTransactionWithPrivateKey(rawTx interface{}, privKey string
 }
 
 func (b *Bridge) ProofOfWork(messageBuilder *iotago.MessageBuilder) (*iotago.Message, error) {
-	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
+	urls := b.GetGatewayConfig().AllGatewayURLs
 	for _, url := range urls {
 		if message, err := ProofOfWork(url, messageBuilder); err == nil {
 			return message, nil

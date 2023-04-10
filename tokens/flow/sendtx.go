@@ -25,7 +25,7 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error
 }
 
 func (b *Bridge) BroadcastTxCommit(signedTx *sdk.Transaction) (txHash string, err error) {
-	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	urls := b.GatewayConfig.AllGatewayURLs
 	var success bool
 	for _, url := range urls {
 		txHash, err = sendTransaction(url, signedTx)
