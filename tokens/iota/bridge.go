@@ -70,7 +70,7 @@ func GetStubChainID(network string) *big.Int {
 // GetLatestBlockNumber gets latest block number
 // For ripple, GetLatestBlockNumber returns current ledger version
 func (b *Bridge) GetLatestBlockNumber() (num uint64, err error) {
-	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
+	urls := b.GetGatewayConfig().AllGatewayURLs
 	for _, url := range urls {
 		if blockNumber, err := GetLatestBlockNumber(url); err == nil {
 			return blockNumber, nil
@@ -98,7 +98,7 @@ func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
 
 // GetTransactionByHash call eth_getTransactionByHash
 func (b *Bridge) GetTransactionMetadata(txHash string) (txRes *iotago.MessageMetadataResponse, err error) {
-	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
+	urls := b.GetGatewayConfig().AllGatewayURLs
 	if msgID, err := ConvertMessageID(txHash); err != nil {
 		return nil, err
 	} else {
@@ -115,7 +115,7 @@ func (b *Bridge) GetTransactionMetadata(txHash string) (txRes *iotago.MessageMet
 
 // GetTransactionByHash call eth_getTransactionByHash
 func (b *Bridge) GetTransactionByHash(txHash string) (txRes *iotago.Message, err error) {
-	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
+	urls := b.GetGatewayConfig().AllGatewayURLs
 	if msgID, err := ConvertMessageID(txHash); err != nil {
 		return nil, err
 	} else {
@@ -154,7 +154,7 @@ func (b *Bridge) CheckBalance(edAddr *iotago.Ed25519Address, amount uint64) (uin
 	if amount < KeepAlive {
 		return 0, tokens.ErrSwapValueTooLess
 	}
-	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
+	urls := b.GetGatewayConfig().AllGatewayURLs
 	for _, url := range urls {
 		if balance, err := CheckBalance(url, edAddr, amount); err == nil {
 			return balance, nil

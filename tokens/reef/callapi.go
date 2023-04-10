@@ -41,7 +41,7 @@ func (b *Bridge) GetLatestBlockNumberOf(url string) (latest uint64, err error) {
 func (b *Bridge) GetGetBlockHash(blockNumber uint64) (blockHash string, err error) {
 	gateway := b.GatewayConfig
 	var result string
-	for _, url := range gateway.APIAddress {
+	for _, url := range gateway.AllGatewayURLs {
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "chain_getBlockHash", blockNumber)
 		if err == nil {
 			return result, nil

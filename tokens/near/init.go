@@ -89,7 +89,7 @@ func (b *Bridge) GetTokenDecimals(tokenAddr string) (uint8, error) {
 	if tokenAddr == b.GetRouterContract("") {
 		return uint8(24), nil
 	}
-	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	urls := b.GatewayConfig.AllGatewayURLs
 	for _, url := range urls {
 		result, err := functionCall(url, tokenAddr, GetFtMetadata, EmptyArgs)
 		if err == nil {

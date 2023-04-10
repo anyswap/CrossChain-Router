@@ -13,7 +13,7 @@ func (b *Bridge) IsValidAddress(addr string) bool {
 
 // PublicKeyToAddress impl
 func (b *Bridge) PublicKeyToAddress(pubKeyHex string) (string, error) {
-	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
+	urls := b.GetGatewayConfig().AllGatewayURLs
 	for _, url := range urls {
 		nodeHTTPAPIClient := iotago.NewNodeHTTPAPIClient(url)
 		// fetch the node's info to know the min. required PoW score

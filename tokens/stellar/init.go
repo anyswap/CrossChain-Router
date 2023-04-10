@@ -55,7 +55,7 @@ func (b *Bridge) SetGatewayConfig(gatewayCfg *tokens.GatewayConfig) {
 func (b *Bridge) InitRemotes() {
 	logErrFunc := log.GetLogFuncOr(router.DontPanicInLoading(), log.Error, log.Fatal)
 	remotes := make(map[string]*horizonclient.Client)
-	for _, apiAddress := range b.GetGatewayConfig().APIAddress {
+	for _, apiAddress := range b.GetGatewayConfig().AllGatewayURLs {
 		remote := horizonclient.DefaultPublicNetClient
 		remote.HorizonURL = apiAddress
 		log.Info("Connected to remote api success", "api", apiAddress)

@@ -39,7 +39,7 @@ func (b *Bridge) PublicKeyToAddress(pubKey string) (string, error) {
 }
 
 func (b *Bridge) GetAccountNonce(address, pubKey string) (uint64, error) {
-	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	urls := b.GatewayConfig.AllGatewayURLs
 	for _, url := range urls {
 		result, err := GetAccount(url, address)
 		if err == nil {
@@ -58,7 +58,7 @@ func (b *Bridge) GetAccountNonce(address, pubKey string) (uint64, error) {
 }
 
 func (b *Bridge) GetAccountIndex(address, pubKey string) (int, error) {
-	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	urls := b.GatewayConfig.AllGatewayURLs
 	for _, url := range urls {
 		result, err := GetAccount(url, address)
 		if err == nil {
@@ -77,7 +77,7 @@ func (b *Bridge) GetAccountIndex(address, pubKey string) (int, error) {
 }
 
 func (b *Bridge) VerifyPubKey(address, pubKey string) error {
-	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	urls := b.GatewayConfig.AllGatewayURLs
 	for _, url := range urls {
 		result, err := GetAccount(url, address)
 		if err == nil {

@@ -139,7 +139,7 @@ func (b *Bridge) GetTip() (tip *cardanosdk.NodeTip, err error) {
 		}
 		return b.RpcClient.Tip()
 	} else {
-		urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+		urls := b.GatewayConfig.AllGatewayURLs
 		for _, url := range urls {
 			result, err := GetCardanoTip(url)
 			if err == nil {
@@ -175,7 +175,7 @@ func (b *Bridge) GetLatestBlockNumber() (num uint64, err error) {
 			return 0, err
 		}
 	} else {
-		urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+		urls := b.GatewayConfig.AllGatewayURLs
 		for _, url := range urls {
 			result, err := GetCardanoTip(url)
 			if err == nil {
@@ -290,7 +290,7 @@ func (b *Bridge) GetTransactionByHash(txHash string) (*Transaction, error) {
 		}
 		return tx, nil
 	} else {
-		urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+		urls := b.GatewayConfig.AllGatewayURLs
 		for _, url := range urls {
 			result, err := GetTransactionByHash(url, txHash)
 			if err == nil {
@@ -307,7 +307,7 @@ func (b *Bridge) GetUtxosByAddress(address string) (*[]Output, error) {
 	if !b.IsValidAddress(address) {
 		return nil, errors.New("GetUtxosByAddress address is empty")
 	}
-	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	urls := b.GatewayConfig.AllGatewayURLs
 	for _, url := range urls {
 		result, err := GetUtxosByAddress(url, address)
 		if err == nil {
