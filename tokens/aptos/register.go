@@ -27,7 +27,7 @@ func (b *Bridge) registerERC20SwapTx(txHash string, logIndex int) ([]*tokens.Swa
 	commonInfo.LogIndex = logIndex                      // LogIndex
 	commonInfo.FromChainID = b.ChainConfig.GetChainID() // FromChainID
 
-	txres, err := b.GetTransactionInfo(txHash, true)
+	txres, err := b.GetTransactionInfo(commonInfo, txHash, true)
 	if err != nil {
 		return []*tokens.SwapTxInfo{commonInfo}, []error{err}
 	}

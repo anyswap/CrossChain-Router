@@ -3,7 +3,6 @@ package aptos
 import (
 	"fmt"
 	"math/big"
-	"strconv"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -48,7 +47,7 @@ func (b *Bridge) VerifyTransaction(txHash string, args *tokens.VerifyArgs) (*tok
 }
 
 // GetTransactionInfo get tx info (verify tx status and check stable)
-func (b *Bridge) GetTransactionInfo(txHash string, allowUnstable bool) (*TransactionInfo, error) {
+func (b *Bridge) GetTransactionInfo(swapInfo *tokens.SwapTxInfo, txHash string, allowUnstable bool) (*TransactionInfo, error) {
 	tx, err := b.GetTransaction(txHash)
 	if err != nil {
 		log.Debug(b.ChainConfig.BlockChain+" Bridge::GetTransaction fail", "tx", txHash, "err", err)
@@ -70,10 +69,11 @@ func (b *Bridge) GetTransactionInfo(txHash string, allowUnstable bool) (*Transac
 			return nil, errf
 		}
 
-		txHeight, errf := strconv.ParseUint(txres.Version, 10, 64)
+		txHeight, errf := b.GetBlockNumberByVersion(txres.Version)
 		if errf != nil {
 			return nil, errf
 		}
+		swapInfo.Height = txHeight
 
 		if h < txHeight+b.GetChainConfig().Confirmations {
 			return nil, tokens.ErrTxNotStable
@@ -95,7 +95,7 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 	swapInfo.LogIndex = logIndex                      // LogIndex
 	swapInfo.FromChainID = b.ChainConfig.GetChainID() // FromChainID
 
-	txres, err := b.GetTransactionInfo(txHash, allowUnstable)
+	txres, err := b.GetTransactionInfo(swapInfo, txHash, allowUnstable)
 	if err != nil {
 		return swapInfo, err
 	}
