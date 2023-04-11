@@ -18,6 +18,8 @@ var (
 
 	supportedChainIDs     = make(map[string]bool)
 	supportedChainIDsInit sync.Once
+
+	defRPCClientTimeout = 60
 )
 
 const (
@@ -29,15 +31,15 @@ const (
 // Bridge block bridge inherit from btc bridge
 type Bridge struct {
 	*base.NonceSetterBase
-	RPCClientTimeout int
 }
 
 // NewCrossChainBridge new bridge
 func NewCrossChainBridge() *Bridge {
-	return &Bridge{
-		NonceSetterBase:  base.NewNonceSetterBase(),
-		RPCClientTimeout: 60,
+	b := &Bridge{
+		NonceSetterBase: base.NewNonceSetterBase(),
 	}
+	b.RPCClientTimeout = defRPCClientTimeout
+	return b
 }
 
 // SupportsChainID supports chainID

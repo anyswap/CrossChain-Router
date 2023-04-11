@@ -17,6 +17,7 @@ var (
 
 // InitAfterConfig init variables (ie. extra members) after loading config
 func (b *Bridge) InitAfterConfig() {
+	b.CrossChainBridgeBase.InitAfterConfig()
 }
 
 // InitRouterInfo init router info
