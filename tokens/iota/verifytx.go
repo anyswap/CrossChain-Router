@@ -72,10 +72,12 @@ func (b *Bridge) verifySwapoutTx(txHash string, _ int, allowUnstable bool) (*tok
 			if h, err := b.GetLatestBlockNumber(); err != nil {
 				return swapInfo, err
 			} else {
-				if h < uint64(*tx.ReferencedByMilestoneIndex)+b.GetChainConfig().Confirmations {
+				txHeight := uint64(*tx.ReferencedByMilestoneIndex)
+				swapInfo.Height = txHeight
+				if h < txHeight+b.GetChainConfig().Confirmations {
 					return swapInfo, tokens.ErrTxNotStable
 				}
-				if h < b.ChainConfig.InitialHeight {
+				if txHeight < b.ChainConfig.InitialHeight {
 					return swapInfo, tokens.ErrTxBeforeInitialHeight
 				}
 			}

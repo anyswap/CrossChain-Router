@@ -96,7 +96,7 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 	return swapInfo, nil
 }
 
-func (b *Bridge) checkTxStatus(txres *sdk.TransactionResult, allowUnstable bool) error {
+func (b *Bridge) checkTxStatus(swapInfo *tokens.SwapTxInfo, txres *sdk.TransactionResult, allowUnstable bool) error {
 	if txres.Status.String() != Success_Status {
 		return tokens.ErrTxIsNotValidated
 	}
@@ -110,12 +110,13 @@ func (b *Bridge) checkTxStatus(txres *sdk.TransactionResult, allowUnstable bool)
 		if errh2 != nil {
 			return errh2
 		}
+		swapInfo.Height = txHeight
 
 		if lastHeight < txHeight+b.GetChainConfig().Confirmations {
 			return tokens.ErrTxNotStable
 		}
 
-		if lastHeight < b.ChainConfig.InitialHeight {
+		if txHeight < b.ChainConfig.InitialHeight {
 			return tokens.ErrTxBeforeInitialHeight
 		}
 	}
@@ -201,7 +202,7 @@ func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable boo
 		return nil, errTxResultType
 	}
 
-	statusErr := b.checkTxStatus(txres, allowUnstable)
+	statusErr := b.checkTxStatus(swapInfo, txres, allowUnstable)
 	if statusErr != nil {
 		return nil, statusErr
 	}
