@@ -31,6 +31,7 @@ const (
 // Bridge block bridge inherit from btc bridge
 type Bridge struct {
 	*base.NonceSetterBase
+	Prefix string
 }
 
 // NewCrossChainBridge new bridge
@@ -67,6 +68,39 @@ func GetStubChainID(network string) *big.Int {
 	stubChainID.Mod(stubChainID, tokens.StubChainIDBase)
 	stubChainID.Add(stubChainID, tokens.StubChainIDBase)
 	return stubChainID
+}
+
+// InitAfterConfig init variables (ie. extra members) after loading config
+func (b *Bridge) InitAfterConfig() {
+	b.CrossChainBridgeBase.InitAfterConfig()
+
+	chainID := b.ChainConfig.ChainID
+	switch chainID {
+	case GetStubChainID(mainnetNetWork).String():
+		b.Prefix = string(iotago.PrefixMainnet)
+	case GetStubChainID(testnetNetWork).String():
+		b.Prefix = string(iotago.PrefixTestnet)
+	}
+
+	urls := b.GetGatewayConfig().AllGatewayURLs
+	for _, url := range urls {
+		nodeHTTPAPIClient := iotago.NewNodeHTTPAPIClient(url)
+		if info, err := nodeHTTPAPIClient.Info(ctx); err == nil {
+			prefix := info.Bech32HRP
+			if b.Prefix == "" {
+				b.Prefix = prefix
+			} else if b.Prefix != prefix {
+				log.Fatal("prefix mismatch", "fromRPC", prefix, "fromNetwork", b.Prefix)
+			}
+			break
+		}
+	}
+
+	if b.Prefix == "" {
+		log.Fatal("no address prefix assigned", "chainID", chainID)
+	}
+
+	log.Info("call InitAfterConfig success", "chainID", chainID, "prefix", b.Prefix)
 }
 
 // GetLatestBlockNumber gets latest block number
