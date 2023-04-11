@@ -61,6 +61,7 @@ func (b *Bridge) checkTokenMinter(routerPDA string, tokenCfg *tokens.TokenConfig
 
 // ####### NEW IMPLEMENT ###########################################
 func (b *Bridge) InitAfterConfig() {
+	b.CrossChainBridgeBase.InitAfterConfig()
 	reswapMaxAmountRateStr := params.GetCustom(b.ChainConfig.ChainID, "ReswapMaxAmountRate")
 	if reswapMaxAmountRateStr != "" {
 		reswapMaxAmountRate, err := common.GetUint64FromStr(reswapMaxAmountRateStr)

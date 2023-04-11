@@ -65,11 +65,7 @@ func (b *Bridge) GetTransaction(txHash string) (result interface{}, err error) {
 	callMethod := "getTransaction"
 	gateway := b.GatewayConfig
 	var tx types.TransactionWithMeta
-	err = RPCCall(&tx, gateway.APIAddress, callMethod, txHash, obj)
-	if err != nil && tokens.IsRPCQueryOrNotFoundError(err) && len(gateway.APIAddressExt) > 0 {
-		err = RPCCall(&tx, gateway.APIAddressExt, callMethod, txHash, obj)
-	}
-	if err != nil {
+	if err := RPCCall(&tx, gateway.AllGatewayURLs, callMethod, txHash, obj); err != nil {
 		return nil, err
 	}
 	if uint64(tx.Slot) == 0 {

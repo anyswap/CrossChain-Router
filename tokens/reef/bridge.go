@@ -53,6 +53,7 @@ func NewCrossChainBridge() *Bridge {
 
 // InitAfterConfig init variables (ie. extra members) after loading config
 func (b *Bridge) InitAfterConfig() {
+	b.CrossChainBridgeBase.InitAfterConfig()
 	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		api, err := gsrpc.NewSubstrateAPI(url)
 		if err != nil {

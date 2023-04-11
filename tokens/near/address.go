@@ -17,7 +17,7 @@ func (b *Bridge) IsValidAddress(address string) bool {
 }
 
 func (b *Bridge) GetAccountNonce(account, publicKey string) (uint64, error) {
-	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	urls := b.GatewayConfig.AllGatewayURLs
 	for _, url := range urls {
 		result, err := GetAccountNonce(url, account, publicKey)
 		if err == nil {

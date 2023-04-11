@@ -8,6 +8,7 @@ import (
 	cmath "github.com/anyswap/CrossChain-Router/v3/common/math"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
+	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 )
 
 var (
@@ -81,23 +82,34 @@ type CrossChainBridgeBase struct {
 	GatewayConfig  *GatewayConfig
 	TokenConfigMap *sync.Map // key is token address
 
-	UseFastMPC bool
+	RPCClientTimeout int
+
+	UseFastMPC                bool
+	DontCheckAddressMixedCase bool
 }
 
 // NewCrossChainBridgeBase new base bridge
 func NewCrossChainBridgeBase() *CrossChainBridgeBase {
 	return &CrossChainBridgeBase{
-		TokenConfigMap: new(sync.Map),
+		TokenConfigMap:   new(sync.Map),
+		RPCClientTimeout: client.GetDefaultTimeout(false),
 	}
+}
+
+// InitAfterConfig init variables (ie. extra members) after loading config
+func (b *CrossChainBridgeBase) InitAfterConfig() {
+	chainID := b.ChainConfig.ChainID
+	clientTimeout := params.GetRPCClientTimeout(chainID)
+	if clientTimeout != 0 {
+		b.RPCClientTimeout = clientTimeout
+	}
+	lclCfg := params.GetLocalChainConfig(chainID)
+	b.DontCheckAddressMixedCase = lclCfg.DontCheckAddressMixedCase
 }
 
 // InitRouterInfo init router info
 func (b *CrossChainBridgeBase) InitRouterInfo(routerContract, routerVersion string) (err error) {
 	return ErrNotImplemented
-}
-
-// InitAfterConfig init variables (ie. extra members) after loading config
-func (b *CrossChainBridgeBase) InitAfterConfig() {
 }
 
 // GetBalance get balance is used for checking budgets to prevent DOS attacking

@@ -27,6 +27,8 @@ var (
 
 	supportedChainIDs     = make(map[string]bool)
 	supportedChainIDsInit sync.Once
+
+	defRPCClientTimeout = 60
 )
 
 const (
@@ -39,10 +41,9 @@ const (
 type Bridge struct {
 	*tokens.CrossChainBridgeBase
 	*base.ReSwapableBridgeBase
-	RPCClientTimeout int
-	RpcClient        cardanosdk.Node
-	FakePrikey       crypto.PrvKey
-	ProtocolParams   *cardanosdk.ProtocolParams
+	RpcClient      cardanosdk.Node
+	FakePrikey     crypto.PrvKey
+	ProtocolParams *cardanosdk.ProtocolParams
 }
 
 // NewCrossChainBridge new bridge
@@ -56,9 +57,9 @@ func NewCrossChainBridge() *Bridge {
 	instance := &Bridge{
 		CrossChainBridgeBase: tokens.NewCrossChainBridgeBase(),
 		ReSwapableBridgeBase: base.NewReSwapableBridgeBase(),
-		RPCClientTimeout:     60,
 		FakePrikey:           fakePrikey,
 	}
+	instance.RPCClientTimeout = defRPCClientTimeout
 	BridgeInstance = instance
 
 	return instance
@@ -93,6 +94,7 @@ func GetStubChainID(network string) *big.Int {
 
 // InitAfterConfig init variables (ie. extra members) after loading config
 func (b *Bridge) InitAfterConfig() {
+	b.CrossChainBridgeBase.InitAfterConfig()
 	chainId := b.GetChainConfig().GetChainID()
 	apiKey := params.GetCustom(b.ChainConfig.ChainID, "APIKey")
 	if apiKey != "" {
@@ -139,7 +141,7 @@ func (b *Bridge) GetTip() (tip *cardanosdk.NodeTip, err error) {
 		}
 		return b.RpcClient.Tip()
 	} else {
-		urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+		urls := b.GatewayConfig.AllGatewayURLs
 		for _, url := range urls {
 			result, err := GetCardanoTip(url)
 			if err == nil {
@@ -175,7 +177,7 @@ func (b *Bridge) GetLatestBlockNumber() (num uint64, err error) {
 			return 0, err
 		}
 	} else {
-		urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+		urls := b.GatewayConfig.AllGatewayURLs
 		for _, url := range urls {
 			result, err := GetCardanoTip(url)
 			if err == nil {
@@ -290,7 +292,7 @@ func (b *Bridge) GetTransactionByHash(txHash string) (*Transaction, error) {
 		}
 		return tx, nil
 	} else {
-		urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+		urls := b.GatewayConfig.AllGatewayURLs
 		for _, url := range urls {
 			result, err := GetTransactionByHash(url, txHash)
 			if err == nil {
@@ -307,7 +309,7 @@ func (b *Bridge) GetUtxosByAddress(address string) (*[]Output, error) {
 	if !b.IsValidAddress(address) {
 		return nil, errors.New("GetUtxosByAddress address is empty")
 	}
-	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	urls := b.GatewayConfig.AllGatewayURLs
 	for _, url := range urls {
 		result, err := GetUtxosByAddress(url, address)
 		if err == nil {

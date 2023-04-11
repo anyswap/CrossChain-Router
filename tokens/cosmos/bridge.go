@@ -55,6 +55,7 @@ func (b *Bridge) SetPrefixAndDenom(prefix, denom string) {
 
 // InitAfterConfig init variables (ie. extra members) after loading config
 func (b *Bridge) InitAfterConfig() {
+	b.CrossChainBridgeBase.InitAfterConfig()
 }
 
 // SetGatewayConfig set gateway config

@@ -67,7 +67,7 @@ func (b *Bridge) VerifyTokenConfig(tokenCfg *tokens.TokenConfig) error {
 
 // GetLatestBlockNumber gets latest block number
 func (b *Bridge) GetLatestBlockNumber() (uint64, error) {
-	urls := b.GatewayConfig.APIAddress
+	urls := b.GatewayConfig.AllGatewayURLs
 	for _, url := range urls {
 		result, err := GetLatestBlockNumber(url)
 		if err == nil {
@@ -78,7 +78,7 @@ func (b *Bridge) GetLatestBlockNumber() (uint64, error) {
 }
 
 func (b *Bridge) GetLatestBlockHash() (string, error) {
-	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	urls := b.GatewayConfig.AllGatewayURLs
 	for _, url := range urls {
 		result, err := GetLatestBlockHash(url)
 		if err == nil {
@@ -94,7 +94,7 @@ func (b *Bridge) GetLatestBlockNumberOf(apiAddress string) (uint64, error) {
 }
 
 func (b *Bridge) GetBlockNumberByHash(blockHash string) (uint64, error) {
-	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	urls := b.GatewayConfig.AllGatewayURLs
 	for _, url := range urls {
 		result, err := GetBlockNumberByHash(url, blockHash)
 		if err == nil {
@@ -111,7 +111,7 @@ func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
 
 // GetTransactionByHash get tx response by hash
 func (b *Bridge) GetTransactionByHash(txHash string) (result *TransactionResult, err error) {
-	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	urls := b.GatewayConfig.AllGatewayURLs
 	router := b.ChainConfig.RouterContract
 	for _, url := range urls {
 		result, err = GetTransactionByHash(url, txHash, router)
@@ -123,7 +123,7 @@ func (b *Bridge) GetTransactionByHash(txHash string) (result *TransactionResult,
 }
 
 func (b *Bridge) CheckBalance(address, amount string) error {
-	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	urls := b.GatewayConfig.AllGatewayURLs
 	for _, url := range urls {
 		if err := CheckBalance(url, address, amount); err == nil {
 			return nil
@@ -135,7 +135,7 @@ func (b *Bridge) CheckBalance(address, amount string) error {
 }
 
 func (b *Bridge) CheckTokenBalance(token, amount string) error {
-	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	urls := b.GatewayConfig.AllGatewayURLs
 	router := b.ChainConfig.RouterContract
 	for _, url := range urls {
 		err := CheckTokenBalance(url, token, router, amount)

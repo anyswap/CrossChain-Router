@@ -150,7 +150,7 @@ func BuildMessage(inputs []*iotago.ToBeSignedUTXOInput, outputs []*iotago.SigLoc
 
 // GetTxBlockInfo impl NonceSetter interface
 func (b *Bridge) GetOutPutIDs(addr *iotago.Ed25519Address) ([]iotago.OutputIDHex, error) {
-	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
+	urls := b.GetGatewayConfig().AllGatewayURLs
 	for _, url := range urls {
 		if outPuts, err := GetOutPutIDs(url, addr); err == nil {
 			return outPuts, nil
@@ -162,7 +162,7 @@ func (b *Bridge) GetOutPutIDs(addr *iotago.Ed25519Address) ([]iotago.OutputIDHex
 }
 
 func (b *Bridge) GetOutPutByID(id iotago.OutputIDHex, needValue uint64, finish bool) (*iotago.UTXOInput, uint64, uint64, error) {
-	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
+	urls := b.GetGatewayConfig().AllGatewayURLs
 	for _, url := range urls {
 		if outPut, needValue, returnValue, err := GetOutPutByID(url, id.MustAsUTXOInput().ID(), needValue, finish); err == nil {
 			return outPut, needValue, returnValue, nil

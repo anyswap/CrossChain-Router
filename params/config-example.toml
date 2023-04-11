@@ -192,10 +192,11 @@ CheckEIP1167Master = false
 1313161554 = 60
 25 = 60
 # customs, key is chainID. value is a mapping.
-[Extra.Customs.1313161554]
-sendtxTimeout = "60"
-[Extra.Customs.30]
-dontCheckAddressMixedCase = "true"
+[Extra.Customs.1645027868239]
+APIKey = "XXXXXX"
+AssetPolicyKey = "xxxxxx"
+AppendName = "false"
+UseAPI = "true"
 # big value whitelist, key is tokenID
 [Extra.BigValueWhitelist]
 USDC = ["0x1111111111111111111111111111111111111111"]
@@ -214,6 +215,7 @@ MIM  = ["0x2222222222222222222222222222222222222222"]
 # the last key is chainID
 [Extra.LocalChainConfig.2025]
 EstimatedGasMustBePositive = true
+DontCheckAddressMixedCase = false
 SubmitProofInterval = 300
 
 [Extra.LocalChainConfig.86]

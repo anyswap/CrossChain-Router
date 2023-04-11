@@ -25,7 +25,7 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error
 		"tx_blob": fmt.Sprintf("%X", raw),
 	}
 	var success bool
-	urls := append(b.GetGatewayConfig().APIAddress, b.GetGatewayConfig().APIAddressExt...)
+	urls := b.GetGatewayConfig().AllGatewayURLs
 	for i := 0; i < rpcRetryTimes; i++ {
 		// try send to all remotes
 		for _, url := range urls {

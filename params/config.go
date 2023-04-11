@@ -209,6 +209,7 @@ type LocalChainConfig struct {
 	ForbidParallelLoading      bool `toml:",omitempty" json:",omitempty"`
 	EstimatedGasMustBePositive bool `toml:",omitempty" json:",omitempty"`
 	IsReswapSupported          bool `toml:",omitempty" json:",omitempty"`
+	DontCheckAddressMixedCase  bool `toml:",omitempty" json:",omitempty"`
 
 	SmallestGasPriceUnit  uint64   `toml:",omitempty" json:",omitempty"`
 	ForbidSwapoutTokenIDs []string `toml:",omitempty" json:",omitempty"`
