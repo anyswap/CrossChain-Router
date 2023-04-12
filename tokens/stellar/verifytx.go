@@ -76,10 +76,12 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 			return nil, errf
 		}
 
-		if h < uint64(txres.Ledger)+b.GetChainConfig().Confirmations {
+		txHeight := uint64(txres.Ledger)
+
+		if h < txHeight+b.GetChainConfig().Confirmations {
 			return nil, tokens.ErrTxNotStable
 		}
-		if h < b.ChainConfig.InitialHeight {
+		if txHeight < b.ChainConfig.InitialHeight {
 			return nil, tokens.ErrTxBeforeInitialHeight
 		}
 	}

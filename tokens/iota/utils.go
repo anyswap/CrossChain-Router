@@ -3,6 +3,7 @@ package iota
 import (
 	"encoding/hex"
 
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	iotago "github.com/iotaledger/iota.go/v2"
 )
@@ -25,8 +26,11 @@ func ConvertStringToAddress(edAddr string) *iotago.Ed25519Address {
 	return nil
 }
 
-func ConvertPubKeyToAddr(addrPubKey string) *iotago.Ed25519Address {
-	if publicKey, err := hex.DecodeString(addrPubKey); err != nil {
+func ConvertPubKeyToAddr(pubKeyHex string) *iotago.Ed25519Address {
+	if common.HasHexPrefix(pubKeyHex) {
+		pubKeyHex = pubKeyHex[2:]
+	}
+	if publicKey, err := hex.DecodeString(pubKeyHex); err != nil {
 		return nil
 	} else {
 		eddr := iotago.AddressFromEd25519PubKey(publicKey)

@@ -41,9 +41,17 @@ type CoinValue struct {
 	Value string `json:"value"`
 }
 
+type BlockInfo struct {
+	Height       string `json:"block_height"`
+	Hash         string `json:"block_hash"`
+	Timestamp    string `json:"block_timestamp"`
+	FirstVersion string `json:"first_version"`
+	LastVersion  string `json:"last_version"`
+}
+
 type TransactionInfo struct {
 	Type                    string             `json:"type"`
-	Version                 string             `json:"version,omitempty"`
+	Version                 string             `json:"version"`
 	Hash                    string             `json:"hash"`
 	StateRootHash           string             `json:"state_root_hash,omitempty"`
 	EventRootHash           string             `json:"event_root_hash,omitempty"`

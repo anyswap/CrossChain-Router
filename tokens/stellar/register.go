@@ -82,6 +82,7 @@ func (b *Bridge) buildSwapInfoFromOperation(txres *hProtocol.Transaction, op *op
 	swapInfo.Hash = txres.Hash
 	swapInfo.LogIndex = logIndex
 	swapInfo.FromChainID = b.ChainConfig.GetChainID()
+	swapInfo.Height = uint64(txres.Ledger)
 
 	assetKey := convertTokenID(op)
 	token := b.GetTokenConfig(assetKey)

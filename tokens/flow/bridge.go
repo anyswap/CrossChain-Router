@@ -116,7 +116,7 @@ func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
 }
 
 // GetTransactionByHash get tx response by hash
-func (b *Bridge) GetTransactionByHash(txHash string) (result *sdk.TransactionResult, err error) {
+func (b *Bridge) GetTransactionByHash(txHash string) (result *sdk.Transaction, err error) {
 	urls := b.GatewayConfig.AllGatewayURLs
 	for _, url := range urls {
 		result, err = GetTransactionByHash(url, txHash)
@@ -127,19 +127,24 @@ func (b *Bridge) GetTransactionByHash(txHash string) (result *sdk.TransactionRes
 	return nil, tokens.ErrTxNotFound
 }
 
+// GetTransactionResult get tx response by hash
+func (b *Bridge) GetTransactionResult(txHash string) (result *sdk.TransactionResult, err error) {
+	urls := b.GatewayConfig.AllGatewayURLs
+	for _, url := range urls {
+		result, err = GetTransactionResultByHash(url, txHash)
+		if err == nil {
+			return result, nil
+		}
+	}
+	return nil, tokens.ErrTxNotFound
+}
+
 // GetTransactionStatus impl
 func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, err error) {
 	status = new(tokens.TxStatus)
-	tx, err := b.GetTransaction(txHash)
+	txres, err := b.GetTransactionResult(txHash)
 	if err != nil {
 		return nil, err
-	}
-
-	txres, ok := tx.(*sdk.TransactionResult)
-	if !ok {
-		// unexpected
-		log.Warn("GetTransactionStatus", "error", errTxResultType)
-		return nil, errTxResultType
 	}
 
 	// Check tx status

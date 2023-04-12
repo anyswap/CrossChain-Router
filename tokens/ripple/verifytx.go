@@ -90,6 +90,7 @@ func (b *Bridge) verifySwapoutTx(txHash string, _ int, allowUnstable bool) (*tok
 		}
 
 		txHeight := uint64(txres.TransactionWithMetaData.LedgerSequence)
+		swapInfo.Height = txHeight
 
 		if h < txHeight+b.GetChainConfig().Confirmations {
 			return swapInfo, tokens.ErrTxNotStable

@@ -1,6 +1,7 @@
 package aptos
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -8,6 +9,24 @@ import (
 )
 
 var wrapRPCQueryError = tokens.WrapRPCQueryError
+
+// GetBlockNumberByVersion get block number by version
+func (b *Bridge) GetBlockNumberByVersion(version string) (uint64, error) {
+	cli := RestClient{Timeout: b.RPCClientTimeout}
+	var block *BlockInfo
+	var err error
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
+		cli.Url = url
+		block, err = cli.GetBlockByVersion(version)
+		if err == nil {
+			blockHeight, errf := strconv.ParseUint(block.Height, 10, 64)
+			if errf == nil {
+				return blockHeight, nil
+			}
+		}
+	}
+	return 0, wrapRPCQueryError(err, "GetBlockNumberByVersion")
+}
 
 // GetLedger get ledger info
 func (b *Bridge) GetLedger() (result *LedgerInfo, err error) {

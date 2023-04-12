@@ -1,29 +1,41 @@
 package iota
 
 import (
+	"encoding/hex"
 	"errors"
 
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	iotago "github.com/iotaledger/iota.go/v2"
 )
 
 // IsValidAddress check address
 func (b *Bridge) IsValidAddress(addr string) bool {
-	return true
+	prefix, _, err := iotago.ParseBech32(addr)
+	return err == nil && string(prefix) == b.Prefix
 }
 
 // PublicKeyToAddress impl
-func (b *Bridge) PublicKeyToAddress(pubKeyHex string) (string, error) {
-	urls := b.GetGatewayConfig().AllGatewayURLs
-	for _, url := range urls {
-		nodeHTTPAPIClient := iotago.NewNodeHTTPAPIClient(url)
-		// fetch the node's info to know the min. required PoW score
-		if info, err := nodeHTTPAPIClient.Info(ctx); err == nil {
-			edAddr := ConvertStringToAddress(pubKeyHex)
-			bech32Addr := edAddr.Bech32(iotago.NetworkPrefix(info.Bech32HRP))
-			return bech32Addr, nil
-		}
+func (b *Bridge) PublicKeyToAddress(edPubKey string) (string, error) {
+	return PublicKeyToAddress(b.Prefix, edPubKey)
+}
+
+func PublicKeyToAddress(prefix, edPubKey string) (string, error) {
+	edAddr := ConvertStringToAddress(edPubKey)
+	bech32Addr := edAddr.Bech32(iotago.NetworkPrefix(prefix))
+	return bech32Addr, nil
+}
+
+func HexPublicKeyToAddress(prefix, pubKeyHex string) (string, error) {
+	if common.HasHexPrefix(pubKeyHex) {
+		pubKeyHex = pubKeyHex[2:]
 	}
-	return "", errors.New("PublicKeyToAddress eror")
+	publicKey, err := hex.DecodeString(pubKeyHex)
+	if err != nil {
+		return "", err
+	}
+	edAddr := iotago.AddressFromEd25519PubKey(publicKey)
+	bech32Addr := edAddr.Bech32(iotago.NetworkPrefix(prefix))
+	return bech32Addr, nil
 }
 
 // VerifyMPCPubKey verify mpc address and public key is matching

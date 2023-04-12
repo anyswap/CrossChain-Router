@@ -2,9 +2,8 @@ package reef
 
 import (
 	"errors"
-	"fmt"
-	"log"
-	"strings"
+
+	"github.com/anyswap/CrossChain-Router/v3/log"
 )
 
 func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error) {
@@ -16,11 +15,9 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error
 
 	txHash, err = SendSignedTx(tx.buildScriptParam())
 	if err != nil {
+		log.Warn("SendTransaction failed", "chainID", b.ChainConfig.ChainID, "err", err)
 		return "", err
 	}
-	if !strings.EqualFold(*tx.TxHash, txHash) {
-		return "", fmt.Errorf("txhash dismatch txHash %s sendTx %s", *tx.TxHash, txHash)
-	}
-	b.SetNonce(*tx.ReefAddress, *tx.AccountNonce+1)
+	log.Info("SendTransaction success", "chainID", b.ChainConfig.ChainID, "hash", txHash)
 	return txHash, nil
 }
