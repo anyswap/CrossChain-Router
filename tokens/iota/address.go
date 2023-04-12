@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	iotago "github.com/iotaledger/iota.go/v2"
 )
 
@@ -25,6 +26,9 @@ func PublicKeyToAddress(prefix, edPubKey string) (string, error) {
 }
 
 func HexPublicKeyToAddress(prefix, pubKeyHex string) (string, error) {
+	if common.HasHexPrefix(pubKeyHex) {
+		pubKeyHex = pubKeyHex[2:]
+	}
 	publicKey, err := hex.DecodeString(pubKeyHex)
 	if err != nil {
 		return "", err

@@ -86,6 +86,12 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 		return swapInfo, checkErr
 	}
 
+	tx, err := b.GetTransactionByHash(txHash)
+	if err != nil {
+		return swapInfo, err
+	}
+	swapInfo.From = tx.Payer.String()
+
 	if !allowUnstable {
 		log.Info("verify swapout pass",
 			"token", swapInfo.ERC20SwapInfo.Token, "from", swapInfo.From, "to", swapInfo.To,
@@ -192,14 +198,10 @@ func (b *Bridge) checkSwapoutInfo(swapInfo *tokens.SwapTxInfo) error {
 }
 
 func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable bool) ([]sdk.Event, error) {
-	tx, txErr := b.GetTransaction(swapInfo.Hash)
+	txres, txErr := b.GetTransactionResult(swapInfo.Hash)
 	if txErr != nil {
 		log.Debug("[verifySwapout] "+b.ChainConfig.BlockChain+" Bridge::GetTransaction fail", "tx", swapInfo.Hash, "err", txErr)
 		return nil, tokens.ErrTxNotFound
-	}
-	txres, ok := tx.(*sdk.TransactionResult)
-	if !ok {
-		return nil, errTxResultType
 	}
 
 	statusErr := b.checkTxStatus(swapInfo, txres, allowUnstable)

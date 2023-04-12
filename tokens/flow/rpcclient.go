@@ -62,7 +62,20 @@ func sendTransaction(url string, signedTx *sdk.Transaction) (string, error) {
 }
 
 // GetTransactionByHash get tx by hash
-func GetTransactionByHash(url, txHash string) (*sdk.TransactionResult, error) {
+func GetTransactionByHash(url, txHash string) (*sdk.Transaction, error) {
+	flowClient, err := grpc.NewClient(url)
+	if err != nil {
+		return nil, err
+	}
+	result, err := flowClient.GetTransaction(ctx, sdk.HexToID(txHash))
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// GetTransactionResultByHash get tx by hash
+func GetTransactionResultByHash(url, txHash string) (*sdk.TransactionResult, error) {
 	flowClient, err := grpc.NewClient(url)
 	if err != nil {
 		return nil, err

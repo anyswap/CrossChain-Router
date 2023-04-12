@@ -2,7 +2,6 @@ package flow
 
 import (
 	"github.com/anyswap/CrossChain-Router/v3/log"
-	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	sdk "github.com/onflow/flow-go-sdk"
 )
@@ -16,11 +15,6 @@ func (b *Bridge) SendTransaction(signedTx interface{}) (txHash string, err error
 		return "", err
 	}
 	log.Info("SendTransaction success", "hash", txHash)
-	if !params.IsParallelSwapEnabled() {
-		sender := tx.Payer
-		nonce := tx.ProposalKey.SequenceNumber
-		b.SetNonce(sender.Hex(), nonce+1)
-	}
 	return txHash, nil
 }
 

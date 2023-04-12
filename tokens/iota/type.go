@@ -14,8 +14,9 @@ type RawType struct {
 }
 
 type MessagePayload struct {
-	Type    uint64  `json:"type"`
-	Essence Essence `json:"essence"`
+	Type         uint64        `json:"type"`
+	Essence      Essence       `json:"essence"`
+	UnlockBlocks []UnlockBlock `json:"unlockBlocks"`
 }
 
 type Essence struct {
@@ -23,6 +24,17 @@ type Essence struct {
 	Inputs  []Input  `json:"inputs"`
 	Outputs []Output `json:"outputs"`
 	Payload Payload  `json:"payload"`
+}
+
+type UnlockBlock struct {
+	Type      uint64    `json:"type"`
+	Signature Signature `json:"signature"`
+}
+
+type Signature struct {
+	Type      uint64 `json:"type"`
+	PublicKey string `json:"publicKey"`
+	Signature string `json:"signature"`
 }
 
 type Input struct {
