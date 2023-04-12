@@ -17,6 +17,17 @@ type locRegisterSwapResult struct {
 	Errs        []string
 }
 
+// BuildTxResult buildtx result (include modified extra info)
+type BuildTxResult struct {
+	RawTx interface{}       `json:"tx"`
+	Extra *tokens.AllExtras `json:"extra,omitempty"`
+}
+
+type SignTxResult struct {
+	SignedTx interface{} `json:"signedTx"`
+	TxHash   string      `json:"txhash"`
+}
+
 func (r *RegisterSwapResult) MarshalJSON() ([]byte, error) {
 	lr := &locRegisterSwapResult{
 		SwapTxInfos: r.SwapTxInfos,

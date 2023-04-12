@@ -98,7 +98,12 @@ func (b *Bridge) VerifyTransaction(txHash string, args *tokens.VerifyArgs) (*tok
 
 // BuildRawTransaction build tx with specified args.
 func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{}, err error) {
-	err = b.callService(&rawTx, "BuildRawTransaction", args)
+	var result BuildTxResult
+	err = b.callService(&result, "BuildRawTransaction", args)
+	if err == nil {
+		rawTx = result.RawTx
+		args.Extra = result.Extra
+	}
 	return rawTx, err
 }
 
@@ -110,11 +115,6 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHash []string) error {
 	var result interface{}
 	return b.callService(&result, "VerifyMsgHash", rawTx, msgHash)
-}
-
-type SignTxResult struct {
-	SignedTx interface{}
-	TxHash   string
 }
 
 // MPCSignTransaction mpc sign tx.
