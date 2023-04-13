@@ -13,6 +13,7 @@ import (
 
 var (
 	defSubmitProofInterval = int64(300) // seconds
+	defMaxSubmitProofTimes = 3
 )
 
 // StartSubmitProofJob submit proof job
@@ -56,16 +57,25 @@ func submitProof(swap *mongodb.MgoSwapResult) (err error) {
 	if swap.ProofID == "" || swap.Proof == "" {
 		return errors.New("invlaid proof")
 	}
+
 	if swap.SwapTx != "" {
-		return errAlreadySwapped
-	}
-	submitProofInterval := params.GetSubmitProofInterval(swap.ToChainID)
-	if submitProofInterval == 0 {
-		submitProofInterval = defSubmitProofInterval
-	}
-	if getSepTimeInFind(submitProofInterval) < swap.Timestamp {
-		logWorkerTrace("submitproof", "wait submit proof interval", "interval", submitProofInterval, "timestamp", swap.Timestamp, "txid", swap.TxID, "logIndex", swap.LogIndex, "fromChainID", swap.FromChainID, "toChainID", swap.ToChainID)
-		return nil
+		maxSubmitProofTimes := params.GetMaxSubmitProofTimes(swap.ToChainID)
+		if maxSubmitProofTimes == 0 {
+			maxSubmitProofTimes = defMaxSubmitProofTimes
+		}
+		if len(swap.OldSwapTxs) > maxSubmitProofTimes {
+			logWorkerTrace("submitproof", "reached max submit proof times", "maxtimes", maxSubmitProofTimes, "txid", swap.TxID, "logIndex", swap.LogIndex, "fromChainID", swap.FromChainID, "toChainID", swap.ToChainID)
+			return nil
+		}
+
+		submitProofInterval := params.GetSubmitProofInterval(swap.ToChainID)
+		if submitProofInterval == 0 {
+			submitProofInterval = defSubmitProofInterval
+		}
+		if getSepTimeInFind(submitProofInterval) < swap.Timestamp {
+			logWorkerTrace("submitproof", "wait submit proof interval", "interval", submitProofInterval, "timestamp", swap.Timestamp, "txid", swap.TxID, "logIndex", swap.LogIndex, "fromChainID", swap.FromChainID, "toChainID", swap.ToChainID)
+			return nil
+		}
 	}
 
 	fromChainID := swap.FromChainID

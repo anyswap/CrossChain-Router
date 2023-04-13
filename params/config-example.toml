@@ -217,6 +217,7 @@ MIM  = ["0x2222222222222222222222222222222222222222"]
 EstimatedGasMustBePositive = true
 DontCheckAddressMixedCase = false
 SubmitProofInterval = 300
+MaxSubmitProofTimes = 3
 
 [Extra.LocalChainConfig.86]
 SmallestGasPriceUnit = 1000000000

@@ -216,6 +216,7 @@ type LocalChainConfig struct {
 	BigValueDiscount      uint64   `toml:",omitempty" json:",omitempty"`
 
 	SubmitProofInterval int64 `toml:",omitempty" json:",omitempty"` // seconds
+	MaxSubmitProofTimes int   `toml:",omitempty" json:",omitempty"`
 
 	// chainID -> tokenids
 	ChargeFeeOnDestChain   map[string][]string `toml:",omitempty" json:",omitempty"`
@@ -1328,6 +1329,11 @@ func UseProofSign() bool {
 // GetSubmitProofInterval get submit proof interval
 func GetSubmitProofInterval(chainID string) int64 {
 	return GetLocalChainConfig(chainID).SubmitProofInterval
+}
+
+// GetMaxSubmitProofTimes get maximum submit proof times
+func GetMaxSubmitProofTimes(chainID string) int {
+	return GetLocalChainConfig(chainID).MaxSubmitProofTimes
 }
 
 // FeeReceiverOnDestChain fee receiver on dest chain
