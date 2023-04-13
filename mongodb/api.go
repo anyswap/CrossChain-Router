@@ -208,6 +208,13 @@ func getStatusQuery(status SwapStatus, septime int64) bson.M {
 	return bson.M{"$and": queries}
 }
 
+func getStatusesQuery(statuses []SwapStatus, septime int64) bson.M {
+	qtime := bson.M{"timestamp": bson.M{"$gte": septime}}
+	qstatus := bson.M{"status": bson.M{"$in": statuses}}
+	queries := []bson.M{qtime, qstatus}
+	return bson.M{"$and": queries}
+}
+
 func getStatusQueryWithChainID(fromChainID string, status SwapStatus, septime int64) bson.M {
 	qtime := bson.M{"timestamp": bson.M{"$gte": septime}}
 	qstatus := bson.M{"status": status}
@@ -223,6 +230,10 @@ func FindRouterSwapsWithStatus(status SwapStatus, septime int64) ([]*MgoSwap, er
 		Sort:  bson.D{{Key: "inittime", Value: 1}},
 		Limit: &maxCountOfResults,
 	}
+	return findRouterSwapsWithQuery(query, opts)
+}
+
+func findRouterSwapsWithQuery(query bson.M, opts *options.FindOptions) ([]*MgoSwap, error) {
 	cur, err := collRouterSwap.Find(clientCtx, query, opts)
 	if err != nil {
 		return nil, mgoError(err)
@@ -248,16 +259,7 @@ func FindRouterSwapsWithToChainIDAndStatus(toChainID string, status SwapStatus, 
 		Sort:  bson.D{{Key: "inittime", Value: 1}},
 		Limit: &maxCountOfResults,
 	}
-	cur, err := collRouterSwap.Find(clientCtx, query, opts)
-	if err != nil {
-		return nil, mgoError(err)
-	}
-	result := make([]*MgoSwap, 0, 20)
-	err = cur.All(clientCtx, &result)
-	if err != nil {
-		return nil, mgoError(err)
-	}
-	return result, nil
+	return findRouterSwapsWithQuery(query, opts)
 }
 
 // FindRouterSwapsWithChainIDAndStatus find router swap with chainid and status in the past septime
@@ -269,16 +271,7 @@ func FindRouterSwapsWithChainIDAndStatus(fromChainID string, status SwapStatus, 
 		Sort:  bson.D{{Key: "inittime", Value: 1}},
 		Limit: &maxCountOfResults,
 	}
-	cur, err := collRouterSwap.Find(clientCtx, query, opts)
-	if err != nil {
-		return nil, mgoError(err)
-	}
-	result := make([]*MgoSwap, 0, 20)
-	err = cur.All(clientCtx, &result)
-	if err != nil {
-		return nil, mgoError(err)
-	}
-	return result, nil
+	return findRouterSwapsWithQuery(query, opts)
 }
 
 // AddRouterSwapResult add router swap result
@@ -547,6 +540,20 @@ func FindRouterSwapResultsWithStatus(status SwapStatus, septime int64) ([]*MgoSw
 		Sort:  bson.D{{Key: "inittime", Value: 1}},
 		Limit: &maxCountOfResults,
 	}
+	return findRouterSwapResultsWithQuery(query, opts)
+}
+
+// FindRouterSwapResultsWithStatuses find router swap result with statuses
+func FindRouterSwapResultsWithStatuses(status []SwapStatus, septime int64) ([]*MgoSwapResult, error) {
+	query := getStatusesQuery(status, septime)
+	opts := &options.FindOptions{
+		Sort:  bson.D{{Key: "inittime", Value: 1}},
+		Limit: &maxCountOfResults,
+	}
+	return findRouterSwapResultsWithQuery(query, opts)
+}
+
+func findRouterSwapResultsWithQuery(query bson.M, opts *options.FindOptions) ([]*MgoSwapResult, error) {
 	cur, err := collRouterSwapResult.Find(clientCtx, query, opts)
 	if err != nil {
 		return nil, mgoError(err)
@@ -568,16 +575,7 @@ func FindRouterSwapResultsWithChainIDAndStatus(fromChainID string, status SwapSt
 		Sort:  bson.D{{Key: "inittime", Value: 1}},
 		Limit: &maxCountOfResults,
 	}
-	cur, err := collRouterSwapResult.Find(clientCtx, query, opts)
-	if err != nil {
-		return nil, mgoError(err)
-	}
-	result := make([]*MgoSwapResult, 0, 20)
-	err = cur.All(clientCtx, &result)
-	if err != nil {
-		return nil, mgoError(err)
-	}
-	return result, nil
+	return findRouterSwapResultsWithQuery(query, opts)
 }
 
 // FindNextSwapNonce find next swap nonce
@@ -607,22 +605,14 @@ func FindRouterSwapResultsToStable(chainID string, septime int64) ([]*MgoSwapRes
 	qstatus := bson.M{"status": MatchTxNotStable}
 	qchainid := bson.M{"toChainID": chainID}
 	queries := []bson.M{qtime, qstatus, qchainid}
+	query := bson.M{"$and": queries}
 
 	limit := int64(100)
 	opts := &options.FindOptions{
 		Sort:  bson.D{{Key: "swapnonce", Value: 1}},
 		Limit: &limit,
 	}
-	cur, err := collRouterSwapResult.Find(clientCtx, bson.M{"$and": queries}, opts)
-	if err != nil {
-		return nil, mgoError(err)
-	}
-	result := make([]*MgoSwapResult, 0, limit)
-	err = cur.All(clientCtx, &result)
-	if err != nil {
-		return nil, mgoError(err)
-	}
-	return result, nil
+	return findRouterSwapResultsWithQuery(query, opts)
 }
 
 // FindRouterSwapResultsToReplace find router swap result with status
@@ -632,22 +622,14 @@ func FindRouterSwapResultsToReplace(chainID string, septime int64) ([]*MgoSwapRe
 	qchainid := bson.M{"toChainID": chainID}
 	qheight := bson.M{"swapheight": 0}
 	queries := []bson.M{qtime, qstatus, qchainid, qheight}
+	query := bson.M{"$and": queries}
 
 	limit := int64(20)
 	opts := &options.FindOptions{
 		Sort:  bson.D{{Key: "swapnonce", Value: 1}},
 		Limit: &limit,
 	}
-	cur, err := collRouterSwapResult.Find(clientCtx, bson.M{"$and": queries}, opts)
-	if err != nil {
-		return nil, mgoError(err)
-	}
-	result := make([]*MgoSwapResult, 0, limit)
-	err = cur.All(clientCtx, &result)
-	if err != nil {
-		return nil, mgoError(err)
-	}
-	return result, nil
+	return findRouterSwapResultsWithQuery(query, opts)
 }
 
 func getStatusesFromStr(status string) (registerStatuses, resultStatuses []SwapStatus) {
