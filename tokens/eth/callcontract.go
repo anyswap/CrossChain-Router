@@ -38,7 +38,7 @@ func (b *Bridge) GetErc20TotalSupply(contract string) (*big.Int, error) {
 func (b *Bridge) GetErc20TotalSupplyAtHeight(contract, blockNumber string) (*big.Int, error) {
 	data := make(hexutil.Bytes, 4)
 	copy(data[:4], erc20CodeParts["totalSupply"])
-	result, err := b.CallContract(contract, data, blockNumber)
+	result, err := b.EvmContractBridge.CallContract(contract, data, blockNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func (b *Bridge) GetErc20BalanceAtHeight(contract, address, blockNumber string) 
 	data := make(hexutil.Bytes, 36)
 	copy(data[:4], erc20CodeParts["balanceOf"])
 	copy(data[4:], common.HexToAddress(address).Hash().Bytes())
-	result, err := b.CallContract(contract, data, blockNumber)
+	result, err := b.EvmContractBridge.CallContract(contract, data, blockNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func (b *Bridge) GetErc20BalanceAtHeight(contract, address, blockNumber string) 
 func (b *Bridge) GetErc20Decimals(contract string) (uint8, error) {
 	data := make(hexutil.Bytes, 4)
 	copy(data[:4], erc20CodeParts["decimals"])
-	result, err := b.CallContract(contract, data, "latest")
+	result, err := b.EvmContractBridge.CallContract(contract, data, "latest")
 	if err != nil {
 		return 0, err
 	}
@@ -97,7 +97,7 @@ func (b *Bridge) GetTokenSupply(tokenType, tokenAddress string) (*big.Int, error
 // GetFactoryAddress call "factory()"
 func (b *Bridge) GetFactoryAddress(contractAddr string) (string, error) {
 	data := common.FromHex("0xc45a0155")
-	res, err := b.CallContract(contractAddr, data, "latest")
+	res, err := b.EvmContractBridge.CallContract(contractAddr, data, "latest")
 	if err != nil {
 		return "", err
 	}
@@ -107,7 +107,7 @@ func (b *Bridge) GetFactoryAddress(contractAddr string) (string, error) {
 // GetWNativeAddress call "wNATIVE()"
 func (b *Bridge) GetWNativeAddress(contractAddr string) (string, error) {
 	data := common.FromHex("0x8fd903f5")
-	res, err := b.CallContract(contractAddr, data, "latest")
+	res, err := b.EvmContractBridge.CallContract(contractAddr, data, "latest")
 	if err != nil {
 		return "", err
 	}
@@ -117,7 +117,7 @@ func (b *Bridge) GetWNativeAddress(contractAddr string) (string, error) {
 // GetUnderlyingAddress call "underlying()"
 func (b *Bridge) GetUnderlyingAddress(contractAddr string) (string, error) {
 	data := common.FromHex("0x6f307dc3")
-	res, err := b.CallContract(contractAddr, data, "latest")
+	res, err := b.EvmContractBridge.CallContract(contractAddr, data, "latest")
 	if err != nil {
 		return "", err
 	}
@@ -127,7 +127,7 @@ func (b *Bridge) GetUnderlyingAddress(contractAddr string) (string, error) {
 // IsUnderlyingMinted call "underlyingIsMinted()"
 func (b *Bridge) IsUnderlyingMinted(contractAddr string) (bool, error) {
 	data := common.FromHex("0xd6c79751")
-	res, err := b.CallContract(contractAddr, data, "latest")
+	res, err := b.EvmContractBridge.CallContract(contractAddr, data, "latest")
 	if err != nil {
 		return false, err
 	}
@@ -137,7 +137,7 @@ func (b *Bridge) IsUnderlyingMinted(contractAddr string) (bool, error) {
 // GetMPCAddress call "mpc()"
 func (b *Bridge) GetMPCAddress(contractAddr string) (string, error) {
 	data := common.FromHex("0xf75c2664")
-	res, err := b.CallContract(contractAddr, data, "latest")
+	res, err := b.EvmContractBridge.CallContract(contractAddr, data, "latest")
 	if err != nil {
 		return "", err
 	}
@@ -147,7 +147,7 @@ func (b *Bridge) GetMPCAddress(contractAddr string) (string, error) {
 // GetVaultAddress call "vault()"
 func (b *Bridge) GetVaultAddress(contractAddr string) (string, error) {
 	data := common.FromHex("0xfbfa77cf")
-	res, err := b.CallContract(contractAddr, data, "latest")
+	res, err := b.EvmContractBridge.CallContract(contractAddr, data, "latest")
 	if err != nil {
 		return "", err
 	}
@@ -157,7 +157,7 @@ func (b *Bridge) GetVaultAddress(contractAddr string) (string, error) {
 // GetOwnerAddress call "owner()"
 func (b *Bridge) GetOwnerAddress(contractAddr string) (string, error) {
 	data := common.FromHex("0x8da5cb5b")
-	res, err := b.CallContract(contractAddr, data, "latest")
+	res, err := b.EvmContractBridge.CallContract(contractAddr, data, "latest")
 	if err != nil {
 		return "", err
 	}
@@ -170,7 +170,7 @@ func (b *Bridge) IsMinter(contractAddr, minterAddr string) (bool, error) {
 	data := make([]byte, 36)
 	copy(data[:4], funcHash)
 	copy(data[4:36], common.HexToAddress(minterAddr).Hash().Bytes())
-	res, err := b.CallContract(contractAddr, data, "latest")
+	res, err := b.EvmContractBridge.CallContract(contractAddr, data, "latest")
 	if err != nil {
 		return false, err
 	}
@@ -180,7 +180,7 @@ func (b *Bridge) IsMinter(contractAddr, minterAddr string) (bool, error) {
 // GetRouterSecurity call "routerSecurity()"
 func (b *Bridge) GetRouterSecurity(contractAddr string) (string, error) {
 	data := common.FromHex("0xa413387a")
-	res, err := b.CallContract(contractAddr, data, "latest")
+	res, err := b.EvmContractBridge.CallContract(contractAddr, data, "latest")
 	if err != nil {
 		return "", err
 	}
@@ -193,7 +193,7 @@ func (b *Bridge) IsSwapoutIDExist(contractAddr, swapoutID string) (bool, error) 
 	data := make([]byte, 36)
 	copy(data[:4], funcHash)
 	copy(data[4:36], common.HexToHash(swapoutID).Bytes())
-	res, err := b.CallContract(contractAddr, data, "latest")
+	res, err := b.EvmContractBridge.CallContract(contractAddr, data, "latest")
 	if err != nil {
 		return false, err
 	}
@@ -203,9 +203,22 @@ func (b *Bridge) IsSwapoutIDExist(contractAddr, swapoutID string) (bool, error) 
 // GetWrapperTokenAddress call "token()"
 func (b *Bridge) GetWrapperTokenAddress(contractAddr string) (string, error) {
 	data := common.FromHex("0xfc0c546a")
-	res, err := b.CallContract(contractAddr, data, "latest")
+	res, err := b.EvmContractBridge.CallContract(contractAddr, data, "latest")
 	if err != nil {
 		return "", err
 	}
 	return common.BytesToAddress(common.GetData(common.FromHex(res), 0, 32)).LowerHex(), nil
+}
+
+// GetExecutionBudget get execution budget
+func (b *Bridge) GetExecutionBudget(contractAddr, account string) (*big.Int, error) {
+	funcHash := common.FromHex("0x74bdda60")
+	data := make([]byte, 36)
+	copy(data[:4], funcHash)
+	copy(data[4:36], common.HexToAddress(account).Hash().Bytes())
+	res, err := b.EvmContractBridge.CallContract(contractAddr, data, "latest")
+	if err != nil {
+		return nil, err
+	}
+	return common.GetBigInt(common.FromHex(res), 0, 32), nil
 }

@@ -431,6 +431,9 @@ func doSwap(args *tokens.BuildTxArgs) (err error) {
 		SwapValue: args.SwapValue.String(),
 		MPC:       args.From,
 	}
+	if args.Extra.TTL != nil {
+		matchTx.TTL = *args.Extra.TTL
+	}
 	err = updateRouterSwapResult(fromChainID, txid, logIndex, matchTx)
 	if err != nil {
 		logWorkerError("doSwap", "update router swap result failed", err, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "swapNonce", swapTxNonce)

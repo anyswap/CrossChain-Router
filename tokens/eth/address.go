@@ -132,7 +132,7 @@ func PublicKeyToAddress(pubKey string) (string, error) {
 }
 
 // VerifyMPCPubKey verify mpc address and public key is matching
-func VerifyMPCPubKey(mpcAddress, mpcPubkey string) error {
+func (b *Bridge) VerifyMPCPubKey(mpcAddress, mpcPubkey string) error {
 	if !common.IsHexAddress(mpcAddress) {
 		return fmt.Errorf("wrong mpc address '%v'", mpcAddress)
 	}

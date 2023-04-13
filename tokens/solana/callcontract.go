@@ -108,7 +108,7 @@ func (b *Bridge) GetTokenBalance(tokenAccount string) (result *types.GetTokenAmo
 		"commitment": "confirmed",
 	}
 	callMethod := "getTokenAccountBalance"
-	err = RPCCall(&result, b.GatewayConfig.APIAddress, callMethod, tokenAccount, obj)
+	err = RPCCall(&result, b.GatewayConfig.AllGatewayURLs, callMethod, tokenAccount, obj)
 	return result, err
 }
 
@@ -118,6 +118,6 @@ func (b *Bridge) GetTokenSupply(tokenMint string) (result *types.GetTokenAmountR
 		"commitment": "confirmed",
 	}
 	callMethod := "getTokenSupply"
-	err = RPCCall(&result, b.GatewayConfig.APIAddress, callMethod, tokenMint, obj)
+	err = RPCCall(&result, b.GatewayConfig.AllGatewayURLs, callMethod, tokenMint, obj)
 	return result, err
 }

@@ -1,6 +1,9 @@
 package eth
 
 import (
+	"fmt"
+	"math/big"
+	"strings"
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
@@ -8,11 +11,13 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/types"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/signer/core/apitypes"
+	"github.com/zksync-sdk/zksync2-go"
 )
 
 // GetTransactionStatus impl
 func (b *Bridge) GetTransactionStatus(txHash string) (*tokens.TxStatus, error) {
-	txr, err := b.GetTransactionReceipt(txHash)
+	txr, err := b.EvmContractBridge.GetTransactionReceipt(txHash)
 	if err != nil {
 		return nil, err
 	}
@@ -40,6 +45,9 @@ func (b *Bridge) GetTransactionStatus(txHash string) (*tokens.TxStatus, error) {
 
 // VerifyMsgHash verify msg hash
 func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) error {
+	if b.IsZKSync() {
+		return b.verifyZKSyncMsgHash(rawTx, msgHashes)
+	}
 	if b.IsSapphireChain() {
 		rawSapphire, ok := rawTx.(*SapphireRPCTx)
 		if ok {
@@ -75,6 +83,39 @@ func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) error {
 	return nil
 }
 
+func (b *Bridge) verifyZKSyncMsgHash(rawTx interface{}, msgHashes []string) error {
+	tx, ok := rawTx.(*zksync2.Transaction712)
+	if !ok {
+		return tokens.ErrWrongRawTx
+	}
+	if len(msgHashes) < 1 {
+		return tokens.ErrWrongCountOfMsgHashes
+	}
+	msgHash := msgHashes[0]
+
+	chainid, _ := new(big.Int).SetString(b.ChainConfig.ChainID, 0)
+	domain := zksync2.DefaultEip712Domain(chainid.Int64())
+	typedData := apitypes.TypedData{
+		Types: apitypes.Types{
+			tx.GetEIP712Type():     tx.GetEIP712Types(),
+			domain.GetEIP712Type(): domain.GetEIP712Types(),
+		},
+		PrimaryType: tx.GetEIP712Type(),
+		Domain:      domain.GetEIP712Domain(),
+		Message:     tx.GetEIP712Message(),
+	}
+	hash, err := HashTypedData(typedData)
+	if err != nil {
+		return err
+	}
+
+	if !strings.EqualFold(fmt.Sprintf("%x", hash), msgHash) {
+		log.Trace("message hash mismatch", "want", msgHash, "have", fmt.Sprintf("%x", hash))
+		return tokens.ErrMsgHashMismatch
+	}
+	return nil
+}
+
 // VerifyTransaction api
 func (b *Bridge) VerifyTransaction(txHash string, args *tokens.VerifyArgs) (*tokens.SwapTxInfo, error) {
 	swapType := args.SwapType
@@ -83,7 +124,7 @@ func (b *Bridge) VerifyTransaction(txHash string, args *tokens.VerifyArgs) (*tok
 
 	switch swapType {
 	case tokens.ERC20SwapType, tokens.ERC20SwapTypeMixPool:
-		return b.verifyERC20SwapTx(txHash, logIndex, allowUnstable)
+		return b.VerifyERC20SwapTx(txHash, logIndex, allowUnstable)
 	case tokens.NFTSwapType:
 		return b.verifyNFTSwapTx(txHash, logIndex, allowUnstable)
 	case tokens.AnyCallSwapType:

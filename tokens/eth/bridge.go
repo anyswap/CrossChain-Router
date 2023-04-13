@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
-	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/base"
 	"github.com/anyswap/CrossChain-Router/v3/types"
@@ -24,9 +24,16 @@ var (
 	_ tokens.NonceSetter = &Bridge{}
 )
 
+type EvmContractBridge interface {
+	CallContract(contract string, data hexutil.Bytes, blockNumber string) (string, error)
+	VerifyMPCPubKey(mpcAddress, mpcPubkey string) error
+	GetTransactionReceipt(txHash string) (receipt *types.RPCTxReceipt, err error)
+	GetLatestBlockNumberOf(url string) (latest uint64, err error)
+	GetTransactionByHash(txHash string) (tx *types.RPCTransaction, err error)
+}
+
 // Bridge eth bridge
 type Bridge struct {
-	CustomConfig
 	*base.NonceSetterBase
 	Signer        types.Signer
 	SignerChainID *big.Int
@@ -34,46 +41,25 @@ type Bridge struct {
 	// internal usage
 	latestGasPrice  *big.Int
 	autoMaxGasPrice *big.Int
+	EvmContractBridge
 }
 
 // NewCrossChainBridge new bridge
 func NewCrossChainBridge() *Bridge {
-	return &Bridge{
-		CustomConfig:    NewCustomConfig(),
+	b := &Bridge{
 		NonceSetterBase: base.NewNonceSetterBase(),
 	}
-}
-
-// CustomConfig custom config
-type CustomConfig struct {
-	// some chain's rpc is slow and need config a longer rpc timeout
-	RPCClientTimeout int
-	// eg. RSK chain do not check mixed case or not same as eth
-	DontCheckAddressMixedCase bool
-}
-
-// NewCustomConfig new custom config
-func NewCustomConfig() CustomConfig {
-	return CustomConfig{
-		RPCClientTimeout:          client.GetDefaultTimeout(false),
-		DontCheckAddressMixedCase: false,
-	}
+	b.EvmContractBridge = b
+	return b
 }
 
 // InitAfterConfig init variables (ie. extra members) after loading config
 func (b *Bridge) InitAfterConfig() {
+	b.CrossChainBridgeBase.InitAfterConfig()
 	logErrFunc := log.GetLogFuncOr(router.DontPanicInLoading(), log.Error, log.Fatal)
 	chainID, err := common.GetBigIntFromStr(b.ChainConfig.ChainID)
 	if err != nil {
 		logErrFunc("wrong chainID",
-			"chainID", b.ChainConfig.ChainID,
-			"blockChain", b.ChainConfig.BlockChain,
-			"err", err)
-		return
-	}
-	err = b.InitExtraCustoms()
-	if err != nil {
-		logErrFunc("init extra custons failed",
 			"chainID", b.ChainConfig.ChainID,
 			"blockChain", b.ChainConfig.BlockChain,
 			"err", err)
@@ -167,7 +153,7 @@ func (b *Bridge) InitRouterInfo(routerContract, routerVersion string) (err error
 		log.Warn("get mpc public key failed", "chainID", chainID, "mpc", routerMPC, "err", err)
 		return err
 	}
-	if err = VerifyMPCPubKey(routerMPC, routerMPCPubkey); err != nil {
+	if err = b.EvmContractBridge.VerifyMPCPubKey(routerMPC, routerMPCPubkey); err != nil {
 		log.Warn("verify mpc public key failed", "chainID", chainID, "mpc", routerMPC, "mpcPubkey", routerMPCPubkey, "err", err)
 		return err
 	}
@@ -388,29 +374,4 @@ func (b *Bridge) getETCSignerChainID() (*big.Int, error) {
 		return nil, errors.New("unsupported etc network id")
 	}
 	return new(big.Int).SetUint64(chainID), nil
-}
-
-// InitExtraCustoms init extra customs
-func (b *Bridge) InitExtraCustoms() error {
-	clientTimeout := params.GetRPCClientTimeout(b.ChainConfig.ChainID)
-	if clientTimeout != 0 {
-		b.RPCClientTimeout = clientTimeout
-	} else {
-		timeoutStr := params.GetCustom(b.ChainConfig.ChainID, "sendtxTimeout")
-		if timeoutStr != "" {
-			timeout, err := common.GetUint64FromStr(timeoutStr)
-			if err != nil {
-				log.Error("get sendtxTimeout failed", "err", err)
-				return err
-			}
-			if timeout != 0 {
-				b.RPCClientTimeout = int(timeout)
-			}
-		}
-	}
-
-	flag := params.GetCustom(b.ChainConfig.ChainID, "dontCheckAddressMixedCase")
-	b.DontCheckAddressMixedCase = strings.EqualFold(flag, "true")
-
-	return nil
 }

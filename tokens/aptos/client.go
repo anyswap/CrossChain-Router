@@ -19,6 +19,7 @@ var (
 	AccountResourcePath         = API_VERSION + "accounts/{address}/resource/{resource_type}"
 	GetTransactionsPath         = API_VERSION + "transactions/by_hash/{txn_hash}"
 	GetTransactionByVersionPath = API_VERSION + "transactions/by_version/{txn_version}"
+	GetBlockByVersionPath       = API_VERSION + "blocks/by_version/{txn_version}"
 	GetSigningMessagePath       = API_VERSION + "transactions/encode_submission"
 	SubmitTranscationPath       = API_VERSION + "transactions"
 	SimulateTranscationPath     = API_VERSION + "transactions/simulate"
@@ -99,6 +100,15 @@ func (c *RestClient) PostRequest(result interface{}, uri string, body interface{
 		}
 	}
 	return err
+}
+
+func (c *RestClient) GetBlockByVersion(version string) (*BlockInfo, error) {
+	resp := BlockInfo{}
+	param := map[string]string{
+		"txn_version": version,
+	}
+	err := c.GetRequest(&resp, GetBlockByVersionPath, param)
+	return &resp, err
 }
 
 func (c *RestClient) GetLedger() (*LedgerInfo, error) {

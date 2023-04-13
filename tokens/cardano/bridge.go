@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
@@ -21,11 +22,13 @@ import (
 var (
 	// ensure Bridge impl tokens.CrossChainBridge
 	_ tokens.IBridge = &Bridge{}
-	// ensure Bridge impl tokens.NonceSetter
-	_ tokens.NonceSetter = &Bridge{}
+	// ensure Bridge impl tokens.ReSwapableBridge
+	_ tokens.ReSwapable = &Bridge{}
 
 	supportedChainIDs     = make(map[string]bool)
 	supportedChainIDsInit sync.Once
+
+	defRPCClientTimeout = 60
 )
 
 const (
@@ -36,11 +39,11 @@ const (
 
 // Bridge block bridge inherit from btc bridge
 type Bridge struct {
-	*base.NonceSetterBase
-	RPCClientTimeout int
-	RpcClient        cardanosdk.Node
-	FakePrikey       crypto.PrvKey
-	ProtocolParams   *cardanosdk.ProtocolParams
+	*tokens.CrossChainBridgeBase
+	*base.ReSwapableBridgeBase
+	RpcClient      cardanosdk.Node
+	FakePrikey     crypto.PrvKey
+	ProtocolParams *cardanosdk.ProtocolParams
 }
 
 // NewCrossChainBridge new bridge
@@ -52,10 +55,11 @@ func NewCrossChainBridge() *Bridge {
 		panic(err)
 	}
 	instance := &Bridge{
-		NonceSetterBase:  base.NewNonceSetterBase(),
-		RPCClientTimeout: 60,
-		FakePrikey:       fakePrikey,
+		CrossChainBridgeBase: tokens.NewCrossChainBridgeBase(),
+		ReSwapableBridgeBase: base.NewReSwapableBridgeBase(),
+		FakePrikey:           fakePrikey,
 	}
+	instance.RPCClientTimeout = defRPCClientTimeout
 	BridgeInstance = instance
 
 	return instance
@@ -90,6 +94,7 @@ func GetStubChainID(network string) *big.Int {
 
 // InitAfterConfig init variables (ie. extra members) after loading config
 func (b *Bridge) InitAfterConfig() {
+	b.CrossChainBridgeBase.InitAfterConfig()
 	chainId := b.GetChainConfig().GetChainID()
 	apiKey := params.GetCustom(b.ChainConfig.ChainID, "APIKey")
 	if apiKey != "" {
@@ -104,6 +109,28 @@ func (b *Bridge) InitAfterConfig() {
 		}
 		b.ProtocolParams = protocolParams
 	}
+
+	timeoutStr := params.GetCustom(b.ChainConfig.ChainID, "TxTimeout")
+	if timeoutStr != "" {
+		timeout, err := common.GetUint64FromStr(timeoutStr)
+		if err != nil {
+			log.Error("cardano TxTimeout config failed", "err", err)
+		}
+		if timeout > 0 {
+			b.ReSwapableBridgeBase.SetTimeoutConfig(timeout)
+		}
+	}
+
+	reswapMaxAmountRateStr := params.GetCustom(b.ChainConfig.ChainID, "ReswapMaxAmountRate")
+	if reswapMaxAmountRateStr != "" {
+		reswapMaxAmountRate, err := common.GetUint64FromStr(reswapMaxAmountRateStr)
+		if err != nil {
+			log.Error("cardano ReswapMaxAmountRate config failed", "err", err)
+		}
+		if reswapMaxAmountRate > 0 {
+			b.ReSwapableBridgeBase.SetReswapMaxValueRate(reswapMaxAmountRate)
+		}
+	}
 }
 
 func (b *Bridge) GetTip() (tip *cardanosdk.NodeTip, err error) {
@@ -114,7 +141,7 @@ func (b *Bridge) GetTip() (tip *cardanosdk.NodeTip, err error) {
 		}
 		return b.RpcClient.Tip()
 	} else {
-		urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+		urls := b.GatewayConfig.AllGatewayURLs
 		for _, url := range urls {
 			result, err := GetCardanoTip(url)
 			if err == nil {
@@ -150,7 +177,7 @@ func (b *Bridge) GetLatestBlockNumber() (num uint64, err error) {
 			return 0, err
 		}
 	} else {
-		urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+		urls := b.GatewayConfig.AllGatewayURLs
 		for _, url := range urls {
 			result, err := GetCardanoTip(url)
 			if err == nil {
@@ -227,7 +254,7 @@ func (b *Bridge) GetTransactionByHash(txHash string) (*Transaction, error) {
 			})
 		}
 		output := []Output{}
-		for _, v := range utxos.Outputs {
+		for index, v := range utxos.Outputs {
 			ts := []Token{}
 			var value string
 			for _, a := range v.Amount {
@@ -248,6 +275,7 @@ func (b *Bridge) GetTransactionByHash(txHash string) (*Transaction, error) {
 				Address: v.Address,
 				Value:   value,
 				Tokens:  ts,
+				Index:   uint64(index),
 			})
 		}
 
@@ -264,7 +292,7 @@ func (b *Bridge) GetTransactionByHash(txHash string) (*Transaction, error) {
 		}
 		return tx, nil
 	} else {
-		urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+		urls := b.GatewayConfig.AllGatewayURLs
 		for _, url := range urls {
 			result, err := GetTransactionByHash(url, txHash)
 			if err == nil {
@@ -281,7 +309,7 @@ func (b *Bridge) GetUtxosByAddress(address string) (*[]Output, error) {
 	if !b.IsValidAddress(address) {
 		return nil, errors.New("GetUtxosByAddress address is empty")
 	}
-	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	urls := b.GatewayConfig.AllGatewayURLs
 	for _, url := range urls {
 		result, err := GetUtxosByAddress(url, address)
 		if err == nil {
@@ -314,4 +342,12 @@ func (b *Bridge) GetTransactionStatus(txHash string) (status *tokens.TxStatus, e
 		}
 	}
 	return status, nil
+}
+func (b *Bridge) GetCurrentThreshold() (*uint64, error) {
+	tip, err := b.GetTip()
+	if err != nil {
+		return nil, err
+	}
+	t := tip.Slot - b.GetChainConfig().Confirmations
+	return &t, nil
 }

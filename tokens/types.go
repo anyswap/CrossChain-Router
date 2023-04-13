@@ -210,16 +210,19 @@ type BuildTxArgs struct {
 
 // AllExtras struct
 type AllExtras struct {
-	Gas        *uint64       `json:"gas,omitempty"`
-	GasPrice   *big.Int      `json:"gasPrice,omitempty"`
-	GasTipCap  *big.Int      `json:"gasTipCap,omitempty"`
-	GasFeeCap  *big.Int      `json:"gasFeeCap,omitempty"`
-	Sequence   *uint64       `json:"sequence,omitempty"`
-	ReplaceNum uint64        `json:"replaceNum,omitempty"`
-	Fee        *string       `json:"fee,omitempty"`
-	RawTx      hexutil.Bytes `json:"rawTx,omitempty"`
-	BlockHash  *string       `json:"blockHash,omitempty"`
-	BridgeFee  *big.Int      `json:"bridgeFee,omitempty"`
+	Gas         *uint64       `json:"gas,omitempty"`
+	GasPrice    *big.Int      `json:"gasPrice,omitempty"`
+	GasTipCap   *big.Int      `json:"gasTipCap,omitempty"`
+	GasFeeCap   *big.Int      `json:"gasFeeCap,omitempty"`
+	Sequence    *uint64       `json:"sequence,omitempty"`
+	ReplaceNum  uint64        `json:"replaceNum,omitempty"`
+	Fee         *string       `json:"fee,omitempty"`
+	RawTx       hexutil.Bytes `json:"rawTx,omitempty"`
+	BlockHash   *string       `json:"blockHash,omitempty"`
+	BlockID     *string       `json:"blockID,omitempty"`
+	BlockNumber *uint64       `json:"blockNumber,omitempty"`
+	TTL         *uint64       `json:"ttl,omitempty"`
+	BridgeFee   *big.Int      `json:"bridgeFee,omitempty"`
 }
 
 // GetReplaceNum get rplace swap count

@@ -49,6 +49,7 @@ const (
 	NoUnderlyingToken SwapStatus = 21
 	TxMaybeUnsafe     SwapStatus = 22
 	SwapoutForbidden  SwapStatus = 23
+	TxNeedReswap      SwapStatus = 24
 
 	KeepStatus SwapStatus = 255
 	Reswapping SwapStatus = 256
@@ -59,7 +60,7 @@ func (status SwapStatus) IsResultStatus() bool {
 	switch status {
 	case MatchTxEmpty, MatchTxNotStable, MatchTxStable,
 		MatchTxFailed, Reswapping, ManualMakeFail,
-		SwapoutForbidden:
+		SwapoutForbidden, TxNeedReswap:
 		return true
 	default:
 		return false

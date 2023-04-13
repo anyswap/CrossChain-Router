@@ -128,7 +128,7 @@ func GetSwapInAndExecFuncHashV7(tokenCfg *tokens.TokenConfig) []byte {
 	return AnySwapInUnderlyingAndExecFuncHashV7
 }
 
-func (b *Bridge) buildERC20SwapTxInput(args *tokens.BuildTxArgs) (err error) {
+func (b *Bridge) BuildERC20SwapTxInput(args *tokens.BuildTxArgs) (err error) {
 	if args.ERC20SwapInfo == nil || args.ERC20SwapInfo.TokenID == "" {
 		return errors.New("build router swaptx without tokenID")
 	}

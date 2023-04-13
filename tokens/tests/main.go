@@ -16,7 +16,10 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens/tests/btc"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/tests/config"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/tests/eth"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/tests/flow"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/tests/stellar"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/tests/template"
+
 	"github.com/urfave/cli/v2"
 )
 
@@ -80,8 +83,12 @@ func initRouter() {
 		bridge = btc.NewCrossChainBridge()
 	case "eth":
 		bridge = eth.NewCrossChainBridge()
+	case "flow":
+		bridge = flow.NewCrossChainBridge()
 	case "template":
 		bridge = template.NewCrossChainBridge()
+	case "stellar":
+		bridge = stellar.NewCrossChainBridge(testCfg.Chain.ChainID)
 	default:
 		log.Fatalf("unimplemented test module '%v'", testCfg.Module)
 	}

@@ -63,11 +63,8 @@ func (b *Bridge) SendSignedTransaction(tx *types.Transaction, opts *types.SendTr
 	sendTxParams := []interface{}{b64TxData, obj}
 
 	gateway := b.GatewayConfig
-	if len(gateway.APIAddressExt) > 0 {
-		txHash, err = sendRawTransaction(sendTxParams, gateway.APIAddressExt)
-	} else {
-		txHash, err = sendRawTransaction(sendTxParams, gateway.APIAddress)
-	}
+	txHash, err = sendRawTransaction(sendTxParams, gateway.AllGatewayURLs)
+
 	if txHash != "" {
 		return txHash, nil
 	}
@@ -124,17 +121,10 @@ func (b *Bridge) SimulateTransaction(tx *types.Transaction) (result *types.Simul
 	sendTxParams := []interface{}{b64TxData, obj}
 
 	gateway := b.GatewayConfig
-	result, err = simulateTx(sendTxParams, gateway.APIAddress)
+	result, err = simulateTx(sendTxParams, gateway.AllGatewayURLs)
 	if err == nil {
 		log.Info("simulateTx", "success")
 		return result, nil
-	}
-	if len(gateway.APIAddressExt) > 0 {
-		result, err = simulateTx(sendTxParams, gateway.APIAddressExt)
-		if err == nil {
-			log.Info("simulateTx", "success")
-			return result, nil
-		}
 	}
 	return nil, err
 }
@@ -151,11 +141,7 @@ func (b *Bridge) GetSignatureStatuses(sigs []string, searchTransactionHistory bo
 	obj := map[string]interface{}{
 		"searchTransactionHistory": searchTransactionHistory,
 	}
-	err = RPCCall(&result, b.GatewayConfig.APIAddress, callMethod, sigs, obj)
-	if err == nil {
-		return result, nil
-	}
-	err = RPCCall(&result, b.GatewayConfig.APIAddressExt, callMethod, sigs, obj)
+	err = RPCCall(&result, b.GatewayConfig.AllGatewayURLs, callMethod, sigs, obj)
 	if err == nil {
 		return result, nil
 	}

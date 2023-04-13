@@ -37,6 +37,8 @@ ReplacePlusGasPricePercent = 1
 WaitTimeToReplace = 900
 # maximum replace count
 MaxReplaceCount = 20
+# maximum replace distance
+MaxReplaceDistance = 10
 # plus gas price percentage
 PlusGasPricePercentage = 10
 # maximum plus gas price percentage
@@ -149,6 +151,8 @@ EnableCheckTxBlockIndexChains = ["1", "56"]
 DisableUseFromChainIDInReceiptChains = ["1666600000"]
 # chains use fast mpc
 UseFastMPCChains = ["1001313161554"]
+# increase nonce when send tx
+IncreaseNonceWhenSendTxChains = ["1"]
 # check token balance
 CheckTokenBalanceEnabledChains = ["1"]
 DontCheckBalanceTokenIDs = ["USDC", "MIM"]
@@ -179,10 +183,11 @@ CheckEIP1167Master = false
 1313161554 = 60
 25 = 60
 # customs, key is chainID. value is a mapping.
-[Extra.Customs.1313161554]
-sendtxTimeout = "60"
-[Extra.Customs.30]
-dontCheckAddressMixedCase = "true"
+[Extra.Customs.1645027868239]
+APIKey = "XXXXXX"
+AssetPolicyKey = "xxxxxx"
+AppendName = "false"
+UseAPI = "true"
 # big value whitelist, key is tokenID
 [Extra.BigValueWhitelist]
 USDC = ["0x1111111111111111111111111111111111111111"]
@@ -201,9 +206,11 @@ MIM  = ["0x2222222222222222222222222222222222222222"]
 # the last key is chainID
 [Extra.LocalChainConfig.2025]
 EstimatedGasMustBePositive = true
+DontCheckAddressMixedCase = false
 
 [Extra.LocalChainConfig.86]
 SmallestGasPriceUnit = 1000000000
+IsReswapSupported = false
 
 [Extra.LocalChainConfig.25]
 ForbidParallelLoading = true

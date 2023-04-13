@@ -50,6 +50,7 @@ var (
 	enableCheckTxBlockIndexChains        = make(map[string]struct{})
 	disableUseFromChainIDInReceiptChains = make(map[string]struct{})
 	useFastMPCChains                     = make(map[string]struct{})
+	increaseNonceWhenSendTxChains        = make(map[string]struct{})
 	dontCheckReceivedTokenIDs            = make(map[string]struct{})
 	dontCheckBalanceTokenIDs             = make(map[string]struct{})
 	dontCheckTotalSupplyTokenIDs         = make(map[string]struct{})
@@ -92,6 +93,7 @@ type RouterServerConfig struct {
 	ReplacePlusGasPricePercent uint64            `toml:",omitempty" json:",omitempty"`
 	WaitTimeToReplace          int64             `toml:",omitempty" json:",omitempty"` // seconds
 	MaxReplaceCount            int               `toml:",omitempty" json:",omitempty"`
+	MaxReplaceDistance         uint64            `toml:",omitempty" json:",omitempty"`
 	PlusGasPricePercentage     uint64            `toml:",omitempty" json:",omitempty"`
 	MaxPlusGasPricePercentage  uint64            `toml:",omitempty" json:",omitempty"`
 	MaxGasPriceFluctPercent    uint64            `toml:",omitempty" json:",omitempty"`
@@ -188,6 +190,7 @@ type ExtraConfig struct {
 	EnableCheckTxBlockIndexChains        []string `toml:",omitempty" json:",omitempty"`
 	DisableUseFromChainIDInReceiptChains []string `toml:",omitempty" json:",omitempty"`
 	UseFastMPCChains                     []string `toml:",omitempty" json:",omitempty"`
+	IncreaseNonceWhenSendTxChains        []string `toml:",omitempty" json:",omitempty"`
 	DontCheckReceivedTokenIDs            []string `toml:",omitempty" json:",omitempty"`
 	DontCheckBalanceTokenIDs             []string `toml:",omitempty" json:",omitempty"`
 	DontCheckTotalSupplyTokenIDs         []string `toml:",omitempty" json:",omitempty"`
@@ -207,11 +210,14 @@ type ExtraConfig struct {
 
 // LocalChainConfig local chain config
 type LocalChainConfig struct {
-	ForbidParallelLoading      bool     `toml:",omitempty" json:",omitempty"`
-	EstimatedGasMustBePositive bool     `toml:",omitempty" json:",omitempty"`
-	SmallestGasPriceUnit       uint64   `toml:",omitempty" json:",omitempty"`
-	ForbidSwapoutTokenIDs      []string `toml:",omitempty" json:",omitempty"`
-	BigValueDiscount           uint64   `toml:",omitempty" json:",omitempty"`
+	ForbidParallelLoading      bool `toml:",omitempty" json:",omitempty"`
+	EstimatedGasMustBePositive bool `toml:",omitempty" json:",omitempty"`
+	IsReswapSupported          bool `toml:",omitempty" json:",omitempty"`
+	DontCheckAddressMixedCase  bool `toml:",omitempty" json:",omitempty"`
+
+	SmallestGasPriceUnit  uint64   `toml:",omitempty" json:",omitempty"`
+	ForbidSwapoutTokenIDs []string `toml:",omitempty" json:",omitempty"`
+	BigValueDiscount      uint64   `toml:",omitempty" json:",omitempty"`
 
 	// chainID -> tokenids
 	ChargeFeeOnDestChain   map[string][]string `toml:",omitempty" json:",omitempty"`
@@ -754,7 +760,9 @@ func GetLocalChainConfig(chainID string) *LocalChainConfig {
 	if GetExtraConfig() != nil {
 		c := GetExtraConfig().LocalChainConfig[chainID]
 		if c != nil {
-			c.lock = new(sync.Mutex)
+			if c.lock == nil {
+				c.lock = new(sync.Mutex)
+			}
 			return c
 		}
 	}
@@ -1013,6 +1021,24 @@ func initUseFastMPCChains() {
 // IsUseFastMPC is use fast mpc
 func IsUseFastMPC(chainID string) bool {
 	_, exist := useFastMPCChains[chainID]
+	return exist
+}
+
+func initIncreaseNonceWhenSendTxChains() {
+	if GetExtraConfig() == nil || len(GetExtraConfig().IncreaseNonceWhenSendTxChains) == 0 {
+		return
+	}
+	tempMap := make(map[string]struct{})
+	for _, cid := range GetExtraConfig().IncreaseNonceWhenSendTxChains {
+		tempMap[cid] = struct{}{}
+	}
+	increaseNonceWhenSendTxChains = tempMap
+	log.Info("initIncreaseNonceWhenSendTxChains success", "isReload", IsReload)
+}
+
+// IncreaseNonceWhenSendTx increase nonce before send tx
+func IncreaseNonceWhenSendTx(chainID string) bool {
+	_, exist := increaseNonceWhenSendTxChains[chainID]
 	return exist
 }
 

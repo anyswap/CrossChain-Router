@@ -79,6 +79,9 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 					return nil, err
 				}
 
+				txout := uint64(rawTransaction.Slot + b.ReSwapableBridgeBase.GetTimeoutConfig())
+				b.ReSwapableBridgeBase.SetTxTimeout(args, &txout)
+
 				if rawBytes, err := json.Marshal(rawTransaction); err != nil {
 					return nil, err
 				} else {
@@ -91,10 +94,19 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 }
 
 func (b *Bridge) BuildTx(swapId, receiver, assetId string, amount *big.Int, utxos map[UtxoKey]AssetsMap) (*RawTransaction, error) {
-	log.Infof("Cardano BuildTx:\nreceiver:%+v\nassetId:%+v\namount:%+v\nutxos:%+v\n", receiver, assetId, amount, utxos)
+	log.Infof("Cardano BuildTx:\nreceiver:%+v\nassetId:%+v\namount:%+v\nutxos:%+v\nprotocolParams:%+v \n", receiver, assetId, amount, utxos, b.ProtocolParams)
 
 	txIns := []UtxoKey{}
 	txInsAssets := []AssetsMap{}
+
+	nodeTip, err := b.GetTip()
+	if err != nil {
+		return nil, err
+	}
+
+	if b.ProtocolParams == nil || b.calcMaxFee() == 0 {
+		return nil, fmt.Errorf("ProtocolParams is empty")
+	}
 
 	// max tx size fee + output min ada
 	adaRequired := new(big.Int).SetUint64(b.calcMaxFee() + FixAdaAmount.Uint64())
@@ -134,14 +146,6 @@ func (b *Bridge) BuildTx(swapId, receiver, assetId string, amount *big.Int, utxo
 		return nil, fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, "ada not enough, below "+FixAdaAmount.String())
 	}
 
-	// pparams, err := b.RpcClient.ProtocolParams()
-	// if err != nil {
-	// 	return nil, err
-	// }
-	nodeTip, err := b.GetTip()
-	if err != nil {
-		return nil, err
-	}
 	rawTransaction := &RawTransaction{
 		SwapId:           swapId,
 		TxOuts:           make(map[string]AssetsMap),
@@ -191,6 +195,7 @@ func (b *Bridge) BuildTx(swapId, receiver, assetId string, amount *big.Int, utxo
 		}
 	}
 
+	log.Infof("Cardano BuildTx:\nrawTransaction:%+v", rawTransaction)
 	return rawTransaction, nil
 }
 
@@ -261,7 +266,7 @@ func buildTxAndAdjustRestAda(txBuilder *cardanosdk.TxBuilder, rawTransaction *Ra
 		return nil, err
 	}
 	rawTransaction.TxOuts[mpcAddr][AdaAsset] = fmt.Sprint((amount - uint64(tx.Body.Fee)))
-	log.Info("[Cardano]RawTx", "txhash", txhash.String(), "rest[ADA]", rawTransaction.TxOuts[mpcAddr][AdaAsset])
+	log.Info("[Cardano]RawTx", "txhash", txhash.String(), "rest[ADA]", rawTransaction.TxOuts[mpcAddr][AdaAsset], "fee:", uint64(tx.Body.Fee))
 	return tx, nil
 }
 
@@ -372,7 +377,7 @@ func (b *Bridge) genTxBuilder(mpcAddr string, rawTransaction *RawTransaction, da
 	if txOut != nil {
 		txBuilder.AddOutputs(txOut)
 	}
-	txBuilder.SetTTL(rawTransaction.Slot + TxTimeOut)
+	txBuilder.SetTTL(rawTransaction.Slot + b.ReSwapableBridgeBase.GetTimeoutConfig())
 	txBuilder.AddChangeIfNeeded(mpc)
 	txBuilder.Sign(b.FakePrikey)
 	if data != nil {
@@ -399,51 +404,13 @@ func (b *Bridge) GetAssetPolicy(name string) (crypto.XPrvKey, cardanosdk.NativeS
 	return policyKey, policyScript, policyID
 }
 
-// func CalcMinFee(rawTransaction *RawTransaction) (string, error) {
-// 	txBodyPath := RawPath + rawTransaction.OutFile + RawSuffix
-// 	cmdString := fmt.Sprintf(CalcMinFeeCmd, txBodyPath, len(rawTransaction.TxIns), len(rawTransaction.TxOuts))
-// 	if execRes, err := ExecCmd(cmdString, " "); err != nil {
-// 		return "", err
-// 	} else {
-// 		return execRes, nil
-// 	}
-// }
-
 func (b *Bridge) initExtra(args *tokens.BuildTxArgs) (extra *tokens.AllExtras, err error) {
 	extra = args.Extra
 	if extra == nil {
 		extra = &tokens.AllExtras{}
 		args.Extra = extra
 	}
-	if extra.Sequence == nil {
-		extra.Sequence, err = b.GetSeq(args)
-		if err != nil {
-			return nil, err
-		}
-	}
 	return extra, nil
-}
-
-// GetPoolNonce impl NonceSetter interface
-func (b *Bridge) GetPoolNonce(address, _height string) (uint64, error) {
-	return 0, nil
-}
-
-// GetSeq returns account tx sequence
-func (b *Bridge) GetSeq(args *tokens.BuildTxArgs) (nonceptr *uint64, err error) {
-	var nonce uint64
-
-	if params.IsAutoSwapNonceEnabled(b.ChainConfig.ChainID) { // increase automatically
-		nonce = b.GetSwapNonce(args.From)
-		return &nonce, nil
-	}
-
-	nonce, err = b.GetPoolNonce(args.From, "pending")
-	if err != nil {
-		return nil, err
-	}
-	nonce = b.AdjustNonce(args.From, nonce)
-	return &nonce, nil
 }
 
 func (b *Bridge) getReceiverAndAmount(args *tokens.BuildTxArgs, multichainToken string) (receiver string, amount *big.Int, err error) {

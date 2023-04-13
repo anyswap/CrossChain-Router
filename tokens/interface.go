@@ -62,3 +62,12 @@ type NonceSetter interface {
 	SetNonce(address string, value uint64)
 	AdjustNonce(address string, value uint64) (nonce uint64)
 }
+
+type ReSwapable interface {
+	SetTxTimeout(args *BuildTxArgs, txTimeout *uint64)
+	GetCurrentThreshold() (*uint64, error)
+	IsTxTimeout(txValue, currentValue *uint64) bool
+	SetReswapMaxValueRate(rate uint64)
+	SetTimeoutConfig(txTimeout uint64)
+	GetTimeoutConfig() uint64
+}

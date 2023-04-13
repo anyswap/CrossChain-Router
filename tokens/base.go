@@ -1,16 +1,14 @@
 package tokens
 
 import (
-	"errors"
-	"fmt"
 	"math/big"
 	"strings"
 	"sync"
-	"time"
 
 	cmath "github.com/anyswap/CrossChain-Router/v3/common/math"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
+	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 )
 
 var (
@@ -84,24 +82,34 @@ type CrossChainBridgeBase struct {
 	GatewayConfig  *GatewayConfig
 	TokenConfigMap *sync.Map // key is token address
 
-	UseFastMPC     bool
-	AllGatewayURLs []string
+	RPCClientTimeout int
+
+	UseFastMPC                bool
+	DontCheckAddressMixedCase bool
 }
 
 // NewCrossChainBridgeBase new base bridge
 func NewCrossChainBridgeBase() *CrossChainBridgeBase {
 	return &CrossChainBridgeBase{
-		TokenConfigMap: new(sync.Map),
+		TokenConfigMap:   new(sync.Map),
+		RPCClientTimeout: client.GetDefaultTimeout(false),
 	}
+}
+
+// InitAfterConfig init variables (ie. extra members) after loading config
+func (b *CrossChainBridgeBase) InitAfterConfig() {
+	chainID := b.ChainConfig.ChainID
+	clientTimeout := params.GetRPCClientTimeout(chainID)
+	if clientTimeout != 0 {
+		b.RPCClientTimeout = clientTimeout
+	}
+	lclCfg := params.GetLocalChainConfig(chainID)
+	b.DontCheckAddressMixedCase = lclCfg.DontCheckAddressMixedCase
 }
 
 // InitRouterInfo init router info
 func (b *CrossChainBridgeBase) InitRouterInfo(routerContract, routerVersion string) (err error) {
 	return ErrNotImplemented
-}
-
-// InitAfterConfig init variables (ie. extra members) after loading config
-func (b *CrossChainBridgeBase) InitAfterConfig() {
 }
 
 // GetBalance get balance is used for checking budgets to prevent DOS attacking
@@ -113,16 +121,33 @@ func (b *CrossChainBridgeBase) GetBalance(account string) (*big.Int, error) {
 func (b *CrossChainBridgeBase) SetChainConfig(chainCfg *ChainConfig) {
 	b.ChainConfig = chainCfg
 	if params.IsUseFastMPC(chainCfg.ChainID) {
+		log.Info("set chain config use fast mpc", "chainID", chainCfg.ChainID, "chain", chainCfg.BlockChain)
 		b.UseFastMPC = true
 	}
 }
 
 // SetGatewayConfig set gateway config
 func (b *CrossChainBridgeBase) SetGatewayConfig(gatewayCfg *GatewayConfig) {
-	b.GatewayConfig = gatewayCfg
-	if len(gatewayCfg.APIAddress) > 0 {
-		b.AllGatewayURLs = append(gatewayCfg.APIAddress, gatewayCfg.APIAddressExt...)
+	if gatewayCfg != nil {
+		allURLs := gatewayCfg.APIAddress
+		if allURLs == nil {
+			allURLs = make([]string, 0)
+		}
+		allURLs = append(allURLs, gatewayCfg.APIAddressExt...)
+		existURLs := make(map[string]struct{})
+		// get rid of duplicate urls
+		for _, url := range allURLs {
+			if _, exist := existURLs[url]; exist {
+				continue
+			}
+			existURLs[url] = struct{}{}
+			gatewayCfg.AllGatewayURLs = append(gatewayCfg.AllGatewayURLs, url)
+		}
+		log.Debugf("AllGatewayURLs are %v", gatewayCfg.AllGatewayURLs)
+		gatewayCfg.OriginAllGatewayURLs = make([]string, len(gatewayCfg.AllGatewayURLs))
+		copy(gatewayCfg.OriginAllGatewayURLs, gatewayCfg.AllGatewayURLs)
 	}
+	b.GatewayConfig = gatewayCfg
 }
 
 // SetTokenConfig set token config
@@ -352,7 +377,7 @@ func CalcSwapValue(tokenID, fromChainID, toChainID string, value *big.Int, fromD
 
 			if useFixedFee {
 				fixedFee := ConvertTokenValue(feeCfg.MinimumSwapFee, 18, fromDecimals)
-				swapFee.Add(swapFee, fixedFee)
+				swapFee = cmath.BigMax(swapFee, fixedFee)
 			}
 
 			if swapFee.Cmp(minSwapFee) < 0 {
@@ -427,23 +452,4 @@ func ConvertTokenValue(fromValue *big.Int, fromDecimals, toDecimals uint8) *big.
 		return new(big.Int).Div(fromValue, cmath.BigPow(10, int64(fromDecimals-toDecimals)))
 	}
 	return new(big.Int).Mul(fromValue, cmath.BigPow(10, int64(toDecimals-fromDecimals)))
-}
-
-// CheckNativeBalance check native balance
-func CheckNativeBalance(b IBridge, account string, needValue *big.Int) (err error) {
-	var balance *big.Int
-	for i := 0; i < 3; i++ {
-		balance, err = b.GetBalance(account)
-		if err == nil || errors.Is(err, ErrNotImplemented) {
-			break
-		}
-		time.Sleep(1 * time.Second)
-	}
-	if err == nil && balance.Cmp(needValue) < 0 {
-		return fmt.Errorf("not enough coin balance. %v is lower than %v needed", balance, needValue)
-	}
-	if err != nil {
-		log.Warn("get balance error", "account", account, "err", err)
-	}
-	return err
 }

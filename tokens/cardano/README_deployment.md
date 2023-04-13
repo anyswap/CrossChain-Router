@@ -18,6 +18,8 @@ APIKey = "api key" # blockfrost APIKEY
 AssetPolicyKey = "policy seed" # Policykey seed
 AppendName = "true"  #config whether the policy is the same for all asset, policy is same if set `false`
 UseAPI = "false"  #config whether use the blockfrost api to query tx or tip .etc
+TxTimeout = "600"  #config how many block solt passed when tx timeout, default is 600
+ReswapMaxAmountRate = "1" #config What thousandths of BigAmount will not auto reswap when swap amount above, `1` means 1‰
 ```
 
 ### 5. genMpcAddr

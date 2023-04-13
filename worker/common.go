@@ -18,6 +18,7 @@ type MatchTx struct {
 	SwapTime   uint64
 	SwapValue  string
 	SwapNonce  uint64
+	TTL        uint64
 }
 
 // AddInitialSwapResult add initial result
@@ -80,6 +81,9 @@ func updateRouterSwapResult(fromChainID, txid string, logIndex int, mtx *MatchTx
 		if mtx.SwapTx != "" {
 			updates.SwapTx = mtx.SwapTx
 		}
+	}
+	if mtx.TTL > 0 {
+		updates.TTL = mtx.TTL
 	}
 	err = mongodb.UpdateRouterSwapResult(fromChainID, txid, logIndex, updates)
 	if err != nil {
@@ -215,14 +219,24 @@ SENDTX_LOOP:
 		sleepSeconds(3)
 	}
 
+	increseNonceWhenSendTx := params.IncreaseNonceWhenSendTx(args.ToChainID.String())
+	if increseNonceWhenSendTx {
+		nonceSetter, ok := bridge.(tokens.NonceSetter)
+		if ok && nonceSetter != nil {
+			nonceSetter.SetNonce(args.From, swapTxNonce+1)
+		}
+	}
+
 	if err != nil {
 		logWorkerError("sendtx", "send tx failed", err, "fromChainID", args.FromChainID, "toChainID", args.ToChainID, "txid", args.SwapID, "logIndex", args.LogIndex, "swapNonce", swapTxNonce, "replaceNum", replaceNum)
 		return txHash, err
 	}
 
-	nonceSetter, ok := bridge.(tokens.NonceSetter)
-	if ok && nonceSetter != nil {
-		nonceSetter.SetNonce(args.From, swapTxNonce+1)
+	if !increseNonceWhenSendTx {
+		nonceSetter, ok := bridge.(tokens.NonceSetter)
+		if ok && nonceSetter != nil {
+			nonceSetter.SetNonce(args.From, swapTxNonce+1)
+		}
 	}
 
 	if params.GetRouterServerConfig().SendTxLoopCount[args.ToChainID.String()] >= 0 {

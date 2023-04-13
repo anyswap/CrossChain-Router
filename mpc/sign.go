@@ -94,8 +94,8 @@ func (c *Config) DoSign(signType, signPubkey string, msgHash, msgContext []strin
 		}
 		time.Sleep(2 * time.Second)
 	}
-	log.Warn("mpc DoSign failed", "msgHash", msgHash, "msgContext", msgContext, "signType", signType, "err", err)
-	return "", nil, errDoSignFailed
+	log.Warn("mpc DoSign failed", "keyID", keyID, "msgHash", msgHash, "msgContext", msgContext, "signType", signType, "err", err)
+	return keyID, nil, errDoSignFailed
 }
 
 //nolint:gocyclo // ok
@@ -145,7 +145,9 @@ func (c *Config) doSignImpl(mpcNode *NodeInfo, signGroupIndex int, signType, sig
 		return "", nil, errEmptyKeyID
 	}
 
-	rsvs, err = c.getSignResult(keyID, rpcAddr)
+	log.Info("mpc sign begin", "signGroup", signGroup, "signPubkey", signPubkey, "nonce", nonce, "msgHash", msgHash, "msgContext", msgContext, "signType", signType, "keyID", keyID, "ts", txdata.TimeStamp)
+
+	rsvs, err = c.getSignResult(keyID, rpcAddr, msgContext)
 	if err != nil {
 		if c.maxSignGroupFailures > 0 {
 			old := c.signGroupFailuresMap[signGroup]
@@ -158,7 +160,7 @@ func (c *Config) doSignImpl(mpcNode *NodeInfo, signGroupIndex int, signType, sig
 				mpcNode.deleteSignGroup(signGroupIndex)
 			}
 		}
-		return "", nil, err
+		return keyID, nil, err
 	}
 	if c.maxSignGroupFailures > 0 {
 		// reset when succeed
@@ -171,12 +173,12 @@ func (c *Config) doSignImpl(mpcNode *NodeInfo, signGroupIndex int, signType, sig
 		for _, rsv := range rsvs {
 			signature := common.FromHex(rsv)
 			if len(signature) != crypto.SignatureLength {
-				return "", nil, errWrongSignatureLength
+				return keyID, nil, errWrongSignatureLength
 			}
 			r := common.ToHex(signature[:32])
 			err = mongodb.AddUsedRValue(signPubkey, r)
 			if err != nil {
-				return "", nil, errRValueIsUsed
+				return keyID, nil, errRValueIsUsed
 			}
 		}
 	}
@@ -185,10 +187,10 @@ func (c *Config) doSignImpl(mpcNode *NodeInfo, signGroupIndex int, signType, sig
 
 // GetSignStatusByKeyID get sign status by keyID
 func (c *Config) GetSignStatusByKeyID(keyID string) (rsvs []string, err error) {
-	return c.getSignResult(keyID, c.defaultMPCNode.mpcRPCAddress)
+	return c.getSignResult(keyID, c.defaultMPCNode.mpcRPCAddress, nil)
 }
 
-func (c *Config) getSignResult(keyID, rpcAddr string) (rsvs []string, err error) {
+func (c *Config) getSignResult(keyID, rpcAddr string, msgContext []string) (rsvs []string, err error) {
 	log.Info("start get sign status", "keyID", keyID)
 	var signStatus *SignStatus
 	i := 0
@@ -219,7 +221,7 @@ LOOP_GET_SIGN_STATUS:
 		time.Sleep(3 * time.Second)
 	}
 	if len(rsvs) == 0 || err != nil {
-		log.Info("get sign status failed", "keyID", keyID, "retryCount", i, "err", err)
+		log.Info("get sign status failed", "keyID", keyID, "msgContext", msgContext, "retryCount", i, "err", err)
 		return nil, errGetSignResultFailed
 	}
 	log.Info("get sign status success", "keyID", keyID, "retryCount", i)

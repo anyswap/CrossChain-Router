@@ -22,7 +22,8 @@ var (
 	supportedChainIDs     = make(map[string]bool)
 	supportedChainIDsInit sync.Once
 
-	rpcRetryTimes = 3
+	rpcRetryTimes       = 3
+	defRPCClientTimeout = 60
 )
 
 const (
@@ -34,19 +35,20 @@ const (
 // Bridge block bridge inherit from btc bridge
 type Bridge struct {
 	*base.NonceSetterBase
-	RPCClientTimeout int
 }
 
 // NewCrossChainBridge new bridge
 func NewCrossChainBridge() *Bridge {
-	return &Bridge{
-		NonceSetterBase:  base.NewNonceSetterBase(),
-		RPCClientTimeout: 60,
+	b := &Bridge{
+		NonceSetterBase: base.NewNonceSetterBase(),
 	}
+	b.RPCClientTimeout = defRPCClientTimeout
+	return b
 }
 
 // InitAfterConfig init variables (ie. extra members) after loading config
 func (b *Bridge) InitAfterConfig() {
+	b.CrossChainBridgeBase.InitAfterConfig()
 	if params.IsSwapServer {
 		InstallTsModules()
 	}

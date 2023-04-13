@@ -128,7 +128,7 @@ func (b *Bridge) GetLatestBlockNumberOf(url string) (latest uint64, err error) {
 // GetLatestBlockNumber returns current finalized block height
 func (b *Bridge) GetLatestBlockNumber() (height uint64, err error) {
 	rpcError := &RPCError{[]error{}, "GetLatestBlockNumber"}
-	for _, endpoint := range b.GatewayConfig.APIAddress {
+	for _, endpoint := range b.GatewayConfig.AllGatewayURLs {
 		apiurl := strings.TrimSuffix(endpoint, "/") + `/wallet/getblockbylatestnum`
 		res, err := post(apiurl, `{"num":1}`)
 		if err != nil {
@@ -194,7 +194,7 @@ func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
 // GetTronTransaction get tx
 func (b *Bridge) GetTronTransaction(txHash string) (tx *core.Transaction, err error) {
 	rpcError := &RPCError{[]error{}, "GetTransaction"}
-	for _, endpoint := range b.GatewayConfig.APIAddress {
+	for _, endpoint := range b.GatewayConfig.AllGatewayURLs {
 		apiurl := strings.TrimSuffix(endpoint, "/") + `/wallet/gettransactionbyid`
 		res, err := post(apiurl, `{"value":"`+txHash+`"}`)
 		if err != nil {
@@ -302,7 +302,7 @@ func (b *Bridge) GetTransactionInfo(txHash string) (*rpcGetTxInfoRes, error) {
 			rpcError.log(fmt.Errorf("%v", r))
 		}
 	}()
-	for _, endpoint := range b.GatewayConfig.APIAddress {
+	for _, endpoint := range b.GatewayConfig.AllGatewayURLs {
 		apiurl := strings.TrimSuffix(endpoint, "/") + `/walletsolidity/gettransactioninfobyid`
 		res, err := post(apiurl, `{"value":"`+txHash+`"}`)
 		if err != nil {
@@ -340,7 +340,7 @@ func (b *Bridge) BroadcastTx(tx *core.Transaction) (err error) {
 		return err
 	}
 	txhex := fmt.Sprintf("%X", protoData)
-	for _, endpoint := range b.GatewayConfig.APIAddress {
+	for _, endpoint := range b.GatewayConfig.AllGatewayURLs {
 		apiurl := strings.TrimSuffix(endpoint, "/") + `/wallet/broadcasthex`
 		res, err := post(apiurl, `{"transaction":"`+txhex+`"}`)
 		if err != nil {
@@ -377,7 +377,7 @@ func (b *Bridge) NetworkID() (*big.Int, error) {
 // GetCode returns contract bytecode
 func (b *Bridge) GetCode(contractAddress string) (data []byte, err error) {
 	rpcError := &RPCError{[]error{}, "GetCode"}
-	for _, endpoint := range b.GatewayConfig.APIAddress {
+	for _, endpoint := range b.GatewayConfig.AllGatewayURLs {
 		apiurl := strings.TrimSuffix(endpoint, "/") + `/wallet/getcontract`
 		res, err := post(apiurl, `{"value":"`+tronToEthWithPrefix(contractAddress)+`","visible":false}`)
 		if err != nil {
@@ -410,7 +410,7 @@ func (b *Bridge) GetCode(contractAddress string) (data []byte, err error) {
 func (b *Bridge) GetBalance(account string) (balance *big.Int, err error) {
 	rpcError := &RPCError{[]error{}, "GetBalance"}
 	account = strings.TrimPrefix(account, "0x")
-	for _, endpoint := range b.GatewayConfig.APIAddress {
+	for _, endpoint := range b.GatewayConfig.AllGatewayURLs {
 		apiurl := strings.TrimSuffix(endpoint, "/") + `/wallet/getaccount`
 		res, err := post(apiurl, `{"value":"`+tronToEthWithPrefix(account)+`","visible":false}`)
 		if err != nil {
@@ -455,7 +455,7 @@ func (b *Bridge) BuildTriggerConstantContractTx(from, contract string, selector 
 	tx = &core.Transaction{}
 	txdata := `{"owner_address":"` + tronToEthWithPrefix(from) + `","contract_address":"` + tronToEthWithPrefix(contract) + `","function_selector":"` + selector + `","parameter":"` + parameter + `","fee_limit":"` + fmt.Sprint(fee_limit) + `"}`
 	log.Trace("BuildTriggerConstantContractTx", "txdata", txdata)
-	for _, endpoint := range b.GatewayConfig.APIAddress {
+	for _, endpoint := range b.GatewayConfig.AllGatewayURLs {
 		apiurl := strings.TrimSuffix(endpoint, "/") + `/wallet/triggersmartcontract`
 		res, err := post(apiurl, txdata)
 		if err != nil {

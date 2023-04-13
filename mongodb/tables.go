@@ -103,6 +103,7 @@ type MgoSwapResult struct {
 	Timestamp   int64      `bson:"timestamp"`
 	Memo        string     `bson:"memo" json:",omitempty"`
 	MPC         string     `bson:"mpc"`
+	TTL         uint64     `bson:"ttl"`
 }
 
 // MgoUsedRValue security enhancement
@@ -122,6 +123,7 @@ type SwapResultUpdateItems struct {
 	Status     SwapStatus
 	Timestamp  int64
 	Memo       string
+	TTL        uint64
 }
 
 // SwapInfo struct

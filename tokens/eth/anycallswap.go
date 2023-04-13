@@ -363,17 +363,45 @@ func (b *Bridge) checkAnyCallSwapInfo(swapInfo *tokens.SwapTxInfo) error {
 		return tokens.ErrNoBridgeForChainID
 	}
 	// check budget on dest chain to prvent DOS attack
-	if params.HasMinReserveBudgetConfig() {
+	if isPayFeeOnDest(swapInfo.AnyCallSwapInfo.Flags) &&
+		params.HasMinReserveBudgetConfig() {
 		minReserveBudget := params.GetMinReserveBudget(dstBridge.GetChainConfig().ChainID)
 		if minReserveBudget == nil {
 			minReserveBudget = defMinReserveBudget
 		}
 		callFrom := getCallFrom(swapInfo)
-		if err := tokens.CheckNativeBalance(dstBridge, callFrom, minReserveBudget); err != nil {
+		routerContract := b.GetRouterContract("")
+		var budgetBalance *big.Int
+		var err error
+		for i := 0; i < 3; i++ {
+			budgetBalance, err = b.GetExecutionBudget(routerContract, callFrom)
+			if err == nil {
+				break
+			}
+		}
+		if err != nil {
+			return fmt.Errorf("get budget error: %w", err)
+		}
+		if budgetBalance.Cmp(minReserveBudget) < 0 {
 			return tokens.ErrNoEnoughReserveBudget
 		}
 	}
 	return nil
+}
+
+func isPayFeeOnDest(flags string) bool {
+	biFlags, _ := common.GetBigIntFromStr(flags)
+	uFlags := biFlags.Uint64()
+	switch params.GetSwapSubType() {
+	case tokens.AnycallSubTypeV7:
+		return uFlags&2 == 2
+	case tokens.AnycallSubTypeV6:
+		return uFlags&2 == 0
+	case tokens.AnycallSubTypeV5, tokens.CurveAnycallSubType:
+		return true
+	default:
+		return false
+	}
 }
 
 func (b *Bridge) findMessageSentInfo(swapInfo *tokens.SwapTxInfo, logs []*types.RPCLog, logIndex int, allowUnstable bool) error {

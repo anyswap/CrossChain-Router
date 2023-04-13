@@ -319,3 +319,15 @@ func IsNonceSupported(chainID string) bool {
 	}
 	return false
 }
+
+// IsReswapSupported is reswap supported
+func IsReswapSupported(chainID string) bool {
+	if !params.GetLocalChainConfig(chainID).IsReswapSupported {
+		return false
+	}
+	if bridge := GetBridgeByChainID(chainID); bridge != nil {
+		_, ok := bridge.(tokens.ReSwapable)
+		return ok
+	}
+	return false
+}
