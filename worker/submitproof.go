@@ -20,15 +20,16 @@ var (
 func StartSubmitProofJob() {
 	logWorker("submitproof", "start submit proof job")
 
-	mongodb.MgoWaitGroup.Add(1)
-	go doSubmitProofJob()
+	mongodb.MgoWaitGroup.Add(2)
+	go doSubmitProofJob(mongodb.ProofPrepared)
+	go doSubmitProofJob(mongodb.MatchTxNotStable)
 }
 
-func doSubmitProofJob() {
+func doSubmitProofJob(status mongodb.SwapStatus) {
 	defer mongodb.MgoWaitGroup.Done()
 	for {
 		septime := getSepTimeInFind(maxSubmitProofLifetime)
-		res, err := mongodb.FindRouterSwapResultsWithStatus(mongodb.ProofPrepared, septime)
+		res, err := mongodb.FindRouterSwapResultsWithStatus(status, septime)
 		if err != nil {
 			logWorkerError("submitproof", "find proofs error", err)
 		}
@@ -56,6 +57,9 @@ func doSubmitProofJob() {
 func submitProof(swap *mongodb.MgoSwapResult) (err error) {
 	if swap.ProofID == "" || swap.Proof == "" {
 		return errors.New("invlaid proof")
+	}
+	if swap.SpecState == mongodb.ProofConsumed {
+		return nil
 	}
 
 	if swap.SwapTx != "" {
@@ -116,6 +120,9 @@ func submitProof(swap *mongodb.MgoSwapResult) (err error) {
 	}
 	signedTx, txHash, err := resBridge.SubmitProof(swap.ProofID, swap.Proof, args)
 	if err != nil {
+		if errors.Is(err, tokens.ErrProofConsumed) {
+			_ = mongodb.MarkProofAsConsumed(fromChainID, txid, logIndex)
+		}
 		return err
 	}
 

@@ -858,16 +858,26 @@ func UpdateProofSwapResult(fromChainID, txid string, logindex int, items *SwapRe
 	}
 	if items.Memo != "" {
 		updates["memo"] = items.Memo
-	} else if len(swapRes.OldSwapTxs) == 0 {
+	} else if swapRes.SwapTx == "" {
 		updates["memo"] = ""
 		updates["status"] = MatchTxNotStable
 	}
 	if items.TTL != 0 {
 		updates["ttl"] = items.TTL
 	}
-	allUpdates := bson.M{
-		"$set":  updates,
-		"$push": bson.M{"oldswaptxs": swapTx},
+
+	var allUpdates bson.M
+
+	if len(swapRes.OldSwapTxs) == 0 {
+		if swapRes.SwapTx != "" {
+			updates["oldswaptxs"] = []string{swapRes.SwapTx, swapTx}
+		}
+		allUpdates = bson.M{"$set": updates}
+	} else {
+		allUpdates = bson.M{
+			"$set":  updates,
+			"$push": bson.M{"oldswaptxs": swapTx},
+		}
 	}
 
 	key := GetRouterSwapKey(fromChainID, txid, logindex)
@@ -876,6 +886,23 @@ func UpdateProofSwapResult(fromChainID, txid string, logindex int, items *SwapRe
 		log.Info("mongodb update proof swap result success", "chainid", fromChainID, "txid", txid, "logindex", logindex, "updates", updates)
 	} else {
 		log.Error("mongodb update proof swap result failed", "chainid", fromChainID, "txid", txid, "logindex", logindex, "updates", updates, "err", err)
+	}
+	return mgoError(err)
+}
+
+// MarkProofAsConsumed mark proof as consumed
+func MarkProofAsConsumed(fromChainID, txid string, logindex int) error {
+	updates := bson.M{
+		"timestamp": time.Now().Unix(),
+		"specState": ProofConsumed,
+		"memo":      "",
+	}
+	key := GetRouterSwapKey(fromChainID, txid, logindex)
+	_, err := collRouterSwapResult.UpdateByID(clientCtx, key, bson.M{"$set": updates})
+	if err == nil {
+		log.Info("mark proof as consumed success", "chainid", fromChainID, "txid", txid, "logindex", logindex)
+	} else {
+		log.Error("mark proof as consumed failed", "chainid", fromChainID, "txid", txid, "logindex", logindex, "err", err)
 	}
 	return mgoError(err)
 }

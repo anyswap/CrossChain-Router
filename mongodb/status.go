@@ -56,6 +56,15 @@ const (
 	Reswapping SwapStatus = 256
 )
 
+// SpecState special state
+type SpecState uint16
+
+// special state constants
+const (
+	DefaultState  SpecState = 0
+	ProofConsumed SpecState = 1
+)
+
 // IsResultStatus is swap result status
 func (status SwapStatus) IsResultStatus() bool {
 	switch status {

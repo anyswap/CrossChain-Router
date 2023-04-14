@@ -130,6 +130,9 @@ func processRouterSwap(swap *mongodb.MgoSwap) (err error) {
 		if errors.Is(err, mongodb.ErrItemNotFound) {
 			_ = mongodb.UpdateRouterSwapStatus(fromChainID, txid, logIndex, mongodb.TxNotStable, now(), "")
 		}
+		if res.Proof != "" {
+			return errProofExist
+		}
 		return err
 	}
 

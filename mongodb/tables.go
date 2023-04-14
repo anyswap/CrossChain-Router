@@ -106,6 +106,7 @@ type MgoSwapResult struct {
 	TTL         uint64     `bson:"ttl"`
 	ProofID     string     `bson:"proofID"`
 	Proof       string     `bson:"proof"`
+	SpecState   SpecState  `bson:"specState"`
 }
 
 // MgoUsedRValue security enhancement
