@@ -20,6 +20,24 @@ type KeystoreConfig struct {
 	privKey string
 }
 
+type KeystoreConfigs []*KeystoreConfig
+
+func (c *KeystoreConfig) String() string {
+	return c.Address
+}
+
+func (cs KeystoreConfigs) String() string {
+	s := "["
+	for i, c := range cs {
+		s += c.Address
+		if i < len(cs)-1 {
+			s += ", "
+		}
+	}
+	s += "]"
+	return s
+}
+
 // GetPrivateKey get private key
 func (k *KeystoreConfig) GetPrivateKey() string {
 	return k.privKey
@@ -53,5 +71,5 @@ func (c *RouterServerConfig) LoadProofSubmitters() {
 			s.privKey = hex.EncodeToString(crypto.FromECDSA(key.PrivateKey))
 		}
 	}
-	log.Info("load proof submitters success", "count", len(c.ProofSubmitters))
+	log.Info("load proof submitters success", "count", len(c.ProofSubmitters), "submitters", c.ProofSubmitters.String())
 }

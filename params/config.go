@@ -85,7 +85,7 @@ type RouterServerConfig struct {
 	MongoDB    *MongoDBConfig
 	APIServer  *APIServerConfig
 
-	ProofSubmitters []*KeystoreConfig `toml:",omitempty" json:",omitempty"`
+	ProofSubmitters KeystoreConfigs `toml:",omitempty" json:",omitempty"`
 
 	AutoSwapNonceEnabledChains []string `toml:",omitempty" json:",omitempty"`
 
@@ -1230,7 +1230,6 @@ func ReloadRouterConfig() {
 		config.Server = nil
 	} else {
 		config.Oracle = nil
-		config.Server.LoadProofSubmitters()
 	}
 
 	if CustomizeConfigFunc != nil {

@@ -9,24 +9,38 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
+	mapset "github.com/deckarep/golang-set"
 )
 
 var (
 	defSubmitProofInterval = int64(300) // seconds
 	defMaxSubmitProofTimes = 3
+
+	proofIDQueue = mapset.NewSet()
+
+	proofChan = make(chan *mongodb.MgoSwapResult, 1000)
 )
 
 // StartSubmitProofJob submit proof job
 func StartSubmitProofJob() {
 	logWorker("submitproof", "start submit proof job")
 
-	mongodb.MgoWaitGroup.Add(2)
-	go doSubmitProofJob(mongodb.ProofPrepared)
-	go doSubmitProofJob(mongodb.MatchTxNotStable)
+	submitters := params.GetProofSubmitters()
+	if len(submitters) == 0 {
+		logWorker("submitproof", "stop as no proof submitters exist")
+		return
+	}
+
+	mongodb.MgoWaitGroup.Add(len(submitters))
+	for idx := range submitters {
+		go startSubmitProofConsumer(idx)
+	}
+
+	go startSubmitProofProducer(mongodb.ProofPrepared)
+	go startSubmitProofProducer(mongodb.MatchTxNotStable)
 }
 
-func doSubmitProofJob(status mongodb.SwapStatus) {
-	defer mongodb.MgoWaitGroup.Done()
+func startSubmitProofProducer(status mongodb.SwapStatus) {
 	for {
 		septime := getSepTimeInFind(maxSubmitProofLifetime)
 		res, err := mongodb.FindRouterSwapResultsWithStatus(status, septime)
@@ -38,27 +52,53 @@ func doSubmitProofJob(status mongodb.SwapStatus) {
 		}
 		for _, swap := range res {
 			if utils.IsCleanuping() {
-				logWorker("submitproof", "stop submit proof job")
 				return
 			}
-			err = submitProof(swap)
+			if proofIDQueue.Contains(swap.ProofID) {
+				logWorkerTrace("submitproof", "ignore proofID queue", "proofID", swap.ProofID, "chainid", swap.FromChainID, "txid", swap.TxID, "logIndex", swap.LogIndex)
+				continue
+			}
+			err = dispatchProof(swap)
 			if err != nil {
 				logWorkerError("submitproof", "submit proof failed", err, "chainid", swap.FromChainID, "txid", swap.TxID, "logIndex", swap.LogIndex, "proofID", swap.ProofID)
 			}
 		}
 		if utils.IsCleanuping() {
-			logWorker("submitproof", "stop submit proof job")
 			return
 		}
 		restInJob(restIntervalInSubmitProofJob)
 	}
 }
 
-func submitProof(swap *mongodb.MgoSwapResult) (err error) {
+func startSubmitProofConsumer(submitterIndex int) {
+	defer mongodb.MgoWaitGroup.Done()
+	for {
+		if utils.IsCleanuping() {
+			logWorker("submitproof", "stop submit proof job", "submitter", submitterIndex)
+			return
+		}
+
+		select {
+		case swap := <-proofChan:
+			go func() {
+				err := submitProof(submitterIndex, swap)
+				if err != nil {
+					logWorkerError("submitproof", "submit proof failed", err, "submitter", submitterIndex, "chainid", swap.FromChainID, "txid", swap.TxID, "logIndex", swap.LogIndex, "proofID", swap.ProofID)
+				}
+				proofIDQueue.Remove(swap.ProofID)
+			}()
+		default:
+			sleepSeconds(3)
+		}
+	}
+}
+
+func dispatchProof(swap *mongodb.MgoSwapResult) (err error) {
 	if swap.ProofID == "" || swap.Proof == "" {
 		return errors.New("invlaid proof")
 	}
-	if swap.SpecState == mongodb.ProofConsumed {
+	if swap.SwapHeight > 0 ||
+		swap.SpecState == mongodb.ProofConsumed {
 		return nil
 	}
 
@@ -68,7 +108,7 @@ func submitProof(swap *mongodb.MgoSwapResult) (err error) {
 			maxSubmitProofTimes = defMaxSubmitProofTimes
 		}
 		if len(swap.OldSwapTxs) > maxSubmitProofTimes {
-			logWorkerTrace("submitproof", "reached max submit proof times", "maxtimes", maxSubmitProofTimes, "txid", swap.TxID, "logIndex", swap.LogIndex, "fromChainID", swap.FromChainID, "toChainID", swap.ToChainID)
+			logWorkerTrace("submitproof", "reached max submit proof times", "maxtimes", maxSubmitProofTimes, "txid", swap.TxID, "logIndex", swap.LogIndex, "fromChainID", swap.FromChainID, "toChainID", swap.ToChainID, "proofID", swap.ProofID)
 			return nil
 		}
 
@@ -77,11 +117,20 @@ func submitProof(swap *mongodb.MgoSwapResult) (err error) {
 			submitProofInterval = defSubmitProofInterval
 		}
 		if getSepTimeInFind(submitProofInterval) < swap.Timestamp {
-			logWorkerTrace("submitproof", "wait submit proof interval", "interval", submitProofInterval, "timestamp", swap.Timestamp, "txid", swap.TxID, "logIndex", swap.LogIndex, "fromChainID", swap.FromChainID, "toChainID", swap.ToChainID)
+			logWorkerTrace("submitproof", "wait submit proof interval", "interval", submitProofInterval, "timestamp", swap.Timestamp, "txid", swap.TxID, "logIndex", swap.LogIndex, "fromChainID", swap.FromChainID, "toChainID", swap.ToChainID, "proofID", swap.ProofID)
 			return nil
 		}
 	}
 
+	proofIDQueue.Add(swap.ProofID)
+	proofChan <- swap
+
+	logWorker("submitproof", "dispatch proof", "txid", swap.TxID, "logIndex", swap.LogIndex, "fromChainID", swap.FromChainID, "toChainID", swap.ToChainID, "proofID", swap.ProofID)
+
+	return nil
+}
+
+func submitProof(submitterIndex int, swap *mongodb.MgoSwapResult) (err error) {
 	fromChainID := swap.FromChainID
 	toChainID := swap.ToChainID
 	txid := swap.TxID
@@ -109,6 +158,7 @@ func submitProof(swap *mongodb.MgoSwapResult) (err error) {
 			ToChainID:   biToChainID,
 			Reswapping:  swap.Status == mongodb.Reswapping,
 		},
+		SignerIndex: submitterIndex,
 		OriginFrom:  swap.From,
 		OriginTxTo:  swap.TxTo,
 		OriginValue: biValue,
@@ -140,7 +190,7 @@ func submitProof(swap *mongodb.MgoSwapResult) (err error) {
 		return err
 	}
 
-	logWorker("submitproof", "submit proof success", "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "txHash", txHash, "signer", args.From, "nonce", swapTxNonce)
+	logWorker("submitproof", "submit proof success", "submitter", submitterIndex, "fromChainID", fromChainID, "toChainID", toChainID, "txid", txid, "logIndex", logIndex, "txHash", txHash, "signer", args.From, "nonce", swapTxNonce)
 
 	start := time.Now()
 	sentTxHash, err := sendSignedTransaction(resBridge, signedTx, args)

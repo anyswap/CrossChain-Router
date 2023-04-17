@@ -597,7 +597,7 @@ func doSwapWithProof(args *tokens.BuildTxArgs) (err error) {
 	if err != nil {
 		return err
 	}
-	return submitProof(res)
+	return dispatchProof(res)
 }
 
 func signAndSendTx(rawTx interface{}, args *tokens.BuildTxArgs) error {

@@ -15,8 +15,6 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tools/crypto"
 )
 
-var curProofSubmitterIndex int
-
 func (b *Bridge) verifyProofID(rawTx interface{}, msgHashes []string) error {
 	proofID, ok := rawTx.(string)
 	if !ok {
@@ -165,7 +163,7 @@ func (b *Bridge) SubmitProof(proofID, proof string, args *tokens.BuildTxArgs) (s
 		return nil, "", err
 	}
 
-	submitter := pickSubmitter()
+	submitter := pickSubmitter(args.SignerIndex)
 	args.From = submitter.Address
 	args.SwapValue = big.NewInt(0)
 
@@ -182,9 +180,8 @@ func (b *Bridge) SubmitProof(proofID, proof string, args *tokens.BuildTxArgs) (s
 	return b.SignTransactionWithPrivateKey(rawTx, submitter.GetPrivateKey())
 }
 
-func pickSubmitter() *params.KeystoreConfig {
+func pickSubmitter(index int) *params.KeystoreConfig {
 	submitters := params.GetProofSubmitters()
-	submitter := submitters[curProofSubmitterIndex]
-	curProofSubmitterIndex = (curProofSubmitterIndex + 1) % len(submitters)
+	submitter := submitters[index]
 	return submitter
 }

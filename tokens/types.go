@@ -218,6 +218,7 @@ type BuildTxArgs struct {
 	Selector    string         `json:"selector,omitempty"`
 	Input       *hexutil.Bytes `json:"input,omitempty"`
 	Extra       *AllExtras     `json:"extra,omitempty"`
+	SignerIndex int            `json:"signerIndex,omitempty"`
 }
 
 // AllExtras struct
