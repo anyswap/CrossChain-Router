@@ -4,6 +4,7 @@ package bridge
 import (
 	"fmt"
 	"math/big"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -38,8 +39,9 @@ func setRouterInfoLoaded(chainID, routerContract string) {
 }
 
 // InitRouterBridges init router bridges
+//
 //nolint:funlen,gocyclo // ok
-func InitRouterBridges(isServer bool) {
+func InitRouterBridges(isServer bool, filterChainIds []string) {
 	log.Info("start init router bridges", "isServer", isServer)
 	var success bool
 	router.IsIniting = true
@@ -66,7 +68,20 @@ func InitRouterBridges(isServer bool) {
 			log.Debugf("ingore chainID %v in black list", chainID)
 			continue
 		}
-		chainIDs = append(chainIDs, chainID)
+		//filter chainId
+		if filterChainIds != nil && len(filterChainIds) > 0 {
+			for _, filterId := range filterChainIds {
+				chainIdFilter, err := strconv.ParseInt(filterId, 10, 64)
+				if err != nil {
+					continue
+				}
+				if chainID.Cmp(big.NewInt(chainIdFilter)) != 0 {
+					chainIDs = append(chainIDs, chainID)
+				}
+			}
+		} else {
+			chainIDs = append(chainIDs, chainID)
+		}
 	}
 	log.Info("get all chain ids success", "chainIDs", chainIDs)
 	if len(chainIDs) == 0 {
@@ -413,6 +428,7 @@ func InitChainConfig(b tokens.IBridge, chainID *big.Int) {
 }
 
 // InitTokenConfig impl
+//
 //nolint:funlen,gocyclo // allow long init token config method
 func InitTokenConfig(b tokens.IBridge, tokenID string, chainID *big.Int) {
 	isReload := router.IsReloading
