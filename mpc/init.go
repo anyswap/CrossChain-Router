@@ -60,6 +60,8 @@ type Config struct {
 	selfEnode string
 	allEnodes []string
 
+	initiators []string
+
 	// delete if fail too many times consecutively, 0 means disable checking
 	maxSignGroupFailures      int
 	minIntervalToAddSignGroup int64                   // seconds
@@ -172,7 +174,8 @@ func initConfig(mpcParams *params.MPCConfig, isServer bool) *Config {
 	c.initSelfEnode()
 	c.initAllEnodes()
 
-	c.verifyInitiators(mpcParams.Initiators)
+	c.initiators = mpcParams.Initiators
+	c.verifyInitiators()
 	log.Info("init mpc success", "apiPrefix", c.mpcAPIPrefix, "isServer", isServer,
 		"rpcTimeout", c.mpcRPCTimeout, "signTimeout", c.mpcSignTimeout.String(),
 		"maxSignGroupFailures", c.maxSignGroupFailures,
@@ -405,7 +408,8 @@ func (c *Config) verifySignGroupInfo(rpcAddr, groupID string, isSignGroup, inclu
 	}
 }
 
-func (c *Config) verifyInitiators(initiators []string) {
+func (c *Config) verifyInitiators() {
+	initiators := c.initiators
 	allInitiatorNodes := c.allInitiatorNodes
 	if len(allInitiatorNodes) == 0 {
 		return
@@ -456,8 +460,8 @@ func (c *Config) initMPCNodeInfo(mpcNodeCfg *params.MPCNodeConfig, isServer bool
 
 // IsMPCInitiator is initiator of mpc sign
 func (c *Config) IsMPCInitiator(account string) bool {
-	for _, mpcNodeInfo := range c.allInitiatorNodes {
-		if strings.EqualFold(account, mpcNodeInfo.mpcUser.String()) {
+	for _, initiator := range c.initiators {
+		if strings.EqualFold(account, initiator) {
 			return true
 		}
 	}
