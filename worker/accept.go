@@ -73,6 +73,8 @@ func StartAcceptSignJob() {
 		utils.TopWaitGroup.Add(1)
 		go startAcceptConsumer(mpcConfig)
 	}
+
+	utils.TopWaitGroup.Wait()
 }
 
 func startAcceptProducer(mpcConfig *mpc.Config) {
@@ -245,8 +247,7 @@ func processAcceptInfo(mpcConfig *mpc.Config, info *mpc.SignInfoData) {
 	}
 }
 
-func verifySignInfo(mpcConfig *mpc.Config, signInfo *mpc.SignInfoData) (*tokens.BuildTxArgs, error) {
-	msgHash := signInfo.MsgHash
+func filterSignInfo(signInfo *mpc.SignInfoData) (*tokens.BuildTxArgs, error) {
 	msgContext := signInfo.MsgContext
 	var args tokens.BuildTxArgs
 	err := json.Unmarshal([]byte(msgContext[0]), &args)
@@ -258,18 +259,25 @@ func verifySignInfo(mpcConfig *mpc.Config, signInfo *mpc.SignInfoData) (*tokens.
 	default:
 		return nil, errIdentifierMismatch
 	}
+	return &args, err
+}
+
+func verifySignInfo(mpcConfig *mpc.Config, signInfo *mpc.SignInfoData) (*tokens.BuildTxArgs, error) {
+	args, err := filterSignInfo(signInfo)
+	if err != nil {
+		return args, err
+	}
 	if !mpcConfig.IsMPCInitiator(signInfo.Account) {
 		return nil, errInitiatorMismatch
 	}
-	logWorker("accept", "verifySignInfo", "keyID", signInfo.Key, "msgHash", msgHash, "msgContext", msgContext)
 	if lvldbHandle != nil && args.GetTxNonce() > 0 { // only for eth like chain
-		err = CheckAcceptRecord(&args)
+		err = CheckAcceptRecord(args)
 		if err != nil {
-			return &args, err
+			return args, err
 		}
 	}
-	err = rebuildAndVerifyMsgHash(signInfo.Key, msgHash, &args)
-	return &args, err
+	err = rebuildAndVerifyMsgHash(signInfo.Key, signInfo.MsgHash, args)
+	return args, err
 }
 
 func getBridges(fromChainID, toChainID string) (srcBridge, dstBridge tokens.IBridge, err error) {
