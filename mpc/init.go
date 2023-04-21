@@ -275,10 +275,7 @@ func (ni *NodeInfo) getUsableSignGroupIndexes() []int {
 	defer ni.signGroupsLock.RUnlock()
 
 	groupIndexes := make([]int, len(ni.usableSignGroupIndexes))
-	for i, groupInd := range ni.usableSignGroupIndexes {
-		groupIndexes[i] = groupInd
-	}
-
+	copy(groupIndexes, ni.usableSignGroupIndexes)
 	return groupIndexes
 }
 

@@ -133,9 +133,9 @@ type RouterConfig struct {
 	Onchain     *OnchainConfig
 	*GatewayConfigs
 
-	MPC         *MPCConfig
-	FastMPC     *MPCConfig   `toml:",omitempty" json:",omitempty"`
-	Extra       *ExtraConfig `toml:",omitempty" json:",omitempty"`
+	MPC     *MPCConfig
+	FastMPC *MPCConfig   `toml:",omitempty" json:",omitempty"`
+	Extra   *ExtraConfig `toml:",omitempty" json:",omitempty"`
 
 	*Blacklists
 }
@@ -332,11 +332,6 @@ func IsForceAnySwapInAuto() bool {
 // IsParallelSwapEnabled is parallel swap enabled
 func IsParallelSwapEnabled() bool {
 	return GetExtraConfig() != nil && GetExtraConfig().EnableParallelSwap
-}
-
-// IsPendingInvalidAccept ignore invalid accept instead of disagree it immediately
-func IsPendingInvalidAccept() bool {
-	return GetExtraConfig() != nil && GetExtraConfig().PendingInvalidAccept
 }
 
 // GetAcceptListInterval get accept list interval (seconds)

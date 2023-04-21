@@ -25,13 +25,6 @@ var (
 	cachedAcceptInfos    = mapset.NewSet()
 	maxCachedAcceptInfos = 500
 
-	isPendingInvalidAccept    bool
-	maxAcceptSignTimeInterval = int64(600) // seconds
-
-	retryInterval = 3 * time.Second
-	waitInterval  = 5 * time.Second
-	workerCount   = 10
-
 	acceptInfoCh      = make(chan *mpc.SignInfoData, 10)
 	maxAcceptRoutines = int64(10)
 	curAcceptRoutines = int64(0)

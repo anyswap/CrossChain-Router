@@ -30,11 +30,6 @@ var (
 	errWrongSignatureLength = errors.New("wrong signature length")
 	errNoUsableSignGroups   = errors.New("no usable sign groups")
 	errEmptyKeyID           = errors.New("empty keyID")
-
-	// delete if fail too many times consecutively, 0 means disable checking
-	maxSignGroupFailures      = 0
-	minIntervalToAddSignGroup = int64(3600)                   // seconds
-	signGroupFailuresMap      = make(map[string]signFailures) // key is groupID
 )
 
 func (c *Config) pingMPCNode(nodeInfo *NodeInfo) (err error) {
