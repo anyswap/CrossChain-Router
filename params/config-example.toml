@@ -152,6 +152,8 @@ EnableCheckTxBlockHashChains = ["1285"]
 EnableCheckTxBlockIndexChains = ["1", "56"]
 # chains don't use fromChainID from receipt log
 DisableUseFromChainIDInReceiptChains = ["1666600000"]
+# chains use fast mpc
+UseFastMPCChains = ["1001313161554"]
 # check token balance
 CheckTokenBalanceEnabledChains = ["1"]
 DontCheckBalanceTokenIDs = ["USDC", "MIM"]
@@ -237,6 +239,13 @@ APIAddress = ["http://127.0.0.1:8711", "http://127.0.0.1:8722"]
 4     = ["http://127.0.0.1:6000"]
 46688 = ["http://127.0.0.1:8000"]
 
+# FastMPC config
+#[FastMPC]
+## ec sign type key
+#SignTypeEC256K1 = "EC256K1"
+## mpc rpc api prefix
+#APIPrefix = "smpc_"
+#[FastMPC.DefaultNode]
 
 # MPC config
 [MPC]
@@ -254,6 +263,15 @@ MaxSignGroupFailures = 0
 MinIntervalToAddSignGroup = 3600
 # verify signature in accept sign info
 VerifySignatureInAccept = false
+
+# getting accept list loop interval (seconds) in accept job
+GetAcceptListLoopInterval = 5
+# getting accept list retry interval (seconds) in accept job
+GetAcceptListRetryInterval = 3
+# getting accept list expired time interval (seconds) in accept job
+MaxAcceptSignTimeInterval = 600
+# when meet invalid accept, ignore it instead of disagree it immediately
+PendingInvalidAccept = false
 
 # mpc group ID
 GroupID = "11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"

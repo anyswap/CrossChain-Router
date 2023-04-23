@@ -74,6 +74,7 @@ type CrossChainBridgeBase struct {
 	ChainConfig    *ChainConfig
 	GatewayConfig  *GatewayConfig
 	TokenConfigMap *sync.Map // key is token address
+	UseFastMPC     bool
 }
 
 // NewCrossChainBridgeBase new base bridge
@@ -100,6 +101,10 @@ func (b *CrossChainBridgeBase) GetBalance(account string) (*big.Int, error) {
 // SetChainConfig set chain config
 func (b *CrossChainBridgeBase) SetChainConfig(chainCfg *ChainConfig) {
 	b.ChainConfig = chainCfg
+	if params.IsUseFastMPC(chainCfg.ChainID) {
+		log.Info("set chain config use fast mpc", "chainID", chainCfg.ChainID, "chain", chainCfg.BlockChain)
+		b.UseFastMPC = true
+	}
 }
 
 // SetGatewayConfig set gateway config
