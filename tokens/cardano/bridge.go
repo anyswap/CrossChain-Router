@@ -103,7 +103,7 @@ func (b *Bridge) InitAfterConfig() {
 		}
 		protocolParams, err := b.RpcClient.ProtocolParams()
 		if err != nil {
-			log.Errorln("Cardano ProtocolParams", err)
+			log.Error("cardano ProtocolParams", "err", err)
 		} else {
 			b.ProtocolParams = protocolParams
 		}
