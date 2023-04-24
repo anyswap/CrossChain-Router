@@ -105,9 +105,10 @@ func (b *Bridge) InitAfterConfig() {
 		}
 		protocolParams, err := b.RpcClient.ProtocolParams()
 		if err != nil {
-			panic(err)
+			log.Error("cardano ProtocolParams", "err", err)
+		} else {
+			b.ProtocolParams = protocolParams
 		}
-		b.ProtocolParams = protocolParams
 	}
 
 	timeoutStr := params.GetCustom(b.ChainConfig.ChainID, "TxTimeout")
