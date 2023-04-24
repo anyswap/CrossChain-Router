@@ -18,9 +18,11 @@ import (
 func (b *Bridge) verifyProofID(rawTx interface{}, msgHashes []string) error {
 	proofID, ok := rawTx.(string)
 	if !ok {
+		log.Error("proofID is not of string type", "proofID", rawTx)
 		return tokens.ErrWrongProofID
 	}
 	if len(msgHashes) < 1 {
+		log.Error("wrong count of message hashes", "proofID", proofID, "count", len(msgHashes))
 		return tokens.ErrWrongCountOfMsgHashes
 	}
 	msgHash := msgHashes[0]
