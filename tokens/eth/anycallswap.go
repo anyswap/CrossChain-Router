@@ -430,7 +430,7 @@ func (b *Bridge) findMessageSentInfo(swapInfo *tokens.SwapTxInfo, logs []*types.
 				if err != nil {
 					return fmt.Errorf("%w. %v %v", tokens.ErrGetAttestationFailed, messageHash.String(), err)
 				}
-				anycallSwapInfo.Attestation = common.Hex2Bytes(attestation.Attestation)
+				anycallSwapInfo.Attestation = common.FromHex(attestation.Attestation)
 				log.Info("get attestation success", "txHash", swapInfo.Hash, "logIndex", logIndex, "msgHash", messageHash.String(), "attestation", attestation.Attestation, "status", attestation.Status)
 			}
 			return nil
