@@ -428,9 +428,10 @@ func (b *Bridge) findMessageSentInfo(swapInfo *tokens.SwapTxInfo, logs []*types.
 				var attestation *USDCAttestation
 				attestation, err = GetUSDCAttestation(messageHash)
 				if err != nil {
-					return fmt.Errorf("%w. %v %v", tokens.ErrGetAttestationFailed, messageHash.String(), err)
+					log.Warn("%w. %v %v", tokens.ErrGetAttestationFailed, messageHash.String(), err)
+					return tokens.ErrTxNotStable
 				}
-				anycallSwapInfo.Attestation = common.FromHex(attestation.Attestation)
+				anycallSwapInfo.Attestation = attestation.Attestation
 				log.Info("get attestation success", "txHash", swapInfo.Hash, "logIndex", logIndex, "msgHash", messageHash.String(), "attestation", attestation.Attestation, "status", attestation.Status)
 			}
 			return nil
@@ -528,8 +529,8 @@ func (b *Bridge) buildAnyCallSwapTxInput(args *tokens.BuildTxArgs) (err error) {
 
 // USDCAttestation usdc attestation
 type USDCAttestation struct {
-	Attestation string `json:"attestation"`
-	Status      string `json:"status"`
+	Attestation hexutil.Bytes `json:"attestation"`
+	Status      string        `json:"status"`
 }
 
 // GetUSDCAttestation get usdc attestation
