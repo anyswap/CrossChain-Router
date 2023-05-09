@@ -120,8 +120,8 @@ func (b *Bridge) initExtra(args *tokens.BuildTxArgs) (extra *tokens.AllExtras, e
 		fee := b.getDefaultFee()
 		replaceNum := args.GetReplaceNum()
 		if replaceNum > 0 {
-			serverCfg := params.GetRouterServerConfig()
-			if serverCfg == nil {
+			extraCfg := params.GetExtraConfig()
+			if extraCfg == nil {
 				return nil, fmt.Errorf("no router server config")
 			}
 			coinsFee, err := ParseCoinsFee(fee)
@@ -129,10 +129,10 @@ func (b *Bridge) initExtra(args *tokens.BuildTxArgs) (extra *tokens.AllExtras, e
 				return nil, err
 			}
 			coinFee := coinsFee[0].Amount.BigInt()
-			addPercent := serverCfg.PlusGasPricePercentage
-			addPercent += replaceNum * serverCfg.ReplacePlusGasPricePercent
-			if addPercent > serverCfg.MaxPlusGasPricePercentage {
-				addPercent = serverCfg.MaxPlusGasPricePercentage
+			addPercent := extraCfg.PlusGasPricePercentage
+			addPercent += replaceNum * extraCfg.ReplacePlusGasPricePercent
+			if addPercent > extraCfg.MaxPlusGasPricePercentage {
+				addPercent = extraCfg.MaxPlusGasPricePercentage
 			}
 			if addPercent > 0 {
 				coinFee.Mul(coinFee, big.NewInt(int64(100+addPercent)))

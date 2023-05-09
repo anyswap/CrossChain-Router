@@ -221,7 +221,7 @@ BigValueDiscount = 50
 
 [Extra.LocalChainConfig.1007961752911]
 FeeReceiverOnDestChain = "xxxxxx"
-ChargeFeeOnDestChain.1000005788241 = ["XXX"]
+ChargeFeeOnDestChain = ["XXX"]
 
 [Extra.SpecialFlags]
 key = "value"

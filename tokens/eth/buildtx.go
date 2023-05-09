@@ -362,27 +362,27 @@ func (b *Bridge) getGasPrice(args *tokens.BuildTxArgs) (price *big.Int, err erro
 
 // args and oldGasPrice should be read only
 func (b *Bridge) adjustSwapGasPrice(args *tokens.BuildTxArgs, oldGasPrice *big.Int) (newGasPrice *big.Int, err error) {
-	serverCfg := params.GetRouterServerConfig()
-	if serverCfg == nil {
+	extraCfg := params.GetExtraConfig()
+	if extraCfg == nil {
 		return nil, fmt.Errorf("no router server config")
 	}
 	newGasPrice = new(big.Int).Set(oldGasPrice) // clone from old
 	addPercent := uint64(0)
 	if !params.IsFixedGasPrice(b.ChainConfig.ChainID) {
-		addPercent = serverCfg.PlusGasPricePercentage
+		addPercent = extraCfg.PlusGasPricePercentage
 	}
 	replaceNum := args.GetReplaceNum()
 	if replaceNum > 0 {
-		addPercent += replaceNum * serverCfg.ReplacePlusGasPricePercent
+		addPercent += replaceNum * extraCfg.ReplacePlusGasPricePercent
 	}
-	if addPercent > serverCfg.MaxPlusGasPricePercentage {
-		addPercent = serverCfg.MaxPlusGasPricePercentage
+	if addPercent > extraCfg.MaxPlusGasPricePercentage {
+		addPercent = extraCfg.MaxPlusGasPricePercentage
 	}
 	if addPercent > 0 {
 		newGasPrice.Mul(newGasPrice, big.NewInt(int64(100+addPercent)))
 		newGasPrice.Div(newGasPrice, big.NewInt(100))
 	}
-	maxGasPriceFluctPercent := serverCfg.MaxGasPriceFluctPercent
+	maxGasPriceFluctPercent := extraCfg.MaxGasPriceFluctPercent
 	if maxGasPriceFluctPercent > 0 {
 		if b.latestGasPrice != nil {
 			maxFluct := new(big.Int).Set(b.latestGasPrice)
@@ -477,9 +477,9 @@ func (b *Bridge) checkCoinBalance(sender string, needValue *big.Int) (err error)
 }
 
 func (b *Bridge) getGasTipCap(args *tokens.BuildTxArgs) (gasTipCap *big.Int, err error) {
-	serverCfg := params.GetRouterServerConfig()
+	extraCfg := params.GetExtraConfig()
 	dfConfig := params.GetDynamicFeeTxConfig(b.ChainConfig.ChainID)
-	if serverCfg == nil || dfConfig == nil {
+	if extraCfg == nil || dfConfig == nil {
 		return nil, tokens.ErrMissDynamicFeeConfig
 	}
 
@@ -497,10 +497,10 @@ func (b *Bridge) getGasTipCap(args *tokens.BuildTxArgs) (gasTipCap *big.Int, err
 	addPercent := dfConfig.PlusGasTipCapPercent
 	replaceNum := args.GetReplaceNum()
 	if replaceNum > 0 {
-		addPercent += replaceNum * serverCfg.ReplacePlusGasPricePercent
+		addPercent += replaceNum * extraCfg.ReplacePlusGasPricePercent
 	}
-	if addPercent > serverCfg.MaxPlusGasPricePercentage {
-		addPercent = serverCfg.MaxPlusGasPricePercentage
+	if addPercent > extraCfg.MaxPlusGasPricePercentage {
+		addPercent = extraCfg.MaxPlusGasPricePercentage
 	}
 	if addPercent > 0 {
 		gasTipCap.Mul(gasTipCap, big.NewInt(int64(100+addPercent)))

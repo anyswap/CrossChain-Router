@@ -88,15 +88,15 @@ type RouterServerConfig struct {
 	AutoSwapNonceEnabledChains []string `toml:",omitempty" json:",omitempty"`
 
 	// extras
-	EnableReplaceSwap          bool
-	EnablePassBigValueSwap     bool
-	ReplacePlusGasPricePercent uint64            `toml:",omitempty" json:",omitempty"`
-	WaitTimeToReplace          int64             `toml:",omitempty" json:",omitempty"` // seconds
-	MaxReplaceCount            int               `toml:",omitempty" json:",omitempty"`
-	MaxReplaceDistance         uint64            `toml:",omitempty" json:",omitempty"`
-	PlusGasPricePercentage     uint64            `toml:",omitempty" json:",omitempty"`
-	MaxPlusGasPricePercentage  uint64            `toml:",omitempty" json:",omitempty"`
-	MaxGasPriceFluctPercent    uint64            `toml:",omitempty" json:",omitempty"`
+	EnableReplaceSwap      bool
+	EnablePassBigValueSwap bool
+	WaitTimeToReplace      int64  `toml:",omitempty" json:",omitempty"` // seconds
+	MaxReplaceCount        int    `toml:",omitempty" json:",omitempty"`
+	MaxReplaceDistance     uint64 `toml:",omitempty" json:",omitempty"`
+	// ReplacePlusGasPricePercent uint64 `toml:",omitempty" json:",omitempty"`
+	// PlusGasPricePercentage     uint64            `toml:",omitempty" json:",omitempty"`
+	// MaxPlusGasPricePercentage  uint64            `toml:",omitempty" json:",omitempty"`
+	// MaxGasPriceFluctPercent    uint64            `toml:",omitempty" json:",omitempty"`
 	FixedGasPrice              map[string]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	MaxGasPrice                map[string]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	NoncePassedConfirmInterval map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID
@@ -192,13 +192,15 @@ type ExtraConfig struct {
 
 	RPCClientTimeout map[string]int `toml:",omitempty" json:",omitempty"` // key is chainID
 	// chainID,customKey => customValue
-	Customs map[string]map[string]string `toml:",omitempty" json:",omitempty"`
+	Customs           map[string]map[string]string `toml:",omitempty" json:",omitempty"`
+	LocalChainConfig  map[string]*LocalChainConfig `toml:",omitempty" json:",omitempty"` // key is chain ID
+	SpecialFlags      map[string]string            `toml:",omitempty" json:",omitempty"`
+	AttestationServer string                       `toml:",omitempty" json:",omitempty"`
 
-	LocalChainConfig map[string]*LocalChainConfig `toml:",omitempty" json:",omitempty"` // key is chain ID
-
-	SpecialFlags map[string]string `toml:",omitempty" json:",omitempty"`
-
-	AttestationServer string `toml:",omitempty" json:",omitempty"`
+	ReplacePlusGasPricePercent uint64 `toml:",omitempty" json:",omitempty"`
+	PlusGasPricePercentage     uint64 `toml:",omitempty" json:",omitempty"`
+	MaxPlusGasPricePercentage  uint64 `toml:",omitempty" json:",omitempty"`
+	MaxGasPriceFluctPercent    uint64 `toml:",omitempty" json:",omitempty"`
 }
 
 // LocalChainConfig local chain config
@@ -572,6 +574,7 @@ func IsInCallByContractWhitelist(chainID, caller string) bool {
 }
 
 // AddOrRemoveCallByContractWhitelist add or remove call by contract whitelist
+//
 //nolint:dupl // allow duplicate
 func AddOrRemoveCallByContractWhitelist(chainID string, callers []string, isAdd bool) {
 	whitelist, exist := callByContractWhitelist[chainID]
@@ -700,6 +703,7 @@ func IsInBigValueWhitelist(tokenID, caller string) bool {
 }
 
 // AddOrRemoveBigValueWhitelist add or remove big value whitelist
+//
 //nolint:dupl // allow duplicate
 func AddOrRemoveBigValueWhitelist(tokenID string, callers []string, isAdd bool) {
 	whitelist, exist := bigValueWhitelist[tokenID]
