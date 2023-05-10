@@ -41,7 +41,7 @@ func (b *Bridge) GetLatestBlockNumberOf(url string) (latest uint64, err error) {
 func (b *Bridge) GetGetBlockHash(blockNumber uint64) (blockHash string, err error) {
 	gateway := b.GatewayConfig
 	var result string
-	for _, url := range gateway.APIAddress {
+	for _, url := range gateway.AllGatewayURLs {
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "chain_getBlockHash", blockNumber)
 		if err == nil {
 			return result, nil
@@ -59,7 +59,7 @@ func (b *Bridge) CallContract(contract string, data hexutil.Bytes, blockNumber s
 	}
 	var err error
 LOOP:
-	for _, url := range b.AllGatewayURLs {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		var result string
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "evm_call", reqArgs)
 		if err != nil && router.IsIniting {
@@ -141,4 +141,20 @@ func (b *Bridge) GetTransactionByHash(txHash string) (tx *types.RPCTransaction, 
 		return buildRPCTransaction(extrinsic), nil
 	}
 	return tx, err
+}
+
+func (b *Bridge) GetPoolNonce(reefAddress, _height string) (nonce uint64, err error) {
+	if len(b.WS) == 0 {
+		b.InitWS()
+	}
+	for _, ws := range b.WS {
+		account, err := ws.QueryAccountByReefAddr(reefAddress)
+		if err != nil {
+			log.Warn("QueryEvmAddress", "err", err)
+		}
+		if account != nil {
+			return account.Nonce, nil
+		}
+	}
+	return nonce, err
 }

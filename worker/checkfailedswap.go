@@ -65,7 +65,7 @@ func checkFailedRouterSwap(swap *mongodb.MgoSwapResult) error {
 	if err != nil {
 		return nil
 	}
-	if !common.IsEqualIgnoreCase(swap.MPC, routerMPC) {
+	if !common.IsEqualIgnoreCase(swap.Signer, routerMPC) {
 		return tokens.ErrSenderMismatch
 	}
 
@@ -86,9 +86,9 @@ func checkFailedRouterSwap(swap *mongodb.MgoSwapResult) error {
 		return markSwapResultStable(swap.FromChainID, swap.TxID, swap.LogIndex)
 	}
 
-	nonce, err := nonceSetter.GetPoolNonce(swap.MPC, "latest")
+	nonce, err := nonceSetter.GetPoolNonce(swap.Signer, "latest")
 	if err != nil {
-		return fmt.Errorf("get router mpc nonce failed, %w", err)
+		return fmt.Errorf("get nonce failed, %w", err)
 	}
 
 	if nonce <= swap.SwapNonce {

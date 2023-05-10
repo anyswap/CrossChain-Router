@@ -4,6 +4,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/cmd/utils"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/mongodb"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tools/fifo"
@@ -149,6 +150,9 @@ func startStableConsumer(chainID string) {
 }
 
 func processRouterSwapStable(swap *mongodb.MgoSwapResult) (err error) {
+	if params.UseProofSign() {
+		return processProofSwapStable(swap)
+	}
 	oldSwapTx := swap.SwapTx
 	resBridge := router.GetBridgeByChainID(swap.ToChainID)
 	if resBridge == nil {
@@ -164,7 +168,20 @@ func processRouterSwapStable(swap *mongodb.MgoSwapResult) (err error) {
 		if swap.SwapHeight != 0 {
 			return nil
 		}
-		return checkIfSwapNonceHasPassed(resBridge, swap, false)
+
+		var err error
+		if router.IsReswapSupported(swap.ToChainID) {
+			err = reswapIfTimeout(resBridge, swap)
+			if err == nil {
+				return nil
+			}
+		}
+
+		if router.IsNonceSupported(swap.ToChainID) {
+			err = checkIfSwapNonceHasPassed(resBridge, swap, false)
+		}
+
+		return err
 	}
 
 	if swap.SwapHeight != 0 {
@@ -179,6 +196,57 @@ func processRouterSwapStable(swap *mongodb.MgoSwapResult) (err error) {
 				"fromChainID", swap.FromChainID, "txid", swap.TxID, "logIndex", swap.LogIndex,
 				"swaptime", swap.Timestamp, "nowtime", now())
 			return markSwapResultFailed(swap.FromChainID, swap.TxID, swap.LogIndex)
+		}
+		return markSwapResultStable(swap.FromChainID, swap.TxID, swap.LogIndex)
+	}
+
+	matchTx := &MatchTx{
+		SwapHeight: txStatus.BlockHeight,
+		SwapTime:   txStatus.BlockTime,
+	}
+	if swap.SwapTx != oldSwapTx {
+		matchTx.SwapTx = swap.SwapTx
+	}
+	return updateRouterSwapResult(swap.FromChainID, swap.TxID, swap.LogIndex, matchTx)
+}
+
+func getSuccessSwapTxStatus(resBridge tokens.IBridge, swap *mongodb.MgoSwapResult) *tokens.TxStatus {
+	txStatus, err := resBridge.GetTransactionStatus(swap.SwapTx)
+	if err == nil && txStatus.IsSwapTxOnChain() && !txStatus.IsSwapTxOnChainAndFailed() {
+		return txStatus
+	}
+	for _, oldSwapTx := range swap.OldSwapTxs {
+		if swap.SwapTx == oldSwapTx {
+			continue
+		}
+		txStatus2, err2 := resBridge.GetTransactionStatus(oldSwapTx)
+		if err2 == nil && txStatus2.IsSwapTxOnChain() && !txStatus2.IsSwapTxOnChainAndFailed() {
+			swap.SwapTx = oldSwapTx
+			return txStatus2
+		}
+	}
+	return txStatus
+}
+
+func processProofSwapStable(swap *mongodb.MgoSwapResult) (err error) {
+	oldSwapTx := swap.SwapTx
+	resBridge := router.GetBridgeByChainID(swap.ToChainID)
+	if resBridge == nil {
+		return tokens.ErrNoBridgeForChainID
+	}
+	if swap.SwapHeight != 0 &&
+		swap.SwapHeight+resBridge.GetChainConfig().Confirmations >
+			router.GetCachedLatestBlockNumber(swap.ToChainID) {
+		return nil
+	}
+	txStatus := getSuccessSwapTxStatus(resBridge, swap)
+	if txStatus == nil || txStatus.BlockHeight == 0 {
+		return nil
+	}
+
+	if swap.SwapHeight != 0 {
+		if txStatus.Confirmations < resBridge.GetChainConfig().Confirmations {
+			return nil
 		}
 		return markSwapResultStable(swap.FromChainID, swap.TxID, swap.LogIndex)
 	}

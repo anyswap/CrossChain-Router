@@ -7,11 +7,14 @@ import (
 	"time"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
+	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/types"
+	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/zksync-sdk/zksync2-go"
 )
 
 var (
@@ -21,8 +24,22 @@ var (
 	cachedNonce = make(map[string]uint64)
 )
 
+type SapphireRPCTx struct {
+	Raw    hexutil.Bytes
+	Sender string
+}
+
 // BuildRawTransaction build raw tx
 func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{}, err error) {
+	if params.UseProofSign() {
+		return b.CalcProofID(args)
+	}
+	if b.IsSapphireChain() && args.SwapType == tokens.SapphireRPCType {
+		return &SapphireRPCTx{
+			Raw:    args.Extra.RawTx,
+			Sender: args.From,
+		}, nil
+	}
 	if !params.IsTestMode && args.ToChainID.String() != b.ChainConfig.ChainID {
 		return nil, tokens.ErrToChainIDMismatch
 	}
@@ -69,7 +86,7 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 		to        = common.HexToAddress(args.To)
 		value     = args.Value
 		input     = *args.Input
-		extra     = args.Extra.EthExtra
+		extra     = args.Extra
 		gasLimit  = *extra.Gas
 		gasPrice  = extra.GasPrice
 		gasTipCap = extra.GasTipCap
@@ -108,14 +125,14 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 
 	// assign nonce immediately before construct tx
 	// esp. for parallel signing, this can prevent nonce hole
-	if extra.Nonce == nil { // server logic
-		extra.Nonce, err = b.getAccountNonce(args)
+	if extra.Sequence == nil { // server logic
+		extra.Sequence, err = b.getAccountNonce(args)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	nonce := *extra.Nonce
+	nonce := *extra.Sequence
 
 	key := strings.ToLower(fmt.Sprintf("%v:%v", b.ChainConfig.ChainID, args.From))
 	cached := cachedNonce[key]
@@ -125,7 +142,30 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 	}
 	cachedNonce[key] = nonce
 
-	if isDynamicFeeTx {
+	if b.IsZKSync() {
+		chainId, _ := new(big.Int).SetString(b.ChainConfig.ChainID, 0)
+		tx := zksync2.CreateFunctionCallTransaction(
+			ethcommon.HexToAddress(args.From),
+			ethcommon.HexToAddress(to.Hex()),
+			big.NewInt(0),
+			big.NewInt(0),
+			value,
+			[]byte(input),
+			nil, nil,
+		)
+		rawTx = zksync2.NewTransaction712(
+			chainId,
+			big.NewInt(int64(nonce)),
+			big.NewInt(int64(gasLimit)),
+			ethcommon.HexToAddress(to.Hex()),
+			value,
+			input,
+			big.NewInt(100000000), // TODO: Estimate correct one
+			gasPrice,
+			ethcommon.HexToAddress(args.From),
+			tx.Eip712Meta,
+		)
+	} else if isDynamicFeeTx {
 		rawTx = types.NewDynamicFeeTx(b.SignerChainID, nonce, &to, value, gasLimit, gasTipCap, gasFeeCap, input, nil)
 	} else {
 		rawTx = types.NewTransaction(nonce, to, value, gasLimit, gasPrice, input)
@@ -136,6 +176,7 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 		"fromChainID", args.FromChainID, "toChainID", args.ToChainID,
 		"from", args.From, "to", to.String(), "bind", args.Bind, "nonce", nonce,
 		"gasLimit", gasLimit, "replaceNum", args.GetReplaceNum(),
+		"bridgeFee", args.Extra.BridgeFee,
 	}
 	if gasTipCap != nil || gasFeeCap != nil {
 		ctx = append(ctx, "gasTipCap", gasTipCap, "gasFeeCap", gasFeeCap)
@@ -160,20 +201,14 @@ func (b *Bridge) buildTx(args *tokens.BuildTxArgs) (rawTx interface{}, err error
 	return rawTx, nil
 }
 
-func getOrInitEthExtra(args *tokens.BuildTxArgs) *tokens.EthExtraArgs {
-	if args.Extra == nil {
-		args.Extra = &tokens.AllExtras{EthExtra: &tokens.EthExtraArgs{}}
-	} else if args.Extra.EthExtra == nil {
-		args.Extra.EthExtra = &tokens.EthExtraArgs{}
-	}
-	return args.Extra.EthExtra
-}
-
 func (b *Bridge) setDefaults(args *tokens.BuildTxArgs) (err error) {
 	if args.Value == nil {
 		args.Value = new(big.Int)
 	}
-	extra := getOrInitEthExtra(args)
+	if args.Extra == nil {
+		args.Extra = &tokens.AllExtras{}
+	}
+	extra := args.Extra
 	if params.IsDynamicFeeTxEnabled(b.ChainConfig.ChainID) {
 		if extra.GasTipCap == nil {
 			extra.GasTipCap, err = b.getGasTipCap(args)
@@ -195,6 +230,17 @@ func (b *Bridge) setDefaults(args *tokens.BuildTxArgs) (err error) {
 		}
 		extra.GasTipCap = nil
 		extra.GasFeeCap = nil
+	}
+	if extra.Gas == nil && b.IsSapphireChain() {
+		esGasLimit, errf := b.EstimateGas(args.From, args.To, args.Value, *args.Input)
+		if errf != nil {
+			log.Error(fmt.Sprintf("build %s tx estimate gas failed", args.SwapType.String()),
+				"swapID", args.SwapID, "from", args.From, "to", args.To,
+				"value", args.Value, "data", *args.Input, "err", errf)
+			return fmt.Errorf("%w %v", tokens.ErrBuildTxErrorAndDelay, tokens.ErrEstimateGasFailed)
+		}
+		extra.Gas = new(uint64)
+		*extra.Gas = esGasLimit
 	}
 	if extra.Gas == nil {
 		esGasLimit, errf := b.EstimateGas(args.From, args.To, args.Value, *args.Input)
@@ -425,7 +471,7 @@ func (b *Bridge) checkCoinBalance(sender string, needValue *big.Int) (err error)
 		time.Sleep(retryRPCInterval)
 	}
 	if err == nil && balance.Cmp(needValue) < 0 {
-		return fmt.Errorf("not enough coin balance. %v < %v", balance, needValue)
+		return fmt.Errorf("%w not enough coin balance. %v < %v", tokens.ErrBuildTxErrorAndDelay, balance, needValue)
 	}
 	if err != nil {
 		log.Warn("get balance error", "sender", sender, "err", err)

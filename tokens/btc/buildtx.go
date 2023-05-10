@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	retryCount       = 3
+	retryCount = 3
 
 	UnlockMemoPrefix     = "SWAPTX:"
 	retryInterval        = 3 * time.Second

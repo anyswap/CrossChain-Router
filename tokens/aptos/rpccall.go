@@ -1,6 +1,7 @@
 package aptos
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
@@ -9,10 +10,28 @@ import (
 
 var wrapRPCQueryError = tokens.WrapRPCQueryError
 
+// GetBlockNumberByVersion get block number by version
+func (b *Bridge) GetBlockNumberByVersion(version string) (uint64, error) {
+	cli := RestClient{Timeout: b.RPCClientTimeout}
+	var block *BlockInfo
+	var err error
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
+		cli.Url = url
+		block, err = cli.GetBlockByVersion(version)
+		if err == nil {
+			blockHeight, errf := strconv.ParseUint(block.Height, 10, 64)
+			if errf == nil {
+				return blockHeight, nil
+			}
+		}
+	}
+	return 0, wrapRPCQueryError(err, "GetBlockNumberByVersion")
+}
+
 // GetLedger get ledger info
 func (b *Bridge) GetLedger() (result *LedgerInfo, err error) {
 	cli := RestClient{Timeout: b.RPCClientTimeout}
-	for _, url := range b.AllGatewayURLs {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		cli.Url = url
 		result, err = cli.GetLedger()
 		if err == nil {
@@ -25,7 +44,7 @@ func (b *Bridge) GetLedger() (result *LedgerInfo, err error) {
 // GetAccount get account info
 func (b *Bridge) GetAccount(address string) (result *AccountInfo, err error) {
 	cli := RestClient{Timeout: b.RPCClientTimeout}
-	for _, url := range b.AllGatewayURLs {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		cli.Url = url
 		result, err = cli.GetAccount(address)
 		if err == nil {
@@ -38,7 +57,7 @@ func (b *Bridge) GetAccount(address string) (result *AccountInfo, err error) {
 // GetAccountResource get account resource
 func (b *Bridge) GetAccountResource(address, resourceType string, resp interface{}) (err error) {
 	cli := RestClient{Timeout: b.RPCClientTimeout}
-	for _, url := range b.AllGatewayURLs {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		cli.Url = url
 		err = cli.GetAccountResource(address, resourceType, resp)
 		if err == nil {
@@ -50,7 +69,7 @@ func (b *Bridge) GetAccountResource(address, resourceType string, resp interface
 
 func (b *Bridge) GetAccountBalance(address, resourceType string) (result *CoinStoreResource, err error) {
 	cli := RestClient{Timeout: b.RPCClientTimeout}
-	for _, url := range b.AllGatewayURLs {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		cli.Url = url
 		result, err = cli.GetAccountCoin(address, resourceType)
 		if err == nil {
@@ -67,7 +86,7 @@ func (b *Bridge) GetAccountBalance(address, resourceType string) (result *CoinSt
 // GetTransactions get tx by hash
 func (b *Bridge) GetTransactions(txHash string) (result *TransactionInfo, err error) {
 	cli := RestClient{Timeout: b.RPCClientTimeout}
-	for _, url := range b.AllGatewayURLs {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		cli.Url = url
 		result, err = cli.GetTransactions(txHash)
 		if err == nil {
@@ -80,7 +99,7 @@ func (b *Bridge) GetTransactions(txHash string) (result *TransactionInfo, err er
 // GetTransactionsNotPending get non pending tx by hash
 func (b *Bridge) GetTransactionsNotPending(txHash string) (result *TransactionInfo, err error) {
 	cli := RestClient{Timeout: b.RPCClientTimeout}
-	for _, url := range b.AllGatewayURLs {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		cli.Url = url
 		result, err = cli.GetTransactionsNotPending(txHash)
 		if err == nil {
@@ -93,7 +112,7 @@ func (b *Bridge) GetTransactionsNotPending(txHash string) (result *TransactionIn
 // EstimateGasPrice estimate gas price
 func (b *Bridge) EstimateGasPrice() (result *GasEstimate, err error) {
 	cli := RestClient{Timeout: b.RPCClientTimeout}
-	for _, url := range b.AllGatewayURLs {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		cli.Url = url
 		result, err = cli.EstimateGasPrice()
 		if err == nil {
@@ -106,7 +125,7 @@ func (b *Bridge) EstimateGasPrice() (result *GasEstimate, err error) {
 // GetSigningMessage get signing message
 func (b *Bridge) GetSigningMessage(request interface{}) (result *string, err error) {
 	cli := RestClient{Timeout: b.RPCClientTimeout}
-	for _, url := range b.AllGatewayURLs {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		cli.Url = url
 		result, err = cli.GetSigningMessage(request)
 		if err == nil {
@@ -119,7 +138,7 @@ func (b *Bridge) GetSigningMessage(request interface{}) (result *string, err err
 // SimulateTranscation simulate tx
 func (b *Bridge) SimulateTranscation(request interface{}, publikKey string) (err error) {
 	cli := RestClient{Timeout: b.RPCClientTimeout}
-	for _, url := range b.AllGatewayURLs {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		cli.Url = url
 		err = cli.SimulateTranscation(request, publikKey)
 		if err == nil {
@@ -134,7 +153,7 @@ func (b *Bridge) SubmitTranscation(tx interface{}) (result *TransactionInfo, err
 	var success bool
 	var temp *TransactionInfo
 	cli := RestClient{Timeout: b.RPCClientTimeout}
-	for _, url := range b.AllGatewayURLs {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		cli.Url = url
 		temp, err = cli.SubmitTranscation(tx)
 		if err == nil {

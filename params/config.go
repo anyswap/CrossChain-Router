@@ -50,6 +50,7 @@ var (
 	enableCheckTxBlockIndexChains        = make(map[string]struct{})
 	disableUseFromChainIDInReceiptChains = make(map[string]struct{})
 	useFastMPCChains                     = make(map[string]struct{})
+	increaseNonceWhenSendTxChains        = make(map[string]struct{})
 	dontCheckReceivedTokenIDs            = make(map[string]struct{})
 	dontCheckBalanceTokenIDs             = make(map[string]struct{})
 	dontCheckTotalSupplyTokenIDs         = make(map[string]struct{})
@@ -84,6 +85,8 @@ type RouterServerConfig struct {
 	MongoDB    *MongoDBConfig
 	APIServer  *APIServerConfig
 
+	ProofSubmitters KeystoreConfigs `toml:",omitempty" json:",omitempty"`
+
 	AutoSwapNonceEnabledChains []string `toml:",omitempty" json:",omitempty"`
 
 	// extras
@@ -92,6 +95,7 @@ type RouterServerConfig struct {
 	ReplacePlusGasPricePercent uint64            `toml:",omitempty" json:",omitempty"`
 	WaitTimeToReplace          int64             `toml:",omitempty" json:",omitempty"` // seconds
 	MaxReplaceCount            int               `toml:",omitempty" json:",omitempty"`
+	MaxReplaceDistance         uint64            `toml:",omitempty" json:",omitempty"`
 	PlusGasPricePercentage     uint64            `toml:",omitempty" json:",omitempty"`
 	MaxPlusGasPricePercentage  uint64            `toml:",omitempty" json:",omitempty"`
 	MaxGasPriceFluctPercent    uint64            `toml:",omitempty" json:",omitempty"`
@@ -103,6 +107,7 @@ type RouterServerConfig struct {
 	SendTxLoopCount            map[string]int    `toml:",omitempty" json:",omitempty"` // key is chain ID
 	SendTxLoopInterval         map[string]int    `toml:",omitempty" json:",omitempty"` // key is chain ID
 
+	DefaultFee       map[string]string            `toml:",omitempty" json:",omitempty"` // key is chain ID
 	DefaultGasLimit  map[string]uint64            `toml:",omitempty" json:",omitempty"` // key is chain ID
 	MaxGasLimit      map[string]uint64            `toml:",omitempty" json:",omitempty"` // key is chain ID
 	MaxTokenGasLimit map[string]map[string]uint64 `toml:",omitempty" json:",omitempty"` // key is tokenID,chainID
@@ -142,6 +147,7 @@ type GatewayConfigs struct {
 	GatewaysExt      map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	EVMGatewaysExt   map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 	FinalizeGateways map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
+	GRPCGateways     map[string][]string `toml:",omitempty" json:",omitempty"` // key is chain ID
 }
 
 // Blacklists black lists
@@ -162,6 +168,7 @@ type ExtraConfig struct {
 	UsePendingBalance     bool `toml:",omitempty" json:",omitempty"`
 	DontPanicInInitRouter bool `toml:",omitempty" json:",omitempty"`
 	DontCheckInInitRouter bool `toml:",omitempty" json:",omitempty"`
+	UseProofSign          bool `toml:",omitempty" json:",omitempty"`
 
 	MinReserveFee    map[string]uint64 `toml:",omitempty" json:",omitempty"`
 	BaseFeePercent   map[string]int64  `toml:",omitempty" json:",omitempty"` // key is chain ID
@@ -179,6 +186,7 @@ type ExtraConfig struct {
 	EnableCheckTxBlockIndexChains        []string `toml:",omitempty" json:",omitempty"`
 	DisableUseFromChainIDInReceiptChains []string `toml:",omitempty" json:",omitempty"`
 	UseFastMPCChains                     []string `toml:",omitempty" json:",omitempty"`
+	IncreaseNonceWhenSendTxChains        []string `toml:",omitempty" json:",omitempty"`
 	DontCheckReceivedTokenIDs            []string `toml:",omitempty" json:",omitempty"`
 	DontCheckBalanceTokenIDs             []string `toml:",omitempty" json:",omitempty"`
 	DontCheckTotalSupplyTokenIDs         []string `toml:",omitempty" json:",omitempty"`
@@ -192,15 +200,27 @@ type ExtraConfig struct {
 	LocalChainConfig map[string]*LocalChainConfig `toml:",omitempty" json:",omitempty"` // key is chain ID
 
 	SpecialFlags map[string]string `toml:",omitempty" json:",omitempty"`
+
+	AttestationServer string `toml:",omitempty" json:",omitempty"`
 }
 
 // LocalChainConfig local chain config
 type LocalChainConfig struct {
-	ForbidParallelLoading      bool     `toml:",omitempty" json:",omitempty"`
-	EstimatedGasMustBePositive bool     `toml:",omitempty" json:",omitempty"`
-	SmallestGasPriceUnit       uint64   `toml:",omitempty" json:",omitempty"`
-	ForbidSwapoutTokenIDs      []string `toml:",omitempty" json:",omitempty"`
-	BigValueDiscount           uint64   `toml:",omitempty" json:",omitempty"`
+	ForbidParallelLoading      bool `toml:",omitempty" json:",omitempty"`
+	EstimatedGasMustBePositive bool `toml:",omitempty" json:",omitempty"`
+	IsReswapSupported          bool `toml:",omitempty" json:",omitempty"`
+	DontCheckAddressMixedCase  bool `toml:",omitempty" json:",omitempty"`
+
+	SmallestGasPriceUnit  uint64   `toml:",omitempty" json:",omitempty"`
+	ForbidSwapoutTokenIDs []string `toml:",omitempty" json:",omitempty"`
+	BigValueDiscount      uint64   `toml:",omitempty" json:",omitempty"`
+
+	SubmitProofInterval int64 `toml:",omitempty" json:",omitempty"` // seconds
+	MaxSubmitProofTimes int   `toml:",omitempty" json:",omitempty"`
+
+	// chainID -> tokenids
+	ChargeFeeOnDestChain   map[string][]string `toml:",omitempty" json:",omitempty"`
+	FeeReceiverOnDestChain string              `toml:",omitempty" json:",omitempty"`
 
 	forbidSwapoutTokenIDMap map[string]struct{}
 
@@ -744,7 +764,9 @@ func GetLocalChainConfig(chainID string) *LocalChainConfig {
 	if GetExtraConfig() != nil {
 		c := GetExtraConfig().LocalChainConfig[chainID]
 		if c != nil {
-			c.lock = new(sync.Mutex)
+			if c.lock == nil {
+				c.lock = new(sync.Mutex)
+			}
 			return c
 		}
 	}
@@ -1006,6 +1028,24 @@ func IsUseFastMPC(chainID string) bool {
 	return exist
 }
 
+func initIncreaseNonceWhenSendTxChains() {
+	if GetExtraConfig() == nil || len(GetExtraConfig().IncreaseNonceWhenSendTxChains) == 0 {
+		return
+	}
+	tempMap := make(map[string]struct{})
+	for _, cid := range GetExtraConfig().IncreaseNonceWhenSendTxChains {
+		tempMap[cid] = struct{}{}
+	}
+	increaseNonceWhenSendTxChains = tempMap
+	log.Info("initIncreaseNonceWhenSendTxChains success", "isReload", IsReload)
+}
+
+// IncreaseNonceWhenSendTx increase nonce before send tx
+func IncreaseNonceWhenSendTx(chainID string) bool {
+	_, exist := increaseNonceWhenSendTxChains[chainID]
+	return exist
+}
+
 func initDontCheckReceivedTokenIDs() {
 	if GetExtraConfig() == nil || len(GetExtraConfig().DontCheckReceivedTokenIDs) == 0 {
 		return
@@ -1133,6 +1173,7 @@ func LoadRouterConfig(configFile string, isServer, check bool) *RouterConfig {
 		config.Server = nil
 	} else {
 		config.Oracle = nil
+		config.Server.LoadProofSubmitters()
 	}
 
 	if CustomizeConfigFunc != nil {
@@ -1277,4 +1318,47 @@ func IsSwapoutForbidden(chainID, tokenID string) bool {
 // DontCheckInInitRouter do not check in init router
 func DontCheckInInitRouter() bool {
 	return GetExtraConfig() != nil && GetExtraConfig().DontCheckInInitRouter
+}
+
+// UseProofSign use proof sign
+func UseProofSign() bool {
+	return GetExtraConfig() != nil && GetExtraConfig().UseProofSign
+}
+
+// GetSubmitProofInterval get submit proof interval
+func GetSubmitProofInterval(chainID string) int64 {
+	return GetLocalChainConfig(chainID).SubmitProofInterval
+}
+
+// GetMaxSubmitProofTimes get maximum submit proof times
+func GetMaxSubmitProofTimes(chainID string) int {
+	return GetLocalChainConfig(chainID).MaxSubmitProofTimes
+}
+
+// FeeReceiverOnDestChain fee receiver on dest chain
+func FeeReceiverOnDestChain(toChainID string) string {
+	c := GetLocalChainConfig(toChainID)
+	return c.FeeReceiverOnDestChain
+}
+
+// ChargeFeeOnDestChain charge fee on dest chain
+func ChargeFeeOnDestChain(tokenID, fromChainID, toChainID string) bool {
+	c := GetLocalChainConfig(toChainID)
+	if c.ChargeFeeOnDestChain == nil {
+		return false
+	}
+	for _, tid := range c.ChargeFeeOnDestChain[fromChainID] {
+		if strings.EqualFold(tid, tokenID) {
+			return true
+		}
+	}
+	return false
+}
+
+// GetAttestationServer get attestation server
+func GetAttestationServer() string {
+	if GetExtraConfig() != nil {
+		return GetExtraConfig().AttestationServer
+	}
+	return ""
 }

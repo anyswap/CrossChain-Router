@@ -223,7 +223,8 @@ func processAcceptInfo(mpcConfig *mpc.Config, info *mpc.SignInfoData) error {
 	switch {
 	case // these maybe accepts of other bridges or routers, always discard them
 		errors.Is(err, errWrongMsgContext),
-		errors.Is(err, errIdentifierMismatch):
+		errors.Is(err, errIdentifierMismatch),
+		errors.Is(err, errInvalidAggregate):
 		ctx = append(ctx, "err", err)
 		logWorkerTrace("accept", "discard sign", ctx...)
 		isProcessed = true
@@ -301,14 +302,18 @@ func verifySignInfo(mpcConfig *mpc.Config, signInfo *mpc.SignInfoData) (*tokens.
 	if !mpcConfig.IsMPCInitiator(signInfo.Account) {
 		return nil, errInitiatorMismatch
 	}
+	if args.Identifier == tokens.AggregateIdentifier {
+		if err = verifyAggregate(signInfo.MsgHash, args); err != nil {
+			logWorkerError("accept", "verify aggregate failed", err, "args", args, "keyID", signInfo.Key)
+			return nil, errInvalidAggregate
+		}
+		return args, nil
+	}
 	if lvldbHandle != nil && args.GetTxNonce() > 0 { // only for eth like chain
 		err = CheckAcceptRecord(args)
 		if err != nil {
 			return args, err
 		}
-	}
-	if args.Identifier == tokens.AggregateIdentifier {
-		return args, nil
 	}
 	err = rebuildAndVerifyMsgHash(signInfo.Key, signInfo.MsgHash, args)
 	return args, err
@@ -365,10 +370,18 @@ func rebuildAndVerifyMsgHash(keyID string, msgHash []string, args *tokens.BuildT
 		return fmt.Errorf("toChainID mismatch: '%v' != '%v'", args.ToChainID, swapInfo.ToChainID)
 	}
 
+	verifySwapInfo := swapInfo.SwapInfo
+	argsSwapInfo := args.SwapArgs.SwapInfo
+	if verifySwapInfo.AnyCallSwapInfo != nil &&
+		argsSwapInfo.AnyCallSwapInfo != nil &&
+		len(argsSwapInfo.AnyCallSwapInfo.Attestation) > 0 {
+		verifySwapInfo.AnyCallSwapInfo.Attestation = argsSwapInfo.AnyCallSwapInfo.Attestation
+	}
+
 	start = time.Now()
 	buildTxArgs := &tokens.BuildTxArgs{
 		SwapArgs: tokens.SwapArgs{
-			SwapInfo:    swapInfo.SwapInfo,
+			SwapInfo:    verifySwapInfo,
 			Identifier:  params.GetIdentifier(),
 			SwapID:      swapInfo.Hash,
 			SwapType:    swapInfo.SwapType,

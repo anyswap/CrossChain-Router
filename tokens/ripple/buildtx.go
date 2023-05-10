@@ -202,8 +202,6 @@ func (b *Bridge) setExtraArgs(args *tokens.BuildTxArgs) (*tokens.AllExtras, erro
 		args.Extra = &tokens.AllExtras{}
 	}
 	extra := args.Extra
-	extra.EthExtra = nil // clear this which may be set in replace job
-
 	if extra.Sequence == nil {
 		seq, err := b.GetSeq(args)
 		if err != nil {

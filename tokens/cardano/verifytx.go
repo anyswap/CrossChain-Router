@@ -1,16 +1,19 @@
 package cardano
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 )
 
 const (
-	MetadataKey = "123"
+	MetadataKey       = "123"
+	SwapInMetadataKey = "223"
 )
 
 // VerifyMsgHash verify msg hash
@@ -18,15 +21,18 @@ func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) (err error
 	if rawTransaction, ok := rawTx.(*RawTransaction); !ok {
 		return tokens.ErrWrongRawTx
 	} else {
-		txPath := RawPath + rawTransaction.OutFile + RawSuffix
-		if txHash, err := CalcTxId(txPath); err != nil {
-			return err
-		} else {
-			if txHash != msgHashes[0] {
-				return tokens.ErrMsgHashMismatch
-			}
-			return nil
+		tx, err := b.CreateRawTx(rawTransaction, b.GetRouterContract(""))
+		if err != nil {
+			return tokens.ErrWrongRawTx
 		}
+		txhash, err := tx.Hash()
+		if err != nil {
+			return tokens.ErrWrongRawTx
+		}
+		if txhash.String() != msgHashes[0] {
+			return tokens.ErrMsgHashMismatch
+		}
+		return nil
 	}
 }
 
@@ -51,23 +57,36 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 	swapInfo.Hash = txHash                            // Hash
 	swapInfo.LogIndex = logIndex                      // LogIndex
 	swapInfo.FromChainID = b.ChainConfig.GetChainID() // FromChainID
+	log.Info("verifySwapoutTx", "txhash:", txHash, "logIndex:", logIndex)
 
 	if outputs, metadata, err := b.getTxOutputs(swapInfo, allowUnstable); err != nil {
 		return swapInfo, err
 	} else {
-		tempIndex := 0
 		outputIndex := 0
 		assetIndex := 0
-		for index, output := range outputs {
-			if index != int(output.Index) {
-				return nil, tokens.ErrOutputIndexSort
+		useAPI, _ := strconv.ParseBool(params.GetCustom(b.ChainConfig.ChainID, "UseAPI"))
+		if useAPI {
+			output := outputs[swapInfo.LogIndex]
+			if output.Address != b.GetChainConfig().RouterContract {
+				return swapInfo, tokens.ErrTxWithWrongContract
 			}
-			if logIndex > tempIndex+len(output.Tokens)+1 {
-				tempIndex += len(output.Tokens) + 1
-			} else {
-				outputIndex = index
-				assetIndex = logIndex - tempIndex - 1
-				break
+			if len(output.Tokens) > 0 {
+				assetIndex = 1
+			}
+			outputIndex = swapInfo.LogIndex
+		} else {
+			tempIndex := 0
+			for index, output := range outputs {
+				if index != int(output.Index) {
+					return nil, tokens.ErrOutputIndexSort
+				}
+				if logIndex > tempIndex+len(output.Tokens)+1 {
+					tempIndex += len(output.Tokens) + 1
+				} else {
+					outputIndex = index
+					assetIndex = logIndex - tempIndex - 1
+					break
+				}
 			}
 		}
 		if tokenInfo, err := b.parseTxOutput(outputs[outputIndex], assetIndex); err != nil {
@@ -90,6 +109,7 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 				return swapInfo, nil
 			}
 		}
+
 	}
 }
 
@@ -105,6 +125,7 @@ func (b *Bridge) getTxOutputs(swapInfo *tokens.SwapTxInfo, allowUnstable bool) (
 			if statusErr != nil {
 				return nil, nil, statusErr
 			}
+			swapInfo.Height = txres.Block.Number // Height
 			for index, metadata := range txres.Metadata {
 				if metadata.Key == MetadataKey {
 					if len(txres.Inputs) > 0 {
@@ -119,6 +140,7 @@ func (b *Bridge) getTxOutputs(swapInfo *tokens.SwapTxInfo, allowUnstable bool) (
 }
 
 func (b *Bridge) checkTxStatus(txres *Transaction, allowUnstable bool) error {
+	// TODO what's ValidContract mean?
 	if !txres.ValidContract {
 		return tokens.ErrTxIsNotValidated
 	}
@@ -161,6 +183,9 @@ func (b *Bridge) parseTxOutput(output Output, logIndex int) (*Token, error) {
 				}, nil
 			}
 		}
+		if len(output.Tokens) > 1 {
+			return nil, tokens.ErrMpcAddrMissMatch
+		}
 		return &output.Tokens[logIndex-1], nil
 	} else {
 		return nil, tokens.ErrMpcAddrMissMatch
@@ -195,6 +220,7 @@ func (b *Bridge) parseTokenInfo(swapInfo *tokens.SwapTxInfo, tokenInfo *Token, m
 	swapInfo.ERC20SwapInfo.TokenID = tokenCfg.TokenID
 
 	swapInfo.To = metadata.Value.Bind
+	swapInfo.TxTo = b.GetRouterContract("")
 	return nil
 }
 

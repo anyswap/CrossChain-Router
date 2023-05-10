@@ -6,7 +6,6 @@ import (
 	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/v3/common"
-	"github.com/anyswap/CrossChain-Router/v3/tools"
 )
 
 // token version boundaries
@@ -65,9 +64,24 @@ type GatewayConfig struct {
 	APIAddressExt      []string `json:",omitempty"`
 	EVMAPIAddress      []string `json:",omitempty"`
 	FinalizeAPIAddress []string `json:",omitempty"`
+	GRPCAPIAddress     []string `json:",omitempty"`
 
 	// internal usage
-	WeightedAPIs tools.WeightedStringSlice `toml:"-" json:"-"`
+	AdjustContext interface{} `toml:"-" json:"-"`
+
+	// adjust gateway related
+	OriginAllGatewayURLs []string `toml:"-" json:"-"`
+	AllGatewayURLs       []string `toml:"-" json:"-"`
+}
+
+// IsEmpty is not configed
+func (c *GatewayConfig) IsEmpty() bool {
+	if c == nil {
+		return true
+	}
+	return len(c.APIAddress) == 0 &&
+		len(c.EVMAPIAddress) == 0 &&
+		len(c.GRPCAPIAddress) == 0
 }
 
 // CheckConfig check chain config

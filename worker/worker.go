@@ -3,6 +3,7 @@ package worker
 import (
 	"time"
 
+	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router/bridge"
 )
 
@@ -31,14 +32,23 @@ func StartRouterSwapWork(isServer bool) {
 	StartStableJob()
 	time.Sleep(interval)
 
+	if params.UseProofSign() {
+		StartSubmitProofJob()
+		return
+	}
+
 	StartReplaceJob()
 	time.Sleep(interval)
 
 	StartPassBigValueJob()
 	time.Sleep(interval)
 
-	StartAggregateJob()
-	time.Sleep(interval)
+	//StartAggregateJob()
+	//time.Sleep(interval)
 
 	StartCheckFailedSwapJob()
+	time.Sleep(interval)
+
+	StartReswapJob()
+	time.Sleep(interval)
 }

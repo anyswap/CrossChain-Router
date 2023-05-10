@@ -50,6 +50,10 @@ type IBridge interface {
 	// GetBalance get balance is used for checking budgets
 	// to prevent DOS attacking (used in any`call)
 	GetBalance(account string) (*big.Int, error)
+
+	CalcProofID(args *BuildTxArgs) (string, error)
+	GenerateProof(proofID string, args *BuildTxArgs) (string, error)
+	SubmitProof(proofID, proof string, args *BuildTxArgs) (signedTx interface{}, txHash string, err error)
 }
 
 // ISwapTrade interface
@@ -69,4 +73,13 @@ type NonceSetter interface {
 	// parallel
 	AllocateNonce(args *BuildTxArgs) (nonce uint64, err error)
 	RecycleSwapNonce(sender string, nonce uint64)
+}
+
+type ReSwapable interface {
+	SetTxTimeout(args *BuildTxArgs, txTimeout *uint64)
+	GetCurrentThreshold() (*uint64, error)
+	IsTxTimeout(txValue, currentValue *uint64) bool
+	SetReswapMaxValueRate(rate uint64)
+	SetTimeoutConfig(txTimeout uint64)
+	GetTimeoutConfig() uint64
 }

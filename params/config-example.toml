@@ -16,6 +16,11 @@ AccountBlackList = []
 43114 = []
 25    = []
 
+[[Server.ProofSubmitters]]
+Address = "XXXXXX"
+KeystoreFile = "/home/xxx/submitters/keystore1"
+PasswordFile = "/home/xxx/submitters/password1"
+
 # router sever config (server only)
 [Server]
 # administrators who can do admin work
@@ -37,6 +42,8 @@ ReplacePlusGasPricePercent = 1
 WaitTimeToReplace = 900
 # maximum replace count
 MaxReplaceCount = 20
+# maximum replace distance
+MaxReplaceDistance = 10
 # plus gas price percentage
 PlusGasPricePercentage = 10
 # maximum plus gas price percentage
@@ -59,6 +66,9 @@ AutoSwapNonceEnabledChains = ["25"]
 [Server.SendTxLoopInterval]
 43114 = 10
 25    = 10
+# default gas fee (string type)
+#[Server.DefaultFee]
+#1007961752911 = "6250"
 # default gas limit. key is chainID. if not set, use 90000 as default.
 [Server.DefaultGasLimit]
 4     = 90000
@@ -122,6 +132,10 @@ NoCheckServerConnection = false
 CheckGasTokenBalance = false
 
 [Extra]
+# usdc attestation server
+AttestationServer = ""
+# use proof sign
+UseProofSign = false
 # is swap with permit enabled
 EnableSwapWithPermit = false
 # force call anySwapInAuto
@@ -146,6 +160,8 @@ EnableCheckTxBlockIndexChains = ["1", "56"]
 DisableUseFromChainIDInReceiptChains = ["1666600000"]
 # chains use fast mpc
 UseFastMPCChains = ["1001313161554"]
+# increase nonce when send tx
+IncreaseNonceWhenSendTxChains = ["1"]
 # check token balance
 CheckTokenBalanceEnabledChains = ["1"]
 DontCheckBalanceTokenIDs = ["USDC", "MIM"]
@@ -176,10 +192,11 @@ CheckEIP1167Master = false
 1313161554 = 60
 25 = 60
 # customs, key is chainID. value is a mapping.
-[Extra.Customs.1313161554]
-sendtxTimeout = "60"
-[Extra.Customs.30]
-dontCheckAddressMixedCase = "true"
+[Extra.Customs.1645027868239]
+APIKey = "XXXXXX"
+AssetPolicyKey = "xxxxxx"
+AppendName = "false"
+UseAPI = "true"
 # big value whitelist, key is tokenID
 [Extra.BigValueWhitelist]
 USDC = ["0x1111111111111111111111111111111111111111"]
@@ -198,14 +215,22 @@ MIM  = ["0x2222222222222222222222222222222222222222"]
 # the last key is chainID
 [Extra.LocalChainConfig.2025]
 EstimatedGasMustBePositive = true
+DontCheckAddressMixedCase = false
+SubmitProofInterval = 300
+MaxSubmitProofTimes = 3
 
 [Extra.LocalChainConfig.86]
 SmallestGasPriceUnit = 1000000000
+IsReswapSupported = false
 
 [Extra.LocalChainConfig.25]
 ForbidParallelLoading = true
 ForbidSwapoutTokenIDs = ["USDC", "USDT"]
 BigValueDiscount = 50
+
+[Extra.LocalChainConfig.1007961752911]
+FeeReceiverOnDestChain = "xxxxxx"
+ChargeFeeOnDestChain.1000005788241 = ["XXX"]
 
 [Extra.SpecialFlags]
 key = "value"
@@ -230,6 +255,9 @@ APIAddress = ["http://127.0.0.1:8711", "http://127.0.0.1:8722"]
 [GatewaysExt]
 4     = ["http://127.0.0.1:6000"]
 46688 = ["http://127.0.0.1:8000"]
+
+#[GRPCGateways]
+#1007961752911 = ["XXXXXX"]
 
 # FastMPC config
 #[FastMPC]

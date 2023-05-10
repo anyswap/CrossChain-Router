@@ -29,7 +29,7 @@ func (b *Bridge) GetTxBlockInfo(txHash string) (blockHeight, blockTime uint64) {
 	if err != nil {
 		return 0, 0
 	}
-	blockHeight, _ = strconv.ParseUint(ledger.LedgerVersion, 10, 64)
+	blockHeight, _ = strconv.ParseUint(ledger.BlockHeight, 10, 64)
 	blockTime, _ = strconv.ParseUint(ledger.LedgerTimestamp, 10, 64)
 	return
 }
@@ -51,7 +51,7 @@ func (b *Bridge) GetLatestBlockNumber() (num uint64, err error) {
 			log.Warn("Try get latest block number failed", "error", err1)
 			continue
 		}
-		return strconv.ParseUint(resp.LedgerVersion, 10, 64)
+		return strconv.ParseUint(resp.BlockHeight, 10, 64)
 	}
 	return
 }
@@ -67,7 +67,7 @@ func (b *Bridge) GetLatestBlockNumberOf(apiAddress string) (num uint64, err erro
 			log.Warn("Try get latest block number failed", "error", err1)
 			continue
 		}
-		return strconv.ParseUint(resp.LedgerVersion, 10, 64)
+		return strconv.ParseUint(resp.BlockHeight, 10, 64)
 	}
 	return
 }

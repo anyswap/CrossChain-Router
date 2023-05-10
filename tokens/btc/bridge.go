@@ -64,7 +64,7 @@ func (b *Bridge) VerifyTokenConfig(tokenCfg *tokens.TokenConfig) error {
 
 // GetLatestBlockNumber gets latest block number
 func (b *Bridge) GetLatestBlockNumber() (result uint64, err error) {
-	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	urls := b.GatewayConfig.AllGatewayURLs
 	for _, url := range urls {
 		result, err = GetLatestBlockNumber(url)
 		if err == nil {
@@ -86,7 +86,7 @@ func (b *Bridge) GetTransaction(txHash string) (tx interface{}, err error) {
 
 // GetTransactionByHash get tx response by hash
 func (b *Bridge) GetTransactionByHash(txHash string) (result *ElectTx, err error) {
-	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	urls := b.GatewayConfig.AllGatewayURLs
 	for _, url := range urls {
 		result, err = GetTransactionByHash(url, txHash)
 		if err == nil {
@@ -98,7 +98,7 @@ func (b *Bridge) GetTransactionByHash(txHash string) (result *ElectTx, err error
 
 // GetElectTransactionStatus impl
 func (b *Bridge) GetElectTransactionStatus(txHash string) (result *ElectTxStatus, err error) {
-	urls := append(b.GatewayConfig.APIAddress, b.GatewayConfig.APIAddressExt...)
+	urls := b.GatewayConfig.AllGatewayURLs
 	for _, url := range urls {
 		result, err = GetElectTransactionStatus(url, txHash)
 		if err == nil {

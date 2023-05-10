@@ -1,15 +1,14 @@
 package tokens
 
 import (
-	"fmt"
 	"math/big"
 	"strings"
 	"sync"
-	"time"
 
 	cmath "github.com/anyswap/CrossChain-Router/v3/common/math"
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/params"
+	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 )
 
 var (
@@ -83,24 +82,34 @@ type CrossChainBridgeBase struct {
 	GatewayConfig  *GatewayConfig
 	TokenConfigMap *sync.Map // key is token address
 
-	UseFastMPC     bool
-	AllGatewayURLs []string
+	RPCClientTimeout int
+
+	UseFastMPC                bool
+	DontCheckAddressMixedCase bool
 }
 
 // NewCrossChainBridgeBase new base bridge
 func NewCrossChainBridgeBase() *CrossChainBridgeBase {
 	return &CrossChainBridgeBase{
-		TokenConfigMap: new(sync.Map),
+		TokenConfigMap:   new(sync.Map),
+		RPCClientTimeout: client.GetDefaultTimeout(false),
 	}
+}
+
+// InitAfterConfig init variables (ie. extra members) after loading config
+func (b *CrossChainBridgeBase) InitAfterConfig() {
+	chainID := b.ChainConfig.ChainID
+	clientTimeout := params.GetRPCClientTimeout(chainID)
+	if clientTimeout != 0 {
+		b.RPCClientTimeout = clientTimeout
+	}
+	lclCfg := params.GetLocalChainConfig(chainID)
+	b.DontCheckAddressMixedCase = lclCfg.DontCheckAddressMixedCase
 }
 
 // InitRouterInfo init router info
 func (b *CrossChainBridgeBase) InitRouterInfo(routerContract, routerVersion string) (err error) {
 	return ErrNotImplemented
-}
-
-// InitAfterConfig init variables (ie. extra members) after loading config
-func (b *CrossChainBridgeBase) InitAfterConfig() {
 }
 
 // GetBalance get balance is used for checking budgets to prevent DOS attacking
@@ -112,18 +121,33 @@ func (b *CrossChainBridgeBase) GetBalance(account string) (*big.Int, error) {
 func (b *CrossChainBridgeBase) SetChainConfig(chainCfg *ChainConfig) {
 	b.ChainConfig = chainCfg
 	if params.IsUseFastMPC(chainCfg.ChainID) {
+		log.Info("set chain config use fast mpc", "chainID", chainCfg.ChainID, "chain", chainCfg.BlockChain)
 		b.UseFastMPC = true
 	}
 }
 
 // SetGatewayConfig set gateway config
 func (b *CrossChainBridgeBase) SetGatewayConfig(gatewayCfg *GatewayConfig) {
-	if len(gatewayCfg.APIAddress) == 0 {
-		log.Error("empty gateway 'APIAddress'")
-	} else {
-		b.GatewayConfig = gatewayCfg
-		b.AllGatewayURLs = append(gatewayCfg.APIAddress, gatewayCfg.APIAddressExt...)
+	if gatewayCfg != nil {
+		allURLs := gatewayCfg.APIAddress
+		if allURLs == nil {
+			allURLs = make([]string, 0)
+		}
+		allURLs = append(allURLs, gatewayCfg.APIAddressExt...)
+		existURLs := make(map[string]struct{})
+		// get rid of duplicate urls
+		for _, url := range allURLs {
+			if _, exist := existURLs[url]; exist {
+				continue
+			}
+			existURLs[url] = struct{}{}
+			gatewayCfg.AllGatewayURLs = append(gatewayCfg.AllGatewayURLs, url)
+		}
+		log.Debugf("AllGatewayURLs are %v", gatewayCfg.AllGatewayURLs)
+		gatewayCfg.OriginAllGatewayURLs = make([]string, len(gatewayCfg.AllGatewayURLs))
+		copy(gatewayCfg.OriginAllGatewayURLs, gatewayCfg.AllGatewayURLs)
 	}
+	b.GatewayConfig = gatewayCfg
 }
 
 // SetTokenConfig set token config
@@ -175,11 +199,26 @@ func (b *CrossChainBridgeBase) GetRouterVersion(token string) string {
 		if tokenCfg == nil {
 			return ""
 		}
-		if tokenCfg.RouterContract != "" {
+		if tokenCfg.RouterVersion != "" {
 			return tokenCfg.RouterVersion
 		}
 	}
 	return b.ChainConfig.RouterVersion
+}
+
+// CalcProofID calc proofID
+func (b *CrossChainBridgeBase) CalcProofID(args *BuildTxArgs) (string, error) {
+	return "", ErrNotImplemented
+}
+
+// GenerateProof generate proof
+func (b *CrossChainBridgeBase) GenerateProof(proofID string, args *BuildTxArgs) (string, error) {
+	return "", ErrNotImplemented
+}
+
+// SubmitProof submit proof
+func (b *CrossChainBridgeBase) SubmitProof(proofID, proof string, args *BuildTxArgs) (interface{}, string, error) {
+	return nil, "", ErrNotImplemented
 }
 
 // SetSwapConfigs set swap configs
@@ -228,9 +267,21 @@ func GetFeeConfig(tokenID, fromChainID, toChainID string) *FeeConfig {
 
 // SetOnchainCustomConfig set onchain custom config
 func SetOnchainCustomConfig(chainID, tokenID string, config *OnchainCustomConfig) {
-	m := new(sync.Map)
-	m.Store(tokenID, config)
-	onchainCustomCfg.Store(chainID, m)
+	m, exist := onchainCustomCfg.Load(chainID)
+	if exist {
+		mm := m.(*sync.Map)
+		mm.Store(tokenID, config)
+	} else {
+		mm := new(sync.Map)
+		mm.Store(tokenID, config)
+		onchainCustomCfg.Store(chainID, mm)
+	}
+	cfg := GetOnchainCustomConfig(chainID, tokenID)
+	if cfg != config {
+		log.Error("set onchain custom config failed", "chainID", chainID, "tokenID", tokenID, "set", config, "get", cfg)
+	} else {
+		log.Info("set onchain custom config success", "chainID", chainID, "tokenID", tokenID, "config", config)
+	}
 }
 
 // GetOnchainCustomConfig get onchain custom config
@@ -303,19 +354,27 @@ func CalcSwapValue(tokenID, fromChainID, toChainID string, value *big.Int, fromD
 	minimumSwapFee := feeCfg.MinimumSwapFee
 	maximumSwapFee := feeCfg.MaximumSwapFee
 
+	useFixedFee := minimumSwapFee.Sign() > 0 && minimumSwapFee.Cmp(maximumSwapFee) == 0
+	if useFixedFee {
+		swapfeeRatePerMillion = 0
+	}
+
 	srcFeeCfg := GetOnchainCustomConfig(fromChainID, tokenID)
 
+	var srcFeeRate uint64
 	if srcFeeCfg != nil {
-		swapfeeRatePerMillion = feeCfg.SwapFeeRatePerMillion + srcFeeCfg.AdditionalSrcChainSwapFeeRate
+		srcFeeRate = srcFeeCfg.AdditionalSrcChainSwapFeeRate
+		swapfeeRatePerMillion += srcFeeRate
 		minimumSwapFee = cmath.BigMax(feeCfg.MinimumSwapFee, srcFeeCfg.AdditionalSrcMinimumSwapFee)
 		maximumSwapFee = cmath.BigMax(feeCfg.MaximumSwapFee, srcFeeCfg.AdditionalSrcMaximumSwapFee)
 	}
 
 	valueLeft := value
-	if swapfeeRatePerMillion > 0 {
+	if swapfeeRatePerMillion > 0 || useFixedFee {
 		log.Info("calc swap fee start",
 			"tokenID", tokenID, "fromChainID", fromChainID, "toChainID", toChainID,
-			"value", value, "feeRate", swapfeeRatePerMillion,
+			"value", value, "feeRate", swapfeeRatePerMillion, "useFixedFee", useFixedFee,
+			"cfgFeeRate", feeCfg.SwapFeeRatePerMillion, "srcFeeRate", srcFeeRate,
 			"minFee", minimumSwapFee, "maxFee", maximumSwapFee)
 
 		var swapFee, adjustBaseFee *big.Int
@@ -324,8 +383,17 @@ func CalcSwapValue(tokenID, fromChainID, toChainID string, value *big.Int, fromD
 			params.IsInBigValueWhitelist(tokenID, originTxTo) {
 			swapFee = minSwapFee
 		} else {
-			swapFee = new(big.Int).Mul(value, new(big.Int).SetUint64(swapfeeRatePerMillion))
-			swapFee.Div(swapFee, big.NewInt(1000000))
+			if swapfeeRatePerMillion > 0 {
+				swapFee = new(big.Int).Mul(value, new(big.Int).SetUint64(swapfeeRatePerMillion))
+				swapFee.Div(swapFee, big.NewInt(1000000))
+			} else {
+				swapFee = big.NewInt(0)
+			}
+
+			if useFixedFee {
+				fixedFee := ConvertTokenValue(feeCfg.MinimumSwapFee, 18, fromDecimals)
+				swapFee = cmath.BigMax(swapFee, fixedFee)
+			}
 
 			if swapFee.Cmp(minSwapFee) < 0 {
 				swapFee = minSwapFee
@@ -399,23 +467,4 @@ func ConvertTokenValue(fromValue *big.Int, fromDecimals, toDecimals uint8) *big.
 		return new(big.Int).Div(fromValue, cmath.BigPow(10, int64(fromDecimals-toDecimals)))
 	}
 	return new(big.Int).Mul(fromValue, cmath.BigPow(10, int64(toDecimals-fromDecimals)))
-}
-
-// CheckNativeBalance check native balance
-func CheckNativeBalance(b IBridge, account string, needValue *big.Int) (err error) {
-	var balance *big.Int
-	for i := 0; i < 3; i++ {
-		balance, err = b.GetBalance(account)
-		if err == nil {
-			break
-		}
-		time.Sleep(1 * time.Second)
-	}
-	if err == nil && balance.Cmp(needValue) < 0 {
-		return fmt.Errorf("not enough coin balance. %v is lower than %v needed", balance, needValue)
-	}
-	if err != nil {
-		log.Warn("get balance error", "account", account, "err", err)
-	}
-	return err
 }

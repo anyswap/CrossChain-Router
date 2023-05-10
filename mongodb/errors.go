@@ -35,4 +35,5 @@ var (
 	ErrWrongKey           = newError(-32012, "mgoError: Wrong key")
 	ErrForbidUpdateNonce  = newError(-32013, "mgoError: Forbid update swap nonce")
 	ErrForbidUpdateSwapTx = newError(-32014, "mgoError: Forbid update swap tx")
+	ErrForbidUpdateProof  = newError(-32015, "mgoError: Forbid update exist proof")
 )

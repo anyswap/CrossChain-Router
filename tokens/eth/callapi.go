@@ -1,6 +1,8 @@
 package eth
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -13,16 +15,24 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/common/hexutil"
 	"github.com/anyswap/CrossChain-Router/v3/log"
+	"github.com/anyswap/CrossChain-Router/v3/mpc"
 	"github.com/anyswap/CrossChain-Router/v3/params"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/rpc/client"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/eth/callapi"
 	"github.com/anyswap/CrossChain-Router/v3/types"
+
+	ethereum "github.com/ethereum/go-ethereum"
+	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
+
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
+	sapphire "github.com/oasisprotocol/sapphire-paratime/clients/go"
 )
 
 var (
-	errEmptyURLs              = errors.New("empty URLs")
 	errTxInOrphanBlock        = errors.New("tx is in orphan block")
 	errTxHashMismatch         = errors.New("tx hash mismatch with rpc result")
 	errTxBlockHashMismatch    = errors.New("tx block hash mismatch with rpc result")
@@ -39,6 +49,16 @@ func (b *Bridge) NeedsFinalizeAPIAddress() bool {
 	default:
 		return false
 	}
+}
+
+func (b *Bridge) IsSapphireChain() bool {
+	chainId := b.ChainConfig.ChainID
+	return chainId == "23294" || chainId == "23295"
+}
+
+func (b *Bridge) IsZKSync() bool {
+	chainId := b.ChainConfig.ChainID
+	return chainId == "280" || chainId == "324"
 }
 
 // GetBlockConfirmations some chain may override this method
@@ -79,9 +99,8 @@ func (b *Bridge) GetLatestBlockNumberOf(url string) (latest uint64, err error) {
 
 // GetLatestBlockNumber call eth_blockNumber
 func (b *Bridge) GetLatestBlockNumber() (maxHeight uint64, err error) {
-	gateway := b.GatewayConfig
 	var height uint64
-	for _, url := range gateway.APIAddress {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		height, err = b.EvmContractBridge.GetLatestBlockNumberOf(url)
 		if height > maxHeight && err == nil {
 			maxHeight = height
@@ -97,7 +116,7 @@ func (b *Bridge) GetLatestBlockNumber() (maxHeight uint64, err error) {
 func (b *Bridge) GetBlockByNumber(number *big.Int) (*types.RPCBlock, error) {
 	blockNumber := types.ToBlockNumArg(number)
 	var err error
-	for _, url := range b.AllGatewayURLs {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		var result *types.RPCBlock
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_getBlockByNumber", blockNumber, false)
 		if err == nil && result != nil {
@@ -113,20 +132,8 @@ func (b *Bridge) GetTransaction(txHash string) (interface{}, error) {
 }
 
 // GetTransactionByHash call eth_getTransactionByHash
-func (b *Bridge) GetTransactionByHash(txHash string) (tx *types.RPCTransaction, err error) {
-	gateway := b.GatewayConfig
-	tx, err = b.getTransactionByHash(txHash, gateway.APIAddress)
-	if err != nil && tokens.IsRPCQueryOrNotFoundError(err) && len(gateway.APIAddressExt) > 0 {
-		tx, err = b.getTransactionByHash(txHash, gateway.APIAddressExt)
-	}
-	return tx, err
-}
-
-func (b *Bridge) getTransactionByHash(txHash string, urls []string) (result *types.RPCTransaction, err error) {
-	if len(urls) == 0 {
-		return nil, errEmptyURLs
-	}
-	for _, url := range urls {
+func (b *Bridge) GetTransactionByHash(txHash string) (result *types.RPCTransaction, err error) {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		start := time.Now()
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_getTransactionByHash", txHash)
 		log.Info("call getTransactionByHash finished", "txhash", txHash, "url", url, "timespent", time.Since(start).String())
@@ -142,7 +149,7 @@ func (b *Bridge) getTransactionByHash(txHash string, urls []string) (result *typ
 
 // GetTransactionByBlockNumberAndIndex get tx by block number and tx index
 func (b *Bridge) GetTransactionByBlockNumberAndIndex(blockNumber *big.Int, txIndex uint) (result *types.RPCTransaction, err error) {
-	for _, url := range b.AllGatewayURLs {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		result, err = b.getTransactionByBlockNumberAndIndex(blockNumber, txIndex, url)
 		if err == nil && result != nil {
 			return result, nil
@@ -160,20 +167,8 @@ func (b *Bridge) getTransactionByBlockNumberAndIndex(blockNumber *big.Int, txInd
 }
 
 // GetTransactionReceipt call eth_getTransactionReceipt
-func (b *Bridge) GetTransactionReceipt(txHash string) (receipt *types.RPCTxReceipt, err error) {
-	gateway := b.GatewayConfig
-	receipt, err = b.getTransactionReceipt(txHash, gateway.APIAddress)
-	if err != nil && tokens.IsRPCQueryOrNotFoundError(err) && len(gateway.APIAddressExt) > 0 {
-		return b.getTransactionReceipt(txHash, gateway.APIAddressExt)
-	}
-	return receipt, err
-}
-
-func (b *Bridge) getTransactionReceipt(txHash string, urls []string) (result *types.RPCTxReceipt, err error) {
-	if len(urls) == 0 {
-		return nil, errEmptyURLs
-	}
-	for _, url := range urls {
+func (b *Bridge) GetTransactionReceipt(txHash string) (result *types.RPCTxReceipt, err error) {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		start := time.Now()
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_getTransactionReceipt", txHash)
 		log.Info("call getTransactionReceipt finished", "txhash", txHash, "url", url, "timespent", time.Since(start).String())
@@ -228,16 +223,16 @@ func (b *Bridge) GetPoolNonce(address, height string) (mdPoolNonce uint64, err e
 	start := time.Now()
 	allPoolNonces := make([]uint64, 0, 10)
 	account := common.HexToAddress(address)
-	for _, url := range b.AllGatewayURLs {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		var result hexutil.Uint64
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_getTransactionCount", account, height)
 		if err == nil {
 			allPoolNonces = append(allPoolNonces, uint64(result))
-			log.Info("call eth_getTransactionCount success", "chainID", b.ChainConfig.ChainID, "url", url, "account", account, "nonce", uint64(result))
+			log.Info("call eth_getTransactionCount success", "chainID", b.ChainConfig.ChainID, "url", url, "account", account.Hex(), "nonce", uint64(result))
 		}
 	}
 	if len(allPoolNonces) == 0 {
-		log.Warn("GetPoolNonce failed", "chainID", b.ChainConfig.ChainID, "account", account, "height", height, "timespent", time.Since(start).String(), "err", err)
+		log.Warn("GetPoolNonce failed", "chainID", b.ChainConfig.ChainID, "account", account.Hex(), "height", height, "timespent", time.Since(start).String(), "err", err)
 		return 0, wrapRPCQueryError(err, "eth_getTransactionCount", account, height)
 	}
 	sort.Slice(allPoolNonces, func(i, j int) bool {
@@ -250,7 +245,7 @@ func (b *Bridge) GetPoolNonce(address, height string) (mdPoolNonce uint64, err e
 	} else {
 		mdPoolNonce = (allPoolNonces[mdInd] + allPoolNonces[mdInd+1]) / 2
 	}
-	log.Info("GetPoolNonce success", "chainID", b.ChainConfig.ChainID, "account", account, "urls", len(b.AllGatewayURLs), "validCount", count, "median", mdPoolNonce, "timespent", time.Since(start).String())
+	log.Info("GetPoolNonce success", "chainID", b.ChainConfig.ChainID, "account", account, "urls", len(b.GatewayConfig.AllGatewayURLs), "validCount", count, "median", mdPoolNonce, "timespent", time.Since(start).String())
 	return mdPoolNonce, nil
 }
 
@@ -295,7 +290,7 @@ func (b *Bridge) getMaxGasPrice() (*big.Int, error) {
 	var maxGasPriceURL string
 
 	var err error
-	for _, url := range b.AllGatewayURLs {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		var result hexutil.Big
 		if err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_gasPrice"); err != nil {
 			logFunc("call eth_gasPrice failed", "chainID", b.ChainConfig.ChainID, "url", url, "err", err)
@@ -319,7 +314,7 @@ func (b *Bridge) getMaxGasPrice() (*big.Int, error) {
 // get median gas price as the rpc result fluctuates too widely
 func (b *Bridge) getMedianGasPrice() (mdGasPrice *big.Int, err error) {
 	allGasPrices := make([]*big.Int, 0, 10)
-	for _, url := range b.AllGatewayURLs {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		var result hexutil.Big
 		if err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_gasPrice"); err != nil {
 			log.Info("call eth_gasPrice failed", "chainID", b.ChainConfig.ChainID, "url", url, "err", err)
@@ -344,19 +339,22 @@ func (b *Bridge) getMedianGasPrice() (mdGasPrice *big.Int, err error) {
 		mdGasPrice = new(big.Int).Add(allGasPrices[mdInd], allGasPrices[mdInd+1])
 		mdGasPrice.Div(mdGasPrice, big.NewInt(2))
 	}
-	log.Info("getMedianGasPrice success", "chainID", b.ChainConfig.ChainID, "urls", len(b.AllGatewayURLs), "validCount", count, "median", mdGasPrice)
+	log.Info("getMedianGasPrice success", "chainID", b.ChainConfig.ChainID, "urls", len(b.GatewayConfig.AllGatewayURLs), "validCount", count, "median", mdGasPrice)
 	return mdGasPrice, nil
 }
 
 // SendSignedTransaction call eth_sendRawTransaction
 func (b *Bridge) SendSignedTransaction(tx *types.Transaction) (txHash string, err error) {
+	if b.IsSapphireChain() {
+		return b.SendSignedTransactionSapphire(tx)
+	}
 	data, err := tx.MarshalBinary()
 	if err != nil {
 		return "", err
 	}
 	log.Info("call eth_sendRawTransaction start", "txHash", tx.Hash().String())
 	hexData := common.ToHex(data)
-	urlCount := len(b.AllGatewayURLs)
+	urlCount := len(b.GatewayConfig.AllGatewayURLs)
 	ch := make(chan *sendTxResult, urlCount)
 	wg := new(sync.WaitGroup)
 	wg.Add(urlCount)
@@ -373,7 +371,7 @@ func (b *Bridge) SendSignedTransaction(tx *types.Transaction) (txHash string, er
 		close(ch)
 		log.Info("call eth_sendRawTransaction finished", "txHash", hash, "count", count, "timespent", time.Since(start).String())
 	}(tx.Hash().String(), urlCount, time.Now())
-	for _, url := range b.AllGatewayURLs {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		go b.sendRawTransaction(wg, hexData, url, ch)
 	}
 	for i := 0; i < urlCount; i++ {
@@ -381,6 +379,140 @@ func (b *Bridge) SendSignedTransaction(tx *types.Transaction) (txHash string, er
 		txHash, err = res.txHash, res.err
 		if err == nil && txHash != "" {
 			return txHash, nil
+		}
+	}
+	return "", wrapRPCQueryError(err, "eth_sendRawTransaction")
+}
+
+func (b *Bridge) SendSignedZKSyncTransaction(data []byte) (txHash string, err error) {
+	log.Info("call eth_sendRawTransaction start")
+	hexData := common.ToHex(data)
+	urlCount := len(b.GatewayConfig.AllGatewayURLs)
+	ch := make(chan *sendTxResult, urlCount)
+	wg := new(sync.WaitGroup)
+	wg.Add(urlCount)
+	go func(hash string, count int, start time.Time) {
+		defer func() {
+			if err := recover(); err != nil {
+				const size = 4096
+				buf := make([]byte, size)
+				buf = buf[:runtime.Stack(buf, false)]
+				log.Errorf("call eth_sendRawTransaction crashed: %v\n%s", err, buf)
+			}
+		}()
+		wg.Wait()
+		close(ch)
+		log.Info("call eth_sendRawTransaction finished", "txHash", hash, "count", count, "timespent", time.Since(start).String())
+	}("", urlCount, time.Now())
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
+		go b.sendRawTransaction(wg, hexData, url, ch)
+	}
+	for i := 0; i < urlCount; i++ {
+		res := <-ch
+		txHash, err = res.txHash, res.err
+		if err == nil && txHash != "" {
+			return txHash, nil
+		}
+	}
+	return "", wrapRPCQueryError(err, "eth_sendRawTransaction")
+}
+
+func (b *Bridge) SendSignedTransactionSapphire(tx *types.Transaction) (txHash string, err error) {
+	chainId := b.ChainConfig.GetChainID()
+	rawtx, err := tx.MarshalBinary()
+	if err != nil {
+		return "", err
+	}
+	sender, err := types.Sender(b.Signer, tx)
+	if err != nil {
+		return "", err
+	}
+	routerMPC := sender.Hex()
+
+	sign := func(digest [32]byte) (sig []byte, err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				err = fmt.Errorf("sign error: %v", r)
+			}
+		}()
+		args := &tokens.BuildTxArgs{
+			SwapArgs: tokens.SwapArgs{
+				SwapInfo: tokens.SwapInfo{
+					ERC20SwapInfo: &tokens.ERC20SwapInfo{
+						TokenID: "sapphire-sign",
+					}},
+				SwapType:    tokens.SapphireRPCType,
+				Identifier:  params.GetIdentifier(),
+				FromChainID: chainId,
+				ToChainID:   chainId,
+			},
+			From: routerMPC,
+			Extra: &tokens.AllExtras{
+				RawTx: rawtx,
+			},
+		}
+		jsondata, _ := json.Marshal(args.GetExtraArgs())
+		msgContext := string(jsondata)
+		mpcConfig := mpc.GetMPCConfig(b.UseFastMPC)
+		mpcPubkey := router.GetMPCPublicKey(routerMPC)
+		_, rsvs, err := mpcConfig.DoSignOneEC(mpcPubkey, common.ToHex(digest[:]), msgContext)
+		if err != nil {
+			log.Error("sign sapphire failed", "err", err)
+			return nil, err
+		}
+
+		return common.FromHex(rsvs[0]), nil
+	}
+
+	cipher, err := sapphire.NewCipher(chainId.Uint64())
+	if err != nil {
+		return "", err
+	}
+	ethtx := new(ethtypes.Transaction)
+	err = ethtx.UnmarshalBinary(rawtx)
+	if err != nil {
+		return "", err
+	}
+	packedTx, err := sapphire.PackTx(*ethtx, cipher)
+	if err != nil {
+		return "", err
+	}
+	signer := ethtypes.LatestSignerForChainID(chainId)
+	signHash := signer.Hash(packedTx)
+	signature, err := sign(([32]byte)(signHash))
+	if err != nil {
+		return "", err
+	}
+	if len(signature) != crypto.SignatureLength {
+		return "", errors.New("wrong signature length")
+	}
+	signedTx, err := packedTx.WithSignature(signer, signature)
+	if err != nil {
+		return "", err
+	}
+	checkSender, err := ethtypes.Sender(signer, signedTx)
+	if err != nil {
+		return "", err
+	}
+	if checkSender.Hex() != sender.Hex() {
+		signature[crypto.SignatureLength-1] ^= 0x1 // v can only be 0 or 1
+		signedTx, err = packedTx.WithSignature(signer, signature)
+		if err != nil {
+			return "", err
+		}
+	}
+	data, err := signedTx.MarshalBinary()
+	if err != nil {
+		return "", err
+	}
+
+	hexData := hexutil.Encode(data)
+
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
+		var result string
+		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_sendRawTransaction", hexData)
+		if err == nil {
+			return signedTx.Hash().Hex(), nil
 		}
 	}
 	return "", wrapRPCQueryError(err, "eth_sendRawTransaction")
@@ -407,7 +539,7 @@ func (b *Bridge) sendRawTransaction(wg *sync.WaitGroup, hexData, url string, ch 
 // Notice: eth_chainId return 0x0 for mainnet which is wrong (use net_version instead)
 func (b *Bridge) ChainID() (*big.Int, error) {
 	var err error
-	for _, url := range b.AllGatewayURLs {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		var result hexutil.Big
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_chainId")
 		if err == nil {
@@ -420,7 +552,7 @@ func (b *Bridge) ChainID() (*big.Int, error) {
 // NetworkID call net_version
 func (b *Bridge) NetworkID() (*big.Int, error) {
 	var err error
-	for _, url := range b.AllGatewayURLs {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		var result string
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "net_version")
 		if err == nil {
@@ -436,7 +568,7 @@ func (b *Bridge) NetworkID() (*big.Int, error) {
 
 // GetCode call eth_getCode
 func (b *Bridge) GetCode(contract string) (code []byte, err error) {
-	for _, url := range b.AllGatewayURLs {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		start := time.Now()
 		var result hexutil.Bytes
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_getCode", contract, "latest")
@@ -450,13 +582,16 @@ func (b *Bridge) GetCode(contract string) (code []byte, err error) {
 
 // CallContract call eth_call
 func (b *Bridge) CallContract(contract string, data hexutil.Bytes, blockNumber string) (string, error) {
+	if b.IsSapphireChain() {
+		return b.CallContractSapphire(contract, data, blockNumber)
+	}
 	reqArgs := map[string]interface{}{
 		"to":   contract,
 		"data": data,
 	}
 	var err error
 LOOP:
-	for _, url := range b.AllGatewayURLs {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		start := time.Now()
 		var result string
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_call", reqArgs, blockNumber)
@@ -483,10 +618,50 @@ LOOP:
 	return "", wrapRPCQueryError(err, "eth_call", contract)
 }
 
+// CallContractSapphire
+func (b *Bridge) CallContractSapphire(contract string, data hexutil.Bytes, blockNumber string) (string, error) {
+	block, _ := new(big.Int).SetString(blockNumber, 0)
+	sk, _ := crypto.HexToECDSA("8160d68c4bf9425b1d3a14dc6d59a99d7d130428203042a8d419e68d626bd9f2")
+
+	/// notice: only when from address does not matter
+	/// if from address is specified, use a special signer here
+	signer := func(digest [32]byte) ([]byte, error) {
+		// Pass in a custom signing function to interact with the signer
+		return crypto.Sign(digest[:], sk)
+	}
+
+	var err error
+LOOP:
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
+		c, _ := ethclient.Dial(url)
+		backend, wraperr := sapphire.WrapClient(*c, signer)
+		if wraperr != nil {
+			err = wraperr
+			log.Warn("wrap client error", "url", url, "error", err)
+			continue
+		}
+		callMsg := ethereum.CallMsg{}
+		to := ethcommon.HexToAddress(contract)
+		callMsg.To = &to
+		callMsg.Data = data
+		for i := 0; i < 10; i++ {
+			result, err := backend.CallContract(context.Background(), callMsg, block)
+			if err == nil {
+				return common.ToHex(result), nil
+			}
+			if strings.Contains(err.Error(), "VM execution error") {
+				break LOOP
+			}
+			time.Sleep(router.RetryRPCIntervalInInit)
+		}
+	}
+	return "", wrapRPCQueryError(err, "eth_call", contract)
+}
+
 // GetBalance call eth_getBalance
 func (b *Bridge) GetBalance(account string) (*big.Int, error) {
 	var err error
-	for _, url := range b.AllGatewayURLs {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		start := time.Now()
 		var result hexutil.Big
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_getBalance", account, params.GetBalanceBlockNumberOpt)
@@ -501,7 +676,7 @@ func (b *Bridge) GetBalance(account string) (*big.Int, error) {
 // SuggestGasTipCap call eth_maxPriorityFeePerGas
 func (b *Bridge) SuggestGasTipCap() (mdGasTipCap *big.Int, err error) {
 	allGasTipCaps := make([]*big.Int, 0, 10)
-	for _, url := range b.AllGatewayURLs {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		var result hexutil.Big
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_maxPriorityFeePerGas")
 		if err == nil {
@@ -524,14 +699,14 @@ func (b *Bridge) SuggestGasTipCap() (mdGasTipCap *big.Int, err error) {
 		mdGasTipCap = new(big.Int).Add(allGasTipCaps[mdInd], allGasTipCaps[mdInd+1])
 		mdGasTipCap.Div(mdGasTipCap, big.NewInt(2))
 	}
-	log.Info("getMedianGasTipCap success", "chainID", b.ChainConfig.ChainID, "urls", len(b.AllGatewayURLs), "validCount", count, "median", mdGasTipCap)
+	log.Info("getMedianGasTipCap success", "chainID", b.ChainConfig.ChainID, "urls", len(b.GatewayConfig.AllGatewayURLs), "validCount", count, "median", mdGasTipCap)
 	return mdGasTipCap, nil
 }
 
 // FeeHistory call eth_feeHistory
 func (b *Bridge) FeeHistory(blockCount int, rewardPercentiles []float64) (*types.FeeHistoryResult, error) {
 	var err error
-	for _, url := range b.AllGatewayURLs {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		var result types.FeeHistoryResult
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_feeHistory", blockCount, "latest", rewardPercentiles)
 		if err == nil {
@@ -565,6 +740,9 @@ func (b *Bridge) GetBaseFee(blockCount int) (*big.Int, error) {
 
 // EstimateGas call eth_estimateGas
 func (b *Bridge) EstimateGas(from, to string, value *big.Int, data []byte) (uint64, error) {
+	if b.IsSapphireChain() {
+		return b.EstimateGasSapphire(from, to, value, data)
+	}
 	reqArgs := map[string]interface{}{
 		"from":  from,
 		"to":    to,
@@ -572,7 +750,7 @@ func (b *Bridge) EstimateGas(from, to string, value *big.Int, data []byte) (uint
 		"data":  hexutil.Bytes(data),
 	}
 	var err error
-	for _, url := range b.AllGatewayURLs {
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		var result hexutil.Uint64
 		err = client.RPCPostWithTimeout(b.RPCClientTimeout, &result, url, "eth_estimateGas", reqArgs)
 		if err == nil {
@@ -581,6 +759,13 @@ func (b *Bridge) EstimateGas(from, to string, value *big.Int, data []byte) (uint
 	}
 	log.Warn("[rpc] estimate gas failed", "from", from, "to", to, "value", value, "data", hexutil.Bytes(data), "err", err)
 	return 0, wrapRPCQueryError(err, "eth_estimateGas")
+}
+
+func (b *Bridge) EstimateGasSapphire(from, to string, value *big.Int, data []byte) (uint64, error) {
+	// they didnt implement this function:
+	// https://github.com/oasisprotocol/sapphire-paratime/blob/main/clients/go/compat.go#L232
+	//return sapphire.DefaultGasLimit, nil
+	return b.getDefaultGasLimit(), nil
 }
 
 // GetContractLogs get contract logs
@@ -602,7 +787,7 @@ func (b *Bridge) GetLogs(filterQuery *types.FilterQuery) (result []*types.RPCLog
 	if err != nil {
 		return nil, err
 	}
-	for _, apiAddress := range b.AllGatewayURLs {
+	for _, apiAddress := range b.GatewayConfig.AllGatewayURLs {
 		url := apiAddress
 		start := time.Now()
 		err = client.RPCPost(&result, url, "eth_getLogs", args)

@@ -1,15 +1,15 @@
 package cosmos
 
 import (
-	"github.com/cosmos/cosmos-sdk/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-func ParseCoinsNormalized(coinStr string) (types.Coins, error) {
-	return types.ParseCoinsNormalized(coinStr)
+func ParseCoinsNormalized(coinStr string) (sdk.Coins, error) {
+	return sdk.ParseCoinsNormalized(coinStr)
 }
 
-func ParseCoinsFee(amount string) (types.Coins, error) {
-	if parsedFees, err := types.ParseCoinsNormalized(amount); err != nil {
+func ParseCoinsFee(amount string) (sdk.Coins, error) {
+	if parsedFees, err := sdk.ParseCoinsNormalized(amount); err != nil {
 		return nil, err
 	} else {
 		return parsedFees, nil

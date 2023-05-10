@@ -20,7 +20,8 @@ var (
 	// Program log: SwapoutBurn 0xdce8e16a5b685b7713436b4adf4ffd66bd0387d8 6qieHYFuMqTF7jbxXk2Wu3kZZD8rKMDTPEhe9ki4G4bK 1000000000 666
 	// Program log: SwapoutTransfer 0xdce8e16a5b685b7713436b4adf4ffd66bd0387d8 6qieHYFuMqTF7jbxXk2Wu3kZZD8rKMDTPEhe9ki4G4bK 1000000000 666
 	// Program log: SwapoutNative 0xdce8e16a5b685b7713436b4adf4ffd66bd0387d8 native 1000000000 666
-	swapoutLogPattern         = regexp.MustCompile(`^Program log: (Swapout\w+) (\w+) (\w+) (\d+) (\d+)$`)
+	// Program log: SwapoutTransfer 02-06.near EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v 11097600 1001313161554
+	swapoutLogPattern         = regexp.MustCompile(`^Program log: (Swapout\w+) (\S+) (\w+) (\d+) (\d+)$`)
 	firstProgramInvokePattern = regexp.MustCompile(`^Program (\w+) invoke \[1]`)
 	swapoutInstructionPrefix  = "Program log: Instruction: Swapout"
 	swapoutLogPrefix          = "Program log: Swapout"
@@ -64,7 +65,7 @@ func (b *Bridge) VerifyTransaction(txHash string, args *tokens.VerifyArgs) (*tok
 		return swapInfo, err
 	}
 
-	err = b.verifySwapoutLogs(swapInfo, txm.LogMessages)
+	err = b.verifySwapoutLogs(txm, swapInfo)
 	if err != nil {
 		return swapInfo, err
 	}
@@ -86,8 +87,9 @@ func (b *Bridge) VerifyTransaction(txHash string, args *tokens.VerifyArgs) (*tok
 	return swapInfo, nil
 }
 
-func (b *Bridge) verifySwapoutLogs(swapInfo *tokens.SwapTxInfo, logMessages []string) error {
+func (b *Bridge) verifySwapoutLogs(tx *types.TransactionMeta, swapInfo *tokens.SwapTxInfo) error {
 	logIndex := swapInfo.LogIndex
+	logMessages := tx.LogMessages
 	// `6` here is determined by our concrete log pattern
 	if logIndex+6 > len(logMessages) {
 		return tokens.ErrLogIndexOutOfRange
@@ -170,12 +172,58 @@ func (b *Bridge) verifySwapoutLogs(swapInfo *tokens.SwapTxInfo, logMessages []st
 		return err
 	}
 	swapInfo.Value = new(big.Int).SetUint64(value)
+
+	err = verifyAssetBalanceEachAccount(tx, swapoutType, erc20SwapInfo.Token, swapInfo.Value)
+	if err != nil {
+		return err
+	}
+
 	swapInfo.FromChainID = b.ChainConfig.GetChainID()
 	toChainID, err := common.GetUint64FromStr(matches[5])
 	if err != nil {
 		return err
 	}
 	swapInfo.ToChainID = new(big.Int).SetUint64(toChainID)
+	return nil
+}
+
+func verifyAssetBalanceEachAccount(tx *types.TransactionMeta, swapoutType, token string, value *big.Int) error {
+	assets := map[uint8]*big.Int{}
+
+	for _, pb := range tx.PreTokenBalances {
+		if strings.EqualFold(pb.Mint.String(), token) {
+			assets[pb.AccountIndex] = new(big.Int).SetUint64(uint64(pb.UITokenAmount.Amount))
+		}
+	}
+
+	for _, pb := range tx.PostTokenBalances {
+		if strings.EqualFold(pb.Mint.String(), token) {
+			newValue := new(big.Int).SetUint64(uint64(pb.UITokenAmount.Amount))
+			if newValue.Cmp(assets[pb.AccountIndex]) >= 0 {
+				assets[pb.AccountIndex] = new(big.Int).Sub(newValue, assets[pb.AccountIndex])
+			} else {
+				assets[pb.AccountIndex] = new(big.Int).Sub(assets[pb.AccountIndex], newValue)
+			}
+
+			if value.Cmp(assets[pb.AccountIndex]) != 0 {
+				return fmt.Errorf("asset Value not match!! AccountIndex %d value: %s expected %s", pb.AccountIndex, assets[pb.AccountIndex].String(), value.String())
+			}
+		}
+	}
+
+	switch swapoutType {
+	case "SwapoutBurn":
+		if len(assets) != 1 {
+			return fmt.Errorf("account number not match!! ")
+		}
+	case "SwapoutTransfer":
+		if len(assets) != 2 {
+			return fmt.Errorf("account number not match!! ")
+		}
+	default:
+		return tokens.ErrUnknownSwapoutType
+	}
+
 	return nil
 }
 

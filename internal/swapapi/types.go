@@ -50,6 +50,8 @@ type SwapInfo struct {
 	Memo          string             `json:"memo,omitempty"`
 	ReplaceCount  int                `json:"replaceCount,omitempty"`
 	Confirmations uint64             `json:"confirmations"`
+	ProofID       string             `json:"proofID,omitempty"`
+	Proof         string             `json:"proof,omitempty"`
 }
 
 // ChainConfig rpc type
@@ -57,6 +59,7 @@ type ChainConfig struct {
 	ChainID        string
 	BlockChain     string
 	RouterContract string
+	RouterVersion  string `json:",omitempty"`
 	Confirmations  uint64
 	InitialHeight  uint64
 }
@@ -68,6 +71,7 @@ type TokenConfig struct {
 	ContractAddress string
 	ContractVersion uint64
 	RouterContract  string
+	RouterVersion   string `json:",omitempty"`
 	Underlying      string
 }
 

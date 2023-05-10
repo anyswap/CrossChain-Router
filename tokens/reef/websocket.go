@@ -393,6 +393,15 @@ func (r *WebSocket) QueryEventLogs(extrinsicId uint64) (*[]EventLog, error) {
 }
 
 func (r *WebSocket) QueryEvmAddress(ss58address string) (*common.Address, error) {
+	account, err := r.QueryAccountByReefAddr(ss58address)
+	if err != nil || account == nil {
+		return nil, err
+	}
+	evmAddr := common.HexToAddress(account.EvmAddress)
+	return &evmAddr, nil
+}
+
+func (r *WebSocket) QueryAccountByReefAddr(ss58address string) (*Account, error) {
 	cmd := &ReefGraphQLRequest{
 		Command: newCommand("address"),
 		Type:    "start",
@@ -415,11 +424,10 @@ func (r *WebSocket) QueryEvmAddress(ss58address string) (*common.Address, error)
 	log.Infof("reef QueryEventLogs cost:%s", time.Since(start).String())
 	if f, ok := cmd.Result.(*ReefGraphQLResponse).Payload.Data.(*ReefGraphQLAccountData); ok {
 		if len(f.Accounts) > 0 {
-			evmAddr := common.HexToAddress(f.Accounts[0].EvmAddress)
-			return &evmAddr, nil
+			return &f.Accounts[0], nil
 		}
 	}
-	return nil, nil
+	return nil, fmt.Errorf("reef query can't parse ReefGraphQLAccountData")
 }
 
 func (r *WebSocket) QueryReefAddress(evmAddress string) (*string, error) {

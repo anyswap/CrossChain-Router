@@ -149,11 +149,11 @@ func checkAndRecycleSwapNonce(res *mongodb.MgoSwapResult) {
 	if !ok {
 		return
 	}
-	if res.SwapNonce == 0 || res.MPC == "" {
+	if res.SwapNonce == 0 || res.Signer == "" {
 		return
 	}
 	logWorker("recycle swap nonce", "swap", res)
-	nonceSetter.RecycleSwapNonce(res.MPC, res.SwapNonce)
+	nonceSetter.RecycleSwapNonce(res.Signer, res.SwapNonce)
 }
 
 func startReplaceConsumer(chainID string) {
@@ -220,7 +220,7 @@ func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int, isManual b
 	if err != nil {
 		return err
 	}
-	if !common.IsEqualIgnoreCase(res.MPC, routerMPC) {
+	if !common.IsEqualIgnoreCase(res.Signer, routerMPC) {
 		return tokens.ErrSenderMismatch
 	}
 
@@ -248,15 +248,12 @@ func ReplaceRouterSwap(res *mongodb.MgoSwapResult, gasPrice *big.Int, isManual b
 			FromChainID: biFromChainID,
 			ToChainID:   biToChainID,
 		},
-		From:        res.MPC,
+		From:        res.Signer,
 		OriginFrom:  swap.From,
 		OriginTxTo:  swap.TxTo,
 		OriginValue: biValue,
 		Extra: &tokens.AllExtras{
-			EthExtra: &tokens.EthExtraArgs{
-				GasPrice: gasPrice,
-				Nonce:    &nonce,
-			},
+			GasPrice:   gasPrice,
 			Sequence:   &nonce,
 			ReplaceNum: replaceNum,
 		},
@@ -351,7 +348,7 @@ func checkIfSwapNonceHasPassed(bridge tokens.IBridge, res *mongodb.MgoSwapResult
 	if !ok {
 		return nil
 	}
-	nonce, err := nonceSetter.GetPoolNonce(res.MPC, "latest")
+	nonce, err := nonceSetter.GetPoolNonce(res.Signer, "latest")
 	if err != nil {
 		return fmt.Errorf("get router mpc nonce failed, %w", err)
 	}

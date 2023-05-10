@@ -106,7 +106,7 @@ func main() {
 		fmt.Println("get tx status ...")
 		time.Sleep(5 * time.Second)
 	}
-	fmt.Printf("tx comfired success at slot: %v BlockTime: %v status: %v\n", uint64(txm.Slot), txm.BlockTime, txm.Meta.IsStatusOk())
+	fmt.Printf("tx comfired success at slot: %v BlockTime: %v status: %v\n", uint64(txm.Slot), txm.BlockTime, txm.IsStatusOk())
 	fmt.Printf("token programId: %v\n", mintPublicKey.String())
 
 	ownerPDAPubkey, bump, err := types.PublicKeyFindProgramAddress([][]byte{mintAuthPublicKey.ToSlice(), token.TokenProgramID.ToSlice(), mintPublicKey.ToSlice()}, types.ATAProgramID)

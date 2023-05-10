@@ -53,7 +53,8 @@ func NewCrossChainBridge() *Bridge {
 
 // InitAfterConfig init variables (ie. extra members) after loading config
 func (b *Bridge) InitAfterConfig() {
-	for _, url := range b.AllGatewayURLs {
+	b.CrossChainBridgeBase.InitAfterConfig()
+	for _, url := range b.GatewayConfig.AllGatewayURLs {
 		api, err := gsrpc.NewSubstrateAPI(url)
 		if err != nil {
 			panic(err)
@@ -75,7 +76,7 @@ func (b *Bridge) InitAfterConfig() {
 	if jspath == "" {
 		panic(fmt.Errorf("%s not config jspath", b.ChainConfig.ChainID))
 	}
-	InstallJSModules(jspath, b.AllGatewayURLs[0])
+	InstallJSModules(jspath, b.GatewayConfig.AllGatewayURLs[0])
 }
 
 func (b *Bridge) InitWS() {
@@ -109,7 +110,7 @@ func (b *Bridge) InitWS() {
 // SupportsChainID supports chainID
 func SupportsChainID(chainID *big.Int) bool {
 	supportedChainIDsInit.Do(func() {
-		supportedChainIDs[GetStubChainID(mainnetNetWork).String()] = true
+		supportedChainIDs["13939"] = true
 		supportedChainIDs[GetStubChainID(testnetNetWork).String()] = true
 		supportedChainIDs[GetStubChainID(devnetNetWork).String()] = true
 	})

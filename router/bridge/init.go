@@ -101,7 +101,7 @@ func InitRouterBridges(isServer bool) {
 			bridge := NewCrossChainBridge(chainID)
 
 			InitGatewayConfig(bridge, chainID)
-			if bridge.GetGatewayConfig() == nil || len(bridge.GetGatewayConfig().APIAddress) == 0 {
+			if bridge.GetGatewayConfig().IsEmpty() {
 				logErrFunc("bridge has no gateway config", "chainID", chainID)
 				return
 			}
@@ -356,11 +356,13 @@ func SetGatewayConfig(b tokens.IBridge, chainID string) {
 	apiAddrsExt := cfg.GatewaysExt[chainID]
 	evmapiext := cfg.EVMGatewaysExt[chainID]
 	finalizeAPIs := cfg.FinalizeGateways[chainID]
+	grpcAPIs := cfg.GRPCGateways[chainID]
 	b.SetGatewayConfig(&tokens.GatewayConfig{
 		APIAddress:         apiAddrs,
 		APIAddressExt:      apiAddrsExt,
 		EVMAPIAddress:      evmapiext,
 		FinalizeAPIAddress: finalizeAPIs,
+		GRPCAPIAddress:     grpcAPIs,
 	})
 }
 
@@ -386,7 +388,7 @@ func InitChainConfig(b tokens.IBridge, chainID *big.Int) {
 		return
 	}
 	b.SetChainConfig(chainCfg)
-	log.Info("init chain config success", "blockChain", chainCfg.BlockChain, "chainID", chainID, "isReload", isReload)
+	log.Info("init chain config success", "blockChain", chainCfg.BlockChain, "chainID", chainID, "isReload", isReload, "chainCfg", chainCfg)
 
 	routerContract := chainCfg.RouterContract
 	if routerContract != "" && !isRouterInfoLoaded(chainID.String(), routerContract) {
@@ -444,7 +446,7 @@ func InitTokenConfig(b tokens.IBridge, tokenID string, chainID *big.Int) {
 
 	router.SetMultichainToken(tokenID, chainID.String(), tokenAddr)
 
-	log.Info(fmt.Sprintf("[%5v] init '%v' token config success", chainID, tokenID), "tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "isReload", isReload, "underlying", tokenCfg.GetUnderlying())
+	log.Info(fmt.Sprintf("[%5v] init '%v' token config success", chainID, tokenID), "tokenAddr", tokenAddr, "decimals", tokenCfg.Decimals, "isReload", isReload, "tokenCfg", tokenCfg)
 
 	routerContract := tokenCfg.RouterContract
 	if routerContract != "" && !isRouterInfoLoaded(chainID.String(), routerContract) {
@@ -493,6 +495,16 @@ func initSwapNonces() {
 			if err == nil {
 				nonceSetter.InitSwapNonce(nonceSetter, routerMPC, nextSwapNonce)
 				break
+			}
+		}
+
+		if params.UseProofSign() {
+			submitters := params.GetProofSubmitters()
+			for _, submitter := range submitters {
+				nextSwapNonce, err := mongodb.FindNextSwapNonce(chainID, submitter.Address)
+				if err == nil {
+					nonceSetter.InitSwapNonce(nonceSetter, submitter.Address, nextSwapNonce)
+				}
 			}
 		}
 

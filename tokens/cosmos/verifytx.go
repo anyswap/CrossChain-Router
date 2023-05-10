@@ -10,7 +10,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/router"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
-	"github.com/cosmos/cosmos-sdk/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
 const (
@@ -176,7 +176,7 @@ func ParseMemo(swapInfo *tokens.SwapTxInfo, memo string) error {
 	return tokens.ErrTxWithWrongMemo
 }
 
-func (b *Bridge) ParseAmountTotal(messageLog types.ABCIMessageLog, swapInfo *tokens.SwapTxInfo) error {
+func (b *Bridge) ParseAmountTotal(messageLog sdk.ABCIMessageLog, swapInfo *tokens.SwapTxInfo) error {
 	value := big.NewInt(0)
 	unit := ""
 	for index, event := range messageLog.Events {
@@ -201,7 +201,7 @@ func (b *Bridge) ParseAmountTotal(messageLog types.ABCIMessageLog, swapInfo *tok
 	return tokens.ErrDepositNotFound
 }
 
-func (b *Bridge) ParseCoinAmount(value *big.Int, swapInfo *tokens.SwapTxInfo, sender, recipient, amount types.Attribute, unit *string) {
+func (b *Bridge) ParseCoinAmount(value *big.Int, swapInfo *tokens.SwapTxInfo, sender, recipient, amount sdk.Attribute, unit *string) {
 	if !(sender.Key == "sender" &&
 		recipient.Key == "recipient" &&
 		amount.Key == "amount") {

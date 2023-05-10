@@ -103,7 +103,7 @@ func (b *Bridge) verifySwapoutTx(txHash string, logIndex int, allowUnstable bool
 	return swapInfo, nil
 }
 
-func (b *Bridge) checkTxStatus(txres *TransactionResult, allowUnstable bool) error {
+func (b *Bridge) checkTxStatus(swapInfo *tokens.SwapTxInfo, txres *TransactionResult, allowUnstable bool) error {
 	if txres.Status.Failure != nil || txres.Status.SuccessValue == nil {
 		log.Warn("Near tx status is not success", "result", txres.Status.Failure)
 		return tokens.ErrTxWithWrongStatus
@@ -119,6 +119,7 @@ func (b *Bridge) checkTxStatus(txres *TransactionResult, allowUnstable bool) err
 		if errh2 != nil {
 			return errh2
 		}
+		swapInfo.Height = txHeight
 
 		if lastHeight < txHeight+b.GetChainConfig().Confirmations {
 			return tokens.ErrTxNotStable
@@ -222,7 +223,7 @@ func (b *Bridge) getSwapTxReceipt(swapInfo *tokens.SwapTxInfo, allowUnstable boo
 		return nil, tokens.ErrTxResultType
 	}
 
-	statusErr := b.checkTxStatus(txres, allowUnstable)
+	statusErr := b.checkTxStatus(swapInfo, txres, allowUnstable)
 	if statusErr != nil {
 		return nil, statusErr
 	}

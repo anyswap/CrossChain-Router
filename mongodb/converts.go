@@ -54,14 +54,16 @@ func ConvertToSwapInfo(info *tokens.SwapInfo) SwapInfo {
 	case info.AnyCallSwapInfo != nil:
 		anycallSwapInfo := info.AnyCallSwapInfo
 		swapinfo.AnyCallSwapInfo = &AnyCallSwapInfo{
-			CallFrom: anycallSwapInfo.CallFrom,
-			CallTo:   anycallSwapInfo.CallTo,
-			CallData: common.ToHex(anycallSwapInfo.CallData),
-			Fallback: anycallSwapInfo.Fallback,
-			Flags:    anycallSwapInfo.Flags,
-			AppID:    anycallSwapInfo.AppID,
-			Nonce:    anycallSwapInfo.Nonce,
-			ExtData:  common.ToHex(anycallSwapInfo.ExtData),
+			CallFrom:    anycallSwapInfo.CallFrom,
+			CallTo:      anycallSwapInfo.CallTo,
+			CallData:    common.ToHex(anycallSwapInfo.CallData),
+			Fallback:    anycallSwapInfo.Fallback,
+			Flags:       anycallSwapInfo.Flags,
+			AppID:       anycallSwapInfo.AppID,
+			Nonce:       anycallSwapInfo.Nonce,
+			ExtData:     common.ToHex(anycallSwapInfo.ExtData),
+			Message:     common.ToHex(anycallSwapInfo.Message),
+			Attestation: common.ToHex(anycallSwapInfo.Attestation),
 		}
 	}
 	return swapinfo
@@ -110,14 +112,16 @@ func ConvertFromSwapInfo(swapinfo *SwapInfo) (tokens.SwapInfo, error) {
 	case swapinfo.AnyCallSwapInfo != nil:
 		anyCallSwapInfo := swapinfo.AnyCallSwapInfo
 		info.AnyCallSwapInfo = &tokens.AnyCallSwapInfo{
-			CallFrom: anyCallSwapInfo.CallFrom,
-			CallTo:   anyCallSwapInfo.CallTo,
-			CallData: common.FromHex(anyCallSwapInfo.CallData),
-			Fallback: anyCallSwapInfo.Fallback,
-			Flags:    anyCallSwapInfo.Flags,
-			AppID:    anyCallSwapInfo.AppID,
-			Nonce:    anyCallSwapInfo.Nonce,
-			ExtData:  common.FromHex(anyCallSwapInfo.ExtData),
+			CallFrom:    anyCallSwapInfo.CallFrom,
+			CallTo:      anyCallSwapInfo.CallTo,
+			CallData:    common.FromHex(anyCallSwapInfo.CallData),
+			Fallback:    anyCallSwapInfo.Fallback,
+			Flags:       anyCallSwapInfo.Flags,
+			AppID:       anyCallSwapInfo.AppID,
+			Nonce:       anyCallSwapInfo.Nonce,
+			ExtData:     common.FromHex(anyCallSwapInfo.ExtData),
+			Message:     common.FromHex(anyCallSwapInfo.Message),
+			Attestation: common.FromHex(anyCallSwapInfo.Attestation),
 		}
 	}
 	return info, nil

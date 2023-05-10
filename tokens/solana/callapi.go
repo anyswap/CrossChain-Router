@@ -23,7 +23,7 @@ func (b *Bridge) GetLatestBlockNumberOf(url string) (uint64, error) {
 // GetLatestBlockNumber call getSlot
 func (b *Bridge) GetLatestBlockNumber() (uint64, error) {
 	gateway := b.GatewayConfig
-	return getMaxLatestBlockNumber(gateway.APIAddress)
+	return getMaxLatestBlockNumber(gateway.AllGatewayURLs)
 }
 
 func getMaxLatestBlockNumber(urls []string) (maxHeight uint64, err error) {
@@ -50,20 +50,20 @@ func getMaxLatestBlockNumber(urls []string) (maxHeight uint64, err error) {
 // Please use getRecentBlockhash for solana-core v1.8
 func (b *Bridge) GetLatestBlockhash() (result *types.GetLatestBlockhashResult, err error) {
 	obj := map[string]string{
-		"commitment": "confirmed",
+		"commitment": "finalized",
 	}
 	callMethod := "getLatestBlockhash"
-	err = RPCCall(&result, b.GatewayConfig.APIAddress, callMethod, obj)
+	err = RPCCall(&result, b.GatewayConfig.AllGatewayURLs, callMethod, obj)
 	return result, err
 }
 
 // GetRecentBlockhash get recent block hash
 func (b *Bridge) GetRecentBlockhash() (result *types.GetRecentBlockhashResult, err error) {
 	obj := map[string]string{
-		"commitment": "confirmed",
+		"commitment": "finalized",
 	}
 	callMethod := "getRecentBlockhash"
-	err = RPCCall(&result, b.GatewayConfig.APIAddress, callMethod, obj)
+	err = RPCCall(&result, b.GatewayConfig.AllGatewayURLs, callMethod, obj)
 	return result, err
 }
 
@@ -72,20 +72,20 @@ func (b *Bridge) GetRecentBlockhash() (result *types.GetRecentBlockhashResult, e
 // Please use getFees for solana-core v1.8
 func (b *Bridge) GetFeeForMessage(blockhash, message string) (result uint64, err error) {
 	obj := map[string]string{
-		"commitment": "confirmed",
+		"commitment": "finalized",
 	}
 	callMethod := "getFeeForMessage"
-	err = RPCCall(&result, b.GatewayConfig.APIAddress, callMethod, blockhash, message, obj)
+	err = RPCCall(&result, b.GatewayConfig.AllGatewayURLs, callMethod, blockhash, message, obj)
 	return result, err
 }
 
 // GetFees get fees
 func (b *Bridge) GetFees() (result *types.GetFeesResult, err error) {
 	obj := map[string]string{
-		"commitment": "confirmed",
+		"commitment": "finalized",
 	}
 	callMethod := "getFees"
-	err = RPCCall(&result, b.GatewayConfig.APIAddress, callMethod, obj)
+	err = RPCCall(&result, b.GatewayConfig.AllGatewayURLs, callMethod, obj)
 	return result, err
 }
 
@@ -101,7 +101,7 @@ func (b *Bridge) GetBlock(slot uint64, fullTx bool) (result *types.GetBlockResul
 		"transactionDetails": transactionDetails,
 	}
 	callMethod := "getBlock"
-	err = RPCCall(&result, b.GatewayConfig.APIAddress, callMethod, slot, obj)
+	err = RPCCall(&result, b.GatewayConfig.AllGatewayURLs, callMethod, slot, obj)
 	return result, err
 }
 
@@ -115,7 +115,7 @@ func (b *Bridge) GetAccountInfo(account, encoding string) (result *types.GetAcco
 		"commitment": "finalized",
 	}
 	callMethod := "getAccountInfo"
-	err = RPCCall(&result, b.GatewayConfig.APIAddress, callMethod, account, obj)
+	err = RPCCall(&result, b.GatewayConfig.AllGatewayURLs, callMethod, account, obj)
 	if err == nil && result != nil && result.Value == nil {
 		return nil, tokens.ErrNotFound
 	}
@@ -128,7 +128,7 @@ func (b *Bridge) GetNonceAccountInfo(account string) (result *types.GetNonceAcco
 		"commitment": "finalized",
 	}
 	callMethod := "getAccountInfo"
-	err = RPCCall(&result, b.GatewayConfig.APIAddress, callMethod, account, obj)
+	err = RPCCall(&result, b.GatewayConfig.AllGatewayURLs, callMethod, account, obj)
 	if err == nil && result != nil && result.Value == nil {
 		return nil, tokens.ErrNotFound
 	}
@@ -142,7 +142,7 @@ func (b *Bridge) GetBalance(publicKey string) (*big.Int, error) {
 	}
 	result := types.GetBalanceResult{}
 	callMethod := "getBalance"
-	err := RPCCall(&result, b.GatewayConfig.APIAddress, callMethod, publicKey, obj)
+	err := RPCCall(&result, b.GatewayConfig.AllGatewayURLs, callMethod, publicKey, obj)
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +163,7 @@ func (b *Bridge) GetProgramAccounts(account, encoding string, filters []map[stri
 		obj["filters"] = filters
 	}
 	callMethod := "getProgramAccounts"
-	err = RPCCall(&result, b.GatewayConfig.APIAddress, callMethod, account, obj)
+	err = RPCCall(&result, b.GatewayConfig.AllGatewayURLs, callMethod, account, obj)
 	return result, err
 }
 
@@ -174,7 +174,7 @@ func (b *Bridge) IsBlockhashValid(blockhash string) (bool, error) {
 	obj := map[string]interface{}{
 		"commitment": "confirmed",
 	}
-	err := RPCCall(result, b.GatewayConfig.APIAddress, callMethod, blockhash, obj)
+	err := RPCCall(result, b.GatewayConfig.AllGatewayURLs, callMethod, blockhash, obj)
 	if err != nil {
 		return true, err
 	}
@@ -188,7 +188,7 @@ func (b *Bridge) GetBlockHeight() (uint64, error) {
 	obj := map[string]interface{}{
 		"commitment": "confirmed",
 	}
-	err := RPCCall(result, b.GatewayConfig.APIAddress, callMethod, obj)
+	err := RPCCall(result, b.GatewayConfig.AllGatewayURLs, callMethod, obj)
 	if err != nil {
 		return 0, err
 	}
@@ -202,7 +202,7 @@ func (b *Bridge) AirDrop(publicKey string, amount uint64) (string, error) {
 	obj := map[string]interface{}{
 		"commitment": "confirmed",
 	}
-	err := RPCCall(result, b.GatewayConfig.APIAddress, callMethod, publicKey, amount, obj)
+	err := RPCCall(result, b.GatewayConfig.AllGatewayURLs, callMethod, publicKey, amount, obj)
 	if err != nil {
 		return "", err
 	}
@@ -216,7 +216,7 @@ func (b *Bridge) GetMinimumBalanceForRentExemption(datalength uint64) (uint64, e
 	obj := map[string]interface{}{
 		"commitment": "confirmed",
 	}
-	err := RPCCall(result, b.GatewayConfig.APIAddress, callMethod, datalength, obj)
+	err := RPCCall(result, b.GatewayConfig.AllGatewayURLs, callMethod, datalength, obj)
 	if err != nil {
 		return 0, err
 	}
@@ -229,7 +229,7 @@ func (b *Bridge) GetEpochInfo() (*types.GetEpochInfoResult, error) {
 	}
 	result := &types.GetEpochInfoResult{}
 	callMethod := "getEpochInfo"
-	err := RPCCall(result, b.GatewayConfig.APIAddress, callMethod, obj)
+	err := RPCCall(result, b.GatewayConfig.AllGatewayURLs, callMethod, obj)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +242,7 @@ func (b *Bridge) GetBlocks(start, end uint64) (*[]uint64, error) {
 	}
 	result := &[]uint64{}
 	callMethod := "getBlocks"
-	err := RPCCall(result, b.GatewayConfig.APIAddress, callMethod, start, end, obj)
+	err := RPCCall(result, b.GatewayConfig.AllGatewayURLs, callMethod, start, end, obj)
 	if err != nil {
 		return nil, err
 	}

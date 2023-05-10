@@ -231,7 +231,6 @@ func (b *Bridge) setExtraArgs(args *tokens.BuildTxArgs) error {
 		args.Extra = &tokens.AllExtras{}
 	}
 	extra := args.Extra
-	extra.EthExtra = nil // clear this which may be set in replace job
 	if extra.Sequence == nil && extra.BlockHash == nil {
 		recentBlockHash, blockHeight, err := b.getRecentBlockhash()
 		if err != nil {
@@ -240,6 +239,7 @@ func (b *Bridge) setExtraArgs(args *tokens.BuildTxArgs) error {
 		extra.Sequence = &blockHeight
 		var blockhash string = recentBlockHash.String()
 		extra.BlockHash = &blockhash
+		b.ReSwapableBridgeBase.SetTxTimeout(args, &blockHeight)
 	}
 	log.Info("BuildSwapin", "BlockHash", extra.BlockHash, "blockHeight", extra.Sequence)
 	return nil

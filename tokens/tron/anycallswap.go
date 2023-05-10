@@ -3,6 +3,7 @@ package tron
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"math/big"
 	"strings"
 
@@ -155,7 +156,7 @@ func (b *Bridge) verifyAnyCallSwapTxLog(swapInfo *tokens.SwapTxInfo, rlog *types
 
 	err = b.parseAnyCallSwapTxLog(swapInfo, rlog)
 	if err != nil {
-		log.Info(b.ChainConfig.BlockChain+" b.verifyAnyCallSwapTxLog fail", "tx", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "err", err)
+		log.Debug(b.ChainConfig.BlockChain+" b.verifyAnyCallSwapTxLog fail", "tx", swapInfo.Hash, "logIndex", swapInfo.LogIndex, "err", err)
 		return err
 	}
 
@@ -240,7 +241,19 @@ func (b *Bridge) checkAnyCallSwapInfo(swapInfo *tokens.SwapTxInfo) error {
 			minReserveBudget = defMinReserveBudget
 		}
 		callFrom := getCallFrom(swapInfo)
-		if err := tokens.CheckNativeBalance(dstBridge, callFrom, minReserveBudget); err != nil {
+		routerContract := b.GetRouterContract("")
+		var budgetBalance *big.Int
+		var err error
+		for i := 0; i < 3; i++ {
+			budgetBalance, err = b.GetExecutionBudget(routerContract, callFrom)
+			if err == nil {
+				break
+			}
+		}
+		if err != nil {
+			return fmt.Errorf("get budget error: %w", err)
+		}
+		if budgetBalance.Cmp(minReserveBudget) < 0 {
 			return tokens.ErrNoEnoughReserveBudget
 		}
 	}
