@@ -206,7 +206,6 @@ func (c *RouterOracleConfig) CheckConfig() (err error) {
 }
 
 // CheckConfig of router server
-//
 //nolint:funlen,gocyclo // ok
 func (s *RouterServerConfig) CheckConfig() error {
 	if s == nil {
@@ -276,6 +275,10 @@ func (s *RouterServerConfig) CheckConfig() error {
 	if err != nil {
 		return err
 	}
+	err = s.CheckExtra()
+	if err != nil {
+		return err
+	}
 	log.Info("check server config success",
 		"defaultGasLimit", s.DefaultGasLimit,
 		"maxGasLimit", s.MaxGasLimit,
@@ -334,7 +337,7 @@ func (s *RouterServerConfig) CheckDynamicFeeTxConfig() error {
 }
 
 // CheckExtra check extra server config
-func (s *ExtraConfig) checkAndInitGasPriceExtraConfig() error {
+func (s *RouterServerConfig) CheckExtra() error {
 	if s.MaxPlusGasPricePercentage == 0 {
 		s.MaxPlusGasPricePercentage = 100 // default value
 	}
@@ -398,7 +401,6 @@ func (c *OnchainConfig) CheckConfig() error {
 }
 
 // CheckConfig check mpc config
-//
 //nolint:funlen,gocyclo // ok
 func (c *MPCConfig) CheckConfig(isServer bool) (err error) {
 	if c.SignWithPrivateKey {
@@ -469,11 +471,6 @@ func (c *ExtraConfig) CheckConfig() (err error) {
 	initDontCheckTotalSupplyTokenIDs()
 	initCheckTokenBalanceEnabledChains()
 	initIgnoreAnycallFallbackAppIDs()
-
-	err = c.checkAndInitGasPriceExtraConfig()
-	if err != nil {
-		return err
-	}
 
 	for cid, cfg := range c.LocalChainConfig {
 		if err = cfg.CheckConfig(); err != nil {
