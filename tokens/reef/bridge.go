@@ -35,7 +35,7 @@ const (
 // Reef Bridge extends eth bridge
 type Bridge struct {
 	eth.Bridge
-	WS            []*WebSocket
+	WS            []ReefGraphQLImpl
 	SubstrateAPIs []*gsrpc.SubstrateAPI
 	MetaData      *types.Metadata
 }
@@ -44,7 +44,7 @@ type Bridge struct {
 func NewCrossChainBridge() *Bridge {
 	b := &Bridge{
 		Bridge:        *eth.NewCrossChainBridge(),
-		WS:            []*WebSocket{},
+		WS:            []ReefGraphQLImpl{},
 		SubstrateAPIs: []*gsrpc.SubstrateAPI{},
 	}
 	b.Bridge.EvmContractBridge = b
@@ -70,7 +70,7 @@ func (b *Bridge) InitAfterConfig() {
 	}
 
 	if len(b.WS) == 0 {
-		b.InitWS()
+		b.InitGraphQL()
 	}
 	jspath := params.GetCustom(b.ChainConfig.ChainID, "jspath")
 	if jspath == "" {
@@ -79,31 +79,41 @@ func (b *Bridge) InitAfterConfig() {
 	InstallJSModules(jspath, b.GatewayConfig.AllGatewayURLs[0])
 }
 
-func (b *Bridge) InitWS() {
+func (b *Bridge) InitGraphQL() {
 	wsnodes := strings.Split(params.GetCustom(b.ChainConfig.ChainID, "ws"), ",")
 	if len(wsnodes) <= 0 {
-		panic(fmt.Errorf("%s not config ws endpoint", b.ChainConfig.ChainID))
+		log.Warn("reef graphQL not config endpoint")
+		return
 	}
 	for _, wsnode := range wsnodes {
-		ws, err := NewWebSocket(wsnode)
-		if err != nil {
-			log.Warn("reef websocket connect error", "chainid", b.ChainConfig.ChainID, "endpoint", wsnode)
-			continue
-		}
-		go ws.Run()
-		for i := 0; i < 30; i++ {
-			time.Sleep(1 * time.Second)
-			if !ws.IsClose {
-				break
+		if strings.HasPrefix(wsnode, "wss") {
+			ws, err := NewWebSocket(wsnode)
+			if err != nil {
+				log.Warn("reef websocket connect error", "chainid", b.ChainConfig.ChainID, "endpoint", wsnode)
+				continue
 			}
-		}
-		if ws.IsClose {
-			log.Warn("reef websocket connect error", "chainid", b.ChainConfig.ChainID, "endpoint", wsnode)
-			continue
+			go ws.Run()
+			for i := 0; i < 30; i++ {
+				time.Sleep(1 * time.Second)
+				if !ws.IsClose {
+					break
+				}
+			}
+			if ws.IsClose {
+				log.Warn("reef websocket connect error", "chainid", b.ChainConfig.ChainID, "endpoint", wsnode)
+				continue
+			} else {
+				log.Info("session connect success", "chainid", b.ChainConfig.ChainID, "endpoint", wsnode)
+			}
+			b.WS = append(b.WS, ReefGraphQLImpl{
+				WS:  ws,
+				Uri: wsnode,
+			})
 		} else {
-			log.Info("session connect success", "chainid", b.ChainConfig.ChainID, "endpoint", wsnode)
+			b.WS = append(b.WS, ReefGraphQLImpl{
+				Uri: wsnode,
+			})
 		}
-		b.WS = append(b.WS, ws)
 	}
 }
 

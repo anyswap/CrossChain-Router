@@ -16,12 +16,9 @@ func (b *Bridge) GetTransactionReceipt(txHash string) (result *types.RPCTxReceip
 		return nil, errEmptyURLs
 	}
 	for _, ws := range b.WS {
-		if ws.IsClose {
-			continue
-		}
 		start := time.Now()
 		extrinsic, err := ws.QueryTx(txHash)
-		log.Info("call getTransactionReceipt finished", "txhash", txHash, "url", ws.endpoint, "timespent", time.Since(start).String(), "err", err != nil)
+		log.Info("call getTransactionReceipt finished", "txhash", txHash, "url", ws.Uri, "timespent", time.Since(start).String(), "err", err != nil)
 		if err != nil {
 			log.Warn("call getTransactionReceipt error", "err", err.Error())
 			continue
@@ -30,7 +27,7 @@ func (b *Bridge) GetTransactionReceipt(txHash string) (result *types.RPCTxReceip
 			log.Warn("call getTransactionReceipt tx not found", "txhash", txHash)
 			break
 		}
-		if extrinsic.BlockID == nil || extrinsic.ID == nil || extrinsic.Hash == nil {
+		if extrinsic.Block == nil || extrinsic.Hash == nil {
 			return nil, errTxReceiptMissBlockInfo
 		}
 		if !common.IsEqualIgnoreCase(*extrinsic.Hash, txHash) {
@@ -38,14 +35,14 @@ func (b *Bridge) GetTransactionReceipt(txHash string) (result *types.RPCTxReceip
 		}
 		if params.IsCheckTxBlockHashEnabled(b.ChainConfig.ChainID) {
 			start = time.Now()
-			errt := b.checkTxBlockHash(extrinsic.BlockID)
-			log.Info("call checkTxBlockHash finished", "txhash", txHash, "block", extrinsic.BlockID, "timespent", time.Since(start).String())
+			errt := b.checkTxBlockHash(extrinsic.Block.Height)
+			log.Info("call checkTxBlockHash finished", "txhash", txHash, "block", extrinsic.Block.Height, "timespent", time.Since(start).String())
 			if errt != nil {
 				return nil, errt
 			}
 		}
 
-		logs, err := ws.QueryEventLogs(*extrinsic.ID)
+		logs, err := ws.QueryEventLogs(*extrinsic.Hash)
 		if err != nil {
 			log.Warn("call QueryEventLogs error", "err", err.Error())
 			continue
@@ -55,7 +52,7 @@ func (b *Bridge) GetTransactionReceipt(txHash string) (result *types.RPCTxReceip
 			break
 		}
 
-		bh, err := b.GetGetBlockHash(*extrinsic.BlockID)
+		bh, err := b.GetGetBlockHash(*extrinsic.Block.Height)
 		if err != nil {
 			log.Warn("call GetGetBlockHash error", "err", err.Error())
 			break
