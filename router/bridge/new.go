@@ -16,6 +16,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens/reef"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/ripple"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/solana"
+	"github.com/anyswap/CrossChain-Router/v3/tokens/starknet"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/stellar"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/tron"
 )
@@ -63,6 +64,8 @@ func NewCrossChainBridge(chainID *big.Int) tokens.IBridge {
 	case flow.SupportsChainID(chainID):
 		plog(chainID, "flow")
 		return flow.NewCrossChainBridge()
+	case starknet.SupportsChainID(chainID):
+		return starknet.NewCrossChainBridge()
 	case chainID.Sign() <= 0:
 		log.Fatal("wrong chainID", "chainID", chainID)
 	default:
