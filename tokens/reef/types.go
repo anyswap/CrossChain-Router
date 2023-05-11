@@ -57,7 +57,7 @@ func (tx *ReefTransaction) buildScriptParam() []interface{} {
 func buildRPCTxReceipt(tx string, extrinsic *Extrinsic, blockhash string, logs *[]EventLog, from *common.Address) (*types.RPCTxReceipt, error) {
 	txHash := common.HexToHash(tx)
 	var txIndex hexutil.Uint = hexutil.Uint(0)
-	var blockNumber hexutil.Big = hexutil.Big(*new(big.Int).SetUint64(*extrinsic.BlockID))
+	var blockNumber hexutil.Big = hexutil.Big(*new(big.Int).SetUint64(*extrinsic.Block.Height))
 
 	blockHash := common.HexToHash(blockhash)
 	var status hexutil.Uint64
@@ -67,7 +67,7 @@ func buildRPCTxReceipt(tx string, extrinsic *Extrinsic, blockhash string, logs *
 		status = hexutil.Uint64(0)
 	}
 
-	to := common.HexToAddress(extrinsic.Args[0].String())
+	to := common.HexToAddress(extrinsic.Args[3].(string))
 
 	fee, err := common.GetBigIntFromStr(extrinsic.SignedData.Fee.PartialFee)
 	if err != nil {
@@ -78,20 +78,21 @@ func buildRPCTxReceipt(tx string, extrinsic *Extrinsic, blockhash string, logs *
 	gasfee := hexutil.Uint64(fee.Uint64())
 
 	rpclogs := []*types.RPCLog{}
-	for _, log := range *logs {
-		tlog := log.Data[0]
-		address := common.HexToAddress(tlog.Address)
+	for _, txlog := range *logs {
+		for _, tlog := range txlog.Data {
+			address := common.HexToAddress(tlog.Address)
 
-		topics := []common.Hash{}
-		for _, topic := range tlog.Topics {
-			topics = append(topics, common.HexToHash(topic))
+			topics := []common.Hash{}
+			for _, topic := range tlog.Topics {
+				topics = append(topics, common.HexToHash(topic))
+			}
+			rpclog := &types.RPCLog{
+				Address: &address,
+				Data:    tlog.Data,
+				Topics:  topics,
+			}
+			rpclogs = append(rpclogs, rpclog)
 		}
-		rpclog := &types.RPCLog{
-			Address: &address,
-			Data:    tlog.Data,
-			Topics:  topics,
-		}
-		rpclogs = append(rpclogs, rpclog)
 	}
 
 	result := &types.RPCTxReceipt{
@@ -110,8 +111,15 @@ func buildRPCTxReceipt(tx string, extrinsic *Extrinsic, blockhash string, logs *
 
 func buildRPCTransaction(extrinsic *Extrinsic) *types.RPCTransaction {
 	hash := common.HexToHash(*extrinsic.Hash)
-	payload := extrinsic.Args[1]
-	var number hexutil.Big = hexutil.Big(*new(big.Int).SetUint64(*extrinsic.BlockID))
+	payloadStr := extrinsic.Args[1].(string)
+	var number hexutil.Big = hexutil.Big(*new(big.Int).SetUint64(*extrinsic.Block.Height))
+
+	payload := &hexutil.Bytes{}
+	err := payload.UnmarshalText([]byte(payloadStr))
+
+	if err != nil {
+		return nil
+	}
 	tx := &types.RPCTransaction{
 		Hash:        &hash,
 		Payload:     payload,

@@ -28,7 +28,10 @@ const (
 	dialTimeout = 5 * time.Second
 )
 
-var counter uint64
+var (
+	_       ReefGraphQL = &WebSocket{}
+	counter uint64
+)
 
 type WebSocket struct {
 	// Incoming chan interface{} // read chan

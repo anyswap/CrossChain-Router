@@ -86,7 +86,7 @@ LOOP:
 
 func (b *Bridge) QueryEvmAddress(ss58address string) (addr *common.Address, err error) {
 	if len(b.WS) == 0 {
-		b.InitWS()
+		b.InitGraphQL()
 	}
 	for _, ws := range b.WS {
 		addr, err = ws.QueryEvmAddress(ss58address)
@@ -145,7 +145,7 @@ func (b *Bridge) GetTransactionByHash(txHash string) (tx *types.RPCTransaction, 
 
 func (b *Bridge) GetPoolNonce(reefAddress, _height string) (nonce uint64, err error) {
 	if len(b.WS) == 0 {
-		b.InitWS()
+		b.InitGraphQL()
 	}
 	for _, ws := range b.WS {
 		account, err := ws.QueryAccountByReefAddr(reefAddress)
