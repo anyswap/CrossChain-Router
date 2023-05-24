@@ -65,7 +65,8 @@ func NewCrossChainBridge(chainID *big.Int) tokens.IBridge {
 		plog(chainID, "flow")
 		return flow.NewCrossChainBridge()
 	case starknet.SupportsChainID(chainID):
-		return starknet.NewCrossChainBridge()
+		plog(chainID, "starknet")
+		return starknet.NewCrossChainBridge(chainID)
 	case chainID.Sign() <= 0:
 		log.Fatal("wrong chainID", "chainID", chainID)
 	default:

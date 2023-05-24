@@ -1,10 +1,8 @@
 package starknet
 
 import (
-	"github.com/dontpanicdao/caigo/types"
 	"math/big"
 	"regexp"
-	"strings"
 	"sync"
 	"time"
 
@@ -12,6 +10,7 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/base"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/starknet/rpcv02"
+	"github.com/dontpanicdao/caigo/types"
 )
 
 // ref: https://github.com/starkware-libs/starknet-specs/blob/master/api/starknet_api_openrpc.json#L1045
@@ -28,12 +27,6 @@ var (
 )
 
 const (
-	mpcAddrIdx = iota
-	defaultAddrIdx
-	privKeyIdx
-)
-
-const (
 	mainnetNetWork = "mainnet"
 	testnetNetWork = "testnet"
 	devnetNetWork  = "devnet"
@@ -44,9 +37,8 @@ type Bridge struct {
 	*base.NonceSetterBase
 	RPCClientTimeout int
 
-	defaultAccount *Account // account used for estimate gas fee
-	mpcAccount     *Account // account used for sign txn, does not contain private key
-
+	ChainID  *big.Int
+	account  *Account // account used for sign txn, does not contain private key
 	provider Provider
 }
 
@@ -76,7 +68,16 @@ func (b *Bridge) GetTransactionStatus(txHash string) (*tokens.TxStatus, error) {
 	return &status, nil
 }
 
-func (b *Bridge) GetLatestBlockNumber() (num uint64, err error) {
+func (b *Bridge) GetLatestBlockNumber() (uint64, error) {
+	if b.provider == nil {
+		for _, url := range b.GatewayConfig.AllGatewayURLs {
+			provider, err := NewProvider(url, b.ChainID)
+			if err == nil {
+				b.provider = provider
+				break
+			}
+		}
+	}
 	return b.provider.BlockNumber()
 }
 
@@ -105,44 +106,12 @@ func (b *Bridge) WaitForTransaction(transactionHash types.Hash, pollInterval tim
 	return b.provider.WaitForTransaction(transactionHash, pollInterval)
 }
 
-func (b *Bridge) InitAfterConfig() {
-	var err error
-	extra := strings.Split(b.ChainConfig.Extra, ":") // format: mpcAccount:defaultAccount:privateKey
-	if len(extra) != 3 {
-		log.Errorf("chainConfig extra error")
-	}
-
-	mpcAddr := extra[mpcAddrIdx]
-	defaultAddr := extra[defaultAddrIdx]
-	privKey := extra[privKeyIdx]
-
-	defaultAccount, err := NewAccountWithPrivateKey(privKey, defaultAddr, b.ChainConfig.ChainID)
-	if err != nil {
-		log.Error("error creating starknet default account: ", err)
-	}
-	b.defaultAccount = defaultAccount
-
-	mpcAccount, err := NewAccount(mpcAddr, b.ChainConfig.ChainID)
-	if err != nil {
-		log.Error("error creating starknet mpc account: ", err)
-	}
-	b.mpcAccount = mpcAccount
-	//b.account.chainId = b.ChainConfig.ChainID
-	for _, url := range b.GatewayConfig.AllGatewayURLs {
-		provider, err := NewProvider(url, b.ChainConfig.ChainID)
-		if err == nil {
-			b.provider = provider
-			return
-		}
-	}
-	log.Error("error connecting to starknet rpc: ", err)
-}
-
 // NewCrossChainBridge new bridge
-func NewCrossChainBridge() *Bridge {
+func NewCrossChainBridge(chainID *big.Int) *Bridge {
 	return &Bridge{
 		NonceSetterBase:  base.NewNonceSetterBase(),
 		RPCClientTimeout: 60,
+		ChainID:          chainID,
 	}
 }
 

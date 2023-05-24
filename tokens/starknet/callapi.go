@@ -2,6 +2,7 @@ package starknet
 
 import (
 	"fmt"
+	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"math/big"
 
 	"github.com/dontpanicdao/caigo/types"
@@ -24,4 +25,18 @@ func (b *Bridge) GetBalance(account string) (*big.Int, error) {
 	}
 
 	return nil, fmt.Errorf("get balance parse failed, call returned: %s", ret)
+}
+
+func (b *Bridge) EstimateFee(call interface{}) (*big.Int, error) {
+	estimate, err := b.provider.EstimateFee(call)
+	if err != nil {
+		return nil, err
+	}
+	fee, ok := big.NewInt(0).SetString(string(estimate.OverallFee), 0)
+	if !ok {
+		return nil, tokens.ErrMatchFee
+	}
+	invokeMaxFee := fee.Mul(fee, big.NewInt(3))
+
+	return invokeMaxFee, nil
 }

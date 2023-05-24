@@ -14,6 +14,8 @@ import (
 	"github.com/dontpanicdao/caigo/types"
 )
 
+const anySwapOutSelector = "0x1835440bee9143eda55679e8067e9003ec48f85ca70a484ace777b68a78ce8a"
+
 func (b *Bridge) VerifyMsgHash(rawTx interface{}, msgHashes []string) (err error) {
 	if len(msgHashes) < 1 {
 		return tokens.ErrMsgHash
@@ -68,7 +70,7 @@ func (b *Bridge) verifySwapoutTx(txHash string, LogIndex int, allowUnstable bool
 		}
 
 		txStatus := string(receipt.Status)
-		if !strings.EqualFold(txStatus, string(types.TransactionAcceptedOnL2)) {
+		if !strings.EqualFold(txStatus, string(types.TransactionAcceptedOnL2)) && !strings.EqualFold(txStatus, string(types.TransactionAcceptedOnL1)) {
 			return swapInfo, tokens.ErrTxWithWrongStatus
 		}
 	}
@@ -96,13 +98,25 @@ func (b *Bridge) verifySwapoutTx(txHash string, LogIndex int, allowUnstable bool
 }
 
 func (b *Bridge) verifySwapoutEvents(swapInfo *tokens.SwapTxInfo, receipt rpcv02.InvokeTransactionReceipt) error {
-	event := &receipt.Events[swapInfo.LogIndex]
+	// filter event
+	var logIndex int
+	var isSwapOutLogExist bool
+	for i, event := range receipt.Events {
+		if len(event.Keys) > 0 && common.IsEqualIgnoreCase(event.Keys[0], anySwapOutSelector) {
+			isSwapOutLogExist = true
+			logIndex = i
+			swapInfo.LogIndex = logIndex
+			break
+		}
+	}
 
-	routerContract := b.ChainConfig.RouterContract
-
-	if len(event.Keys) < 1 || !common.IsEqualIgnoreCase(event.Keys[0], "LogAnySwapOut") {
+	if !isSwapOutLogExist {
 		return tokens.ErrSwapoutLogNotFound
 	}
+
+	event := &receipt.Events[logIndex]
+
+	routerContract := b.ChainConfig.RouterContract
 
 	swapInfo.TxTo = event.FromAddress.String()
 
@@ -125,25 +139,24 @@ func (b *Bridge) verifySwapoutEvents(swapInfo *tokens.SwapTxInfo, receipt rpcv02
 	//                   cid: felt,
 	//                   toChainID: felt) {
 	//}
-
 	//TODO: replace log data index number with constants
 	erc20SwapInfo.Token = event.Data[0]
+	if len(erc20SwapInfo.Token) == 65 {
+		removePrefix := event.Data[0][2:]
+		erc20SwapInfo.Token = "0x0" + removePrefix
+	}
 	swapInfo.From = event.Data[1]
-	swapInfo.Bind = event.Data[2]
+	swapInfo.Bind = event.Data[2] // to address
 	tokenCfg := b.GetTokenConfig(erc20SwapInfo.Token)
 	if tokenCfg == nil {
 		return tokens.ErrMissTokenConfig
 	}
 	erc20SwapInfo.TokenID = tokenCfg.TokenID
-	value, err := common.GetUint64FromStr(event.Data[4])
-	if err != nil {
-		return err
-	}
+	value := types.HexToBN(event.Data[3]).Uint64()
 	swapInfo.Value = new(big.Int).SetUint64(value)
-	toChainID, err := common.GetUint64FromStr(event.Data[5])
-	if err != nil {
-		return err
-	}
+
+	toChainIDHex := event.Data[len(event.Data)-1]
+	toChainID := types.HexToBN(toChainIDHex).Uint64()
 	swapInfo.ToChainID = new(big.Int).SetUint64(toChainID)
 	return nil
 }

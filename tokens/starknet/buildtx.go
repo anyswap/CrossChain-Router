@@ -1,6 +1,7 @@
 package starknet
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -11,6 +12,11 @@ import (
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/starknet/rpcv02"
 	"github.com/dontpanicdao/caigo/types"
+)
+
+const (
+	Invoke   = "invoke"
+	Estimate = "estimate"
 )
 
 func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{}, err error) {
@@ -64,7 +70,125 @@ func (b *Bridge) BuildRawTransaction(args *tokens.BuildTxArgs) (rawTx interface{
 		return nil, err
 	}
 
-	return b.buildTx(args, b.GetRouterContract(multichainToken), swapInArgs)
+	routerContract := b.GetRouterContract(multichainToken)
+	functionCall := b.PrepFunctionCall(routerContract, args.Selector, swapInArgs.getCalldata())
+
+	return b.BuildRawInvokeTx(functionCall, args)
+}
+
+func (b *Bridge) PrepFunctionCall(contractAddress string, entryPointSelector string, callData []string) FunctionCall {
+	call := FunctionCall{
+		ContractAddress:    HexToHash(contractAddress),
+		EntryPointSelector: entryPointSelector,
+		Calldata:           callData,
+	}
+	return call
+}
+
+func (b *Bridge) BuildRawInvokeTx(call FunctionCall, args *tokens.BuildTxArgs) (interface{}, error) {
+	maxFee, err := b.GetMaxFee(call, args)
+	if err != nil {
+		return nil, err
+	}
+
+	nonce, err := b.GetPoolNonce(b.account.Address, "")
+	if err != nil {
+		return nil, err
+	}
+
+	return FunctionCallWithDetails{
+		Call:   call,
+		MaxFee: maxFee,
+		Nonce:  new(big.Int).SetUint64(nonce),
+	}, nil
+}
+
+func (b *Bridge) GetMaxFee(call FunctionCall, args *tokens.BuildTxArgs) (*big.Int, error) {
+	c, err := b.BuildSignedInvokeTx(call, Estimate, args)
+	if err != nil {
+		return nil, err
+	}
+	return b.EstimateFee(c)
+}
+
+func (b *Bridge) BuildSignedInvokeTx(call FunctionCall, callType string, args *tokens.BuildTxArgs) (interface{}, error) {
+	details, txHash, err := b.PrepExecDetails(call, callType, nil, args)
+	if err != nil {
+		return nil, err
+	}
+	rsv, err := b.SignInvokeTx(txHash, args)
+	if err != nil {
+		return nil, err
+	}
+	return b.PrepSignedInvokeTx(rsv, call, details)
+}
+
+func (b *Bridge) SignInvokeTx(txHash string, args *tokens.BuildTxArgs) (string, error) {
+	mpcPubkey := router.GetMPCPublicKey(args.From)
+	keyID, rsvs, err := b.MPCSign(mpcPubkey, txHash, "estimate fee txid"+args.SwapID)
+	if err != nil {
+		log.Info(b.ChainConfig.BlockChain+" MPCSignTransaction failed", "keyID", keyID, "txid", args.SwapID, "err", err)
+		return "", err
+	}
+	log.Info(b.ChainConfig.BlockChain+" MPCSignTransaction finished", "keyID", keyID, "estimate", args.SwapID)
+
+	if len(rsvs) != 1 {
+		return "", fmt.Errorf("get sign status require one rsv but have %v (keyID = %v)", len(rsvs), keyID)
+	}
+	return rsvs[0], nil
+}
+
+func (b *Bridge) PrepExecDetails(call FunctionCall, callType string, fee *big.Int, args *tokens.BuildTxArgs) (*ExecuteDetails, string, error) {
+	var maxFee *big.Int
+	switch callType {
+	case Invoke:
+		if fee != nil {
+			maxFee = fee
+		} else {
+			estimate, err := b.GetMaxFee(call, args)
+			if err != nil {
+				return nil, "", err
+			}
+			maxFee = estimate
+		}
+	case Estimate:
+		maxFee = MAXFEE
+	default:
+		return nil, "", errors.New("unsupported call type, should be one of estimate or invoke")
+	}
+	nonce, err := b.GetPoolNonce(b.account.Address, "")
+	if err != nil {
+		return nil, "", err
+	}
+	details := &ExecuteDetails{
+		Nonce:  new(big.Int).SetUint64(nonce),
+		MaxFee: maxFee,
+	}
+
+	txHashBN, err := b.computeTxHash(call, details)
+	if err != nil {
+		return nil, "", err
+	}
+
+	txHash := types.BigToHash(txHashBN).Hex()
+
+	return details, txHash, nil
+}
+
+func (b *Bridge) PrepSignedInvokeTx(rsv string, call FunctionCall, details *ExecuteDetails) (interface{}, error) {
+	r, s, v := DecodeSignature(common.FromHex(rsv))
+	signature := ConvertSignature(r, s, v)
+	calldata := fmtCalldataStrings([]FunctionCall{call})
+
+	return rpcv02.BroadcastedInvokeV1Transaction{
+		Version:       rpcv02.TransactionV1,
+		Type:          TxTypeInvoke,
+		MaxFee:        details.MaxFee,
+		Nonce:         details.Nonce,
+		Calldata:      calldata,
+		Signature:     signature,
+		SenderAddress: types.HexToHash(b.account.Address),
+	}, nil
 }
 
 func (b *Bridge) buildSwapInArgs(txHash string, tokenID string, to string, fromChainID *big.Int, amountBN *big.Int) (*SwapIn, error) {
@@ -82,126 +206,10 @@ func (b *Bridge) buildSwapInArgs(txHash string, tokenID string, to string, fromC
 	return &calldata, nil
 }
 
-func (b *Bridge) buildTx(args *tokens.BuildTxArgs, routerContractAddress string, swapInArgs *SwapIn) (rawTx interface{}, err error) {
-	call := FunctionCall{
-		ContractAddress:    HexToHash(routerContractAddress),
-		EntryPointSelector: args.Selector,
-		Calldata:           swapInArgs.getCalldata(),
-	}
-
-	estimate, err := b.sendEstimateTx(call)
-	if err != nil {
-		return nil, err
-	}
-	invokeNonce, err := b.GetPoolNonce(b.mpcAccount.Address, "")
-	if err != nil {
-		return nil, err
-	}
-
-	return FunctionCallWithDetails{
-		Call:   call,
-		MaxFee: estimate,
-		Nonce:  new(big.Int).SetUint64(invokeNonce),
-	}, nil
-}
-
-func (b *Bridge) sendEstimateTx(call FunctionCall) (*big.Int, error) {
-	nonce, err := b.GetPoolNonce(b.defaultAccount.Address, "")
-	if err != nil {
-		return nil, err
-	}
-	details := &ExecuteDetails{
-		Nonce:  new(big.Int).SetUint64(nonce),
-		MaxFee: MAXFEE,
-	}
-
-	txHash, err := b.computeTxHash(call, details)
-	if err != nil {
-		return nil, err
-	}
-
-	r, s, err := b.defaultAccount.Sign(txHash)
-	if err != nil {
-		return nil, err
-	}
-
-	funcInvoke, err := b.prepFunctionInvoke([]FunctionCall{call}, details, r, s)
-	if err != nil {
-		return nil, err
-	}
-
-	estimate, err := b.EstimateFee(*funcInvoke)
-	if err != nil {
-		return nil, err
-	}
-	fee, ok := big.NewInt(0).SetString(string(estimate.OverallFee), 0)
-	if !ok {
-		return nil, tokens.ErrMatchFee
-	}
-	invokeMaxFee := fee.Mul(fee, big.NewInt(2))
-
-	return invokeMaxFee, nil
-}
-
 func (b *Bridge) computeTxHash(call FunctionCall, details *ExecuteDetails) (txHash *big.Int, err error) {
 	txHash, err = b.TransactionHash(call, details.MaxFee, details.Nonce)
 	if err != nil {
 		return nil, err
 	}
 	return txHash, nil
-}
-
-func (b *Bridge) prepFunctionInvoke(calls []FunctionCall, details *ExecuteDetails, r, s *big.Int) (*types.FunctionInvoke, error) {
-	version, _ := big.NewInt(0).SetString(TxV1, 0)
-	calldata := fmtCalldataStrings(calls)
-	return &types.FunctionInvoke{
-		MaxFee:    details.MaxFee,
-		Version:   version,
-		Signature: types.Signature{r, s},
-		FunctionCall: types.FunctionCall{
-			ContractAddress: types.HexToHash(b.defaultAccount.Address),
-			Calldata:        calldata,
-		},
-		Nonce: details.Nonce,
-	}, nil
-}
-
-func (b *Bridge) EstimateFee(call types.FunctionInvoke) (*types.FeeEstimate, error) {
-	var signature []string
-	for _, s := range call.Signature {
-		signature = append(signature, fmt.Sprintf("0x%s", s.Text(16)))
-	}
-	c := rpcv02.BroadcastedInvokeV1Transaction{
-		MaxFee:        call.MaxFee,
-		Version:       rpcv02.TransactionV1,
-		Signature:     signature,
-		Nonce:         call.Nonce,
-		Type:          TxTypeInvoke,
-		Calldata:      call.FunctionCall.Calldata,
-		SenderAddress: types.HexToHash(b.defaultAccount.Address),
-	}
-	return b.provider.EstimateFee(c)
-}
-
-func (b *Bridge) BuildRawInvokeTransaction(contractAddress string, entrypointSelector string, callData ...string) (rawTx interface{}, err error) {
-	call := FunctionCall{
-		ContractAddress:    HexToHash(contractAddress),
-		EntryPointSelector: entrypointSelector,
-		Calldata:           callData,
-	}
-
-	estimate, err := b.sendEstimateTx(call)
-	if err != nil {
-		return nil, err
-	}
-	invokeNonce, err := b.GetPoolNonce(b.defaultAccount.Address, "")
-	if err != nil {
-		return nil, err
-	}
-
-	return FunctionCallWithDetails{
-		Call:   call,
-		MaxFee: estimate,
-		Nonce:  new(big.Int).SetUint64(invokeNonce),
-	}, nil
 }

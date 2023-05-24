@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"math/big"
 
 	"github.com/anyswap/CrossChain-Router/v3/log"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/starknet"
@@ -16,10 +17,9 @@ var (
 	paramCalldata           starknet.ArrayFlag
 )
 
-var bridge = starknet.NewCrossChainBridge()
-
 func main() {
 	initFlags()
+	bridge := starknet.NewCrossChainBridge(new(big.Int).SetUint64(1546503017845)) // testnet
 	bridge.InitAfterConfig()
 
 	var calldata []string
@@ -27,11 +27,12 @@ func main() {
 		calldata = append(calldata, s)
 	}
 
-	rawTx, err := bridge.BuildRawInvokeTransaction(paramContractAddress, paramEntrypointSelector, calldata...)
+	call := bridge.PrepFunctionCall(paramContractAddress, paramEntrypointSelector, calldata)
+	rawInvokeTx, err := bridge.BuildRawInvokeTx(call, nil)
 	if err != nil {
 		log.Error("build raw invoke tx failed", err)
 	}
-	signedTx, _, err := bridge.SignTransactionWithPrivateKey(starknet.EC256STARK, rawTx, "")
+	signedTx, _, err := bridge.SignTransactionWithPrivateKey(starknet.EC256STARK, rawInvokeTx, "")
 	if err != nil {
 		log.Error("sign with private key failed", err)
 	}

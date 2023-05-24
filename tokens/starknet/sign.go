@@ -20,7 +20,7 @@ import (
 // StarkCurve signature is not compatible with Secp256k1 signature, depending on account contract's
 // encryption/validation scheme,
 func (b *Bridge) SignTransactionWithPrivateKey(curveType string, rawTx interface{}, privKey string) (signedTx interface{}, txHash string, err error) {
-	if curveType == EC256STARK && privKey == "" && b.defaultAccount.private == "" {
+	if curveType == EC256STARK && privKey == "" && b.account.private == "" {
 		return nil, "", fmt.Errorf("empty private key")
 	}
 	tx, ok := rawTx.(FunctionCallWithDetails)
@@ -46,13 +46,13 @@ func (b *Bridge) SignTransactionWithPrivateKey(curveType string, rawTx interface
 		if err != nil {
 			return nil, "", err
 		}
-		r, s, v = decodeSignature(sig)
+		r, s, v = DecodeSignature(sig)
 		signature = ConvertSignature(r, s, v)
 	case EC256STARK:
-		if b.defaultAccount.private == "" {
-			b.defaultAccount.private = privKey
+		if b.account.private == "" {
+			b.account.private = privKey
 		}
-		r, s, err = b.defaultAccount.Sign(hash)
+		r, s, err = b.account.Sign(hash)
 		if err != nil {
 			return nil, "", err
 		}
@@ -69,10 +69,37 @@ func (b *Bridge) SignTransactionWithPrivateKey(curveType string, rawTx interface
 		Nonce:         tx.Nonce,
 		Type:          TxTypeInvoke,
 		Calldata:      tx.Call.Calldata,
-		SenderAddress: types.HexToHash(b.defaultAccount.Address),
+		SenderAddress: types.HexToHash(b.account.Address),
 	}
 	return signedTx, txHash, nil
 }
+
+//func (b *Bridge) Sign(args *tokens.BuildTxArgs, mpcPubkey string, hash string, msgContext string) {
+//
+//	var keyID string
+//	var rsvs []string
+//
+//	mpcConfig := mpc.GetMPCConfig(b.UseFastMPC)
+//
+//	keyID, rsvs, err := mpcConfig.DoSignOneEC(mpcPubkey, hash, msgContext)
+//
+//	if err != nil {
+//		log.Info(b.ChainConfig.BlockChain+" MPCSignTransaction failed", "keyID", keyID, "txid", args.SwapID, "err", err)
+//		return nil, "", err
+//	}
+//	log.Info(b.ChainConfig.BlockChain+" MPCSignTransaction finished", "keyID", keyID, "txid", args.SwapID)
+//
+//	if len(rsvs) != 1 {
+//		return nil, "", fmt.Errorf("get sign status require one rsv but have %v (keyID = %v)", len(rsvs), keyID)
+//	}
+//
+//	rsv := rsvs[0]
+//	log.Trace(b.ChainConfig.BlockChain+" MPCSignTransaction get rsv success", "keyID", keyID, "rsv", rsv)
+//
+//	sig := common.FromHex(rsv)
+//	r, s, v := DecodeSignature(sig)
+//
+//}
 
 func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs) (signedTx interface{}, txHash string, err error) {
 	tx, ok := rawTx.(FunctionCallWithDetails)
@@ -124,7 +151,7 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 	log.Trace(b.ChainConfig.BlockChain+" MPCSignTransaction get rsv success", "keyID", keyID, "rsv", rsv)
 
 	sig := common.FromHex(rsv)
-	r, s, v := decodeSignature(sig)
+	r, s, v := DecodeSignature(sig)
 
 	signedTx = rpcv02.BroadcastedInvokeV1Transaction{
 		MaxFee:        tx.MaxFee,
@@ -133,12 +160,17 @@ func (b *Bridge) MPCSignTransaction(rawTx interface{}, args *tokens.BuildTxArgs)
 		Nonce:         tx.Nonce,
 		Type:          TxTypeInvoke,
 		Calldata:      tx.Call.Calldata,
-		SenderAddress: types.HexToHash(b.mpcAccount.Address),
+		SenderAddress: types.HexToHash(b.account.Address),
 	}
 	return signedTx, txHash, nil
 }
 
-func decodeSignature(sig []byte) (r, s, v *big.Int) {
+func (b *Bridge) MPCSign(signPubKey string, msgHash string, msgContext string) (string, []string, error) {
+	mpcConfig := mpc.GetMPCConfig(b.UseFastMPC)
+	return mpcConfig.DoSignOneEC(signPubKey, msgHash, msgContext)
+}
+
+func DecodeSignature(sig []byte) (r, s, v *big.Int) {
 	if len(sig) != crypto.SignatureLength {
 		log.Warn(fmt.Sprintf("wrong size for signature: got %d, want %d", len(sig), crypto.SignatureLength))
 	}

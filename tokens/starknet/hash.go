@@ -12,26 +12,27 @@ const INVOKE = "invoke"
 
 func (b *Bridge) TransactionHash(calls FunctionCall, maxFee, nonce *big.Int) (*big.Int, error) {
 	switch {
-	case b.defaultAccount.version == DefaultAccountVersion:
+	case b.account.version == DefaultAccountVersion:
 		callArray := fmtCalldata([]FunctionCall{calls})
 		cdHash, err := caigo.Curve.ComputeHashOnElements(callArray)
 		if err != nil {
 			return nil, err
 		}
+		version, _ := big.NewInt(0).SetString("0x1", 0)
 		multiHashData := []*big.Int{
 			UTF8StrToBig(INVOKE),
-			big.NewInt(int64(b.defaultAccount.version)),
-			SNValToBN(b.defaultAccount.Address),
+			version, //big.NewInt(int64(b.account.version)),
+			SNValToBN(b.account.Address),
 			big.NewInt(0),
 			cdHash,
 			maxFee,
-			UTF8StrToBig(b.defaultAccount.chainId),
+			//UTF8StrToBig(b.account.chainId),
+			UTF8StrToBig("SN_GOERLI"),
 			nonce,
 		}
 		return caigo.Curve.ComputeHashOnElements(multiHashData)
 	default:
-
-		return nil, fmt.Errorf("starknet version %d unsupported", b.defaultAccount.version)
+		return nil, fmt.Errorf("starknet version %d unsupported", b.account.version)
 	}
 }
 

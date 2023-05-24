@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anyswap/CrossChain-Router/v3/common"
 	"github.com/anyswap/CrossChain-Router/v3/tokens"
 	"github.com/anyswap/CrossChain-Router/v3/tokens/starknet/rpcv02"
 	"github.com/dontpanicdao/caigo/gateway"
@@ -40,10 +41,10 @@ type Provider interface {
 	WaitForTransaction(transactionHash ctypes.Hash, pollInterval time.Duration) (ctypes.TransactionState, error)
 }
 
-func NewProvider(url, stubChainID string) (Provider, error) {
+func NewProvider(url string, stubChainID *big.Int) (Provider, error) {
 	var chainID string
 	for _, cid := range chainIDs {
-		if strings.EqualFold(stubChainID, GetStubChainID(cid).String()) {
+		if stubChainID.Cmp(GetStubChainID(cid)) == 0 {
 			chainID = cid
 			break
 		}
@@ -87,11 +88,16 @@ type GWProvider struct {
 }
 
 func (p *RPCProvider) Nonce(contractAddress string) (uint64, error) {
-	n, err := p.r.Nonce(ctx, rpcv02.BlockID{Tag: "latest"}, ctypes.HexToHash(contractAddress))
+	n, err := p.r.Nonce(ctx, rpcv02.BlockID{Tag: LATEST}, ctypes.HexToHash(contractAddress))
 	if err != nil {
 		return 0, err
 	}
-	parseInt, err := strconv.Atoi(*n)
+	var s string
+	s = *n
+	if common.HasHexPrefix(s) {
+		s = s[2:]
+	}
+	parseInt, err := strconv.Atoi(s)
 	if err != nil {
 		return 0, err
 	}
@@ -119,7 +125,7 @@ func (p *RPCProvider) Invoke(signedTx interface{}) (*ctypes.AddInvokeTransaction
 }
 
 func (p *RPCProvider) EstimateFee(call interface{}) (*ctypes.FeeEstimate, error) {
-	return p.r.EstimateFee(ctx, call, rpcv02.WithBlockTag("Latest"))
+	return p.r.EstimateFee(ctx, call, rpcv02.WithBlockTag("latest"))
 }
 
 func (p *RPCProvider) TransactionByHash(hash string) (rpcv02.Transaction, error) {

@@ -30,7 +30,7 @@ func main() {
 		EntryPointSelector: paramEntrypointSelector,
 		Calldata:           calldata,
 	}
-	provider, err := starknet.NewProvider(paramURL, starknet.GetStubChainID(paramNetwork).String())
+	provider, err := starknet.NewProvider(paramURL, starknet.GetStubChainID(paramNetwork))
 	if err != nil {
 		log.Error("make new provider failed ", err)
 	}
