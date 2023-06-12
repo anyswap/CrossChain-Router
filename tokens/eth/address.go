@@ -34,8 +34,14 @@ func (b *Bridge) IsValidAddress(address string) bool {
 	}
 	unprefixedHex, ok, hasUpperChar := common.GetUnprefixedHex(address)
 	if hasUpperChar {
-		if strings.ToUpper(address) == address {
-			return true
+		if common.HasHexPrefix(address) {
+			if strings.ToUpper(address[2:]) == address[2:] {
+				return true
+			}
+		} else {
+			if strings.ToUpper(address) == address {
+				return true
+			}
 		}
 		// valid checksum
 		if unprefixedHex != common.HexToAddress(address).Hex()[2:] {
