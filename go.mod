@@ -18,6 +18,7 @@ require (
 	github.com/cosmos/go-bip39 v1.0.0
 	github.com/deckarep/golang-set v1.8.0
 	github.com/didip/tollbooth/v6 v6.1.2
+	github.com/dontpanicdao/caigo v0.4.1
 	github.com/echovl/cardano-go v0.1.14
 	github.com/ethereum/go-ethereum v1.10.26
 	github.com/fbsobreira/gotron-sdk v0.0.0-20221101181131-c4daceb828f0
@@ -107,6 +108,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/btree v1.1.2 // indirect
+	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/schema v1.1.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect

@@ -100,6 +100,13 @@ var (
 	ErrWrongProofID           = errors.New("wrong proofID")
 	ErrProofIDMismatch        = errors.New("proofID mismatch")
 	ErrProofConsumed          = errors.New("proof consumed")
+	ErrUnsupportedAccount     = errors.New("unsupported account implementation")
+	ErrMatchFee               = errors.New("could not match OverallFee to big.Int")
+	ErrLatestBlockNum         = errors.New("[blocknumber] cannot read block number from latest block")
+	ErrUint64Nonce            = errors.New("nonce is not uint64")
+	ErrInvalidInvokeInput     = errors.New("invalid invoke input")
+	ErrMsgHash                = errors.New("must provide msg hash")
+	ErrInvalidInvokeReceipt   = errors.New("invalid starknet invoke receipt")
 )
 
 // errors should register in router swap
