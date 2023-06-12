@@ -48,12 +48,10 @@ func TestDeclareTransaction(t *testing.T) {
 		spy := NewSpy(testConfig.provider.c)
 		testConfig.provider.c = spy
 		declareTransaction := BroadcastedDeclareTransaction{
-			BroadcastedTxnCommonProperties: BroadcastedTxnCommonProperties{
-				Version:   test.Version,
-				MaxFee:    maxFee,
-				Nonce:     nonce,
-				Signature: test.Signature,
-			},
+			Version:       test.Version,
+			MaxFee:        maxFee,
+			Nonce:         nonce,
+			Signature:     test.Signature,
 			ContractClass: contractClass,
 			SenderAddress: types.HexToHash(TestNetAccount040Address),
 		}

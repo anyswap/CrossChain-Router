@@ -24,15 +24,18 @@ require (
 	github.com/fbsobreira/gotron-sdk v0.0.0-20221101181131-c4daceb828f0
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/golang/protobuf v1.5.2
+	github.com/google/go-cmp v0.5.9
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/rpc v1.2.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/iotaledger/hive.go v0.0.0-20211011085923-fd2eb0a47bf8
 	github.com/iotaledger/iota.go/v2 v2.0.1
+	github.com/joho/godotenv v1.4.0
 	github.com/lestrrat-go/file-rotatelogs v2.4.0+incompatible
 	github.com/mr-tron/base58 v1.2.0
 	github.com/near/borsh-go v0.3.1
+	github.com/nsf/jsondiff v0.0.0-20210926074059-1e845ec5d249
 	github.com/oasisprotocol/sapphire-paratime/clients/go v0.9.1
 	github.com/onflow/cadence v0.37.0
 	github.com/onflow/flow-go-sdk v0.37.0
@@ -48,6 +51,7 @@ require (
 	github.com/zksync-sdk/zksync2-go v0.0.0-20230313172442-06a0c45dcf48
 	go.mongodb.org/mongo-driver v1.11.1
 	golang.org/x/crypto v0.3.0
+	golang.org/x/exp v0.0.0-20220916125017-b168a2c6b86b
 	google.golang.org/grpc v1.51.0
 	google.golang.org/protobuf v1.28.2-0.20220831092852-f930b1dc76e8
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
@@ -216,7 +220,6 @@ require (
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.23.0 // indirect
-	golang.org/x/exp v0.0.0-20220916125017-b168a2c6b86b // indirect
 	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
